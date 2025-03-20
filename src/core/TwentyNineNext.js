@@ -19,6 +19,7 @@ import { CartDisplayManager } from '../managers/CartDisplayManager.js';
 import { AttributionManager } from '../managers/AttributionManager.js';
 import { EventManager } from '../managers/EventManager.js';
 import { TooltipManager } from '../managers/TooltipManager.js';
+import { UpsellManager } from '../managers/UpsellManager.js';
 import { initPBAccordion } from '../utils/PBAccordion.js';
 import { initUtmTransfer } from '../utils/UtmTransfer.js';
 
@@ -42,6 +43,7 @@ export class TwentyNineNext {
     this.attribution = new AttributionManager(this);
     this.cart = new CartManager(this);
     this.campaign = new CampaignHelper(this);
+    this.upsell = new UpsellManager(this);
 
     // Unified event system
     this.events = {
@@ -238,6 +240,10 @@ export class TwentyNineNext {
       this.coreLogger.info('Receipt page detected');
       this.#initReceiptPage();
     }
+    if (pageType === 'upsell' || document.querySelector('[data-os-upsell]')) {
+      this.coreLogger.info('Upsell page detected');
+      this.#initUpsellPage();
+    }
     return false;
   }
 
@@ -262,6 +268,21 @@ export class TwentyNineNext {
         }
       })
       .catch((error) => this.coreLogger.error('Failed to load ReceiptPage module:', error));
+  }
+
+  #initUpsellPage() {
+    this.coreLogger.info('Initializing upsell page');
+    
+    // Make sure the UpsellManager is initialized and available
+    if (!this.upsell) {
+      this.upsell = new UpsellManager(this);
+      this.coreLogger.info('UpsellManager initialized for upsell page');
+    }
+    
+    // Trigger upsell page events
+    this.triggerEvent('upsell.pageview', {
+      ref_id: new URLSearchParams(window.location.search).get('ref_id') || sessionStorage.getItem('order_ref_id')
+    });
   }
 
   #initUIUtilities() {

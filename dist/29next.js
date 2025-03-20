@@ -56,7 +56,7 @@ var TwentyNineNext = (() => {
   __export(ReceiptPage_exports, {
     ReceiptPage: () => ReceiptPage
   });
-  var _apiClient3, _logger24, _app18, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError2, showError_fn2, ReceiptPage;
+  var _apiClient3, _logger25, _app19, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError2, showError_fn2, ReceiptPage;
   var init_ReceiptPage = __esm({
     "src/components/checkout/ReceiptPage.js"() {
       "use strict";
@@ -137,8 +137,8 @@ var TwentyNineNext = (() => {
            */
           __privateAdd(this, _showError2);
           __privateAdd(this, _apiClient3, void 0);
-          __privateAdd(this, _logger24, void 0);
-          __privateAdd(this, _app18, void 0);
+          __privateAdd(this, _logger25, void 0);
+          __privateAdd(this, _app19, void 0);
           __privateAdd(this, _orderData, null);
           __privateAdd(this, _orderFetched, false);
           // Flag to prevent duplicate API calls
@@ -146,8 +146,8 @@ var TwentyNineNext = (() => {
           // Flag to prevent duplicate initialization
           __privateAdd(this, _debugMode5, false);
           __privateSet(this, _apiClient3, apiClient);
-          __privateSet(this, _logger24, logger);
-          __privateSet(this, _app18, app);
+          __privateSet(this, _logger25, logger);
+          __privateSet(this, _app19, app);
           const debugMeta = document.querySelector('meta[name="os-debug"]');
           __privateSet(this, _debugMode5, debugMeta?.getAttribute("content") === "true");
           __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "info", "ReceiptPage component created");
@@ -181,8 +181,8 @@ var TwentyNineNext = (() => {
         }
       };
       _apiClient3 = new WeakMap();
-      _logger24 = new WeakMap();
-      _app18 = new WeakMap();
+      _logger25 = new WeakMap();
+      _app19 = new WeakMap();
       _orderData = new WeakMap();
       _orderFetched = new WeakMap();
       _initialized4 = new WeakMap();
@@ -190,8 +190,8 @@ var TwentyNineNext = (() => {
       _safeLog3 = new WeakSet();
       safeLog_fn3 = function(level, message, ...args) {
         try {
-          if (__privateGet(this, _logger24) && typeof __privateGet(this, _logger24)[level] === "function") {
-            __privateGet(this, _logger24)[level](message, ...args);
+          if (__privateGet(this, _logger25) && typeof __privateGet(this, _logger25)[level] === "function") {
+            __privateGet(this, _logger25)[level](message, ...args);
           } else if (console[level]) {
             console[level](message, ...args);
           } else {
@@ -543,6 +543,36 @@ var TwentyNineNext = (() => {
         throw new Error("Order reference is required");
       __privateGet(this, _logger).debug(`Fetching order with ref: ${orderRef}`);
       return __privateMethod(this, _request, request_fn).call(this, `orders/${orderRef}/`);
+    }
+    /**
+     * Add an upsell to an existing order
+     * @param {string} orderRef - Order reference ID
+     * @param {Object} upsellData - The upsell data including package_id and quantity
+     * @returns {Promise<Object>} The updated order
+     */
+    async createOrderUpsell(orderRef, upsellData) {
+      if (!orderRef)
+        throw new Error("Order reference is required");
+      __privateGet(this, _logger).debug(`Adding upsell to order ref: ${orderRef}`, upsellData);
+      const formattedData = {
+        lines: Array.isArray(upsellData.lines) ? upsellData.lines : [
+          {
+            package_id: upsellData.package_id,
+            quantity: upsellData.quantity || 1
+          }
+        ]
+      };
+      if (upsellData.payment_detail) {
+        formattedData.payment_detail = upsellData.payment_detail;
+      }
+      try {
+        const response = await __privateMethod(this, _request, request_fn).call(this, `orders/${orderRef}/upsells/`, "POST", formattedData);
+        __privateGet(this, _logger).info("Upsell added successfully", response);
+        return response;
+      } catch (error) {
+        __privateGet(this, _logger).error("Error adding upsell to order", error);
+        throw error;
+      }
     }
     async processPayment(orderData, paymentMethod) {
       __privateGet(this, _logger).debug(`Processing ${paymentMethod} payment for order`);
@@ -8915,6 +8945,210 @@ var TwentyNineNext = (() => {
     }, 200));
   };
 
+  // src/managers/UpsellManager.js
+  var _app18, _logger24, _stateManager2, _api, _upsellElements, _orderRef, _init9, init_fn9, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _redirect, redirect_fn, _displayError, displayError_fn;
+  var UpsellManager = class {
+    constructor(app) {
+      __privateAdd(this, _init9);
+      /**
+       * Get the order reference ID from URL parameters or sessionStorage
+       * @returns {string|null} The order reference ID or null if not found
+       */
+      __privateAdd(this, _getOrderReferenceId);
+      /**
+       * Initialize upsell UI elements
+       */
+      __privateAdd(this, _initUpsellElements);
+      /**
+       * Bind events to upsell elements
+       */
+      __privateAdd(this, _bindEvents);
+      /**
+       * Disable all upsell buttons to prevent multiple clicks
+       */
+      __privateAdd(this, _disableUpsellButtons);
+      /**
+       * Re-enable all upsell buttons (used in case of error)
+       */
+      __privateAdd(this, _enableUpsellButtons);
+      /**
+       * Redirect to a URL, appending the order reference ID if needed
+       * @param {string} url - The URL to redirect to
+       */
+      __privateAdd(this, _redirect);
+      /**
+       * Display an error message to the user
+       * @param {string} message - The error message to display
+       */
+      __privateAdd(this, _displayError);
+      __privateAdd(this, _app18, void 0);
+      __privateAdd(this, _logger24, void 0);
+      __privateAdd(this, _stateManager2, void 0);
+      __privateAdd(this, _api, void 0);
+      __privateAdd(this, _upsellElements, {});
+      __privateAdd(this, _orderRef, null);
+      __privateSet(this, _app18, app);
+      __privateSet(this, _logger24, app.logger.createModuleLogger("UPSELL"));
+      __privateSet(this, _stateManager2, app.state);
+      __privateSet(this, _api, app.api);
+      __privateMethod(this, _init9, init_fn9).call(this);
+      __privateGet(this, _logger24).info("UpsellManager initialized");
+    }
+    /**
+     * Accept an upsell offer by adding the product to the order
+     * @param {string|number} packageId - The package ID to add to the order
+     * @param {number} quantity - The quantity to add (default: 1)
+     * @param {string} nextUrl - The URL to redirect to after adding the upsell
+     */
+    async acceptUpsell(packageId, quantity = 1, nextUrl) {
+      if (!__privateGet(this, _orderRef)) {
+        __privateGet(this, _logger24).error("Cannot accept upsell: No order reference ID found");
+        return;
+      }
+      __privateGet(this, _logger24).info(`Accepting upsell: Package ${packageId}, Quantity ${quantity}`);
+      __privateMethod(this, _disableUpsellButtons, disableUpsellButtons_fn).call(this);
+      try {
+        document.body.classList.add("os-loading");
+        const upsellData = {
+          lines: [{
+            package_id: Number(packageId),
+            quantity: Number(quantity)
+          }]
+        };
+        const response = await __privateGet(this, _api).createOrderUpsell(__privateGet(this, _orderRef), upsellData);
+        __privateGet(this, _logger24).info("Upsell successfully added to order", response);
+        __privateMethod(this, _redirect, redirect_fn).call(this, nextUrl);
+      } catch (error) {
+        __privateGet(this, _logger24).error("Error accepting upsell:", error);
+        document.body.classList.remove("os-loading");
+        __privateMethod(this, _enableUpsellButtons, enableUpsellButtons_fn).call(this);
+        __privateMethod(this, _displayError, displayError_fn).call(this, "There was an error processing your upsell. Please try again.");
+      }
+    }
+    /**
+     * Decline an upsell offer and redirect to the next URL
+     * @param {string} nextUrl - The URL to redirect to
+     */
+    declineUpsell(nextUrl) {
+      __privateGet(this, _logger24).info("Declining upsell offer");
+      __privateMethod(this, _disableUpsellButtons, disableUpsellButtons_fn).call(this);
+      __privateMethod(this, _redirect, redirect_fn).call(this, nextUrl);
+    }
+  };
+  _app18 = new WeakMap();
+  _logger24 = new WeakMap();
+  _stateManager2 = new WeakMap();
+  _api = new WeakMap();
+  _upsellElements = new WeakMap();
+  _orderRef = new WeakMap();
+  _init9 = new WeakSet();
+  init_fn9 = function() {
+    __privateSet(this, _orderRef, __privateMethod(this, _getOrderReferenceId, getOrderReferenceId_fn).call(this));
+    if (__privateGet(this, _orderRef)) {
+      __privateGet(this, _logger24).info(`Order reference ID found: ${__privateGet(this, _orderRef)}`);
+      __privateGet(this, _stateManager2).setState("order.ref_id", __privateGet(this, _orderRef));
+    } else {
+      __privateGet(this, _logger24).warn("No order reference ID found, upsell functionality will be limited");
+    }
+    __privateMethod(this, _initUpsellElements, initUpsellElements_fn).call(this);
+    __privateMethod(this, _bindEvents, bindEvents_fn).call(this);
+  };
+  _getOrderReferenceId = new WeakSet();
+  getOrderReferenceId_fn = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    let refId = urlParams.get("ref_id");
+    if (!refId) {
+      refId = sessionStorage.getItem("order_ref_id");
+      __privateGet(this, _logger24).debug("Getting order ref_id from sessionStorage:", refId);
+    } else {
+      __privateGet(this, _logger24).debug("Getting order ref_id from URL parameters:", refId);
+      sessionStorage.setItem("order_ref_id", refId);
+    }
+    return refId;
+  };
+  _initUpsellElements = new WeakSet();
+  initUpsellElements_fn = function() {
+    __privateSet(this, _upsellElements, {
+      acceptButtons: document.querySelectorAll('[data-os-upsell="accept"]'),
+      declineButtons: document.querySelectorAll('[data-os-upsell="decline"]')
+    });
+    __privateGet(this, _logger24).debug(`Found ${__privateGet(this, _upsellElements).acceptButtons.length} accept buttons and ${__privateGet(this, _upsellElements).declineButtons.length} decline buttons`);
+  };
+  _bindEvents = new WeakSet();
+  bindEvents_fn = function() {
+    __privateGet(this, _upsellElements).acceptButtons.forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        const packageId = button.getAttribute("data-os-package-id");
+        const quantity = parseInt(button.getAttribute("data-os-quantity") || "1", 10);
+        const nextUrl = button.getAttribute("data-os-next-url");
+        if (!packageId) {
+          __privateGet(this, _logger24).error("No package ID specified for upsell accept button");
+          return;
+        }
+        this.acceptUpsell(packageId, quantity, nextUrl);
+      });
+    });
+    __privateGet(this, _upsellElements).declineButtons.forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        const nextUrl = button.getAttribute("data-os-next-url");
+        if (nextUrl) {
+          this.declineUpsell(nextUrl);
+        } else {
+          __privateGet(this, _logger24).error("No next URL specified for upsell decline button");
+        }
+      });
+    });
+  };
+  _disableUpsellButtons = new WeakSet();
+  disableUpsellButtons_fn = function() {
+    __privateGet(this, _logger24).debug("Disabling upsell buttons");
+    __privateGet(this, _upsellElements).acceptButtons.forEach((button) => {
+      button.style.pointerEvents = "none";
+      button.classList.add("os-button-disabled");
+    });
+    __privateGet(this, _upsellElements).declineButtons.forEach((button) => {
+      button.style.pointerEvents = "none";
+      button.classList.add("os-button-disabled");
+    });
+  };
+  _enableUpsellButtons = new WeakSet();
+  enableUpsellButtons_fn = function() {
+    __privateGet(this, _logger24).debug("Re-enabling upsell buttons");
+    __privateGet(this, _upsellElements).acceptButtons.forEach((button) => {
+      button.style.pointerEvents = "";
+      button.classList.remove("os-button-disabled");
+    });
+    __privateGet(this, _upsellElements).declineButtons.forEach((button) => {
+      button.style.pointerEvents = "";
+      button.classList.remove("os-button-disabled");
+    });
+  };
+  _redirect = new WeakSet();
+  redirect_fn = function(url) {
+    if (!url) {
+      __privateGet(this, _logger24).warn("No URL provided for redirect");
+      return;
+    }
+    const redirectUrl = new URL(url, window.location.origin);
+    if (__privateGet(this, _orderRef) && !redirectUrl.searchParams.has("ref_id")) {
+      redirectUrl.searchParams.append("ref_id", __privateGet(this, _orderRef));
+    }
+    __privateGet(this, _logger24).info(`Redirecting to ${redirectUrl.href}`);
+    window.location.href = redirectUrl.href;
+  };
+  _displayError = new WeakSet();
+  displayError_fn = function(message) {
+    const errorContainer = document.querySelector("[data-os-error-container]");
+    if (errorContainer) {
+      errorContainer.textContent = message;
+      errorContainer.style.display = "block";
+    } else {
+      alert(message);
+    }
+  };
+
   // src/utils/PBAccordion.js
   var PBAccordion = class {
     constructor() {
@@ -9164,7 +9398,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/core/TwentyNineNext.js
-  var _isInitialized2, _isCheckoutPage, _campaignData, _loadConfig, loadConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUIUtilities, initUIUtilities_fn;
+  var _isInitialized2, _isCheckoutPage, _campaignData, _loadConfig, loadConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn;
   var TwentyNineNext = class {
     constructor(options = {}) {
       __privateAdd(this, _loadConfig);
@@ -9176,6 +9410,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _detectCheckoutPage);
       __privateAdd(this, _initCheckoutPage);
       __privateAdd(this, _initReceiptPage);
+      __privateAdd(this, _initUpsellPage);
       __privateAdd(this, _initUIUtilities);
       __privateAdd(this, _isInitialized2, false);
       __privateAdd(this, _isCheckoutPage, false);
@@ -9195,6 +9430,7 @@ var TwentyNineNext = (() => {
       this.attribution = new AttributionManager(this);
       this.cart = new CartManager(this);
       this.campaign = new CampaignHelper(this);
+      this.upsell = new UpsellManager(this);
       this.events = {
         on: (event, callback) => this.on(event, callback),
         once: (event, callback) => this.once(event, callback),
@@ -9424,6 +9660,10 @@ var TwentyNineNext = (() => {
       this.coreLogger.info("Receipt page detected");
       __privateMethod(this, _initReceiptPage, initReceiptPage_fn).call(this);
     }
+    if (pageType === "upsell" || document.querySelector("[data-os-upsell]")) {
+      this.coreLogger.info("Upsell page detected");
+      __privateMethod(this, _initUpsellPage, initUpsellPage_fn).call(this);
+    }
     return false;
   };
   _initCheckoutPage = new WeakSet();
@@ -9444,6 +9684,17 @@ var TwentyNineNext = (() => {
         }).catch((error) => this.coreLogger.error("Failed to load order data:", error));
       }
     }).catch((error) => this.coreLogger.error("Failed to load ReceiptPage module:", error));
+  };
+  _initUpsellPage = new WeakSet();
+  initUpsellPage_fn = function() {
+    this.coreLogger.info("Initializing upsell page");
+    if (!this.upsell) {
+      this.upsell = new UpsellManager(this);
+      this.coreLogger.info("UpsellManager initialized for upsell page");
+    }
+    this.triggerEvent("upsell.pageview", {
+      ref_id: new URLSearchParams(window.location.search).get("ref_id") || sessionStorage.getItem("order_ref_id")
+    });
   };
   _initUIUtilities = new WeakSet();
   initUIUtilities_fn = function() {
