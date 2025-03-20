@@ -1,0 +1,75 @@
+{
+  "name": "29next-webflow-integration",
+  "version": "1.0.0",
+  "description": "A JavaScript utility for connecting 29next campaigns with Webflow funnels using HTML attributes",
+  "main": "dist/29next.js",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development node build.js --watch",
+    "serve": "node serve.js",
+    "start": "node serve.js",
+    "build": "cross-env NODE_ENV=production node build.js",
+    "build:dev": "cross-env NODE_ENV=development node build.js",
+    "build:clean": "cross-env NODE_ENV=production node build.js --clean",
+    "analyze": "cross-env NODE_ENV=production node build.js --analyze",
+    "test": "jest"
+  },
+  "keywords": [
+    "29next",
+    "webflow",
+    "ecommerce",
+    "checkout",
+    "campaigns"
+  ],
+  "author": "29next",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.22.5",
+    "@babel/preset-env": "^7.22.5",
+    "babel-jest": "^29.5.0",
+    "cross-env": "^7.0.3",
+    "esbuild": "^0.19.11",
+    "esbuild-css-modules-plugin": "^3.0.3",
+    "javascript-obfuscator": "^4.1.1",
+    "jest": "^29.5.0",
+    "serve": "^14.2.1"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    },
+    "moduleFileExtensions": [
+      "js"
+    ],
+    "moduleNameMapper": {
+      "\\.css$": "<rootDir>/src/__mocks__/styleMock.js"
+    },
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/dist/"
+    ],
+    "collectCoverage": true,
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/**/*.test.js",
+      "!src/__mocks__/**"
+    ]
+  },
+  "babel": {
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "targets": {
+            "node": "current"
+          }
+        }
+      ]
+    ]
+  },
+  "dependencies": {
+    "@floating-ui/dom": "^1.6.13",
+    "country-state-city": "^3.2.1"
+  }
+}

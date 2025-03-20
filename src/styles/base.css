@@ -1,0 +1,192 @@
+/* Base styles for payment forms */
+[os-checkout-element$="-form"] {
+    height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: height 0.3s ease-out, opacity 0.3s ease-out;
+  }
+  
+  /* Container styles */
+  .payment-selector {
+    position: relative;
+  }
+  
+  /* Remove any max-height constraints */
+  [os-payment-mode="credit"] [os-checkout-element="credit-form"],
+  [os-payment-mode="paypal"] [os-checkout-element="paypal-form"],
+  [os-payment-mode="klarna"] [os-checkout-element="klarna-form"] {
+    height: auto;
+  }
+  
+  /* Billing form transitions */
+  [os-checkout-element="different-billing-address"] {
+    transition: height 0.3s ease-out, opacity 0.3s ease-out;
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+  }
+  
+  When visible
+  [os-checkout-element="different-billing-address"].expanded {
+    opacity: 1;
+    height: auto;
+  }
+  
+  
+  /* Add this to your CSS */
+  .iti {
+    width: 100%;
+  }
+  
+  .iti__flag {
+    background-image: url("https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/img/flags.png");
+  }
+  
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .iti__flag {
+      background-image: url("https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/img/flags@2x.png");
+    }
+  }
+  
+  .error {
+    border-color: #dc3545;
+  }
+  
+  
+  /* Reset any existing ITI styles */
+  .iti--container {
+    max-width:420px!important;
+    width:100%!important;
+  }
+  
+  
+  /* Remove all other conflicting styles */
+  .payment__form,
+  [os-checkout-element="credit-form"],
+  .rtc-form-container {
+    overflow: visible;
+  } 
+  
+  /* Base container */
+  .iti {
+    width: 100%;
+  }
+  
+  /* Remove all other conflicting styles */
+  .payment__form,
+  [os-checkout-element="credit-form"],
+  .rtc-form-container {
+    overflow: visible;
+  }
+  
+  #checkout-tooltip {
+    background: #333;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.4;
+    transition: opacity 0.2s ease-in-out;
+    opacity: 0;
+    pointer-events: none;
+    max-width: 300px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 10000;
+    position: absolute;
+  }
+  
+  #checkout-tooltip.checkout-tooltip-visible {
+    opacity: 1;
+  }
+  
+  #checkout-tooltip-text {
+    position: relative;
+    z-index: 2;
+  }
+  
+  #checkout-tooltip-arrow {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #333;
+    transform: rotate(45deg);
+    z-index: 1;
+  }
+  
+  /* Dark theme support */
+  @media (prefers-color-scheme: dark) {
+    #checkout-tooltip {
+      background: #444;
+    }
+    
+    #checkout-tooltip-arrow {
+      background: #444;
+    }
+  } 
+  
+  .pb-input-error {
+    color: #c20000;
+    font-size: 0.725rem;
+  }
+  
+  
+  
+  [os-checkout-payment="combo"].pb--submitting [data-pb-element="checkout-button-info"] {
+  display: none;
+  }
+  
+  [os-checkout-payment="combo"].pb--submitting [data-pb-element="checkout-button-spinner"] {
+    display: flex;
+    }
+  
+  /* Add autofill detection */
+  @keyframes onAutoFillStart {
+    from {/**/}
+    to {/**/}
+  }
+  
+  select:-webkit-autofill {
+    animation-name: onAutoFillStart;
+    animation-duration: 1ms;
+  }
+  
+  input:-webkit-autofill {
+    animation-name: onAutoFillStart;
+    animation-duration: 1ms;
+  }
+  
+  /* Remove ALL previous payment form rules and replace with just these: */
+  /* Base styles for summary panel */
+  [os-checkout-element="summary-mobile"] {
+    height: 0;
+    opacity: 0;
+    overflow: hidden;
+    will-change: height, opacity;
+    transition: height 0.3s ease-out, opacity 0.25s ease-out;
+  }
+  
+  /* Prevent transitions during initialization */
+  .no-transition {
+    transition: none !important;
+  }
+  
+  
+  /* Prevent text flicker on load */
+  .summary-text {
+    display: inline-block;
+  }
+  
+  /* Add these styles instead */
+  .review-order-summary {
+    display: inline-block;
+    transition: opacity 0.2s ease-out;
+  }
+  
+  
+  [os-summary-icon] {
+    transition: transform 0.1s ease-out;
+  }
+  
+  [os-summary-icon].rotated {
+    transform: rotate(180deg);
+  }

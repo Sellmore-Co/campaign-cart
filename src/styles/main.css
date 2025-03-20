@@ -1,0 +1,39 @@
+/**
+ * 29next Webflow Integration Styles
+ */
+
+/* Base styles for payment fields */
+.spreedly-field {
+    background-color: #fff;
+    border: .5px #d4d4d4;
+    border-radius: .25rem;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 3rem;
+    margin-bottom: 0;
+    padding-left: 12px;
+    padding-right: 12px;
+    transition: box-shadow .12s;
+    display: flex;
+    position: relative;
+    box-shadow: 0 0 0 1px #ddd;
+  }
+  
+  /* Expiration date fields */
+  [data-os-payment-field="expiry-month"],
+  [data-os-payment-field="expiry-year"] {
+    width: 40px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 8px;
+  }
+  
+  /* Error messages */
+  [data-os-display="field-error"] {
+    color: #cc0000;
+    font-size: 0.875rem;
+    margin-top: 4px;
+    margin-bottom: 8px;
+  }
