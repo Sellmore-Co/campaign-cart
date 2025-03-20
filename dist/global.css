@@ -192,6 +192,54 @@
     transform: rotate(180deg);
   }
 
+
+  /* Tooltip styles */
+
+  #checkout-tooltip {
+    background: #333;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.4;
+    transition: opacity 0.2s ease-in-out;
+    opacity: 0;
+    pointer-events: none;
+    max-width: 300px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 10000;
+    position: absolute;
+  }
+  
+  #checkout-tooltip.checkout-tooltip-visible {
+    opacity: 1;
+  }
+  
+  #checkout-tooltip-text {
+    position: relative;
+    z-index: 2;
+  }
+  
+  #checkout-tooltip-arrow {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #333;
+    transform: rotate(45deg);
+    z-index: 1;
+  }
+  
+  /* Dark theme support */
+  @media (prefers-color-scheme: dark) {
+    #checkout-tooltip {
+      background: #444;
+    }
+    
+    #checkout-tooltip-arrow {
+      background: #444;
+    }
+  } 
+
 /* checkout.css */
 
 

@@ -86,6 +86,14 @@ export class AddressHandler {
       return (Date.now() - (data.timestamp ?? 0) < 24 * 60 * 60 * 1000) ? data : {};
     };
     this.#countries = loadCache('os_countries_cache').countries ?? [];
+    
+    // Filter cached countries if showCountries is specified
+    if (this.#countries.length && this.#addressConfig.showCountries.length) {
+      this.#countries = this.#countries.filter(c => 
+        this.#addressConfig.showCountries.includes(c.iso2));
+      this.#logger.debug(`Filtered cached countries to: ${this.#addressConfig.showCountries.join(', ')}`);
+    }
+    
     this.#states = loadCache('os_states_cache').states ?? {};
     this.#logger.debug(`Loaded cached data: ${this.#countries.length} countries, ${Object.keys(this.#states).length} state sets`);
   }

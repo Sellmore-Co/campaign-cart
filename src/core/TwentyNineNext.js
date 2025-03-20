@@ -18,6 +18,7 @@ import { DisplayManager } from '../managers/DisplayManager.js';
 import { CartDisplayManager } from '../managers/CartDisplayManager.js';
 import { AttributionManager } from '../managers/AttributionManager.js';
 import { EventManager } from '../managers/EventManager.js';
+import { TooltipManager } from '../managers/TooltipManager.js';
 import { initPBAccordion } from '../utils/PBAccordion.js';
 import { initUtmTransfer } from '../utils/UtmTransfer.js';
 
@@ -183,6 +184,7 @@ export class TwentyNineNext {
     this.timer = new TimerManager(this);
     this.display = new DisplayManager(this);
     this.eventManager = new EventManager(this);
+    this.tooltip = new TooltipManager(this);
 
     if (
       this.#isCheckoutPage ||

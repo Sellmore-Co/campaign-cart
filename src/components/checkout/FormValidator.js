@@ -61,15 +61,49 @@ export class FormValidator {
       },
       'validation': (result) => {
         this.#safeLog('debug', `Spreedly field validation: ${result.fieldType} ${result.valid ? 'valid' : 'invalid'}`);
-        if (result.valid) this.clearErrorForField(document.getElementById(`spreedly-${result.fieldType}`));
+        const field = document.getElementById(`spreedly-${result.fieldType}`);
+        if (field) {
+          field.classList.toggle('spreedly-valid', result.valid);
+          field.classList.toggle('error', !result.valid);
+        }
+        if (result.valid) {
+          this.clearErrorForField(field);
+        } else {
+          const errorMessage = this.#getSpreedlyFieldErrorMessage(result.fieldType);
+          this.#handleSpreedlyError({ attribute: result.fieldType, message: errorMessage });
+        }
       },
       'errors': (errors) => {
+        this.#spreedlyFieldsValid = false;
         this.#safeLog('debug', 'Spreedly validation errors:', errors);
         errors.forEach(error => this.#handleSpreedlyError(error));
+      },
+      'fieldEvent': (name, event, activeElement, inputData) => {
+        // Real-time feedback like Spreedly's example
+        const field = document.getElementById(`spreedly-${name}`);
+        if (event === 'input' && field) {
+          const isValid = name === 'number' ? inputData.validNumber : inputData.validCvv;
+          field.classList.toggle('spreedly-valid', isValid);
+          field.classList.toggle('error', !isValid);
+          if (isValid) {
+            this.clearErrorForField(field);
+          } else {
+            const errorMessage = this.#getSpreedlyFieldErrorMessage(name);
+            this.#showError(field, errorMessage);
+          }
+        }
       }
     };
-
+  
     Object.entries(listeners).forEach(([event, handler]) => Spreedly.on(event, handler));
+  }
+
+  #getSpreedlyFieldErrorMessage(fieldType) {
+    const errorMessages = {
+      'number': 'Please enter a valid credit card number',
+      'cvv': 'Please enter a valid security code (CVV)'
+    };
+    return errorMessages[fieldType] || `Invalid ${fieldType}`;
   }
 
   #handleSpreedlyError(error) {
@@ -102,15 +136,18 @@ export class FormValidator {
     const requiredFields = Array.from(document.querySelectorAll('[os-checkout-validate="required"]'));
     const firstErrorField = this.#validateFields(requiredFields, isCreditCard);
 
-    if (isCreditCard && this.#spreedlyEnabled && !firstErrorField) {
-      if (!this.#validateCreditCardExpiryFields()) return false;
+    // For credit card payments, validate credit card fields
+    let ccValid = true;
+    if (isCreditCard) {
+      ccValid = this.validateCreditCard();
     }
 
     if (firstErrorField) {
       this.#scrollToError(firstErrorField);
       return false;
     }
-    return true;
+    
+    return ccValid;
   }
 
   #logValidationStart(method) {
@@ -178,7 +215,7 @@ export class FormValidator {
     if (!field) return true;
 
     const value = field.value.trim();
-    const validation = this.#getFieldValidation(field, value, label);
+    const validation = this.#getFieldValidation(field, value, this.#getReadableFieldLabel(field, label));
     
     if (!validation.isValid) {
       this.#showError(field, validation.errorMessage);
@@ -188,22 +225,88 @@ export class FormValidator {
     return validation.isValid;
   }
 
+  #getReadableFieldLabel(field, fallbackLabel) {
+    const fieldName = field.getAttribute('os-checkout-field') || field.name;
+    
+    // Map of field names to user-friendly labels
+    const labelMap = {
+      'fname': 'First Name',
+      'lname': 'Last Name',
+      'email': 'Email',
+      'phone': 'Phone Number',
+      'address1': 'Address',
+      'address2': 'Apartment or Suite',
+      'city': 'City',
+      'province': 'State/Province',
+      'postal': 'ZIP/Postal Code',
+      'country': 'Country',
+      'cc-number': 'Credit Card Number',
+      'cvv': 'Security Code',
+      'cc-month': 'Expiration Month',
+      'cc-year': 'Expiration Year',
+      'cc-name': 'Name on Card',
+      'exp-month': 'Expiration Month',
+      'exp-year': 'Expiration Year',
+      'billing-fname': 'Billing First Name',
+      'billing-lname': 'Billing Last Name',
+      'billing-address1': 'Billing Address',
+      'billing-address2': 'Billing Apartment or Suite',
+      'billing-city': 'Billing City',
+      'billing-province': 'Billing State/Province',
+      'billing-postal': 'Billing ZIP/Postal Code',
+      'billing-country': 'Billing Country',
+      'billing-phone': 'Billing Phone Number'
+    };
+    
+    // Return the mapped label if available, otherwise use the fallback label
+    return labelMap[fieldName] || fallbackLabel || fieldName;
+  }
+
   #getFieldValidation(field, value, label) {
     const tag = field.tagName.toLowerCase();
+    const fieldName = field.getAttribute('os-checkout-field') || field.name;
+
     if (tag === 'select') return {
       isValid: !!value,
-      errorMessage: `Please select a ${label.toLowerCase()}`
+      errorMessage: `Please select a ${label}`
     };
-    if (!value) return { isValid: false, errorMessage: `${label} is required` };
+    if (!value) return { isValid: false, errorMessage: `Please enter your ${label}` };
+    
+    if (fieldName && (fieldName.includes('city') || fieldName.endsWith('-city'))) {
+      return this.#validateCity(value, label);
+    }
+    
+    if (fieldName && (fieldName.includes('zip') || fieldName.includes('postal') || fieldName.endsWith('-zip'))) {
+      return this.#validateZipCode(value, label);
+    }
+    
     if (field.type === 'tel' && field.iti) return {
       isValid: field.iti.isValidNumber(),
-      errorMessage: 'Please enter a valid phone number'
+      errorMessage: `Please enter a valid phone number`
     };
     if (field.type === 'email') return {
       isValid: this.#isValidEmail(value),
-      errorMessage: 'Please enter a valid email address'
+      errorMessage: `Please enter a valid email address`
     };
     return { isValid: true, errorMessage: '' };
+  }
+
+  #validateCity(value, label) {
+    // City should be a minimum of 2 letters without special characters, numbers, etc. Maximum length is 24 characters
+    const cityRegex = /^[a-zA-Z\s]{2,24}$/;
+    return {
+      isValid: cityRegex.test(value),
+      errorMessage: `Please enter a valid city name (2-24 letters, no numbers or special characters)`
+    };
+  }
+
+  #validateZipCode(value, label) {
+    // ZIP code - Maximum and minimum characters are 5, no special characters, no letters
+    const zipRegex = /^\d{5}$/;
+    return {
+      isValid: zipRegex.test(value),
+      errorMessage: `Please enter a valid 5-digit ZIP code`
+    };
   }
 
   #showError(input, message) {
@@ -311,5 +414,53 @@ export class FormValidator {
       }
     });
     return values;
+  }
+
+  validateCreditCard() {
+    let isValid = true;
+  
+    // Validate expiry fields
+    const [monthField, yearField] = this.#getExpiryFields();
+    if (!this.#validateExpiryField(monthField, 'month')) isValid = false;
+    if (!this.#validateExpiryField(yearField, 'year')) isValid = false;
+  
+    // If Spreedly is enabled, validate its fields
+    if (this.#spreedlyEnabled && typeof Spreedly.validate === 'function') {
+      // Check if the Spreedly fields already have valid class
+      const numberContainer = document.getElementById('spreedly-number');
+      const cvvContainer = document.getElementById('spreedly-cvv');
+  
+      let numberValid = numberContainer?.classList.contains('spreedly-valid');
+      let cvvValid = cvvContainer?.classList.contains('spreedly-valid');
+  
+      // Trigger Spreedly validation
+      Spreedly.validate();
+      
+      // Use the visual validation state of the fields
+      if (!numberValid && numberContainer) {
+        this.#showError(numberContainer, 'Please enter a valid credit card number');
+        isValid = false;
+      }
+      
+      if (!cvvValid && cvvContainer) {
+        this.#showError(cvvContainer, 'Please enter a valid security code (CVV)');
+        isValid = false;
+      }
+    } else {
+      // Fallback for non-Spreedly setups
+      const ccNumber = document.querySelector('[os-checkout-field="cc-number"]');
+      const cvv = document.querySelector('[os-checkout-field="cvv"]');
+      
+      if (!ccNumber?.value.trim()) {
+        this.#showError(ccNumber, 'Please enter a credit card number');
+        isValid = false;
+      }
+      if (!cvv?.value.trim()) {
+        this.#showError(cvv, 'Please enter a security code (CVV)');
+        isValid = false;
+      }
+    }
+  
+    return isValid;
   }
 }

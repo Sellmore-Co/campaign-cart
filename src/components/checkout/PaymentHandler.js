@@ -185,6 +185,8 @@ export class PaymentHandler {
     this.#spreedlyManager.setOnReady(() => this.#safeLog('debug', 'Spreedly ready'));
     this.#spreedlyManager.setOnError((errors) => {
       this.#safeLog('error', 'Spreedly errors:', errors);
+      this.#isProcessing = false;
+      this.#hideProcessingState();
       
       // Map Spreedly validation errors to user-friendly messages
       const errorMessage = this.#formatSpreedlyErrors(errors);
@@ -208,6 +210,7 @@ export class PaymentHandler {
     // Map common Spreedly error messages to user-friendly messages
     const errorMap = {
       'The card number is not a valid credit card number': 'Please enter a valid credit card number',
+      'Credit card number entered is not valid': 'Please enter a valid credit card number',
       'The card number is too short': 'The card number you entered is too short',
       'The card number is too long': 'The card number you entered is too long',
       'The card security code is invalid': 'Please enter a valid security code (CVV)',
@@ -397,19 +400,29 @@ export class PaymentHandler {
       this.#handlePaymentError('Credit card processing unavailable');
       return;
     }
-
+  
     const [fullName, month, year] = this.#getCreditCardFields();
-    
-    if (!month || !year) {
-      this.#handlePaymentError('Please select expiration month and year');
-      return;
-    }
-
+  
+    // If we're in debug test card mode, use that flow
     if (this.#isDebugTestCardMode()) {
       this.#processTestCard(fullName, month, year);
-    } else {
-      this.#spreedlyManager.tokenizeCard({ full_name: fullName || 'Test User', month, year });
+      return;
     }
+  
+    // Validate credit card fields using the FormValidator
+    // The validation is now only checking the field state, not waiting for Spreedly validation
+    if (!this.#formValidator.validateCreditCard()) {
+      this.#safeLog('debug', 'Credit card validation failed on initial check');
+      // We'll still attempt to tokenize if fields are filled in
+      if (!month || !year) {
+        this.#isProcessing = false;
+        this.#hideProcessingState();
+        return;
+      }
+    }
+  
+    // Proceed with tokenization
+    this.#spreedlyManager.tokenizeCard({ full_name: fullName || 'Test User', month, year });
   }
 
   #getCreditCardFields() {
@@ -631,7 +644,15 @@ export class PaymentHandler {
       errorContainer.style.display = 'block';
       errorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } else {
-      alert(`Payment Error: ${message}`);
+      // Try to find any error container element for Spreedly errors
+      const spreedlyErrorContainer = document.querySelector('.spreedly-error') || 
+                                     document.querySelector('[data-spreedly-errors]');
+      if (spreedlyErrorContainer) {
+        spreedlyErrorContainer.textContent = message;
+        spreedlyErrorContainer.style.display = 'block';
+      } else {
+        alert(`Payment Error: ${message}`);
+      }
     }
   }
   

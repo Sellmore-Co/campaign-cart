@@ -45,7 +45,9 @@ export class PhoneInputHandler {
       const iti = window.intlTelInput(input, {
         utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js',
         separateDialCode: true,
-        preferredCountries: ['us', 'gb', 'ca', 'au'],
+        onlyCountries: ['us'],
+        initialCountry: 'us',
+        allowDropdown: false,
         dropdownContainer: document.body,
         useFullscreenPopup: true,
         formatOnDisplay: true,
@@ -79,26 +81,12 @@ export class PhoneInputHandler {
       return;
     }
 
-    countrySelect.addEventListener('change', () => {
-      const countryCode = countrySelect.value?.toLowerCase();
-      if (countryCode) {
-        iti.setCountry(countryCode);
-        this.#logger.debug(`Country select updated phone to ${countryCode}`);
-      }
-    });
-
-    input.addEventListener('countrychange', () => {
-      const { iso2 } = iti.getSelectedCountryData() ?? {};
-      if (iso2) {
-        countrySelect.value = iso2.toUpperCase();
-        countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
-        this.#logger.debug(`Phone country updated select to ${iso2}`);
-      } else {
-        this.#logger.warn('Invalid country data from phone input');
-      }
-    });
-
-    if (countrySelect.value) iti.setCountry(countrySelect.value.toLowerCase());
+    // Set country select to US if it exists
+    if (countrySelect.value !== 'US') {
+      countrySelect.value = 'US';
+      countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
+      this.#logger.debug('Country select updated to US');
+    }
   }
 
   #setupPhoneValidation(input, iti) {

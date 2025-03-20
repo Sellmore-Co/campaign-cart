@@ -56,7 +56,7 @@ var TwentyNineNext = (() => {
   __export(ReceiptPage_exports, {
     ReceiptPage: () => ReceiptPage
   });
-  var _apiClient3, _logger23, _app17, _orderData, _orderFetched, _initialized3, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError2, showError_fn2, ReceiptPage;
+  var _apiClient3, _logger24, _app18, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError2, showError_fn2, ReceiptPage;
   var init_ReceiptPage = __esm({
     "src/components/checkout/ReceiptPage.js"() {
       "use strict";
@@ -137,17 +137,17 @@ var TwentyNineNext = (() => {
            */
           __privateAdd(this, _showError2);
           __privateAdd(this, _apiClient3, void 0);
-          __privateAdd(this, _logger23, void 0);
-          __privateAdd(this, _app17, void 0);
+          __privateAdd(this, _logger24, void 0);
+          __privateAdd(this, _app18, void 0);
           __privateAdd(this, _orderData, null);
           __privateAdd(this, _orderFetched, false);
           // Flag to prevent duplicate API calls
-          __privateAdd(this, _initialized3, false);
+          __privateAdd(this, _initialized4, false);
           // Flag to prevent duplicate initialization
           __privateAdd(this, _debugMode5, false);
           __privateSet(this, _apiClient3, apiClient);
-          __privateSet(this, _logger23, logger);
-          __privateSet(this, _app17, app);
+          __privateSet(this, _logger24, logger);
+          __privateSet(this, _app18, app);
           const debugMeta = document.querySelector('meta[name="os-debug"]');
           __privateSet(this, _debugMode5, debugMeta?.getAttribute("content") === "true");
           __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "info", "ReceiptPage component created");
@@ -157,12 +157,12 @@ var TwentyNineNext = (() => {
          * Initialize the receipt page
          */
         async init() {
-          if (__privateGet(this, _initialized3)) {
+          if (__privateGet(this, _initialized4)) {
             __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "info", "Receipt page already initialized, skipping");
             return;
           }
           __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "info", "Initializing Receipt Page");
-          __privateSet(this, _initialized3, true);
+          __privateSet(this, _initialized4, true);
           const urlParams = new URLSearchParams(window.location.search);
           const refId = urlParams.get("ref_id");
           if (!refId) {
@@ -181,17 +181,17 @@ var TwentyNineNext = (() => {
         }
       };
       _apiClient3 = new WeakMap();
-      _logger23 = new WeakMap();
-      _app17 = new WeakMap();
+      _logger24 = new WeakMap();
+      _app18 = new WeakMap();
       _orderData = new WeakMap();
       _orderFetched = new WeakMap();
-      _initialized3 = new WeakMap();
+      _initialized4 = new WeakMap();
       _debugMode5 = new WeakMap();
       _safeLog3 = new WeakSet();
       safeLog_fn3 = function(level, message, ...args) {
         try {
-          if (__privateGet(this, _logger23) && typeof __privateGet(this, _logger23)[level] === "function") {
-            __privateGet(this, _logger23)[level](message, ...args);
+          if (__privateGet(this, _logger24) && typeof __privateGet(this, _logger24)[level] === "function") {
+            __privateGet(this, _logger24)[level](message, ...args);
           } else if (console[level]) {
             console[level](message, ...args);
           } else {
@@ -886,6 +886,10 @@ var TwentyNineNext = (() => {
       return Date.now() - (data.timestamp ?? 0) < 24 * 60 * 60 * 1e3 ? data : {};
     };
     __privateSet(this, _countries, loadCache("os_countries_cache").countries ?? []);
+    if (__privateGet(this, _countries).length && __privateGet(this, _addressConfig).showCountries.length) {
+      __privateSet(this, _countries, __privateGet(this, _countries).filter((c) => __privateGet(this, _addressConfig).showCountries.includes(c.iso2)));
+      __privateGet(this, _logger2).debug(`Filtered cached countries to: ${__privateGet(this, _addressConfig).showCountries.join(", ")}`);
+    }
     __privateSet(this, _states, loadCache("os_states_cache").states ?? {});
     __privateGet(this, _logger2).debug(`Loaded cached data: ${__privateGet(this, _countries).length} countries, ${Object.keys(__privateGet(this, _states)).length} state sets`);
   };
@@ -962,13 +966,14 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/FormValidator.js
-  var _logger3, _form2, _validationErrors, _debugMode, _spreedlyEnabled, _spreedlyFieldsValid, _spreedlyReady, _getFormElement, getFormElement_fn, _safeLog, safeLog_fn, _setupListeners, setupListeners_fn, _setupSpreedlyListeners, setupSpreedlyListeners_fn, _handleSpreedlyError, handleSpreedlyError_fn, _handleSubmit, handleSubmit_fn, _logValidationStart, logValidationStart_fn, _validateFields, validateFields_fn, _shouldSkipField, shouldSkipField_fn, _validateCreditCardExpiryFields, validateCreditCardExpiryFields_fn, _getExpiryFields, getExpiryFields_fn, _validateExpiryField, validateExpiryField_fn, _clearSpreedlyErrors, clearSpreedlyErrors_fn, _validateField, validateField_fn, _getFieldValidation, getFieldValidation_fn, _showError, showError_fn, _getOrCreateErrorElement, getOrCreateErrorElement_fn, _scrollToError, scrollToError_fn, _isValidEmail, isValidEmail_fn;
+  var _logger3, _form2, _validationErrors, _debugMode, _spreedlyEnabled, _spreedlyFieldsValid, _spreedlyReady, _getFormElement, getFormElement_fn, _safeLog, safeLog_fn, _setupListeners, setupListeners_fn, _setupSpreedlyListeners, setupSpreedlyListeners_fn, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn, _handleSpreedlyError, handleSpreedlyError_fn, _handleSubmit, handleSubmit_fn, _logValidationStart, logValidationStart_fn, _validateFields, validateFields_fn, _shouldSkipField, shouldSkipField_fn, _validateCreditCardExpiryFields, validateCreditCardExpiryFields_fn, _getExpiryFields, getExpiryFields_fn, _validateExpiryField, validateExpiryField_fn, _clearSpreedlyErrors, clearSpreedlyErrors_fn, _validateField, validateField_fn, _getReadableFieldLabel, getReadableFieldLabel_fn, _getFieldValidation, getFieldValidation_fn, _validateCity, validateCity_fn, _validateZipCode, validateZipCode_fn, _showError, showError_fn, _getOrCreateErrorElement, getOrCreateErrorElement_fn, _scrollToError, scrollToError_fn, _isValidEmail, isValidEmail_fn;
   var FormValidator = class {
     constructor(options = {}) {
       __privateAdd(this, _getFormElement);
       __privateAdd(this, _safeLog);
       __privateAdd(this, _setupListeners);
       __privateAdd(this, _setupSpreedlyListeners);
+      __privateAdd(this, _getSpreedlyFieldErrorMessage);
       __privateAdd(this, _handleSpreedlyError);
       __privateAdd(this, _handleSubmit);
       __privateAdd(this, _logValidationStart);
@@ -979,7 +984,10 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _validateExpiryField);
       __privateAdd(this, _clearSpreedlyErrors);
       __privateAdd(this, _validateField);
+      __privateAdd(this, _getReadableFieldLabel);
       __privateAdd(this, _getFieldValidation);
+      __privateAdd(this, _validateCity);
+      __privateAdd(this, _validateZipCode);
       __privateAdd(this, _showError);
       __privateAdd(this, _getOrCreateErrorElement);
       __privateAdd(this, _scrollToError);
@@ -1004,15 +1012,15 @@ var TwentyNineNext = (() => {
       const isCreditCard = ["credit", "credit-card"].includes(selectedPaymentMethod);
       const requiredFields = Array.from(document.querySelectorAll('[os-checkout-validate="required"]'));
       const firstErrorField = __privateMethod(this, _validateFields, validateFields_fn).call(this, requiredFields, isCreditCard);
-      if (isCreditCard && __privateGet(this, _spreedlyEnabled) && !firstErrorField) {
-        if (!__privateMethod(this, _validateCreditCardExpiryFields, validateCreditCardExpiryFields_fn).call(this))
-          return false;
+      let ccValid = true;
+      if (isCreditCard) {
+        ccValid = this.validateCreditCard();
       }
       if (firstErrorField) {
         __privateMethod(this, _scrollToError, scrollToError_fn).call(this, firstErrorField);
         return false;
       }
-      return true;
+      return ccValid;
     }
     clearErrorForField(field) {
       if (!field)
@@ -1064,6 +1072,41 @@ var TwentyNineNext = (() => {
       });
       return values;
     }
+    validateCreditCard() {
+      let isValid = true;
+      const [monthField, yearField] = __privateMethod(this, _getExpiryFields, getExpiryFields_fn).call(this);
+      if (!__privateMethod(this, _validateExpiryField, validateExpiryField_fn).call(this, monthField, "month"))
+        isValid = false;
+      if (!__privateMethod(this, _validateExpiryField, validateExpiryField_fn).call(this, yearField, "year"))
+        isValid = false;
+      if (__privateGet(this, _spreedlyEnabled) && typeof Spreedly.validate === "function") {
+        const numberContainer = document.getElementById("spreedly-number");
+        const cvvContainer = document.getElementById("spreedly-cvv");
+        let numberValid = numberContainer?.classList.contains("spreedly-valid");
+        let cvvValid = cvvContainer?.classList.contains("spreedly-valid");
+        Spreedly.validate();
+        if (!numberValid && numberContainer) {
+          __privateMethod(this, _showError, showError_fn).call(this, numberContainer, "Please enter a valid credit card number");
+          isValid = false;
+        }
+        if (!cvvValid && cvvContainer) {
+          __privateMethod(this, _showError, showError_fn).call(this, cvvContainer, "Please enter a valid security code (CVV)");
+          isValid = false;
+        }
+      } else {
+        const ccNumber = document.querySelector('[os-checkout-field="cc-number"]');
+        const cvv = document.querySelector('[os-checkout-field="cvv"]');
+        if (!ccNumber?.value.trim()) {
+          __privateMethod(this, _showError, showError_fn).call(this, ccNumber, "Please enter a credit card number");
+          isValid = false;
+        }
+        if (!cvv?.value.trim()) {
+          __privateMethod(this, _showError, showError_fn).call(this, cvv, "Please enter a security code (CVV)");
+          isValid = false;
+        }
+      }
+      return isValid;
+    }
   };
   _logger3 = new WeakMap();
   _form2 = new WeakMap();
@@ -1114,15 +1157,47 @@ var TwentyNineNext = (() => {
       },
       "validation": (result) => {
         __privateMethod(this, _safeLog, safeLog_fn).call(this, "debug", `Spreedly field validation: ${result.fieldType} ${result.valid ? "valid" : "invalid"}`);
-        if (result.valid)
-          this.clearErrorForField(document.getElementById(`spreedly-${result.fieldType}`));
+        const field = document.getElementById(`spreedly-${result.fieldType}`);
+        if (field) {
+          field.classList.toggle("spreedly-valid", result.valid);
+          field.classList.toggle("error", !result.valid);
+        }
+        if (result.valid) {
+          this.clearErrorForField(field);
+        } else {
+          const errorMessage = __privateMethod(this, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn).call(this, result.fieldType);
+          __privateMethod(this, _handleSpreedlyError, handleSpreedlyError_fn).call(this, { attribute: result.fieldType, message: errorMessage });
+        }
       },
       "errors": (errors) => {
+        __privateSet(this, _spreedlyFieldsValid, false);
         __privateMethod(this, _safeLog, safeLog_fn).call(this, "debug", "Spreedly validation errors:", errors);
         errors.forEach((error) => __privateMethod(this, _handleSpreedlyError, handleSpreedlyError_fn).call(this, error));
+      },
+      "fieldEvent": (name, event, activeElement, inputData) => {
+        const field = document.getElementById(`spreedly-${name}`);
+        if (event === "input" && field) {
+          const isValid = name === "number" ? inputData.validNumber : inputData.validCvv;
+          field.classList.toggle("spreedly-valid", isValid);
+          field.classList.toggle("error", !isValid);
+          if (isValid) {
+            this.clearErrorForField(field);
+          } else {
+            const errorMessage = __privateMethod(this, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn).call(this, name);
+            __privateMethod(this, _showError, showError_fn).call(this, field, errorMessage);
+          }
+        }
       }
     };
     Object.entries(listeners).forEach(([event, handler]) => Spreedly.on(event, handler));
+  };
+  _getSpreedlyFieldErrorMessage = new WeakSet();
+  getSpreedlyFieldErrorMessage_fn = function(fieldType) {
+    const errorMessages = {
+      "number": "Please enter a valid credit card number",
+      "cvv": "Please enter a valid security code (CVV)"
+    };
+    return errorMessages[fieldType] || `Invalid ${fieldType}`;
   };
   _handleSpreedlyError = new WeakSet();
   handleSpreedlyError_fn = function(error) {
@@ -1207,7 +1282,7 @@ var TwentyNineNext = (() => {
     if (!field)
       return true;
     const value = field.value.trim();
-    const validation = __privateMethod(this, _getFieldValidation, getFieldValidation_fn).call(this, field, value, label);
+    const validation = __privateMethod(this, _getFieldValidation, getFieldValidation_fn).call(this, field, value, __privateMethod(this, _getReadableFieldLabel, getReadableFieldLabel_fn).call(this, field, label));
     if (!validation.isValid) {
       __privateMethod(this, _showError, showError_fn).call(this, field, validation.errorMessage);
     } else {
@@ -1215,27 +1290,83 @@ var TwentyNineNext = (() => {
     }
     return validation.isValid;
   };
+  _getReadableFieldLabel = new WeakSet();
+  getReadableFieldLabel_fn = function(field, fallbackLabel) {
+    const fieldName = field.getAttribute("os-checkout-field") || field.name;
+    const labelMap = {
+      "fname": "First Name",
+      "lname": "Last Name",
+      "email": "Email",
+      "phone": "Phone Number",
+      "address1": "Address",
+      "address2": "Apartment or Suite",
+      "city": "City",
+      "province": "State/Province",
+      "postal": "ZIP/Postal Code",
+      "country": "Country",
+      "cc-number": "Credit Card Number",
+      "cvv": "Security Code",
+      "cc-month": "Expiration Month",
+      "cc-year": "Expiration Year",
+      "cc-name": "Name on Card",
+      "exp-month": "Expiration Month",
+      "exp-year": "Expiration Year",
+      "billing-fname": "Billing First Name",
+      "billing-lname": "Billing Last Name",
+      "billing-address1": "Billing Address",
+      "billing-address2": "Billing Apartment or Suite",
+      "billing-city": "Billing City",
+      "billing-province": "Billing State/Province",
+      "billing-postal": "Billing ZIP/Postal Code",
+      "billing-country": "Billing Country",
+      "billing-phone": "Billing Phone Number"
+    };
+    return labelMap[fieldName] || fallbackLabel || fieldName;
+  };
   _getFieldValidation = new WeakSet();
   getFieldValidation_fn = function(field, value, label) {
     const tag = field.tagName.toLowerCase();
+    const fieldName = field.getAttribute("os-checkout-field") || field.name;
     if (tag === "select")
       return {
         isValid: !!value,
-        errorMessage: `Please select a ${label.toLowerCase()}`
+        errorMessage: `Please select a ${label}`
       };
     if (!value)
-      return { isValid: false, errorMessage: `${label} is required` };
+      return { isValid: false, errorMessage: `Please enter your ${label}` };
+    if (fieldName && (fieldName.includes("city") || fieldName.endsWith("-city"))) {
+      return __privateMethod(this, _validateCity, validateCity_fn).call(this, value, label);
+    }
+    if (fieldName && (fieldName.includes("zip") || fieldName.includes("postal") || fieldName.endsWith("-zip"))) {
+      return __privateMethod(this, _validateZipCode, validateZipCode_fn).call(this, value, label);
+    }
     if (field.type === "tel" && field.iti)
       return {
         isValid: field.iti.isValidNumber(),
-        errorMessage: "Please enter a valid phone number"
+        errorMessage: `Please enter a valid phone number`
       };
     if (field.type === "email")
       return {
         isValid: __privateMethod(this, _isValidEmail, isValidEmail_fn).call(this, value),
-        errorMessage: "Please enter a valid email address"
+        errorMessage: `Please enter a valid email address`
       };
     return { isValid: true, errorMessage: "" };
+  };
+  _validateCity = new WeakSet();
+  validateCity_fn = function(value, label) {
+    const cityRegex = /^[a-zA-Z\s]{2,24}$/;
+    return {
+      isValid: cityRegex.test(value),
+      errorMessage: `Please enter a valid city name (2-24 letters, no numbers or special characters)`
+    };
+  };
+  _validateZipCode = new WeakSet();
+  validateZipCode_fn = function(value, label) {
+    const zipRegex = /^\d{5}$/;
+    return {
+      isValid: zipRegex.test(value),
+      errorMessage: `Please enter a valid 5-digit ZIP code`
+    };
   };
   _showError = new WeakSet();
   showError_fn = function(input, message) {
@@ -2131,6 +2262,8 @@ var TwentyNineNext = (() => {
     __privateGet(this, _spreedlyManager).setOnReady(() => __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "Spreedly ready"));
     __privateGet(this, _spreedlyManager).setOnError((errors) => {
       __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", "Spreedly errors:", errors);
+      __privateSet(this, _isProcessing, false);
+      __privateMethod(this, _hideProcessingState, hideProcessingState_fn).call(this);
       const errorMessage = __privateMethod(this, _formatSpreedlyErrors, formatSpreedlyErrors_fn).call(this, errors);
       __privateMethod(this, _handlePaymentError, handlePaymentError_fn).call(this, errorMessage);
     });
@@ -2150,6 +2283,7 @@ var TwentyNineNext = (() => {
     }
     const errorMap = {
       "The card number is not a valid credit card number": "Please enter a valid credit card number",
+      "Credit card number entered is not valid": "Please enter a valid credit card number",
       "The card number is too short": "The card number you entered is too short",
       "The card number is too long": "The card number you entered is too long",
       "The card security code is invalid": "Please enter a valid security code (CVV)",
@@ -2242,15 +2376,19 @@ var TwentyNineNext = (() => {
       return;
     }
     const [fullName, month, year] = __privateMethod(this, _getCreditCardFields, getCreditCardFields_fn).call(this);
-    if (!month || !year) {
-      __privateMethod(this, _handlePaymentError, handlePaymentError_fn).call(this, "Please select expiration month and year");
-      return;
-    }
     if (__privateMethod(this, _isDebugTestCardMode, isDebugTestCardMode_fn).call(this)) {
       __privateMethod(this, _processTestCard, processTestCard_fn).call(this, fullName, month, year);
-    } else {
-      __privateGet(this, _spreedlyManager).tokenizeCard({ full_name: fullName || "Test User", month, year });
+      return;
     }
+    if (!__privateGet(this, _formValidator).validateCreditCard()) {
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "Credit card validation failed on initial check");
+      if (!month || !year) {
+        __privateSet(this, _isProcessing, false);
+        __privateMethod(this, _hideProcessingState, hideProcessingState_fn).call(this);
+        return;
+      }
+    }
+    __privateGet(this, _spreedlyManager).tokenizeCard({ full_name: fullName || "Test User", month, year });
   };
   _getCreditCardFields = new WeakSet();
   getCreditCardFields_fn = function() {
@@ -2439,7 +2577,13 @@ var TwentyNineNext = (() => {
       errorContainer.style.display = "block";
       errorContainer.scrollIntoView({ behavior: "smooth", block: "center" });
     } else {
-      alert(`Payment Error: ${message}`);
+      const spreedlyErrorContainer = document.querySelector(".spreedly-error") || document.querySelector("[data-spreedly-errors]");
+      if (spreedlyErrorContainer) {
+        spreedlyErrorContainer.textContent = message;
+        spreedlyErrorContainer.style.display = "block";
+      } else {
+        alert(`Payment Error: ${message}`);
+      }
     }
   };
   _displayCreditCardError = new WeakSet();
@@ -3122,7 +3266,9 @@ var TwentyNineNext = (() => {
       const iti = window.intlTelInput(input, {
         utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js",
         separateDialCode: true,
-        preferredCountries: ["us", "gb", "ca", "au"],
+        onlyCountries: ["us"],
+        initialCountry: "us",
+        allowDropdown: false,
         dropdownContainer: document.body,
         useFullscreenPopup: true,
         formatOnDisplay: true,
@@ -3151,25 +3297,11 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger9).warn(`Country select not found for ${fieldAttr}`);
       return;
     }
-    countrySelect.addEventListener("change", () => {
-      const countryCode = countrySelect.value?.toLowerCase();
-      if (countryCode) {
-        iti.setCountry(countryCode);
-        __privateGet(this, _logger9).debug(`Country select updated phone to ${countryCode}`);
-      }
-    });
-    input.addEventListener("countrychange", () => {
-      const { iso2 } = iti.getSelectedCountryData() ?? {};
-      if (iso2) {
-        countrySelect.value = iso2.toUpperCase();
-        countrySelect.dispatchEvent(new Event("change", { bubbles: true }));
-        __privateGet(this, _logger9).debug(`Phone country updated select to ${iso2}`);
-      } else {
-        __privateGet(this, _logger9).warn("Invalid country data from phone input");
-      }
-    });
-    if (countrySelect.value)
-      iti.setCountry(countrySelect.value.toLowerCase());
+    if (countrySelect.value !== "US") {
+      countrySelect.value = "US";
+      countrySelect.dispatchEvent(new Event("change", { bubbles: true }));
+      __privateGet(this, _logger9).debug("Country select updated to US");
+    }
   };
   _setupPhoneValidation = new WeakSet();
   setupPhoneValidation_fn = function(input, iti) {
@@ -7197,12 +7329,12 @@ var TwentyNineNext = (() => {
      * @param {string} platform - The platform to enable/disable (gtm, fbPixel, ga4)
      * @param {boolean} enabled - Whether to enable or disable the platform
      */
-    setPlatformEnabled(platform, enabled) {
-      if (__privateGet(this, _platforms)[platform]) {
-        __privateGet(this, _platforms)[platform].enabled = enabled;
-        __privateGet(this, _logger22).info(`${platform} ${enabled ? "enabled" : "disabled"}`);
+    setPlatformEnabled(platform2, enabled) {
+      if (__privateGet(this, _platforms)[platform2]) {
+        __privateGet(this, _platforms)[platform2].enabled = enabled;
+        __privateGet(this, _logger22).info(`${platform2} ${enabled ? "enabled" : "disabled"}`);
       } else {
-        __privateGet(this, _logger22).warn(`Unknown platform: ${platform}`);
+        __privateGet(this, _logger22).warn(`Unknown platform: ${platform2}`);
       }
     }
     /**
@@ -7385,6 +7517,1404 @@ var TwentyNineNext = (() => {
     document.dispatchEvent(customEvent);
   };
 
+  // node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs
+  var min = Math.min;
+  var max = Math.max;
+  var round = Math.round;
+  var createCoords = (v) => ({
+    x: v,
+    y: v
+  });
+  var oppositeSideMap = {
+    left: "right",
+    right: "left",
+    bottom: "top",
+    top: "bottom"
+  };
+  var oppositeAlignmentMap = {
+    start: "end",
+    end: "start"
+  };
+  function clamp(start, value, end) {
+    return max(start, min(value, end));
+  }
+  function evaluate(value, param) {
+    return typeof value === "function" ? value(param) : value;
+  }
+  function getSide(placement) {
+    return placement.split("-")[0];
+  }
+  function getAlignment(placement) {
+    return placement.split("-")[1];
+  }
+  function getOppositeAxis(axis) {
+    return axis === "x" ? "y" : "x";
+  }
+  function getAxisLength(axis) {
+    return axis === "y" ? "height" : "width";
+  }
+  function getSideAxis(placement) {
+    return ["top", "bottom"].includes(getSide(placement)) ? "y" : "x";
+  }
+  function getAlignmentAxis(placement) {
+    return getOppositeAxis(getSideAxis(placement));
+  }
+  function getAlignmentSides(placement, rects, rtl) {
+    if (rtl === void 0) {
+      rtl = false;
+    }
+    const alignment = getAlignment(placement);
+    const alignmentAxis = getAlignmentAxis(placement);
+    const length = getAxisLength(alignmentAxis);
+    let mainAlignmentSide = alignmentAxis === "x" ? alignment === (rtl ? "end" : "start") ? "right" : "left" : alignment === "start" ? "bottom" : "top";
+    if (rects.reference[length] > rects.floating[length]) {
+      mainAlignmentSide = getOppositePlacement(mainAlignmentSide);
+    }
+    return [mainAlignmentSide, getOppositePlacement(mainAlignmentSide)];
+  }
+  function getExpandedPlacements(placement) {
+    const oppositePlacement = getOppositePlacement(placement);
+    return [getOppositeAlignmentPlacement(placement), oppositePlacement, getOppositeAlignmentPlacement(oppositePlacement)];
+  }
+  function getOppositeAlignmentPlacement(placement) {
+    return placement.replace(/start|end/g, (alignment) => oppositeAlignmentMap[alignment]);
+  }
+  function getSideList(side, isStart, rtl) {
+    const lr = ["left", "right"];
+    const rl = ["right", "left"];
+    const tb = ["top", "bottom"];
+    const bt = ["bottom", "top"];
+    switch (side) {
+      case "top":
+      case "bottom":
+        if (rtl)
+          return isStart ? rl : lr;
+        return isStart ? lr : rl;
+      case "left":
+      case "right":
+        return isStart ? tb : bt;
+      default:
+        return [];
+    }
+  }
+  function getOppositeAxisPlacements(placement, flipAlignment, direction, rtl) {
+    const alignment = getAlignment(placement);
+    let list = getSideList(getSide(placement), direction === "start", rtl);
+    if (alignment) {
+      list = list.map((side) => side + "-" + alignment);
+      if (flipAlignment) {
+        list = list.concat(list.map(getOppositeAlignmentPlacement));
+      }
+    }
+    return list;
+  }
+  function getOppositePlacement(placement) {
+    return placement.replace(/left|right|bottom|top/g, (side) => oppositeSideMap[side]);
+  }
+  function expandPaddingObject(padding) {
+    return {
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      ...padding
+    };
+  }
+  function getPaddingObject(padding) {
+    return typeof padding !== "number" ? expandPaddingObject(padding) : {
+      top: padding,
+      right: padding,
+      bottom: padding,
+      left: padding
+    };
+  }
+  function rectToClientRect(rect) {
+    const {
+      x,
+      y,
+      width,
+      height
+    } = rect;
+    return {
+      width,
+      height,
+      top: y,
+      left: x,
+      right: x + width,
+      bottom: y + height,
+      x,
+      y
+    };
+  }
+
+  // node_modules/@floating-ui/core/dist/floating-ui.core.mjs
+  function computeCoordsFromPlacement(_ref, placement, rtl) {
+    let {
+      reference,
+      floating
+    } = _ref;
+    const sideAxis = getSideAxis(placement);
+    const alignmentAxis = getAlignmentAxis(placement);
+    const alignLength = getAxisLength(alignmentAxis);
+    const side = getSide(placement);
+    const isVertical = sideAxis === "y";
+    const commonX = reference.x + reference.width / 2 - floating.width / 2;
+    const commonY = reference.y + reference.height / 2 - floating.height / 2;
+    const commonAlign = reference[alignLength] / 2 - floating[alignLength] / 2;
+    let coords;
+    switch (side) {
+      case "top":
+        coords = {
+          x: commonX,
+          y: reference.y - floating.height
+        };
+        break;
+      case "bottom":
+        coords = {
+          x: commonX,
+          y: reference.y + reference.height
+        };
+        break;
+      case "right":
+        coords = {
+          x: reference.x + reference.width,
+          y: commonY
+        };
+        break;
+      case "left":
+        coords = {
+          x: reference.x - floating.width,
+          y: commonY
+        };
+        break;
+      default:
+        coords = {
+          x: reference.x,
+          y: reference.y
+        };
+    }
+    switch (getAlignment(placement)) {
+      case "start":
+        coords[alignmentAxis] -= commonAlign * (rtl && isVertical ? -1 : 1);
+        break;
+      case "end":
+        coords[alignmentAxis] += commonAlign * (rtl && isVertical ? -1 : 1);
+        break;
+    }
+    return coords;
+  }
+  var computePosition = async (reference, floating, config) => {
+    const {
+      placement = "bottom",
+      strategy = "absolute",
+      middleware = [],
+      platform: platform2
+    } = config;
+    const validMiddleware = middleware.filter(Boolean);
+    const rtl = await (platform2.isRTL == null ? void 0 : platform2.isRTL(floating));
+    let rects = await platform2.getElementRects({
+      reference,
+      floating,
+      strategy
+    });
+    let {
+      x,
+      y
+    } = computeCoordsFromPlacement(rects, placement, rtl);
+    let statefulPlacement = placement;
+    let middlewareData = {};
+    let resetCount = 0;
+    for (let i = 0; i < validMiddleware.length; i++) {
+      const {
+        name,
+        fn
+      } = validMiddleware[i];
+      const {
+        x: nextX,
+        y: nextY,
+        data,
+        reset
+      } = await fn({
+        x,
+        y,
+        initialPlacement: placement,
+        placement: statefulPlacement,
+        strategy,
+        middlewareData,
+        rects,
+        platform: platform2,
+        elements: {
+          reference,
+          floating
+        }
+      });
+      x = nextX != null ? nextX : x;
+      y = nextY != null ? nextY : y;
+      middlewareData = {
+        ...middlewareData,
+        [name]: {
+          ...middlewareData[name],
+          ...data
+        }
+      };
+      if (reset && resetCount <= 50) {
+        resetCount++;
+        if (typeof reset === "object") {
+          if (reset.placement) {
+            statefulPlacement = reset.placement;
+          }
+          if (reset.rects) {
+            rects = reset.rects === true ? await platform2.getElementRects({
+              reference,
+              floating,
+              strategy
+            }) : reset.rects;
+          }
+          ({
+            x,
+            y
+          } = computeCoordsFromPlacement(rects, statefulPlacement, rtl));
+        }
+        i = -1;
+      }
+    }
+    return {
+      x,
+      y,
+      placement: statefulPlacement,
+      strategy,
+      middlewareData
+    };
+  };
+  async function detectOverflow(state, options) {
+    var _await$platform$isEle;
+    if (options === void 0) {
+      options = {};
+    }
+    const {
+      x,
+      y,
+      platform: platform2,
+      rects,
+      elements,
+      strategy
+    } = state;
+    const {
+      boundary = "clippingAncestors",
+      rootBoundary = "viewport",
+      elementContext = "floating",
+      altBoundary = false,
+      padding = 0
+    } = evaluate(options, state);
+    const paddingObject = getPaddingObject(padding);
+    const altContext = elementContext === "floating" ? "reference" : "floating";
+    const element = elements[altBoundary ? altContext : elementContext];
+    const clippingClientRect = rectToClientRect(await platform2.getClippingRect({
+      element: ((_await$platform$isEle = await (platform2.isElement == null ? void 0 : platform2.isElement(element))) != null ? _await$platform$isEle : true) ? element : element.contextElement || await (platform2.getDocumentElement == null ? void 0 : platform2.getDocumentElement(elements.floating)),
+      boundary,
+      rootBoundary,
+      strategy
+    }));
+    const rect = elementContext === "floating" ? {
+      x,
+      y,
+      width: rects.floating.width,
+      height: rects.floating.height
+    } : rects.reference;
+    const offsetParent = await (platform2.getOffsetParent == null ? void 0 : platform2.getOffsetParent(elements.floating));
+    const offsetScale = await (platform2.isElement == null ? void 0 : platform2.isElement(offsetParent)) ? await (platform2.getScale == null ? void 0 : platform2.getScale(offsetParent)) || {
+      x: 1,
+      y: 1
+    } : {
+      x: 1,
+      y: 1
+    };
+    const elementClientRect = rectToClientRect(platform2.convertOffsetParentRelativeRectToViewportRelativeRect ? await platform2.convertOffsetParentRelativeRectToViewportRelativeRect({
+      elements,
+      rect,
+      offsetParent,
+      strategy
+    }) : rect);
+    return {
+      top: (clippingClientRect.top - elementClientRect.top + paddingObject.top) / offsetScale.y,
+      bottom: (elementClientRect.bottom - clippingClientRect.bottom + paddingObject.bottom) / offsetScale.y,
+      left: (clippingClientRect.left - elementClientRect.left + paddingObject.left) / offsetScale.x,
+      right: (elementClientRect.right - clippingClientRect.right + paddingObject.right) / offsetScale.x
+    };
+  }
+  var arrow = (options) => ({
+    name: "arrow",
+    options,
+    async fn(state) {
+      const {
+        x,
+        y,
+        placement,
+        rects,
+        platform: platform2,
+        elements,
+        middlewareData
+      } = state;
+      const {
+        element,
+        padding = 0
+      } = evaluate(options, state) || {};
+      if (element == null) {
+        return {};
+      }
+      const paddingObject = getPaddingObject(padding);
+      const coords = {
+        x,
+        y
+      };
+      const axis = getAlignmentAxis(placement);
+      const length = getAxisLength(axis);
+      const arrowDimensions = await platform2.getDimensions(element);
+      const isYAxis = axis === "y";
+      const minProp = isYAxis ? "top" : "left";
+      const maxProp = isYAxis ? "bottom" : "right";
+      const clientProp = isYAxis ? "clientHeight" : "clientWidth";
+      const endDiff = rects.reference[length] + rects.reference[axis] - coords[axis] - rects.floating[length];
+      const startDiff = coords[axis] - rects.reference[axis];
+      const arrowOffsetParent = await (platform2.getOffsetParent == null ? void 0 : platform2.getOffsetParent(element));
+      let clientSize = arrowOffsetParent ? arrowOffsetParent[clientProp] : 0;
+      if (!clientSize || !await (platform2.isElement == null ? void 0 : platform2.isElement(arrowOffsetParent))) {
+        clientSize = elements.floating[clientProp] || rects.floating[length];
+      }
+      const centerToReference = endDiff / 2 - startDiff / 2;
+      const largestPossiblePadding = clientSize / 2 - arrowDimensions[length] / 2 - 1;
+      const minPadding = min(paddingObject[minProp], largestPossiblePadding);
+      const maxPadding = min(paddingObject[maxProp], largestPossiblePadding);
+      const min$1 = minPadding;
+      const max2 = clientSize - arrowDimensions[length] - maxPadding;
+      const center = clientSize / 2 - arrowDimensions[length] / 2 + centerToReference;
+      const offset3 = clamp(min$1, center, max2);
+      const shouldAddOffset = !middlewareData.arrow && getAlignment(placement) != null && center !== offset3 && rects.reference[length] / 2 - (center < min$1 ? minPadding : maxPadding) - arrowDimensions[length] / 2 < 0;
+      const alignmentOffset = shouldAddOffset ? center < min$1 ? center - min$1 : center - max2 : 0;
+      return {
+        [axis]: coords[axis] + alignmentOffset,
+        data: {
+          [axis]: offset3,
+          centerOffset: center - offset3 - alignmentOffset,
+          ...shouldAddOffset && {
+            alignmentOffset
+          }
+        },
+        reset: shouldAddOffset
+      };
+    }
+  });
+  var flip = function(options) {
+    if (options === void 0) {
+      options = {};
+    }
+    return {
+      name: "flip",
+      options,
+      async fn(state) {
+        var _middlewareData$arrow, _middlewareData$flip;
+        const {
+          placement,
+          middlewareData,
+          rects,
+          initialPlacement,
+          platform: platform2,
+          elements
+        } = state;
+        const {
+          mainAxis: checkMainAxis = true,
+          crossAxis: checkCrossAxis = true,
+          fallbackPlacements: specifiedFallbackPlacements,
+          fallbackStrategy = "bestFit",
+          fallbackAxisSideDirection = "none",
+          flipAlignment = true,
+          ...detectOverflowOptions
+        } = evaluate(options, state);
+        if ((_middlewareData$arrow = middlewareData.arrow) != null && _middlewareData$arrow.alignmentOffset) {
+          return {};
+        }
+        const side = getSide(placement);
+        const initialSideAxis = getSideAxis(initialPlacement);
+        const isBasePlacement = getSide(initialPlacement) === initialPlacement;
+        const rtl = await (platform2.isRTL == null ? void 0 : platform2.isRTL(elements.floating));
+        const fallbackPlacements = specifiedFallbackPlacements || (isBasePlacement || !flipAlignment ? [getOppositePlacement(initialPlacement)] : getExpandedPlacements(initialPlacement));
+        const hasFallbackAxisSideDirection = fallbackAxisSideDirection !== "none";
+        if (!specifiedFallbackPlacements && hasFallbackAxisSideDirection) {
+          fallbackPlacements.push(...getOppositeAxisPlacements(initialPlacement, flipAlignment, fallbackAxisSideDirection, rtl));
+        }
+        const placements2 = [initialPlacement, ...fallbackPlacements];
+        const overflow = await detectOverflow(state, detectOverflowOptions);
+        const overflows = [];
+        let overflowsData = ((_middlewareData$flip = middlewareData.flip) == null ? void 0 : _middlewareData$flip.overflows) || [];
+        if (checkMainAxis) {
+          overflows.push(overflow[side]);
+        }
+        if (checkCrossAxis) {
+          const sides2 = getAlignmentSides(placement, rects, rtl);
+          overflows.push(overflow[sides2[0]], overflow[sides2[1]]);
+        }
+        overflowsData = [...overflowsData, {
+          placement,
+          overflows
+        }];
+        if (!overflows.every((side2) => side2 <= 0)) {
+          var _middlewareData$flip2, _overflowsData$filter;
+          const nextIndex = (((_middlewareData$flip2 = middlewareData.flip) == null ? void 0 : _middlewareData$flip2.index) || 0) + 1;
+          const nextPlacement = placements2[nextIndex];
+          if (nextPlacement) {
+            return {
+              data: {
+                index: nextIndex,
+                overflows: overflowsData
+              },
+              reset: {
+                placement: nextPlacement
+              }
+            };
+          }
+          let resetPlacement = (_overflowsData$filter = overflowsData.filter((d) => d.overflows[0] <= 0).sort((a, b) => a.overflows[1] - b.overflows[1])[0]) == null ? void 0 : _overflowsData$filter.placement;
+          if (!resetPlacement) {
+            switch (fallbackStrategy) {
+              case "bestFit": {
+                var _overflowsData$filter2;
+                const placement2 = (_overflowsData$filter2 = overflowsData.filter((d) => {
+                  if (hasFallbackAxisSideDirection) {
+                    const currentSideAxis = getSideAxis(d.placement);
+                    return currentSideAxis === initialSideAxis || // Create a bias to the `y` side axis due to horizontal
+                    // reading directions favoring greater width.
+                    currentSideAxis === "y";
+                  }
+                  return true;
+                }).map((d) => [d.placement, d.overflows.filter((overflow2) => overflow2 > 0).reduce((acc, overflow2) => acc + overflow2, 0)]).sort((a, b) => a[1] - b[1])[0]) == null ? void 0 : _overflowsData$filter2[0];
+                if (placement2) {
+                  resetPlacement = placement2;
+                }
+                break;
+              }
+              case "initialPlacement":
+                resetPlacement = initialPlacement;
+                break;
+            }
+          }
+          if (placement !== resetPlacement) {
+            return {
+              reset: {
+                placement: resetPlacement
+              }
+            };
+          }
+        }
+        return {};
+      }
+    };
+  };
+  async function convertValueToCoords(state, options) {
+    const {
+      placement,
+      platform: platform2,
+      elements
+    } = state;
+    const rtl = await (platform2.isRTL == null ? void 0 : platform2.isRTL(elements.floating));
+    const side = getSide(placement);
+    const alignment = getAlignment(placement);
+    const isVertical = getSideAxis(placement) === "y";
+    const mainAxisMulti = ["left", "top"].includes(side) ? -1 : 1;
+    const crossAxisMulti = rtl && isVertical ? -1 : 1;
+    const rawValue = evaluate(options, state);
+    let {
+      mainAxis,
+      crossAxis,
+      alignmentAxis
+    } = typeof rawValue === "number" ? {
+      mainAxis: rawValue,
+      crossAxis: 0,
+      alignmentAxis: null
+    } : {
+      mainAxis: rawValue.mainAxis || 0,
+      crossAxis: rawValue.crossAxis || 0,
+      alignmentAxis: rawValue.alignmentAxis
+    };
+    if (alignment && typeof alignmentAxis === "number") {
+      crossAxis = alignment === "end" ? alignmentAxis * -1 : alignmentAxis;
+    }
+    return isVertical ? {
+      x: crossAxis * crossAxisMulti,
+      y: mainAxis * mainAxisMulti
+    } : {
+      x: mainAxis * mainAxisMulti,
+      y: crossAxis * crossAxisMulti
+    };
+  }
+  var offset = function(options) {
+    if (options === void 0) {
+      options = 0;
+    }
+    return {
+      name: "offset",
+      options,
+      async fn(state) {
+        var _middlewareData$offse, _middlewareData$arrow;
+        const {
+          x,
+          y,
+          placement,
+          middlewareData
+        } = state;
+        const diffCoords = await convertValueToCoords(state, options);
+        if (placement === ((_middlewareData$offse = middlewareData.offset) == null ? void 0 : _middlewareData$offse.placement) && (_middlewareData$arrow = middlewareData.arrow) != null && _middlewareData$arrow.alignmentOffset) {
+          return {};
+        }
+        return {
+          x: x + diffCoords.x,
+          y: y + diffCoords.y,
+          data: {
+            ...diffCoords,
+            placement
+          }
+        };
+      }
+    };
+  };
+  var shift = function(options) {
+    if (options === void 0) {
+      options = {};
+    }
+    return {
+      name: "shift",
+      options,
+      async fn(state) {
+        const {
+          x,
+          y,
+          placement
+        } = state;
+        const {
+          mainAxis: checkMainAxis = true,
+          crossAxis: checkCrossAxis = false,
+          limiter = {
+            fn: (_ref) => {
+              let {
+                x: x2,
+                y: y2
+              } = _ref;
+              return {
+                x: x2,
+                y: y2
+              };
+            }
+          },
+          ...detectOverflowOptions
+        } = evaluate(options, state);
+        const coords = {
+          x,
+          y
+        };
+        const overflow = await detectOverflow(state, detectOverflowOptions);
+        const crossAxis = getSideAxis(getSide(placement));
+        const mainAxis = getOppositeAxis(crossAxis);
+        let mainAxisCoord = coords[mainAxis];
+        let crossAxisCoord = coords[crossAxis];
+        if (checkMainAxis) {
+          const minSide = mainAxis === "y" ? "top" : "left";
+          const maxSide = mainAxis === "y" ? "bottom" : "right";
+          const min2 = mainAxisCoord + overflow[minSide];
+          const max2 = mainAxisCoord - overflow[maxSide];
+          mainAxisCoord = clamp(min2, mainAxisCoord, max2);
+        }
+        if (checkCrossAxis) {
+          const minSide = crossAxis === "y" ? "top" : "left";
+          const maxSide = crossAxis === "y" ? "bottom" : "right";
+          const min2 = crossAxisCoord + overflow[minSide];
+          const max2 = crossAxisCoord - overflow[maxSide];
+          crossAxisCoord = clamp(min2, crossAxisCoord, max2);
+        }
+        const limitedCoords = limiter.fn({
+          ...state,
+          [mainAxis]: mainAxisCoord,
+          [crossAxis]: crossAxisCoord
+        });
+        return {
+          ...limitedCoords,
+          data: {
+            x: limitedCoords.x - x,
+            y: limitedCoords.y - y,
+            enabled: {
+              [mainAxis]: checkMainAxis,
+              [crossAxis]: checkCrossAxis
+            }
+          }
+        };
+      }
+    };
+  };
+
+  // node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs
+  function hasWindow() {
+    return typeof window !== "undefined";
+  }
+  function getNodeName(node) {
+    if (isNode(node)) {
+      return (node.nodeName || "").toLowerCase();
+    }
+    return "#document";
+  }
+  function getWindow(node) {
+    var _node$ownerDocument;
+    return (node == null || (_node$ownerDocument = node.ownerDocument) == null ? void 0 : _node$ownerDocument.defaultView) || window;
+  }
+  function getDocumentElement(node) {
+    var _ref;
+    return (_ref = (isNode(node) ? node.ownerDocument : node.document) || window.document) == null ? void 0 : _ref.documentElement;
+  }
+  function isNode(value) {
+    if (!hasWindow()) {
+      return false;
+    }
+    return value instanceof Node || value instanceof getWindow(value).Node;
+  }
+  function isElement(value) {
+    if (!hasWindow()) {
+      return false;
+    }
+    return value instanceof Element || value instanceof getWindow(value).Element;
+  }
+  function isHTMLElement(value) {
+    if (!hasWindow()) {
+      return false;
+    }
+    return value instanceof HTMLElement || value instanceof getWindow(value).HTMLElement;
+  }
+  function isShadowRoot(value) {
+    if (!hasWindow() || typeof ShadowRoot === "undefined") {
+      return false;
+    }
+    return value instanceof ShadowRoot || value instanceof getWindow(value).ShadowRoot;
+  }
+  function isOverflowElement(element) {
+    const {
+      overflow,
+      overflowX,
+      overflowY,
+      display
+    } = getComputedStyle(element);
+    return /auto|scroll|overlay|hidden|clip/.test(overflow + overflowY + overflowX) && !["inline", "contents"].includes(display);
+  }
+  function isTableElement(element) {
+    return ["table", "td", "th"].includes(getNodeName(element));
+  }
+  function isTopLayer(element) {
+    return [":popover-open", ":modal"].some((selector) => {
+      try {
+        return element.matches(selector);
+      } catch (e) {
+        return false;
+      }
+    });
+  }
+  function isContainingBlock(elementOrCss) {
+    const webkit = isWebKit();
+    const css = isElement(elementOrCss) ? getComputedStyle(elementOrCss) : elementOrCss;
+    return ["transform", "translate", "scale", "rotate", "perspective"].some((value) => css[value] ? css[value] !== "none" : false) || (css.containerType ? css.containerType !== "normal" : false) || !webkit && (css.backdropFilter ? css.backdropFilter !== "none" : false) || !webkit && (css.filter ? css.filter !== "none" : false) || ["transform", "translate", "scale", "rotate", "perspective", "filter"].some((value) => (css.willChange || "").includes(value)) || ["paint", "layout", "strict", "content"].some((value) => (css.contain || "").includes(value));
+  }
+  function getContainingBlock(element) {
+    let currentNode = getParentNode(element);
+    while (isHTMLElement(currentNode) && !isLastTraversableNode(currentNode)) {
+      if (isContainingBlock(currentNode)) {
+        return currentNode;
+      } else if (isTopLayer(currentNode)) {
+        return null;
+      }
+      currentNode = getParentNode(currentNode);
+    }
+    return null;
+  }
+  function isWebKit() {
+    if (typeof CSS === "undefined" || !CSS.supports)
+      return false;
+    return CSS.supports("-webkit-backdrop-filter", "none");
+  }
+  function isLastTraversableNode(node) {
+    return ["html", "body", "#document"].includes(getNodeName(node));
+  }
+  function getComputedStyle(element) {
+    return getWindow(element).getComputedStyle(element);
+  }
+  function getNodeScroll(element) {
+    if (isElement(element)) {
+      return {
+        scrollLeft: element.scrollLeft,
+        scrollTop: element.scrollTop
+      };
+    }
+    return {
+      scrollLeft: element.scrollX,
+      scrollTop: element.scrollY
+    };
+  }
+  function getParentNode(node) {
+    if (getNodeName(node) === "html") {
+      return node;
+    }
+    const result = (
+      // Step into the shadow DOM of the parent of a slotted node.
+      node.assignedSlot || // DOM Element detected.
+      node.parentNode || // ShadowRoot detected.
+      isShadowRoot(node) && node.host || // Fallback.
+      getDocumentElement(node)
+    );
+    return isShadowRoot(result) ? result.host : result;
+  }
+  function getNearestOverflowAncestor(node) {
+    const parentNode = getParentNode(node);
+    if (isLastTraversableNode(parentNode)) {
+      return node.ownerDocument ? node.ownerDocument.body : node.body;
+    }
+    if (isHTMLElement(parentNode) && isOverflowElement(parentNode)) {
+      return parentNode;
+    }
+    return getNearestOverflowAncestor(parentNode);
+  }
+  function getOverflowAncestors(node, list, traverseIframes) {
+    var _node$ownerDocument2;
+    if (list === void 0) {
+      list = [];
+    }
+    if (traverseIframes === void 0) {
+      traverseIframes = true;
+    }
+    const scrollableAncestor = getNearestOverflowAncestor(node);
+    const isBody = scrollableAncestor === ((_node$ownerDocument2 = node.ownerDocument) == null ? void 0 : _node$ownerDocument2.body);
+    const win = getWindow(scrollableAncestor);
+    if (isBody) {
+      const frameElement = getFrameElement(win);
+      return list.concat(win, win.visualViewport || [], isOverflowElement(scrollableAncestor) ? scrollableAncestor : [], frameElement && traverseIframes ? getOverflowAncestors(frameElement) : []);
+    }
+    return list.concat(scrollableAncestor, getOverflowAncestors(scrollableAncestor, [], traverseIframes));
+  }
+  function getFrameElement(win) {
+    return win.parent && Object.getPrototypeOf(win.parent) ? win.frameElement : null;
+  }
+
+  // node_modules/@floating-ui/dom/dist/floating-ui.dom.esm.js
+  function getCssDimensions(element) {
+    const css = getComputedStyle(element);
+    let width = parseFloat(css.width) || 0;
+    let height = parseFloat(css.height) || 0;
+    const hasOffset = isHTMLElement(element);
+    const offsetWidth = hasOffset ? element.offsetWidth : width;
+    const offsetHeight = hasOffset ? element.offsetHeight : height;
+    const shouldFallback = round(width) !== offsetWidth || round(height) !== offsetHeight;
+    if (shouldFallback) {
+      width = offsetWidth;
+      height = offsetHeight;
+    }
+    return {
+      width,
+      height,
+      $: shouldFallback
+    };
+  }
+  function unwrapElement(element) {
+    return !isElement(element) ? element.contextElement : element;
+  }
+  function getScale(element) {
+    const domElement = unwrapElement(element);
+    if (!isHTMLElement(domElement)) {
+      return createCoords(1);
+    }
+    const rect = domElement.getBoundingClientRect();
+    const {
+      width,
+      height,
+      $
+    } = getCssDimensions(domElement);
+    let x = ($ ? round(rect.width) : rect.width) / width;
+    let y = ($ ? round(rect.height) : rect.height) / height;
+    if (!x || !Number.isFinite(x)) {
+      x = 1;
+    }
+    if (!y || !Number.isFinite(y)) {
+      y = 1;
+    }
+    return {
+      x,
+      y
+    };
+  }
+  var noOffsets = /* @__PURE__ */ createCoords(0);
+  function getVisualOffsets(element) {
+    const win = getWindow(element);
+    if (!isWebKit() || !win.visualViewport) {
+      return noOffsets;
+    }
+    return {
+      x: win.visualViewport.offsetLeft,
+      y: win.visualViewport.offsetTop
+    };
+  }
+  function shouldAddVisualOffsets(element, isFixed, floatingOffsetParent) {
+    if (isFixed === void 0) {
+      isFixed = false;
+    }
+    if (!floatingOffsetParent || isFixed && floatingOffsetParent !== getWindow(element)) {
+      return false;
+    }
+    return isFixed;
+  }
+  function getBoundingClientRect(element, includeScale, isFixedStrategy, offsetParent) {
+    if (includeScale === void 0) {
+      includeScale = false;
+    }
+    if (isFixedStrategy === void 0) {
+      isFixedStrategy = false;
+    }
+    const clientRect = element.getBoundingClientRect();
+    const domElement = unwrapElement(element);
+    let scale = createCoords(1);
+    if (includeScale) {
+      if (offsetParent) {
+        if (isElement(offsetParent)) {
+          scale = getScale(offsetParent);
+        }
+      } else {
+        scale = getScale(element);
+      }
+    }
+    const visualOffsets = shouldAddVisualOffsets(domElement, isFixedStrategy, offsetParent) ? getVisualOffsets(domElement) : createCoords(0);
+    let x = (clientRect.left + visualOffsets.x) / scale.x;
+    let y = (clientRect.top + visualOffsets.y) / scale.y;
+    let width = clientRect.width / scale.x;
+    let height = clientRect.height / scale.y;
+    if (domElement) {
+      const win = getWindow(domElement);
+      const offsetWin = offsetParent && isElement(offsetParent) ? getWindow(offsetParent) : offsetParent;
+      let currentWin = win;
+      let currentIFrame = getFrameElement(currentWin);
+      while (currentIFrame && offsetParent && offsetWin !== currentWin) {
+        const iframeScale = getScale(currentIFrame);
+        const iframeRect = currentIFrame.getBoundingClientRect();
+        const css = getComputedStyle(currentIFrame);
+        const left = iframeRect.left + (currentIFrame.clientLeft + parseFloat(css.paddingLeft)) * iframeScale.x;
+        const top = iframeRect.top + (currentIFrame.clientTop + parseFloat(css.paddingTop)) * iframeScale.y;
+        x *= iframeScale.x;
+        y *= iframeScale.y;
+        width *= iframeScale.x;
+        height *= iframeScale.y;
+        x += left;
+        y += top;
+        currentWin = getWindow(currentIFrame);
+        currentIFrame = getFrameElement(currentWin);
+      }
+    }
+    return rectToClientRect({
+      width,
+      height,
+      x,
+      y
+    });
+  }
+  function getWindowScrollBarX(element, rect) {
+    const leftScroll = getNodeScroll(element).scrollLeft;
+    if (!rect) {
+      return getBoundingClientRect(getDocumentElement(element)).left + leftScroll;
+    }
+    return rect.left + leftScroll;
+  }
+  function getHTMLOffset(documentElement, scroll, ignoreScrollbarX) {
+    if (ignoreScrollbarX === void 0) {
+      ignoreScrollbarX = false;
+    }
+    const htmlRect = documentElement.getBoundingClientRect();
+    const x = htmlRect.left + scroll.scrollLeft - (ignoreScrollbarX ? 0 : (
+      // RTL <body> scrollbar.
+      getWindowScrollBarX(documentElement, htmlRect)
+    ));
+    const y = htmlRect.top + scroll.scrollTop;
+    return {
+      x,
+      y
+    };
+  }
+  function convertOffsetParentRelativeRectToViewportRelativeRect(_ref) {
+    let {
+      elements,
+      rect,
+      offsetParent,
+      strategy
+    } = _ref;
+    const isFixed = strategy === "fixed";
+    const documentElement = getDocumentElement(offsetParent);
+    const topLayer = elements ? isTopLayer(elements.floating) : false;
+    if (offsetParent === documentElement || topLayer && isFixed) {
+      return rect;
+    }
+    let scroll = {
+      scrollLeft: 0,
+      scrollTop: 0
+    };
+    let scale = createCoords(1);
+    const offsets = createCoords(0);
+    const isOffsetParentAnElement = isHTMLElement(offsetParent);
+    if (isOffsetParentAnElement || !isOffsetParentAnElement && !isFixed) {
+      if (getNodeName(offsetParent) !== "body" || isOverflowElement(documentElement)) {
+        scroll = getNodeScroll(offsetParent);
+      }
+      if (isHTMLElement(offsetParent)) {
+        const offsetRect = getBoundingClientRect(offsetParent);
+        scale = getScale(offsetParent);
+        offsets.x = offsetRect.x + offsetParent.clientLeft;
+        offsets.y = offsetRect.y + offsetParent.clientTop;
+      }
+    }
+    const htmlOffset = documentElement && !isOffsetParentAnElement && !isFixed ? getHTMLOffset(documentElement, scroll, true) : createCoords(0);
+    return {
+      width: rect.width * scale.x,
+      height: rect.height * scale.y,
+      x: rect.x * scale.x - scroll.scrollLeft * scale.x + offsets.x + htmlOffset.x,
+      y: rect.y * scale.y - scroll.scrollTop * scale.y + offsets.y + htmlOffset.y
+    };
+  }
+  function getClientRects(element) {
+    return Array.from(element.getClientRects());
+  }
+  function getDocumentRect(element) {
+    const html = getDocumentElement(element);
+    const scroll = getNodeScroll(element);
+    const body = element.ownerDocument.body;
+    const width = max(html.scrollWidth, html.clientWidth, body.scrollWidth, body.clientWidth);
+    const height = max(html.scrollHeight, html.clientHeight, body.scrollHeight, body.clientHeight);
+    let x = -scroll.scrollLeft + getWindowScrollBarX(element);
+    const y = -scroll.scrollTop;
+    if (getComputedStyle(body).direction === "rtl") {
+      x += max(html.clientWidth, body.clientWidth) - width;
+    }
+    return {
+      width,
+      height,
+      x,
+      y
+    };
+  }
+  function getViewportRect(element, strategy) {
+    const win = getWindow(element);
+    const html = getDocumentElement(element);
+    const visualViewport = win.visualViewport;
+    let width = html.clientWidth;
+    let height = html.clientHeight;
+    let x = 0;
+    let y = 0;
+    if (visualViewport) {
+      width = visualViewport.width;
+      height = visualViewport.height;
+      const visualViewportBased = isWebKit();
+      if (!visualViewportBased || visualViewportBased && strategy === "fixed") {
+        x = visualViewport.offsetLeft;
+        y = visualViewport.offsetTop;
+      }
+    }
+    return {
+      width,
+      height,
+      x,
+      y
+    };
+  }
+  function getInnerBoundingClientRect(element, strategy) {
+    const clientRect = getBoundingClientRect(element, true, strategy === "fixed");
+    const top = clientRect.top + element.clientTop;
+    const left = clientRect.left + element.clientLeft;
+    const scale = isHTMLElement(element) ? getScale(element) : createCoords(1);
+    const width = element.clientWidth * scale.x;
+    const height = element.clientHeight * scale.y;
+    const x = left * scale.x;
+    const y = top * scale.y;
+    return {
+      width,
+      height,
+      x,
+      y
+    };
+  }
+  function getClientRectFromClippingAncestor(element, clippingAncestor, strategy) {
+    let rect;
+    if (clippingAncestor === "viewport") {
+      rect = getViewportRect(element, strategy);
+    } else if (clippingAncestor === "document") {
+      rect = getDocumentRect(getDocumentElement(element));
+    } else if (isElement(clippingAncestor)) {
+      rect = getInnerBoundingClientRect(clippingAncestor, strategy);
+    } else {
+      const visualOffsets = getVisualOffsets(element);
+      rect = {
+        x: clippingAncestor.x - visualOffsets.x,
+        y: clippingAncestor.y - visualOffsets.y,
+        width: clippingAncestor.width,
+        height: clippingAncestor.height
+      };
+    }
+    return rectToClientRect(rect);
+  }
+  function hasFixedPositionAncestor(element, stopNode) {
+    const parentNode = getParentNode(element);
+    if (parentNode === stopNode || !isElement(parentNode) || isLastTraversableNode(parentNode)) {
+      return false;
+    }
+    return getComputedStyle(parentNode).position === "fixed" || hasFixedPositionAncestor(parentNode, stopNode);
+  }
+  function getClippingElementAncestors(element, cache) {
+    const cachedResult = cache.get(element);
+    if (cachedResult) {
+      return cachedResult;
+    }
+    let result = getOverflowAncestors(element, [], false).filter((el) => isElement(el) && getNodeName(el) !== "body");
+    let currentContainingBlockComputedStyle = null;
+    const elementIsFixed = getComputedStyle(element).position === "fixed";
+    let currentNode = elementIsFixed ? getParentNode(element) : element;
+    while (isElement(currentNode) && !isLastTraversableNode(currentNode)) {
+      const computedStyle = getComputedStyle(currentNode);
+      const currentNodeIsContaining = isContainingBlock(currentNode);
+      if (!currentNodeIsContaining && computedStyle.position === "fixed") {
+        currentContainingBlockComputedStyle = null;
+      }
+      const shouldDropCurrentNode = elementIsFixed ? !currentNodeIsContaining && !currentContainingBlockComputedStyle : !currentNodeIsContaining && computedStyle.position === "static" && !!currentContainingBlockComputedStyle && ["absolute", "fixed"].includes(currentContainingBlockComputedStyle.position) || isOverflowElement(currentNode) && !currentNodeIsContaining && hasFixedPositionAncestor(element, currentNode);
+      if (shouldDropCurrentNode) {
+        result = result.filter((ancestor) => ancestor !== currentNode);
+      } else {
+        currentContainingBlockComputedStyle = computedStyle;
+      }
+      currentNode = getParentNode(currentNode);
+    }
+    cache.set(element, result);
+    return result;
+  }
+  function getClippingRect(_ref) {
+    let {
+      element,
+      boundary,
+      rootBoundary,
+      strategy
+    } = _ref;
+    const elementClippingAncestors = boundary === "clippingAncestors" ? isTopLayer(element) ? [] : getClippingElementAncestors(element, this._c) : [].concat(boundary);
+    const clippingAncestors = [...elementClippingAncestors, rootBoundary];
+    const firstClippingAncestor = clippingAncestors[0];
+    const clippingRect = clippingAncestors.reduce((accRect, clippingAncestor) => {
+      const rect = getClientRectFromClippingAncestor(element, clippingAncestor, strategy);
+      accRect.top = max(rect.top, accRect.top);
+      accRect.right = min(rect.right, accRect.right);
+      accRect.bottom = min(rect.bottom, accRect.bottom);
+      accRect.left = max(rect.left, accRect.left);
+      return accRect;
+    }, getClientRectFromClippingAncestor(element, firstClippingAncestor, strategy));
+    return {
+      width: clippingRect.right - clippingRect.left,
+      height: clippingRect.bottom - clippingRect.top,
+      x: clippingRect.left,
+      y: clippingRect.top
+    };
+  }
+  function getDimensions(element) {
+    const {
+      width,
+      height
+    } = getCssDimensions(element);
+    return {
+      width,
+      height
+    };
+  }
+  function getRectRelativeToOffsetParent(element, offsetParent, strategy) {
+    const isOffsetParentAnElement = isHTMLElement(offsetParent);
+    const documentElement = getDocumentElement(offsetParent);
+    const isFixed = strategy === "fixed";
+    const rect = getBoundingClientRect(element, true, isFixed, offsetParent);
+    let scroll = {
+      scrollLeft: 0,
+      scrollTop: 0
+    };
+    const offsets = createCoords(0);
+    if (isOffsetParentAnElement || !isOffsetParentAnElement && !isFixed) {
+      if (getNodeName(offsetParent) !== "body" || isOverflowElement(documentElement)) {
+        scroll = getNodeScroll(offsetParent);
+      }
+      if (isOffsetParentAnElement) {
+        const offsetRect = getBoundingClientRect(offsetParent, true, isFixed, offsetParent);
+        offsets.x = offsetRect.x + offsetParent.clientLeft;
+        offsets.y = offsetRect.y + offsetParent.clientTop;
+      } else if (documentElement) {
+        offsets.x = getWindowScrollBarX(documentElement);
+      }
+    }
+    const htmlOffset = documentElement && !isOffsetParentAnElement && !isFixed ? getHTMLOffset(documentElement, scroll) : createCoords(0);
+    const x = rect.left + scroll.scrollLeft - offsets.x - htmlOffset.x;
+    const y = rect.top + scroll.scrollTop - offsets.y - htmlOffset.y;
+    return {
+      x,
+      y,
+      width: rect.width,
+      height: rect.height
+    };
+  }
+  function isStaticPositioned(element) {
+    return getComputedStyle(element).position === "static";
+  }
+  function getTrueOffsetParent(element, polyfill) {
+    if (!isHTMLElement(element) || getComputedStyle(element).position === "fixed") {
+      return null;
+    }
+    if (polyfill) {
+      return polyfill(element);
+    }
+    let rawOffsetParent = element.offsetParent;
+    if (getDocumentElement(element) === rawOffsetParent) {
+      rawOffsetParent = rawOffsetParent.ownerDocument.body;
+    }
+    return rawOffsetParent;
+  }
+  function getOffsetParent(element, polyfill) {
+    const win = getWindow(element);
+    if (isTopLayer(element)) {
+      return win;
+    }
+    if (!isHTMLElement(element)) {
+      let svgOffsetParent = getParentNode(element);
+      while (svgOffsetParent && !isLastTraversableNode(svgOffsetParent)) {
+        if (isElement(svgOffsetParent) && !isStaticPositioned(svgOffsetParent)) {
+          return svgOffsetParent;
+        }
+        svgOffsetParent = getParentNode(svgOffsetParent);
+      }
+      return win;
+    }
+    let offsetParent = getTrueOffsetParent(element, polyfill);
+    while (offsetParent && isTableElement(offsetParent) && isStaticPositioned(offsetParent)) {
+      offsetParent = getTrueOffsetParent(offsetParent, polyfill);
+    }
+    if (offsetParent && isLastTraversableNode(offsetParent) && isStaticPositioned(offsetParent) && !isContainingBlock(offsetParent)) {
+      return win;
+    }
+    return offsetParent || getContainingBlock(element) || win;
+  }
+  var getElementRects = async function(data) {
+    const getOffsetParentFn = this.getOffsetParent || getOffsetParent;
+    const getDimensionsFn = this.getDimensions;
+    const floatingDimensions = await getDimensionsFn(data.floating);
+    return {
+      reference: getRectRelativeToOffsetParent(data.reference, await getOffsetParentFn(data.floating), data.strategy),
+      floating: {
+        x: 0,
+        y: 0,
+        width: floatingDimensions.width,
+        height: floatingDimensions.height
+      }
+    };
+  };
+  function isRTL(element) {
+    return getComputedStyle(element).direction === "rtl";
+  }
+  var platform = {
+    convertOffsetParentRelativeRectToViewportRelativeRect,
+    getDocumentElement,
+    getClippingRect,
+    getOffsetParent,
+    getElementRects,
+    getClientRects,
+    getDimensions,
+    getScale,
+    isElement,
+    isRTL
+  };
+  var offset2 = offset;
+  var shift2 = shift;
+  var flip2 = flip;
+  var arrow2 = arrow;
+  var computePosition2 = (reference, floating, options) => {
+    const cache = /* @__PURE__ */ new Map();
+    const mergedOptions = {
+      platform,
+      ...options
+    };
+    const platformWithCache = {
+      ...mergedOptions.platform,
+      _c: cache
+    };
+    return computePosition(reference, floating, {
+      ...mergedOptions,
+      platform: platformWithCache
+    });
+  };
+
+  // src/managers/TooltipManager.js
+  var _app17, _logger23, _tooltip, _arrowElement, _textContainer, _currentElement, _showTimeout, _hideTimeout, _initialized3, _init8, init_fn8, _createTooltip, createTooltip_fn, _setupEventListeners6, setupEventListeners_fn6, _showTooltip, showTooltip_fn, _hideTooltip, hideTooltip_fn;
+  var TooltipManager = class {
+    constructor(app) {
+      /**
+       * Initialize the tooltip system
+       */
+      __privateAdd(this, _init8);
+      /**
+       * Create the tooltip element
+       */
+      __privateAdd(this, _createTooltip);
+      /**
+       * Set up event listeners for tooltips
+       */
+      __privateAdd(this, _setupEventListeners6);
+      /**
+       * Show the tooltip for a specific element
+       */
+      __privateAdd(this, _showTooltip);
+      /**
+       * Hide the tooltip
+       */
+      __privateAdd(this, _hideTooltip);
+      __privateAdd(this, _app17, void 0);
+      __privateAdd(this, _logger23, void 0);
+      __privateAdd(this, _tooltip, void 0);
+      __privateAdd(this, _arrowElement, void 0);
+      __privateAdd(this, _textContainer, void 0);
+      __privateAdd(this, _currentElement, null);
+      __privateAdd(this, _showTimeout, null);
+      __privateAdd(this, _hideTimeout, null);
+      __privateAdd(this, _initialized3, false);
+      __privateSet(this, _app17, app);
+      __privateSet(this, _logger23, app.logger.createModuleLogger("TOOLTIP"));
+      __privateMethod(this, _init8, init_fn8).call(this);
+      __privateGet(this, _logger23).info("TooltipManager initialized");
+    }
+  };
+  _app17 = new WeakMap();
+  _logger23 = new WeakMap();
+  _tooltip = new WeakMap();
+  _arrowElement = new WeakMap();
+  _textContainer = new WeakMap();
+  _currentElement = new WeakMap();
+  _showTimeout = new WeakMap();
+  _hideTimeout = new WeakMap();
+  _initialized3 = new WeakMap();
+  _init8 = new WeakSet();
+  init_fn8 = function() {
+    if (__privateGet(this, _initialized3))
+      return;
+    __privateSet(this, _tooltip, __privateMethod(this, _createTooltip, createTooltip_fn).call(this));
+    __privateSet(this, _arrowElement, __privateGet(this, _tooltip).querySelector("#checkout-tooltip-arrow"));
+    __privateSet(this, _textContainer, __privateGet(this, _tooltip).querySelector("#checkout-tooltip-text"));
+    __privateMethod(this, _setupEventListeners6, setupEventListeners_fn6).call(this);
+    __privateSet(this, _initialized3, true);
+    __privateGet(this, _logger23).info("Tooltip system initialized with floating-ui");
+  };
+  _createTooltip = new WeakSet();
+  createTooltip_fn = function() {
+    const existingTooltip = document.getElementById("checkout-tooltip");
+    if (existingTooltip)
+      return existingTooltip;
+    const tooltip = document.createElement("div");
+    tooltip.setAttribute("role", "tooltip");
+    tooltip.id = "checkout-tooltip";
+    tooltip.style.display = "none";
+    const textContainer = document.createElement("div");
+    textContainer.id = "checkout-tooltip-text";
+    tooltip.appendChild(textContainer);
+    const arrowElement = document.createElement("div");
+    arrowElement.id = "checkout-tooltip-arrow";
+    tooltip.appendChild(arrowElement);
+    document.body.appendChild(tooltip);
+    return tooltip;
+  };
+  _setupEventListeners6 = new WeakSet();
+  setupEventListeners_fn6 = function() {
+    document.addEventListener("mouseover", (e) => {
+      const element = e.target.closest("[data-os-tooltip]");
+      if (!element)
+        return;
+      clearTimeout(__privateGet(this, _showTimeout));
+      __privateSet(this, _showTimeout, setTimeout(() => {
+        __privateMethod(this, _showTooltip, showTooltip_fn).call(this, element);
+      }, 200));
+    });
+    document.addEventListener("mouseout", (e) => {
+      const element = e.target.closest("[data-os-tooltip]");
+      if (!element)
+        return;
+      clearTimeout(__privateGet(this, _showTimeout));
+      __privateMethod(this, _hideTooltip, hideTooltip_fn).call(this);
+    });
+    document.addEventListener("focus", (e) => {
+      const element = e.target.closest("[data-os-tooltip]");
+      if (!element)
+        return;
+      __privateMethod(this, _showTooltip, showTooltip_fn).call(this, element);
+    }, true);
+    document.addEventListener("blur", (e) => {
+      const element = e.target.closest("[data-os-tooltip]");
+      if (!element)
+        return;
+      __privateMethod(this, _hideTooltip, hideTooltip_fn).call(this);
+    }, true);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && __privateGet(this, _currentElement)) {
+        __privateMethod(this, _hideTooltip, hideTooltip_fn).call(this);
+      }
+    });
+  };
+  _showTooltip = new WeakSet();
+  showTooltip_fn = function(element) {
+    if (!__privateGet(this, _initialized3)) {
+      __privateGet(this, _logger23).warn("Cannot show tooltip: system not initialized");
+      return;
+    }
+    clearTimeout(__privateGet(this, _hideTimeout));
+    __privateSet(this, _currentElement, element);
+    const text = element.getAttribute("data-os-tooltip");
+    const position = element.getAttribute("data-os-tooltip-position") || "top";
+    __privateGet(this, _textContainer).textContent = text;
+    __privateGet(this, _tooltip).style.display = "block";
+    computePosition2(element, __privateGet(this, _tooltip), {
+      placement: position,
+      middleware: [
+        offset2(8),
+        flip2({
+          fallbackPlacements: ["top", "right", "bottom", "left"]
+        }),
+        shift2({ padding: 5 }),
+        arrow2({ element: __privateGet(this, _arrowElement) })
+      ]
+    }).then(({ x, y, placement, middlewareData }) => {
+      Object.assign(__privateGet(this, _tooltip).style, {
+        left: `${x}px`,
+        top: `${y}px`
+      });
+      const { x: arrowX, y: arrowY } = middlewareData.arrow;
+      const staticSide = {
+        top: "bottom",
+        right: "left",
+        bottom: "top",
+        left: "right"
+      }[placement.split("-")[0]];
+      Object.assign(__privateGet(this, _arrowElement).style, {
+        left: arrowX != null ? `${arrowX}px` : "",
+        top: arrowY != null ? `${arrowY}px` : "",
+        right: "",
+        bottom: "",
+        [staticSide]: "-4px"
+      });
+      requestAnimationFrame(() => {
+        __privateGet(this, _tooltip).classList.add("checkout-tooltip-visible");
+      });
+    });
+  };
+  _hideTooltip = new WeakSet();
+  hideTooltip_fn = function() {
+    if (!__privateGet(this, _tooltip))
+      return;
+    __privateGet(this, _tooltip).classList.remove("checkout-tooltip-visible");
+    __privateSet(this, _hideTimeout, setTimeout(() => {
+      if (!__privateGet(this, _tooltip).classList.contains("checkout-tooltip-visible")) {
+        __privateGet(this, _tooltip).style.display = "none";
+      }
+      __privateSet(this, _currentElement, null);
+    }, 200));
+  };
+
   // src/utils/PBAccordion.js
   var PBAccordion = class {
     constructor() {
@@ -7400,7 +8930,7 @@ var TwentyNineNext = (() => {
         items.forEach((item) => {
           const content = item.querySelector('[pb-accordion-element="content"]');
           const trigger = item.querySelector('[pb-accordion-element="trigger"]');
-          const arrow = item.querySelector('[pb-accordion-element="arrow"]');
+          const arrow3 = item.querySelector('[pb-accordion-element="arrow"]');
           const plus = item.querySelector('[pb-accordion-element="plus"]');
           if (content) {
             content.style.maxHeight = "0";
@@ -7412,8 +8942,8 @@ var TwentyNineNext = (() => {
             trigger.setAttribute("aria-expanded", "false");
           item.classList.remove("is-active-accordion");
           content?.classList.remove("is-active-accordion");
-          if (arrow)
-            arrow.classList.remove("is-active-accordion");
+          if (arrow3)
+            arrow3.classList.remove("is-active-accordion");
           if (plus)
             plus.classList.remove("is-active-accordion");
         });
@@ -7456,7 +8986,7 @@ var TwentyNineNext = (() => {
     openAccordion(item) {
       const trigger = item.querySelector('[pb-accordion-element="trigger"]');
       const content = item.querySelector('[pb-accordion-element="content"]');
-      const arrow = item.querySelector('[pb-accordion-element="arrow"]');
+      const arrow3 = item.querySelector('[pb-accordion-element="arrow"]');
       const plus = item.querySelector('[pb-accordion-element="plus"]');
       content.style.visibility = "visible";
       content.style.display = "block";
@@ -7468,8 +8998,8 @@ var TwentyNineNext = (() => {
         trigger.setAttribute("aria-expanded", "true");
         item.classList.add("is-active-accordion");
         content.classList.add("is-active-accordion");
-        if (arrow)
-          arrow.classList.add("is-active-accordion");
+        if (arrow3)
+          arrow3.classList.add("is-active-accordion");
         if (plus)
           plus.classList.add("is-active-accordion");
       });
@@ -7482,7 +9012,7 @@ var TwentyNineNext = (() => {
     closeAccordion(item) {
       const trigger = item.querySelector('[pb-accordion-element="trigger"]');
       const content = item.querySelector('[pb-accordion-element="content"]');
-      const arrow = item.querySelector('[pb-accordion-element="arrow"]');
+      const arrow3 = item.querySelector('[pb-accordion-element="arrow"]');
       const plus = item.querySelector('[pb-accordion-element="plus"]');
       content.style.maxHeight = `${content.scrollHeight}px`;
       content.style.display = "block";
@@ -7493,8 +9023,8 @@ var TwentyNineNext = (() => {
         trigger.setAttribute("aria-expanded", "false");
         item.classList.remove("is-active-accordion");
         content.classList.remove("is-active-accordion");
-        if (arrow)
-          arrow.classList.remove("is-active-accordion");
+        if (arrow3)
+          arrow3.classList.remove("is-active-accordion");
         if (plus)
           plus.classList.remove("is-active-accordion");
       });
@@ -7849,6 +9379,7 @@ var TwentyNineNext = (() => {
     this.timer = new TimerManager(this);
     this.display = new DisplayManager(this);
     this.eventManager = new EventManager(this);
+    this.tooltip = new TooltipManager(this);
     if (__privateGet(this, _isCheckoutPage) || document.querySelector('[data-os-cart="line-display"]') || document.querySelector('[os-cart="checkout-summary"]') || document.querySelector('[data-os-cart-summary="grand-total"]')) {
       this.coreLogger.info("Cart display elements detected, initializing CartDisplayManager");
       this.cartDisplay = new CartDisplayManager(this);
