@@ -228,6 +228,41 @@ export class ApiClient {
     return this.#request(`orders/${orderRef}/`);
   }
 
+  /**
+   * Add an upsell to an existing order
+   * @param {string} orderRef - Order reference ID
+   * @param {Object} upsellData - The upsell data including package_id and quantity
+   * @returns {Promise<Object>} The updated order
+   */
+  async createOrderUpsell(orderRef, upsellData) {
+    if (!orderRef) throw new Error('Order reference is required');
+    this.#logger.debug(`Adding upsell to order ref: ${orderRef}`, upsellData);
+    
+    // Format the upsell data properly
+    const formattedData = {
+      lines: Array.isArray(upsellData.lines) ? upsellData.lines : [
+        {
+          package_id: upsellData.package_id,
+          quantity: upsellData.quantity || 1
+        }
+      ]
+    };
+    
+    // Add payment detail if provided
+    if (upsellData.payment_detail) {
+      formattedData.payment_detail = upsellData.payment_detail;
+    }
+    
+    try {
+      const response = await this.#request(`orders/${orderRef}/upsells/`, 'POST', formattedData);
+      this.#logger.info('Upsell added successfully', response);
+      return response;
+    } catch (error) {
+      this.#logger.error('Error adding upsell to order', error);
+      throw error;
+    }
+  }
+
   async processPayment(orderData, paymentMethod) {
     this.#logger.debug(`Processing ${paymentMethod} payment for order`);
 
