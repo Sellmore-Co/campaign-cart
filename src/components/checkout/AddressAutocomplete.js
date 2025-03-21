@@ -2,9 +2,12 @@ export class AddressAutocomplete {
     #logger;
     #fieldsShown = false;
     #elements;
+    #enableAutocomplete;
   
-    constructor(logger) {
+    constructor(logger, options = {}) {
       this.#logger = logger;
+      this.#enableAutocomplete = options.enableGoogleMapsAutocomplete !== false;
+      
       this.#elements = {
         shipping: {
           address: document.querySelector('[os-checkout-field="address1"]'),
@@ -23,13 +26,20 @@ export class AddressAutocomplete {
         locations: document.querySelectorAll('[data-os-component="location"]'),
       };
   
-      this.#logger.info('AddressAutocomplete initialized');
+      this.#logger.info(`AddressAutocomplete initialized (autocomplete ${this.#enableAutocomplete ? 'enabled' : 'disabled'})`);
       this.#hideLocationFields();
       this.#init();
     }
   
     async #init() {
       this.#setupAutofillDetection();
+      
+      // Skip Google Maps initialization if autocomplete is disabled
+      if (!this.#enableAutocomplete) {
+        this.#logger.debug('Google Maps autocomplete disabled, using basic field listeners');
+        return this.#setupBasicFieldListeners();
+      }
+      
       await this.#initAutocompleteWithRetry();
     }
   
@@ -52,6 +62,11 @@ export class AddressAutocomplete {
     }
   
     async #initAutocompleteWithRetry(attempt = 0) {
+      // Skip if autocomplete is disabled
+      if (!this.#enableAutocomplete) {
+        return this.#setupBasicFieldListeners();
+      }
+      
       if (this.#isGoogleMapsAvailable()) {
         this.#logger.debug('Google Maps API available');
         return this.#initializeAutocomplete();

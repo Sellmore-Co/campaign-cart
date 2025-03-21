@@ -5,6 +5,7 @@
  * - Toggle between using shipping address or a different billing address
  * - Copying shipping address values to billing fields
  * - Showing/hiding the billing form based on user selection
+ * - Showing/hiding the billing location fields when address is entered
  */
 
 export class BillingAddressHandler {
@@ -27,6 +28,8 @@ export class BillingAddressHandler {
   };
   #isTransitioning = false;
   #lastState = null;
+  #billingLocationComponent = null;
+  #billingAddress1Field = null;
 
   constructor(app) {
     this.#app = app;
@@ -63,6 +66,12 @@ export class BillingAddressHandler {
       
       this.#billingFormContainer = document.querySelector('[os-checkout-element="different-billing-address"]');
       
+      // Find billing location component (city, state, zip)
+      this.#billingLocationComponent = document.querySelector('[data-os-component="billing-location"]');
+      
+      // Find billing address field for input monitoring
+      this.#billingAddress1Field = document.querySelector('[os-checkout-field="billing-address1"]');
+      
       if (!this.#sameAsShippingCheckbox) {
         this.#logWarn('Same as shipping checkbox not found. Tried multiple selectors including [name="use_shipping_address"] and #use_shipping_address');
         
@@ -96,6 +105,9 @@ export class BillingAddressHandler {
       // Set initial state based on checkbox
       this.#lastState = this.#sameAsShippingCheckbox.checked;
       this.#toggleBillingForm(this.#lastState, false);
+      
+      // Set up billing location visibility
+      this.#setupBillingLocationVisibility();
       
       // Add event listeners
       this.#setupEventListeners();
@@ -137,6 +149,24 @@ export class BillingAddressHandler {
     } else {
       console.error(message, error);
     }
+  }
+
+  #setupBillingLocationVisibility() {
+    // If we don't have the billing location component or address field, we can't proceed
+    if (!this.#billingLocationComponent) {
+      this.#logWarn('Billing location component not found with selector [data-os-component="billing-location"]');
+      return;
+    }
+    
+    if (!this.#billingAddress1Field) {
+      this.#logWarn('Billing address1 field not found with selector [os-checkout-field="billing-address1"]');
+      return;
+    }
+    
+    // Set initial state - hide the location component
+    this.#billingLocationComponent.classList.add('cc-hidden');
+    
+    this.#logDebug('Billing location component initially hidden');
   }
 
   #cacheFieldElements() {
@@ -183,6 +213,14 @@ export class BillingAddressHandler {
       }
     });
     
+    // Listen for address autocomplete showing location fields
+    document.addEventListener('location-fields-shown', () => {
+      if (this.#billingLocationComponent) {
+        this.#showBillingLocationComponent();
+        this.#logDebug('Location fields shown by AddressAutocomplete, showing billing location component as well');
+      }
+    });
+    
     // Listen for changes to shipping fields to update billing if "same as shipping" is checked
     Object.entries(this.#shippingFields).forEach(([fieldName, element]) => {
       element.addEventListener('change', () => {
@@ -199,6 +237,58 @@ export class BillingAddressHandler {
         }
       });
     });
+    
+    // Set up input handler for billing address1 field
+    if (this.#billingAddress1Field && this.#billingLocationComponent) {
+      // Show location component when user types in address
+      this.#billingAddress1Field.addEventListener('input', () => {
+        // Show location component after minimum characters
+        if (this.#billingAddress1Field.value.length >= 3) {
+          this.#showBillingLocationComponent();
+        }
+      });
+      
+      // Set up mutation observer for autocomplete
+      this.#setupBillingAddressAutocompleteDetection();
+    }
+  }
+
+  #setupBillingAddressAutocompleteDetection() {
+    // Create mutation observer to detect when autocomplete fills the address field
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && 
+            (mutation.attributeName === 'value' || mutation.attributeName === 'autocomplete-value')) {
+          if (this.#billingAddress1Field.value.length > 0) {
+            this.#showBillingLocationComponent();
+            this.#logDebug('Autocomplete detected on billing address field');
+          }
+        }
+      });
+    });
+    
+    // Observe changes to the value attribute of the billing address field
+    observer.observe(this.#billingAddress1Field, { 
+      attributes: true, 
+      attributeFilter: ['value', 'autocomplete-value'] 
+    });
+    
+    // Also listen for Google Places API autocomplete events
+    document.addEventListener('google-places-autocomplete-filled', (e) => {
+      if (e.detail && e.detail.field === 'billing-address1') {
+        this.#showBillingLocationComponent();
+        this.#logDebug('Google Places autocomplete detected on billing address field');
+      }
+    });
+    
+    this.#logDebug('Billing address autocomplete detection set up');
+  }
+
+  #showBillingLocationComponent() {
+    if (this.#billingLocationComponent && this.#billingLocationComponent.classList.contains('cc-hidden')) {
+      this.#billingLocationComponent.classList.remove('cc-hidden');
+      this.#logDebug('Billing location component shown');
+    }
   }
 
   #toggleBillingForm(isChecked, animate = true) {
@@ -295,6 +385,13 @@ export class BillingAddressHandler {
           billingElement.dispatchEvent(new Event('change', { bubbles: true }));
         }
       });
+      
+      // If address1 is copied and has value, show location component
+      if (this.#billingFields['billing-address1'] && 
+          this.#billingFields['billing-address1'].value && 
+          this.#billingFields['billing-address1'].value.length > 0) {
+        this.#showBillingLocationComponent();
+      }
       
       this.#logDebug('Copied shipping address to billing address');
     } catch (error) {

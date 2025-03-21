@@ -1,7 +1,7 @@
 /**
  * PaymentHandler - Handles payment processing for checkout
  */
-import { SpreedlyManager } from '../../utils/SpreedlyManager.js';
+import { SpreedlyManager } from '../../managers/SpreedlyManager.js';
 import { FormValidator } from './FormValidator.js';
 import { KonamiCodeHandler } from '../../utils/KonamiCodeHandler.js';
 
@@ -173,7 +173,10 @@ export class PaymentHandler {
         return;
       }
 
-      this.#spreedlyManager = new SpreedlyManager(environmentKey, { debug: this.#debugMode });
+      this.#spreedlyManager = new SpreedlyManager(environmentKey, { 
+        debug: this.#debugMode,
+        app: this.#app
+      });
       this.#setupSpreedlyCallbacks();
       this.#initializeExpirationFields();
     } catch (error) {

@@ -56,7 +56,7 @@ var TwentyNineNext = (() => {
   __export(ReceiptPage_exports, {
     ReceiptPage: () => ReceiptPage
   });
-  var _apiClient3, _logger25, _app19, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError2, showError_fn2, ReceiptPage;
+  var _apiClient3, _logger25, _app20, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError2, showError_fn2, ReceiptPage;
   var init_ReceiptPage = __esm({
     "src/components/checkout/ReceiptPage.js"() {
       "use strict";
@@ -138,7 +138,7 @@ var TwentyNineNext = (() => {
           __privateAdd(this, _showError2);
           __privateAdd(this, _apiClient3, void 0);
           __privateAdd(this, _logger25, void 0);
-          __privateAdd(this, _app19, void 0);
+          __privateAdd(this, _app20, void 0);
           __privateAdd(this, _orderData, null);
           __privateAdd(this, _orderFetched, false);
           // Flag to prevent duplicate API calls
@@ -147,7 +147,7 @@ var TwentyNineNext = (() => {
           __privateAdd(this, _debugMode5, false);
           __privateSet(this, _apiClient3, apiClient);
           __privateSet(this, _logger25, logger);
-          __privateSet(this, _app19, app);
+          __privateSet(this, _app20, app);
           const debugMeta = document.querySelector('meta[name="os-debug"]');
           __privateSet(this, _debugMode5, debugMeta?.getAttribute("content") === "true");
           __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "info", "ReceiptPage component created");
@@ -182,7 +182,7 @@ var TwentyNineNext = (() => {
       };
       _apiClient3 = new WeakMap();
       _logger25 = new WeakMap();
-      _app19 = new WeakMap();
+      _app20 = new WeakMap();
       _orderData = new WeakMap();
       _orderFetched = new WeakMap();
       _initialized4 = new WeakMap();
@@ -1444,16 +1444,21 @@ var TwentyNineNext = (() => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  // src/utils/SpreedlyManager.js
-  var _environmentKey, _debugMode2, _isReady, _onReadyCallback, _onErrorCallback, _onPaymentMethodCallback, _onValidationCallback, _initialize, initialize_fn, _loadScript, loadScript_fn, _setupSpreedly, setupSpreedly_fn, _prepareHtmlStructure, prepareHtmlStructure_fn, _setupEventListeners, setupEventListeners_fn, _showErrors, showErrors_fn, _clearFieldError, clearFieldError_fn, _log, log_fn;
+  // src/managers/SpreedlyManager.js
+  var _environmentKey, _debugMode2, _isReady, _onReadyCallback, _onErrorCallback, _onPaymentMethodCallback, _onValidationCallback, _config, _app2, _loadConfig, loadConfig_fn, _initialize, initialize_fn, _loadScript, loadScript_fn, _setupSpreedly, setupSpreedly_fn, _applySpreedlyConfig, applySpreedlyConfig_fn, _prepareHtmlStructure, prepareHtmlStructure_fn, _setupEventListeners, setupEventListeners_fn, _showErrors, showErrors_fn, _clearFieldError, clearFieldError_fn, _log, log_fn;
   var SpreedlyManager = class {
     /**
      * Create a new SpreedlyManager
      * @param {string} environmentKey - The Spreedly environment key
      * @param {Object} options - Configuration options
      * @param {boolean} options.debug - Enable debug mode
+     * @param {Object} options.app - The app instance for accessing global config
      */
     constructor(environmentKey, options = {}) {
+      /**
+       * Load Spreedly configuration from global config
+       */
+      __privateAdd(this, _loadConfig);
       /**
        * Initialize Spreedly
        * Load the script if needed and set up the iframe fields
@@ -1469,8 +1474,12 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _setupSpreedly);
       /**
+       * Apply configuration to Spreedly iframe fields
+       */
+      __privateAdd(this, _applySpreedlyConfig);
+      /**
        * Prepare the HTML structure for the iframe fields
-       * This creates the containers for the iframe fields and hides the original inputs
+       * This uses the existing inputs rather than creating new ones
        */
       __privateAdd(this, _prepareHtmlStructure);
       /**
@@ -1501,8 +1510,12 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _onErrorCallback, null);
       __privateAdd(this, _onPaymentMethodCallback, null);
       __privateAdd(this, _onValidationCallback, null);
+      __privateAdd(this, _config, null);
+      __privateAdd(this, _app2, null);
       __privateSet(this, _environmentKey, environmentKey);
       __privateSet(this, _debugMode2, options.debug || false);
+      __privateSet(this, _app2, options.app || null);
+      __privateMethod(this, _loadConfig, loadConfig_fn).call(this);
       if (!environmentKey) {
         __privateMethod(this, _log, log_fn).call(this, "error", "No environment key provided to SpreedlyManager");
         return;
@@ -1619,6 +1632,89 @@ var TwentyNineNext = (() => {
   _onErrorCallback = new WeakMap();
   _onPaymentMethodCallback = new WeakMap();
   _onValidationCallback = new WeakMap();
+  _config = new WeakMap();
+  _app2 = new WeakMap();
+  _loadConfig = new WeakSet();
+  loadConfig_fn = function() {
+    __privateSet(this, _config, {
+      fieldType: {
+        number: "text",
+        cvv: "text"
+      },
+      numberFormat: "prettyFormat",
+      placeholder: {
+        number: "Credit Card Number",
+        cvv: "CVV *"
+      },
+      labels: {
+        number: "Card Number",
+        cvv: "CVV"
+      },
+      titles: {
+        number: "Credit card number",
+        cvv: "Card verification value"
+      },
+      styling: {
+        number: 'color: #212529; font-size: .925rem; font-weight: 400; width: 100%; height:100%; font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";',
+        cvv: 'color: #212529; font-size: .925rem; font-weight: 400; width: 100%; height: 100%; font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";'
+      },
+      placeholder_styling: "",
+      required: {
+        number: true,
+        cvv: true
+      },
+      autocomplete: true
+    });
+    if (window.osConfig && window.osConfig.spreedlyConfig) {
+      __privateMethod(this, _log, log_fn).call(this, "debug", "Found global Spreedly configuration", window.osConfig.spreedlyConfig);
+      if (window.osConfig.spreedlyConfig.fieldType) {
+        __privateGet(this, _config).fieldType = {
+          ...__privateGet(this, _config).fieldType,
+          ...window.osConfig.spreedlyConfig.fieldType
+        };
+      }
+      if (window.osConfig.spreedlyConfig.numberFormat) {
+        __privateGet(this, _config).numberFormat = window.osConfig.spreedlyConfig.numberFormat;
+      }
+      if (window.osConfig.spreedlyConfig.placeholder) {
+        __privateGet(this, _config).placeholder = {
+          ...__privateGet(this, _config).placeholder,
+          ...window.osConfig.spreedlyConfig.placeholder
+        };
+      }
+      if (window.osConfig.spreedlyConfig.labels) {
+        __privateGet(this, _config).labels = {
+          ...__privateGet(this, _config).labels,
+          ...window.osConfig.spreedlyConfig.labels
+        };
+      }
+      if (window.osConfig.spreedlyConfig.titles) {
+        __privateGet(this, _config).titles = {
+          ...__privateGet(this, _config).titles,
+          ...window.osConfig.spreedlyConfig.titles
+        };
+      }
+      if (window.osConfig.spreedlyConfig.styling) {
+        __privateGet(this, _config).styling = {
+          ...__privateGet(this, _config).styling,
+          ...window.osConfig.spreedlyConfig.styling
+        };
+      }
+      if (window.osConfig.spreedlyConfig.placeholder_styling) {
+        __privateGet(this, _config).placeholder_styling = window.osConfig.spreedlyConfig.placeholder_styling;
+      }
+      if (window.osConfig.spreedlyConfig.required) {
+        __privateGet(this, _config).required = {
+          ...__privateGet(this, _config).required,
+          ...window.osConfig.spreedlyConfig.required
+        };
+      }
+      if (window.osConfig.spreedlyConfig.hasOwnProperty("autocomplete")) {
+        __privateGet(this, _config).autocomplete = window.osConfig.spreedlyConfig.autocomplete;
+      }
+    }
+    __privateMethod(this, _log, log_fn).call(this, "debug", "Spreedly configuration initialized", __privateGet(this, _config));
+  };
   _initialize = new WeakSet();
   initialize_fn = function() {
     if (typeof Spreedly === "undefined") {
@@ -1657,15 +1753,9 @@ var TwentyNineNext = (() => {
         "numberEl": "spreedly-number",
         "cvvEl": "spreedly-cvv"
       });
-      const style = 'color: #212529; font-size: 1rem; line-height: 1.5; font-weight: 400;       width: calc(100% - 20px); height: calc(100% - 2px); position: absolute;       font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";';
       Spreedly.on("ready", () => {
         __privateMethod(this, _log, log_fn).call(this, "debug", "Spreedly iframe ready");
-        Spreedly.setFieldType("text");
-        Spreedly.setPlaceholder("cvv", "CVV *");
-        Spreedly.setPlaceholder("number", "Credit Card Number");
-        Spreedly.setNumberFormat("prettyFormat");
-        Spreedly.setStyle("cvv", style);
-        Spreedly.setStyle("number", style);
+        __privateMethod(this, _applySpreedlyConfig, applySpreedlyConfig_fn).call(this);
         __privateSet(this, _isReady, true);
         if (__privateGet(this, _onReadyCallback)) {
           __privateGet(this, _onReadyCallback).call(this);
@@ -1680,6 +1770,38 @@ var TwentyNineNext = (() => {
       }
     }
   };
+  _applySpreedlyConfig = new WeakSet();
+  applySpreedlyConfig_fn = function() {
+    try {
+      __privateMethod(this, _log, log_fn).call(this, "debug", "Applying Spreedly configuration...");
+      Spreedly.setFieldType("number", __privateGet(this, _config).fieldType.number);
+      Spreedly.setFieldType("cvv", __privateGet(this, _config).fieldType.cvv);
+      Spreedly.setNumberFormat(__privateGet(this, _config).numberFormat);
+      Spreedly.setPlaceholder("number", __privateGet(this, _config).placeholder.number);
+      Spreedly.setPlaceholder("cvv", __privateGet(this, _config).placeholder.cvv);
+      Spreedly.setLabel("number", __privateGet(this, _config).labels.number);
+      Spreedly.setLabel("cvv", __privateGet(this, _config).labels.cvv);
+      Spreedly.setTitle("number", __privateGet(this, _config).titles.number);
+      Spreedly.setTitle("cvv", __privateGet(this, _config).titles.cvv);
+      Spreedly.setStyle("number", __privateGet(this, _config).styling.number);
+      Spreedly.setStyle("cvv", __privateGet(this, _config).styling.cvv);
+      if (__privateGet(this, _config).placeholder_styling) {
+        Spreedly.setStyle("placeholder", __privateGet(this, _config).placeholder_styling);
+      }
+      if (__privateGet(this, _config).required.number) {
+        Spreedly.setRequiredAttribute("number");
+      }
+      if (__privateGet(this, _config).required.cvv) {
+        Spreedly.setRequiredAttribute("cvv");
+      }
+      if (!__privateGet(this, _config).autocomplete) {
+        Spreedly.toggleAutoComplete();
+      }
+      __privateMethod(this, _log, log_fn).call(this, "debug", "Spreedly configuration applied");
+    } catch (error) {
+      __privateMethod(this, _log, log_fn).call(this, "error", "Error applying Spreedly configuration", error);
+    }
+  };
   _prepareHtmlStructure = new WeakSet();
   prepareHtmlStructure_fn = function() {
     try {
@@ -1690,31 +1812,11 @@ var TwentyNineNext = (() => {
         __privateMethod(this, _log, log_fn).call(this, "error", "Could not find credit card fields");
         return;
       }
-      const numberContainer = numberField.closest(".frm-flds");
-      const cvvContainer = cvvField.closest(".frm-flds");
-      if (numberContainer && cvvContainer) {
-        numberField.style.display = "none";
-        cvvField.style.display = "none";
-        const numberDiv = document.createElement("div");
-        numberDiv.id = "spreedly-number";
-        numberDiv.className = "input-flds spreedly-field";
-        numberContainer.appendChild(numberDiv);
-        const cvvDiv = document.createElement("div");
-        cvvDiv.id = "spreedly-cvv";
-        cvvDiv.className = "input-flds spreedly-field";
-        cvvContainer.appendChild(cvvDiv);
-        const styleSheet = document.createElement("style");
-        styleSheet.textContent = `
-          .spreedly-field {
-            position: relative;
-            overflow: hidden;
-          }
-        `;
-        document.head.appendChild(styleSheet);
-      } else {
-        __privateMethod(this, _log, log_fn).call(this, "error", "Could not find credit card field containers");
-      }
-      __privateMethod(this, _log, log_fn).call(this, "debug", "HTML structure prepared for Spreedly iframe fields");
+      numberField.id = "spreedly-number";
+      cvvField.id = "spreedly-cvv";
+      numberField.setAttribute("data-spreedly", "number");
+      cvvField.setAttribute("data-spreedly", "cvv");
+      __privateMethod(this, _log, log_fn).call(this, "debug", "HTML structure prepared for Spreedly iframe fields - using existing DOM elements");
     } catch (error) {
       __privateMethod(this, _log, log_fn).call(this, "error", "Error preparing HTML structure for Spreedly iframe fields", error);
     }
@@ -1748,19 +1850,19 @@ var TwentyNineNext = (() => {
   showErrors_fn = function(errors) {
     errors.forEach((error) => {
       const fieldType = error.attribute;
-      let container = null;
+      let field = null;
       if (fieldType === "number" || fieldType === "card_number") {
-        container = document.getElementById("spreedly-number");
+        field = document.getElementById("spreedly-number");
       } else if (fieldType === "cvv") {
-        container = document.getElementById("spreedly-cvv");
+        field = document.getElementById("spreedly-cvv");
       } else if (fieldType === "month" || fieldType === "year") {
-        container = document.querySelector(`[os-checkout-field="cc-${fieldType}"]`) || document.querySelector(`[os-checkout-field="exp-${fieldType}"]`) || document.querySelector(`#credit_card_exp_${fieldType}`);
+        field = document.querySelector(`[os-checkout-field="cc-${fieldType}"]`) || document.querySelector(`[os-checkout-field="exp-${fieldType}"]`) || document.querySelector(`#credit_card_exp_${fieldType}`);
       } else if (fieldType === "full_name" || fieldType === "first_name" || fieldType === "last_name") {
-        container = document.querySelector('[os-checkout-field="cc-name"]');
+        field = document.querySelector('[os-checkout-field="cc-name"]');
       }
-      if (container) {
-        container.classList.add("error");
-        const wrapper = container.closest(".frm-flds") || container.parentElement;
+      if (field) {
+        field.classList.add("error");
+        const wrapper = field.closest(".frm-flds") || field.parentElement;
         let errorElement = wrapper.querySelector(".pb-input-error");
         if (!errorElement) {
           errorElement = document.createElement("div");
@@ -1776,15 +1878,15 @@ var TwentyNineNext = (() => {
   };
   _clearFieldError = new WeakSet();
   clearFieldError_fn = function(fieldType) {
-    let container = null;
+    let field = null;
     if (fieldType === "number" || fieldType === "card_number") {
-      container = document.getElementById("spreedly-number");
+      field = document.getElementById("spreedly-number");
     } else if (fieldType === "cvv") {
-      container = document.getElementById("spreedly-cvv");
+      field = document.getElementById("spreedly-cvv");
     }
-    if (container) {
-      container.classList.remove("error");
-      const wrapper = container.closest(".frm-flds") || container.parentElement;
+    if (field) {
+      field.classList.remove("error");
+      const wrapper = field.closest(".frm-flds") || field.parentElement;
       const errorElement = wrapper.querySelector(".pb-input-error");
       if (errorElement) {
         errorElement.remove();
@@ -2009,7 +2111,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/PaymentHandler.js
-  var _apiClient, _logger5, _app2, _form3, _spreedlyManager, _formValidator, _paymentMethod, _isProcessing, _debugMode3, _testCards, _getCheckoutForm, getCheckoutForm_fn, _setupFormPrevention, setupFormPrevention_fn, _preventFormSubmission, preventFormSubmission_fn, _convertSubmitButtons, convertSubmitButtons_fn, _setupCheckoutButton, setupCheckoutButton_fn, _safeLog2, safeLog_fn2, _initPaymentMethods, initPaymentMethods_fn, _setupPaymentMethodListeners, setupPaymentMethodListeners_fn, _initSpreedly, initSpreedly_fn, _setupSpreedlyCallbacks, setupSpreedlyCallbacks_fn, _formatSpreedlyErrors, formatSpreedlyErrors_fn, _initializeExpirationFields, initializeExpirationFields_fn, _getExpirationElements, getExpirationElements_fn, _populateExpirationOptions, populateExpirationOptions_fn, _isTestMode, isTestMode_fn, _enforceFormPrevention, enforceFormPrevention_fn, _showProcessingState, showProcessingState_fn, _hideProcessingState, hideProcessingState_fn, _processCreditCard, processCreditCard_fn, _getCreditCardFields, getCreditCardFields_fn, _isDebugTestCardMode, isDebugTestCardMode_fn, _processTestCard, processTestCard_fn, _processPaypal, processPaypal_fn, _getPackageIdFromUrl, getPackageIdFromUrl_fn, _getOrderData, getOrderData_fn, _getAddressData, getAddressData_fn, _formatAddress, formatAddress_fn, _getShippingMethod, getShippingMethod_fn, _getCartLines, getCartLines_fn, _createOrder, createOrder_fn, _formatOrderData, formatOrderData_fn, _formatErrorMessage, formatErrorMessage_fn, _formatPaymentErrorMessage, formatPaymentErrorMessage_fn, _handlePaymentError, handlePaymentError_fn, _displayCreditCardError, displayCreditCardError_fn, _clearPaymentErrors, clearPaymentErrors_fn, _handleOrderSuccess, handleOrderSuccess_fn, _getRedirectUrl, getRedirectUrl_fn;
+  var _apiClient, _logger5, _app3, _form3, _spreedlyManager, _formValidator, _paymentMethod, _isProcessing, _debugMode3, _testCards, _getCheckoutForm, getCheckoutForm_fn, _setupFormPrevention, setupFormPrevention_fn, _preventFormSubmission, preventFormSubmission_fn, _convertSubmitButtons, convertSubmitButtons_fn, _setupCheckoutButton, setupCheckoutButton_fn, _safeLog2, safeLog_fn2, _initPaymentMethods, initPaymentMethods_fn, _setupPaymentMethodListeners, setupPaymentMethodListeners_fn, _initSpreedly, initSpreedly_fn, _setupSpreedlyCallbacks, setupSpreedlyCallbacks_fn, _formatSpreedlyErrors, formatSpreedlyErrors_fn, _initializeExpirationFields, initializeExpirationFields_fn, _getExpirationElements, getExpirationElements_fn, _populateExpirationOptions, populateExpirationOptions_fn, _isTestMode, isTestMode_fn, _enforceFormPrevention, enforceFormPrevention_fn, _showProcessingState, showProcessingState_fn, _hideProcessingState, hideProcessingState_fn, _processCreditCard, processCreditCard_fn, _getCreditCardFields, getCreditCardFields_fn, _isDebugTestCardMode, isDebugTestCardMode_fn, _processTestCard, processTestCard_fn, _processPaypal, processPaypal_fn, _getPackageIdFromUrl, getPackageIdFromUrl_fn, _getOrderData, getOrderData_fn, _getAddressData, getAddressData_fn, _formatAddress, formatAddress_fn, _getShippingMethod, getShippingMethod_fn, _getCartLines, getCartLines_fn, _createOrder, createOrder_fn, _formatOrderData, formatOrderData_fn, _formatErrorMessage, formatErrorMessage_fn, _formatPaymentErrorMessage, formatPaymentErrorMessage_fn, _handlePaymentError, handlePaymentError_fn, _displayCreditCardError, displayCreditCardError_fn, _clearPaymentErrors, clearPaymentErrors_fn, _handleOrderSuccess, handleOrderSuccess_fn, _getRedirectUrl, getRedirectUrl_fn;
   var PaymentHandler = class {
     constructor(apiClient, logger, app) {
       __privateAdd(this, _getCheckoutForm);
@@ -2052,7 +2154,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _getRedirectUrl);
       __privateAdd(this, _apiClient, void 0);
       __privateAdd(this, _logger5, void 0);
-      __privateAdd(this, _app2, void 0);
+      __privateAdd(this, _app3, void 0);
       __privateAdd(this, _form3, void 0);
       __privateAdd(this, _spreedlyManager, null);
       __privateAdd(this, _formValidator, null);
@@ -2067,7 +2169,7 @@ var TwentyNineNext = (() => {
       });
       __privateSet(this, _apiClient, apiClient);
       __privateSet(this, _logger5, logger);
-      __privateSet(this, _app2, app);
+      __privateSet(this, _app3, app);
       __privateSet(this, _form3, __privateMethod(this, _getCheckoutForm, getCheckoutForm_fn).call(this));
       if (!__privateGet(this, _form3))
         return;
@@ -2108,7 +2210,7 @@ var TwentyNineNext = (() => {
         if (isKonamiMode || __privateMethod(this, _isTestMode, isTestMode_fn).call(this)) {
           __privateMethod(this, _showProcessingState, showProcessingState_fn).call(this);
           const orderData2 = isKonamiMode ? KonamiCodeHandler.getTestOrderData(
-            __privateGet(this, _app2)?.state?.getState(),
+            __privateGet(this, _app3)?.state?.getState(),
             __privateMethod(this, _getPackageIdFromUrl, getPackageIdFromUrl_fn).bind(this),
             __privateMethod(this, _getCartLines, getCartLines_fn).bind(this)
           ) : __privateMethod(this, _getOrderData, getOrderData_fn).call(this);
@@ -2155,7 +2257,7 @@ var TwentyNineNext = (() => {
   };
   _apiClient = new WeakMap();
   _logger5 = new WeakMap();
-  _app2 = new WeakMap();
+  _app3 = new WeakMap();
   _form3 = new WeakMap();
   _spreedlyManager = new WeakMap();
   _formValidator = new WeakMap();
@@ -2280,7 +2382,10 @@ var TwentyNineNext = (() => {
         __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "warn", "Spreedly environment key not found");
         return;
       }
-      __privateSet(this, _spreedlyManager, new SpreedlyManager(environmentKey, { debug: __privateGet(this, _debugMode3) }));
+      __privateSet(this, _spreedlyManager, new SpreedlyManager(environmentKey, {
+        debug: __privateGet(this, _debugMode3),
+        app: __privateGet(this, _app3)
+      }));
       __privateMethod(this, _setupSpreedlyCallbacks, setupSpreedlyCallbacks_fn).call(this);
       __privateMethod(this, _initializeExpirationFields, initializeExpirationFields_fn).call(this);
     } catch (error) {
@@ -2467,11 +2572,11 @@ var TwentyNineNext = (() => {
       const billingData = __privateGet(this, _formValidator).isSameAsShipping() ? null : __privateMethod(this, _getAddressData, getAddressData_fn).call(this, ["billing-fname", "billing-lname", "billing-address1", "billing-address2", "billing-city", "billing-province", "billing-postal", "billing-country", "billing-phone"]);
       const shippingAddress = __privateMethod(this, _formatAddress, formatAddress_fn).call(this, shippingData);
       const billingAddress = billingData ? __privateMethod(this, _formatAddress, formatAddress_fn).call(this, billingData) : { ...shippingAddress };
-      if (!__privateGet(this, _app2)?.state) {
+      if (!__privateGet(this, _app3)?.state) {
         __privateMethod(this, _handlePaymentError, handlePaymentError_fn).call(this, "Cart data missing");
         return null;
       }
-      const state = __privateGet(this, _app2).state.getState();
+      const state = __privateGet(this, _app3).state.getState();
       if (!state.cart?.items?.length) {
         __privateMethod(this, _handlePaymentError, handlePaymentError_fn).call(this, "Cart is empty");
         return null;
@@ -2685,7 +2790,7 @@ var TwentyNineNext = (() => {
   _handleOrderSuccess = new WeakSet();
   handleOrderSuccess_fn = function(orderData) {
     sessionStorage.setItem("order_reference", orderData.ref_id);
-    __privateGet(this, _app2)?.triggerEvent?.("order.created", orderData);
+    __privateGet(this, _app3)?.triggerEvent?.("order.created", orderData);
     const redirectUrl = __privateMethod(this, _getRedirectUrl, getRedirectUrl_fn).call(this, orderData);
     window.location.href = redirectUrl;
   };
@@ -2698,7 +2803,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/BillingAddressHandler.js
-  var _app3, _logger6, _sameAsShippingCheckbox, _billingFormContainer, _shippingFields, _billingFields, _fieldMap, _isTransitioning, _lastState, _init2, init_fn2, _logDebug, logDebug_fn, _logInfo, logInfo_fn, _logWarn, logWarn_fn, _logError, logError_fn, _cacheFieldElements, cacheFieldElements_fn, _setupEventListeners2, setupEventListeners_fn2, _toggleBillingForm, toggleBillingForm_fn, _updateBillingFormVisibility, updateBillingFormVisibility_fn;
+  var _app4, _logger6, _sameAsShippingCheckbox, _billingFormContainer, _shippingFields, _billingFields, _fieldMap, _isTransitioning, _lastState, _billingLocationComponent, _billingAddress1Field, _init2, init_fn2, _logDebug, logDebug_fn, _logInfo, logInfo_fn, _logWarn, logWarn_fn, _logError, logError_fn, _setupBillingLocationVisibility, setupBillingLocationVisibility_fn, _cacheFieldElements, cacheFieldElements_fn, _setupEventListeners2, setupEventListeners_fn2, _setupBillingAddressAutocompleteDetection, setupBillingAddressAutocompleteDetection_fn, _showBillingLocationComponent, showBillingLocationComponent_fn, _toggleBillingForm, toggleBillingForm_fn, _updateBillingFormVisibility, updateBillingFormVisibility_fn;
   var BillingAddressHandler = class {
     constructor(app) {
       __privateAdd(this, _init2);
@@ -2707,12 +2812,15 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _logInfo);
       __privateAdd(this, _logWarn);
       __privateAdd(this, _logError);
+      __privateAdd(this, _setupBillingLocationVisibility);
       __privateAdd(this, _cacheFieldElements);
       __privateAdd(this, _setupEventListeners2);
+      __privateAdd(this, _setupBillingAddressAutocompleteDetection);
+      __privateAdd(this, _showBillingLocationComponent);
       __privateAdd(this, _toggleBillingForm);
       // Deprecated method - use #toggleBillingForm instead
       __privateAdd(this, _updateBillingFormVisibility);
-      __privateAdd(this, _app3, void 0);
+      __privateAdd(this, _app4, void 0);
       __privateAdd(this, _logger6, void 0);
       __privateAdd(this, _sameAsShippingCheckbox, void 0);
       __privateAdd(this, _billingFormContainer, void 0);
@@ -2731,7 +2839,9 @@ var TwentyNineNext = (() => {
       });
       __privateAdd(this, _isTransitioning, false);
       __privateAdd(this, _lastState, null);
-      __privateSet(this, _app3, app);
+      __privateAdd(this, _billingLocationComponent, null);
+      __privateAdd(this, _billingAddress1Field, null);
+      __privateSet(this, _app4, app);
       if (app?.logger) {
         if (typeof app.logger.debug === "function" && typeof app.logger.info === "function" && typeof app.logger.warn === "function" && typeof app.logger.error === "function") {
           __privateSet(this, _logger6, app.logger);
@@ -2756,6 +2866,9 @@ var TwentyNineNext = (() => {
             billingElement.dispatchEvent(new Event("change", { bubbles: true }));
           }
         });
+        if (__privateGet(this, _billingFields)["billing-address1"] && __privateGet(this, _billingFields)["billing-address1"].value && __privateGet(this, _billingFields)["billing-address1"].value.length > 0) {
+          __privateMethod(this, _showBillingLocationComponent, showBillingLocationComponent_fn).call(this);
+        }
         __privateMethod(this, _logDebug, logDebug_fn).call(this, "Copied shipping address to billing address");
       } catch (error) {
         __privateMethod(this, _logError, logError_fn).call(this, "Error copying shipping to billing:", error);
@@ -2787,7 +2900,7 @@ var TwentyNineNext = (() => {
       return isSame;
     }
   };
-  _app3 = new WeakMap();
+  _app4 = new WeakMap();
   _logger6 = new WeakMap();
   _sameAsShippingCheckbox = new WeakMap();
   _billingFormContainer = new WeakMap();
@@ -2796,11 +2909,15 @@ var TwentyNineNext = (() => {
   _fieldMap = new WeakMap();
   _isTransitioning = new WeakMap();
   _lastState = new WeakMap();
+  _billingLocationComponent = new WeakMap();
+  _billingAddress1Field = new WeakMap();
   _init2 = new WeakSet();
   init_fn2 = function() {
     try {
       __privateSet(this, _sameAsShippingCheckbox, document.querySelector('[os-checkout-field="same-as-shipping"]') || document.querySelector('[name="use_shipping_address"]') || document.querySelector("#use_shipping_address"));
       __privateSet(this, _billingFormContainer, document.querySelector('[os-checkout-element="different-billing-address"]'));
+      __privateSet(this, _billingLocationComponent, document.querySelector('[data-os-component="billing-location"]'));
+      __privateSet(this, _billingAddress1Field, document.querySelector('[os-checkout-field="billing-address1"]'));
       if (!__privateGet(this, _sameAsShippingCheckbox)) {
         __privateMethod(this, _logWarn, logWarn_fn).call(this, 'Same as shipping checkbox not found. Tried multiple selectors including [name="use_shipping_address"] and #use_shipping_address');
         const allCheckboxes = document.querySelectorAll('input[type="checkbox"]');
@@ -2823,6 +2940,7 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _cacheFieldElements, cacheFieldElements_fn).call(this);
       __privateSet(this, _lastState, __privateGet(this, _sameAsShippingCheckbox).checked);
       __privateMethod(this, _toggleBillingForm, toggleBillingForm_fn).call(this, __privateGet(this, _lastState), false);
+      __privateMethod(this, _setupBillingLocationVisibility, setupBillingLocationVisibility_fn).call(this);
       __privateMethod(this, _setupEventListeners2, setupEventListeners_fn2).call(this);
     } catch (error) {
       __privateMethod(this, _logError, logError_fn).call(this, "Error initializing BillingAddressHandler:", error);
@@ -2862,6 +2980,19 @@ var TwentyNineNext = (() => {
       console.error(message, error);
     }
   };
+  _setupBillingLocationVisibility = new WeakSet();
+  setupBillingLocationVisibility_fn = function() {
+    if (!__privateGet(this, _billingLocationComponent)) {
+      __privateMethod(this, _logWarn, logWarn_fn).call(this, 'Billing location component not found with selector [data-os-component="billing-location"]');
+      return;
+    }
+    if (!__privateGet(this, _billingAddress1Field)) {
+      __privateMethod(this, _logWarn, logWarn_fn).call(this, 'Billing address1 field not found with selector [os-checkout-field="billing-address1"]');
+      return;
+    }
+    __privateGet(this, _billingLocationComponent).classList.add("cc-hidden");
+    __privateMethod(this, _logDebug, logDebug_fn).call(this, "Billing location component initially hidden");
+  };
   _cacheFieldElements = new WeakSet();
   cacheFieldElements_fn = function() {
     Object.keys(__privateGet(this, _fieldMap)).forEach((shippingField) => {
@@ -2896,6 +3027,12 @@ var TwentyNineNext = (() => {
         __privateMethod(this, _logDebug, logDebug_fn).call(this, `Payment method changed, billing address state: ${__privateGet(this, _lastState) ? "Same as shipping" : "Different from shipping"}`);
       }
     });
+    document.addEventListener("location-fields-shown", () => {
+      if (__privateGet(this, _billingLocationComponent)) {
+        __privateMethod(this, _showBillingLocationComponent, showBillingLocationComponent_fn).call(this);
+        __privateMethod(this, _logDebug, logDebug_fn).call(this, "Location fields shown by AddressAutocomplete, showing billing location component as well");
+      }
+    });
     Object.entries(__privateGet(this, _shippingFields)).forEach(([fieldName, element]) => {
       element.addEventListener("change", () => {
         if (__privateGet(this, _sameAsShippingCheckbox).checked) {
@@ -2908,6 +3045,45 @@ var TwentyNineNext = (() => {
         }
       });
     });
+    if (__privateGet(this, _billingAddress1Field) && __privateGet(this, _billingLocationComponent)) {
+      __privateGet(this, _billingAddress1Field).addEventListener("input", () => {
+        if (__privateGet(this, _billingAddress1Field).value.length >= 3) {
+          __privateMethod(this, _showBillingLocationComponent, showBillingLocationComponent_fn).call(this);
+        }
+      });
+      __privateMethod(this, _setupBillingAddressAutocompleteDetection, setupBillingAddressAutocompleteDetection_fn).call(this);
+    }
+  };
+  _setupBillingAddressAutocompleteDetection = new WeakSet();
+  setupBillingAddressAutocompleteDetection_fn = function() {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === "attributes" && (mutation.attributeName === "value" || mutation.attributeName === "autocomplete-value")) {
+          if (__privateGet(this, _billingAddress1Field).value.length > 0) {
+            __privateMethod(this, _showBillingLocationComponent, showBillingLocationComponent_fn).call(this);
+            __privateMethod(this, _logDebug, logDebug_fn).call(this, "Autocomplete detected on billing address field");
+          }
+        }
+      });
+    });
+    observer.observe(__privateGet(this, _billingAddress1Field), {
+      attributes: true,
+      attributeFilter: ["value", "autocomplete-value"]
+    });
+    document.addEventListener("google-places-autocomplete-filled", (e) => {
+      if (e.detail && e.detail.field === "billing-address1") {
+        __privateMethod(this, _showBillingLocationComponent, showBillingLocationComponent_fn).call(this);
+        __privateMethod(this, _logDebug, logDebug_fn).call(this, "Google Places autocomplete detected on billing address field");
+      }
+    });
+    __privateMethod(this, _logDebug, logDebug_fn).call(this, "Billing address autocomplete detection set up");
+  };
+  _showBillingLocationComponent = new WeakSet();
+  showBillingLocationComponent_fn = function() {
+    if (__privateGet(this, _billingLocationComponent) && __privateGet(this, _billingLocationComponent).classList.contains("cc-hidden")) {
+      __privateGet(this, _billingLocationComponent).classList.remove("cc-hidden");
+      __privateMethod(this, _logDebug, logDebug_fn).call(this, "Billing location component shown");
+    }
   };
   _toggleBillingForm = new WeakSet();
   toggleBillingForm_fn = function(isChecked, animate = true) {
@@ -3069,9 +3245,9 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/AddressAutocomplete.js
-  var _logger8, _fieldsShown, _elements2, _init4, init_fn4, _hideLocationFields, hideLocationFields_fn, _showLocationFields, showLocationFields_fn, _isGoogleMapsAvailable, isGoogleMapsAvailable_fn, _initAutocompleteWithRetry, initAutocompleteWithRetry_fn, _initializeAutocomplete, initializeAutocomplete_fn, _setupAutocomplete, setupAutocomplete_fn, _setStateWithRetry, setStateWithRetry_fn, _setupBasicFieldListeners, setupBasicFieldListeners_fn, _setupAutofillDetection, setupAutofillDetection_fn;
+  var _logger8, _fieldsShown, _elements2, _enableAutocomplete, _init4, init_fn4, _hideLocationFields, hideLocationFields_fn, _showLocationFields, showLocationFields_fn, _isGoogleMapsAvailable, isGoogleMapsAvailable_fn, _initAutocompleteWithRetry, initAutocompleteWithRetry_fn, _initializeAutocomplete, initializeAutocomplete_fn, _setupAutocomplete, setupAutocomplete_fn, _setStateWithRetry, setStateWithRetry_fn, _setupBasicFieldListeners, setupBasicFieldListeners_fn, _setupAutofillDetection, setupAutofillDetection_fn;
   var AddressAutocomplete = class {
-    constructor(logger) {
+    constructor(logger, options = {}) {
       __privateAdd(this, _init4);
       __privateAdd(this, _hideLocationFields);
       __privateAdd(this, _showLocationFields);
@@ -3085,7 +3261,9 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _logger8, void 0);
       __privateAdd(this, _fieldsShown, false);
       __privateAdd(this, _elements2, void 0);
+      __privateAdd(this, _enableAutocomplete, void 0);
       __privateSet(this, _logger8, logger);
+      __privateSet(this, _enableAutocomplete, options.enableGoogleMapsAutocomplete !== false);
       __privateSet(this, _elements2, {
         shipping: {
           address: document.querySelector('[os-checkout-field="address1"]'),
@@ -3103,7 +3281,7 @@ var TwentyNineNext = (() => {
         },
         locations: document.querySelectorAll('[data-os-component="location"]')
       });
-      __privateGet(this, _logger8).info("AddressAutocomplete initialized");
+      __privateGet(this, _logger8).info(`AddressAutocomplete initialized (autocomplete ${__privateGet(this, _enableAutocomplete) ? "enabled" : "disabled"})`);
       __privateMethod(this, _hideLocationFields, hideLocationFields_fn).call(this);
       __privateMethod(this, _init4, init_fn4).call(this);
     }
@@ -3111,9 +3289,14 @@ var TwentyNineNext = (() => {
   _logger8 = new WeakMap();
   _fieldsShown = new WeakMap();
   _elements2 = new WeakMap();
+  _enableAutocomplete = new WeakMap();
   _init4 = new WeakSet();
   init_fn4 = async function() {
     __privateMethod(this, _setupAutofillDetection, setupAutofillDetection_fn).call(this);
+    if (!__privateGet(this, _enableAutocomplete)) {
+      __privateGet(this, _logger8).debug("Google Maps autocomplete disabled, using basic field listeners");
+      return __privateMethod(this, _setupBasicFieldListeners, setupBasicFieldListeners_fn).call(this);
+    }
     await __privateMethod(this, _initAutocompleteWithRetry, initAutocompleteWithRetry_fn).call(this);
   };
   _hideLocationFields = new WeakSet();
@@ -3138,6 +3321,9 @@ var TwentyNineNext = (() => {
   };
   _initAutocompleteWithRetry = new WeakSet();
   initAutocompleteWithRetry_fn = async function(attempt = 0) {
+    if (!__privateGet(this, _enableAutocomplete)) {
+      return __privateMethod(this, _setupBasicFieldListeners, setupBasicFieldListeners_fn).call(this);
+    }
     if (__privateMethod(this, _isGoogleMapsAvailable, isGoogleMapsAvailable_fn).call(this)) {
       __privateGet(this, _logger8).debug("Google Maps API available");
       return __privateMethod(this, _initializeAutocomplete, initializeAutocomplete_fn).call(this);
@@ -3347,7 +3533,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/ProspectCartHandler.js
-  var _app4, _logger10, _initialized, _cartCreated, _cartAttempted, _beginCheckoutFired, _debounceTimeout, _debounceDelay, _lastFormData, _selectors, _fields, _emailRegex, _init5, init_fn5, _findFormFields, findFormFields_fn, _attachEventListeners, attachEventListeners_fn, _handleFieldChange, handleFieldChange_fn, _checkAndFireBeginCheckout, checkAndFireBeginCheckout_fn, _checkAndCreateCart, checkAndCreateCart_fn, _hasMinimumRequiredFields, hasMinimumRequiredFields_fn, _getFormData, getFormData_fn, _isSameFormData, isSameFormData_fn, _createProspectCart, createProspectCart_fn, _updateUserState, updateUserState_fn, _isAddressValid, isAddressValid_fn, _getValidAddressData, getValidAddressData_fn, _isValidPostalCode, isValidPostalCode_fn, _getPhoneNumber, getPhoneNumber_fn, _createCartViaApi, createCartViaApi_fn;
+  var _app5, _logger10, _initialized, _cartCreated, _cartAttempted, _beginCheckoutFired, _debounceTimeout, _debounceDelay, _lastFormData, _selectors, _fields, _emailRegex, _init5, init_fn5, _findFormFields, findFormFields_fn, _attachEventListeners, attachEventListeners_fn, _handleFieldChange, handleFieldChange_fn, _checkAndFireBeginCheckout, checkAndFireBeginCheckout_fn, _checkAndCreateCart, checkAndCreateCart_fn, _hasMinimumRequiredFields, hasMinimumRequiredFields_fn, _getFormData, getFormData_fn, _isSameFormData, isSameFormData_fn, _createProspectCart, createProspectCart_fn, _updateUserState, updateUserState_fn, _isAddressValid, isAddressValid_fn, _getValidAddressData, getValidAddressData_fn, _isValidPostalCode, isValidPostalCode_fn, _getPhoneNumber, getPhoneNumber_fn, _createCartViaApi, createCartViaApi_fn;
   var ProspectCartHandler = class {
     /**
      * Initialize the ProspectCartHandler
@@ -3437,7 +3623,7 @@ var TwentyNineNext = (() => {
        * @param {Object} cartData - The cart data
        */
       __privateAdd(this, _createCartViaApi);
-      __privateAdd(this, _app4, void 0);
+      __privateAdd(this, _app5, void 0);
       __privateAdd(this, _logger10, void 0);
       __privateAdd(this, _initialized, false);
       __privateAdd(this, _cartCreated, false);
@@ -3477,9 +3663,9 @@ var TwentyNineNext = (() => {
       });
       // Email validation regex
       __privateAdd(this, _emailRegex, /^[^\s@]+@[^\s@]+\.[^\s@]+$/);
-      __privateSet(this, _app4, app);
-      if (__privateGet(this, _app4) && __privateGet(this, _app4).logger) {
-        __privateSet(this, _logger10, __privateGet(this, _app4).logger.createModuleLogger("PROSPECT"));
+      __privateSet(this, _app5, app);
+      if (__privateGet(this, _app5) && __privateGet(this, _app5).logger) {
+        __privateSet(this, _logger10, __privateGet(this, _app5).logger.createModuleLogger("PROSPECT"));
       } else {
         __privateSet(this, _logger10, {
           debug: (message, data) => /* @__PURE__ */ console.log(`[PROSPECT DEBUG] ${message}`, data !== void 0 ? data : ""),
@@ -3495,10 +3681,10 @@ var TwentyNineNext = (() => {
      * This can be called from outside the class if needed
      */
     triggerBeginCheckout() {
-      if (__privateGet(this, _app4) && __privateGet(this, _app4).events) {
+      if (__privateGet(this, _app5) && __privateGet(this, _app5).events) {
         if (!__privateGet(this, _beginCheckoutFired)) {
           __privateGet(this, _logger10).info("Manually triggering beginCheckout event");
-          __privateGet(this, _app4).events.beginCheckout();
+          __privateGet(this, _app5).events.beginCheckout();
           __privateSet(this, _beginCheckoutFired, true);
           return true;
         } else {
@@ -3520,7 +3706,7 @@ var TwentyNineNext = (() => {
       return true;
     }
   };
-  _app4 = new WeakMap();
+  _app5 = new WeakMap();
   _logger10 = new WeakMap();
   _initialized = new WeakMap();
   _cartCreated = new WeakMap();
@@ -3603,8 +3789,8 @@ var TwentyNineNext = (() => {
     const hasName = __privateGet(this, _fields).firstName && __privateGet(this, _fields).firstName.value && __privateGet(this, _fields).firstName.value.trim().length > 0 || __privateGet(this, _fields).lastName && __privateGet(this, _fields).lastName.value && __privateGet(this, _fields).lastName.value.trim().length > 0;
     if (hasEmail || hasName) {
       __privateGet(this, _logger10).debug("User has started entering checkout information, firing beginCheckout event");
-      if (__privateGet(this, _app4).events) {
-        __privateGet(this, _app4).events.beginCheckout();
+      if (__privateGet(this, _app5).events) {
+        __privateGet(this, _app5).events.beginCheckout();
         __privateSet(this, _beginCheckoutFired, true);
         __privateGet(this, _logger10).info("beginCheckout event fired");
       }
@@ -3662,7 +3848,7 @@ var TwentyNineNext = (() => {
   _createProspectCart = new WeakSet();
   createProspectCart_fn = function() {
     __privateGet(this, _logger10).info("Creating prospect cart");
-    const cartData = __privateGet(this, _app4).state.getState("cart");
+    const cartData = __privateGet(this, _app5).state.getState("cart");
     if (!cartData || !cartData.items || cartData.items.length === 0) {
       __privateGet(this, _logger10).warn("No cart items available, skipping cart creation");
       __privateSet(this, _cartAttempted, false);
@@ -3706,12 +3892,12 @@ var TwentyNineNext = (() => {
   };
   _updateUserState = new WeakSet();
   updateUserState_fn = function(email, firstName, lastName, phone) {
-    if (!__privateGet(this, _app4).state) {
+    if (!__privateGet(this, _app5).state) {
       __privateGet(this, _logger10).warn("State manager not available, cannot update user state");
       return;
     }
     try {
-      const currentUser = __privateGet(this, _app4).state.getState("user") || {};
+      const currentUser = __privateGet(this, _app5).state.getState("user") || {};
       const updatedUser = {
         ...currentUser,
         email: email || currentUser.email,
@@ -3719,7 +3905,7 @@ var TwentyNineNext = (() => {
         lastName: lastName || currentUser.lastName,
         phone: phone || currentUser.phone
       };
-      __privateGet(this, _app4).state.setState("user", updatedUser);
+      __privateGet(this, _app5).state.setState("user", updatedUser);
       __privateGet(this, _logger10).debug("Updated user state with user information", updatedUser);
     } catch (error) {
       __privateGet(this, _logger10).error("Error updating user state:", error);
@@ -3808,22 +3994,22 @@ var TwentyNineNext = (() => {
   };
   _createCartViaApi = new WeakSet();
   createCartViaApi_fn = function(cartData) {
-    if (!__privateGet(this, _app4).api || typeof __privateGet(this, _app4).api.createCart !== "function") {
+    if (!__privateGet(this, _app5).api || typeof __privateGet(this, _app5).api.createCart !== "function") {
       __privateGet(this, _logger10).error("API client not available");
       __privateSet(this, _cartAttempted, false);
       return;
     }
     __privateGet(this, _logger10).debug("Sending cart data to API", cartData);
-    __privateGet(this, _app4).api.createCart(cartData).then((response) => {
+    __privateGet(this, _app5).api.createCart(cartData).then((response) => {
       __privateGet(this, _logger10).info("Prospect cart created successfully", response);
       __privateSet(this, _cartCreated, true);
-      if (__privateGet(this, _app4).events) {
-        __privateGet(this, _app4).events.trigger("prospect.cartCreated", {
+      if (__privateGet(this, _app5).events) {
+        __privateGet(this, _app5).events.trigger("prospect.cartCreated", {
           cart: response
         });
         if (!__privateGet(this, _beginCheckoutFired)) {
           __privateGet(this, _logger10).info("Triggering beginCheckout event for analytics");
-          __privateGet(this, _app4).events.beginCheckout();
+          __privateGet(this, _app5).events.beginCheckout();
           __privateSet(this, _beginCheckoutFired, true);
         } else {
           __privateGet(this, _logger10).debug("beginCheckout event already fired, skipping");
@@ -3836,7 +4022,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CheckoutManager.js
-  var _apiClient2, _logger11, _form4, _app5, _konamiCodeHandler, _initializeComponents, initializeComponents_fn, _initKonamiCodeHandler, initKonamiCodeHandler_fn, _triggerKonamiCodeEasterEgg, triggerKonamiCodeEasterEgg_fn, _initAddressHandler, initAddressHandler_fn, _initBillingAddressHandler, initBillingAddressHandler_fn, _initPaymentSelector, initPaymentSelector_fn, _initFormValidator, initFormValidator_fn, _initPaymentHandler, initPaymentHandler_fn, _initAddressAutocomplete, initAddressAutocomplete_fn, _initPhoneInputHandler, initPhoneInputHandler_fn, _initProspectCartHandler, initProspectCartHandler_fn, _injectBillingFormFields, injectBillingFormFields_fn, _setupEventListeners3, setupEventListeners_fn3, _handleSubmit2, handleSubmit_fn2, _disableSubmitButtons, disableSubmitButtons_fn;
+  var _apiClient2, _logger11, _form4, _app6, _konamiCodeHandler, _initializeComponents, initializeComponents_fn, _initKonamiCodeHandler, initKonamiCodeHandler_fn, _triggerKonamiCodeEasterEgg, triggerKonamiCodeEasterEgg_fn, _initAddressHandler, initAddressHandler_fn, _initBillingAddressHandler, initBillingAddressHandler_fn, _initPaymentSelector, initPaymentSelector_fn, _initFormValidator, initFormValidator_fn, _initPaymentHandler, initPaymentHandler_fn, _initAddressAutocomplete, initAddressAutocomplete_fn, _initPhoneInputHandler, initPhoneInputHandler_fn, _initProspectCartHandler, initProspectCartHandler_fn, _injectBillingFormFields, injectBillingFormFields_fn, _setupEventListeners3, setupEventListeners_fn3, _handleSubmit2, handleSubmit_fn2, _disableSubmitButtons, disableSubmitButtons_fn;
   var CheckoutPage = class {
     constructor(apiClient, logger, app) {
       __privateAdd(this, _initializeComponents);
@@ -3871,11 +4057,11 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _apiClient2, void 0);
       __privateAdd(this, _logger11, void 0);
       __privateAdd(this, _form4, void 0);
-      __privateAdd(this, _app5, void 0);
+      __privateAdd(this, _app6, void 0);
       __privateAdd(this, _konamiCodeHandler, void 0);
       __privateSet(this, _apiClient2, apiClient);
       __privateSet(this, _logger11, logger);
-      __privateSet(this, _app5, app);
+      __privateSet(this, _app6, app);
       __privateSet(this, _form4, document.querySelector('form[os-checkout="form"]') || document.querySelector("form#combo_form"));
       if (!__privateGet(this, _form4)) {
         __privateGet(this, _logger11).warn('No checkout form found with [os-checkout="form"] selector or form#combo_form');
@@ -3919,7 +4105,7 @@ var TwentyNineNext = (() => {
   _apiClient2 = new WeakMap();
   _logger11 = new WeakMap();
   _form4 = new WeakMap();
-  _app5 = new WeakMap();
+  _app6 = new WeakMap();
   _konamiCodeHandler = new WeakMap();
   _initializeComponents = new WeakSet();
   initializeComponents_fn = function() {
@@ -3985,7 +4171,7 @@ var TwentyNineNext = (() => {
   _initBillingAddressHandler = new WeakSet();
   initBillingAddressHandler_fn = function() {
     try {
-      this.billingAddressHandler = new BillingAddressHandler(__privateGet(this, _app5));
+      this.billingAddressHandler = new BillingAddressHandler(__privateGet(this, _app6));
       if (__privateGet(this, _form4) && this.billingAddressHandler) {
         __privateGet(this, _form4).__billingAddressHandler = this.billingAddressHandler;
         __privateGet(this, _logger11).debug("BillingAddressHandler initialized and attached to form");
@@ -4020,7 +4206,7 @@ var TwentyNineNext = (() => {
   _initPaymentHandler = new WeakSet();
   initPaymentHandler_fn = function() {
     try {
-      this.paymentHandler = new PaymentHandler(__privateGet(this, _apiClient2), __privateGet(this, _logger11), __privateGet(this, _app5));
+      this.paymentHandler = new PaymentHandler(__privateGet(this, _apiClient2), __privateGet(this, _logger11), __privateGet(this, _app6));
     } catch (error) {
       __privateGet(this, _logger11).error("Error initializing PaymentHandler", error);
     }
@@ -4028,7 +4214,10 @@ var TwentyNineNext = (() => {
   _initAddressAutocomplete = new WeakSet();
   initAddressAutocomplete_fn = function() {
     try {
-      this.addressAutocomplete = new AddressAutocomplete(__privateGet(this, _logger11));
+      const googleMapsOptions = {
+        enableGoogleMapsAutocomplete: __privateGet(this, _app6).options.enableGoogleMapsAutocomplete
+      };
+      this.addressAutocomplete = new AddressAutocomplete(__privateGet(this, _logger11), googleMapsOptions);
     } catch (error) {
       __privateGet(this, _logger11).error("Error initializing AddressAutocomplete", error);
     }
@@ -4044,8 +4233,8 @@ var TwentyNineNext = (() => {
   _initProspectCartHandler = new WeakSet();
   initProspectCartHandler_fn = function() {
     try {
-      if (__privateGet(this, _app5)) {
-        this.prospectCartHandler = new ProspectCartHandler(__privateGet(this, _app5));
+      if (__privateGet(this, _app6)) {
+        this.prospectCartHandler = new ProspectCartHandler(__privateGet(this, _app6));
         __privateGet(this, _logger11).info("ProspectCartHandler initialized");
       } else {
         __privateGet(this, _logger11).warn("App instance not provided, ProspectCartHandler not initialized");
@@ -4124,13 +4313,13 @@ var TwentyNineNext = (() => {
         __privateGet(this, _form4).addEventListener("submit", (e) => __privateMethod(this, _handleSubmit2, handleSubmit_fn2).call(this, e));
         __privateGet(this, _logger11).debug("Form submit event listener attached");
       }
-      if (__privateGet(this, _app5) && __privateGet(this, _app5).events && this.prospectCartHandler) {
-        __privateGet(this, _app5).events.on("prospect.cartCreated", (data) => {
+      if (__privateGet(this, _app6) && __privateGet(this, _app6).events && this.prospectCartHandler) {
+        __privateGet(this, _app6).events.on("prospect.cartCreated", (data) => {
           __privateGet(this, _logger11).info("Prospect cart created successfully", data);
         });
       }
-      if (__privateGet(this, _app5) && __privateGet(this, _app5).events) {
-        __privateGet(this, _app5).events.on("order.created", (data) => {
+      if (__privateGet(this, _app6) && __privateGet(this, _app6).events) {
+        __privateGet(this, _app6).events.on("order.created", (data) => {
           __privateGet(this, _logger11).info("Order created successfully", data);
         });
       }
@@ -4209,22 +4398,22 @@ var TwentyNineNext = (() => {
   };
 
   // src/helpers/CampaignHelper.js
-  var _app6, _logger12, _viewItemListFired;
+  var _app7, _logger12, _viewItemListFired;
   var CampaignHelper = class {
     constructor(app) {
-      __privateAdd(this, _app6, void 0);
+      __privateAdd(this, _app7, void 0);
       __privateAdd(this, _logger12, void 0);
       __privateAdd(this, _viewItemListFired, false);
-      __privateSet(this, _app6, app);
+      __privateSet(this, _app7, app);
       __privateSet(this, _logger12, app.logger.createModuleLogger("CAMPAIGN"));
     }
     getCampaignData() {
-      const campaignData = __privateGet(this, _app6).campaignData;
-      if (campaignData && !__privateGet(this, _viewItemListFired) && __privateGet(this, _app6).events?.viewItemList) {
+      const campaignData = __privateGet(this, _app7).campaignData;
+      if (campaignData && !__privateGet(this, _viewItemListFired) && __privateGet(this, _app7).events?.viewItemList) {
         __privateGet(this, _logger12).debug("Triggering view_item_list event from getCampaignData");
         /* @__PURE__ */ console.log("🔍 Triggering view_item_list from getCampaignData", campaignData);
         setTimeout(() => {
-          __privateGet(this, _app6).events.viewItemList(campaignData);
+          __privateGet(this, _app7).events.viewItemList(campaignData);
           __privateSet(this, _viewItemListFired, true);
           /* @__PURE__ */ console.log("✅ view_item_list triggered from getCampaignData");
         }, 500);
@@ -4232,18 +4421,18 @@ var TwentyNineNext = (() => {
       return campaignData;
     }
     getCampaignName() {
-      return __privateGet(this, _app6).campaignData?.name ?? "";
+      return __privateGet(this, _app7).campaignData?.name ?? "";
     }
     getCampaignId() {
-      return __privateGet(this, _app6).campaignData?.id ?? "";
+      return __privateGet(this, _app7).campaignData?.id ?? "";
     }
     getProducts() {
-      const products = __privateGet(this, _app6).campaignData?.products ?? [];
-      if (products.length > 0 && !__privateGet(this, _viewItemListFired) && __privateGet(this, _app6).events?.viewItemList) {
+      const products = __privateGet(this, _app7).campaignData?.products ?? [];
+      if (products.length > 0 && !__privateGet(this, _viewItemListFired) && __privateGet(this, _app7).events?.viewItemList) {
         __privateGet(this, _logger12).debug("Triggering view_item_list event from getProducts");
-        /* @__PURE__ */ console.log("🔍 Triggering view_item_list from getProducts", __privateGet(this, _app6).campaignData);
+        /* @__PURE__ */ console.log("🔍 Triggering view_item_list from getProducts", __privateGet(this, _app7).campaignData);
         setTimeout(() => {
-          __privateGet(this, _app6).events.viewItemList(__privateGet(this, _app6).campaignData);
+          __privateGet(this, _app7).events.viewItemList(__privateGet(this, _app7).campaignData);
           __privateSet(this, _viewItemListFired, true);
           /* @__PURE__ */ console.log("✅ view_item_list triggered from getProducts");
         }, 500);
@@ -4254,10 +4443,10 @@ var TwentyNineNext = (() => {
       return this.getProducts().find((product) => product.id === productId);
     }
     getCurrency() {
-      return __privateGet(this, _app6).campaignData?.currency ?? "USD";
+      return __privateGet(this, _app7).campaignData?.currency ?? "USD";
     }
     getLocale() {
-      return __privateGet(this, _app6).campaignData?.locale ?? "en-US";
+      return __privateGet(this, _app7).campaignData?.locale ?? "en-US";
     }
     formatPrice(price) {
       if (typeof price !== "number")
@@ -4276,25 +4465,25 @@ var TwentyNineNext = (() => {
      * Manually trigger the view_item_list event
      */
     triggerViewItemList() {
-      if (!__privateGet(this, _app6).campaignData) {
+      if (!__privateGet(this, _app7).campaignData) {
         __privateGet(this, _logger12).warn("Cannot trigger view_item_list: No campaign data available");
         return;
       }
-      if (!__privateGet(this, _app6).events?.viewItemList) {
+      if (!__privateGet(this, _app7).events?.viewItemList) {
         __privateGet(this, _logger12).warn("Cannot trigger view_item_list: EventManager not initialized");
         return;
       }
       __privateGet(this, _logger12).debug("Manually triggering view_item_list event");
-      __privateGet(this, _app6).events.viewItemList(__privateGet(this, _app6).campaignData);
+      __privateGet(this, _app7).events.viewItemList(__privateGet(this, _app7).campaignData);
       __privateSet(this, _viewItemListFired, true);
     }
   };
-  _app6 = new WeakMap();
+  _app7 = new WeakMap();
   _logger12 = new WeakMap();
   _viewItemListFired = new WeakMap();
 
   // src/managers/StateManager.js
-  var _app7, _logger13, _state, _subscribers, _initDefaultState, initDefaultState_fn, _loadState, loadState_fn, _saveState, saveState_fn, _notifySubscribers, notifySubscribers_fn, _updateExistingItem, updateExistingItem_fn, _calculateCartTotals, calculateCartTotals_fn, _recalculateCart, recalculateCart_fn;
+  var _app8, _logger13, _state, _subscribers, _initDefaultState, initDefaultState_fn, _loadState, loadState_fn, _saveState, saveState_fn, _notifySubscribers, notifySubscribers_fn, _updateExistingItem, updateExistingItem_fn, _calculateCartTotals, calculateCartTotals_fn, _recalculateCart, recalculateCart_fn;
   var StateManager = class {
     constructor(app) {
       __privateAdd(this, _initDefaultState);
@@ -4304,11 +4493,11 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _updateExistingItem);
       __privateAdd(this, _calculateCartTotals);
       __privateAdd(this, _recalculateCart);
-      __privateAdd(this, _app7, void 0);
+      __privateAdd(this, _app8, void 0);
       __privateAdd(this, _logger13, void 0);
       __privateAdd(this, _state, void 0);
       __privateAdd(this, _subscribers, {});
-      __privateSet(this, _app7, app);
+      __privateSet(this, _app8, app);
       __privateSet(this, _logger13, app.logger.createModuleLogger("STATE"));
       __privateSet(this, _state, __privateMethod(this, _initDefaultState, initDefaultState_fn).call(this));
       __privateMethod(this, _loadState, loadState_fn).call(this);
@@ -4368,7 +4557,7 @@ var TwentyNineNext = (() => {
         throw new Error("Invalid item. Must have id, name, and price.");
       }
       const cart = this.getState("cart");
-      const packageData = __privateGet(this, _app7).campaignData?.packages?.find(
+      const packageData = __privateGet(this, _app8).campaignData?.packages?.find(
         (pkg) => pkg.ref_id.toString() === item.id.toString() || pkg.external_id?.toString() === item.id.toString()
       );
       const enhancedItem = {
@@ -4393,7 +4582,7 @@ var TwentyNineNext = (() => {
       const updatedItems = existingItemIndex >= 0 ? __privateMethod(this, _updateExistingItem, updateExistingItem_fn).call(this, cart.items, existingItemIndex, enhancedItem) : [...cart.items, enhancedItem];
       this.setState("cart.items", updatedItems);
       __privateGet(this, _logger13).info(`Item added to cart: ${enhancedItem.name}`);
-      __privateGet(this, _app7).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     updateCartItem(itemId, updates) {
@@ -4409,14 +4598,14 @@ var TwentyNineNext = (() => {
         updatedItems.splice(itemIndex, 1);
       this.setState("cart.items", updatedItems);
       __privateGet(this, _logger13).info(`Cart item updated: ${itemId}`);
-      __privateGet(this, _app7).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     removeFromCart(itemId) {
       const updatedItems = this.getState("cart").items.filter((item) => item.id !== itemId);
       this.setState("cart.items", updatedItems);
       __privateGet(this, _logger13).info(`Item removed from cart: ${itemId}`);
-      __privateGet(this, _app7).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     clearCart() {
@@ -4424,25 +4613,25 @@ var TwentyNineNext = (() => {
       this.setState("cart.couponCode", null);
       this.setState("cart.shippingMethod", null);
       __privateGet(this, _logger13).info("Cart cleared");
-      __privateGet(this, _app7).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     setShippingMethod(shippingMethod) {
       this.setState("cart.shippingMethod", shippingMethod);
       __privateGet(this, _logger13).info(`Shipping method set: ${shippingMethod.code}`);
-      __privateGet(this, _app7).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     applyCoupon(couponCode) {
       this.setState("cart.couponCode", couponCode);
       __privateGet(this, _logger13).info(`Coupon applied: ${couponCode}`);
-      __privateGet(this, _app7).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     removeCoupon() {
       this.setState("cart.couponCode", null);
       __privateGet(this, _logger13).info("Coupon removed");
-      __privateGet(this, _app7).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     isItemInCart(itemId) {
@@ -4463,9 +4652,9 @@ var TwentyNineNext = (() => {
       try {
         this.setState("ui.loading", true);
         const apiCart = this.getCartForApi();
-        const response = await __privateGet(this, _app7).api.createCart(apiCart);
+        const response = await __privateGet(this, _app8).api.createCart(apiCart);
         __privateGet(this, _logger13).info("Cart synced with API");
-        __privateGet(this, _app7).triggerEvent("cart.synced", { cart: response });
+        __privateGet(this, _app8).triggerEvent("cart.synced", { cart: response });
         return response;
       } catch (error) {
         __privateGet(this, _logger13).error("Error syncing cart with API:", error);
@@ -4476,7 +4665,7 @@ var TwentyNineNext = (() => {
       }
     }
   };
-  _app7 = new WeakMap();
+  _app8 = new WeakMap();
   _logger13 = new WeakMap();
   _state = new WeakMap();
   _subscribers = new WeakMap();
@@ -4593,7 +4782,7 @@ var TwentyNineNext = (() => {
     const shipping = shippingMethod?.price ? Number.parseFloat(shippingMethod.price) : 0;
     const tax = 0;
     const total = subtotal + shipping + tax;
-    const currency = __privateGet(this, _app7).campaignData?.currency ?? "USD";
+    const currency = __privateGet(this, _app8).campaignData?.currency ?? "USD";
     const currencySymbol = { USD: "$", EUR: "€", GBP: "£" }[currency] ?? "$";
     return {
       subtotal,
@@ -4621,7 +4810,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CartManager.js
-  var _app8, _stateManager, _logger14, _cartElements, _initCartUI, initCartUI_fn, _updateCartUI, updateCartUI_fn, _createCartItemElement, createCartItemElement_fn, _addToCart, addToCart_fn, _updateCartItemQuantity, updateCartItemQuantity_fn, _removeFromCart, removeFromCart_fn, _showMessage, showMessage_fn;
+  var _app9, _stateManager, _logger14, _cartElements, _initCartUI, initCartUI_fn, _updateCartUI, updateCartUI_fn, _createCartItemElement, createCartItemElement_fn, _addToCart, addToCart_fn, _updateCartItemQuantity, updateCartItemQuantity_fn, _removeFromCart, removeFromCart_fn, _showMessage, showMessage_fn;
   var CartManager = class {
     constructor(app) {
       __privateAdd(this, _initCartUI);
@@ -4631,11 +4820,11 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _updateCartItemQuantity);
       __privateAdd(this, _removeFromCart);
       __privateAdd(this, _showMessage);
-      __privateAdd(this, _app8, void 0);
+      __privateAdd(this, _app9, void 0);
       __privateAdd(this, _stateManager, void 0);
       __privateAdd(this, _logger14, void 0);
       __privateAdd(this, _cartElements, void 0);
-      __privateSet(this, _app8, app);
+      __privateSet(this, _app9, app);
       __privateSet(this, _stateManager, app.state);
       __privateSet(this, _logger14, app.logger.createModuleLogger("CART"));
       __privateMethod(this, _initCartUI, initCartUI_fn).call(this);
@@ -4696,7 +4885,7 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _stateManager).isItemInCart?.(itemId) ?? __privateGet(this, _stateManager).getState("cart").items.some((item) => item.id === itemId);
     }
   };
-  _app8 = new WeakMap();
+  _app9 = new WeakMap();
   _stateManager = new WeakMap();
   _logger14 = new WeakMap();
   _cartElements = new WeakMap();
@@ -4736,7 +4925,7 @@ var TwentyNineNext = (() => {
       element.textContent = itemCount.toString();
       element.classList.toggle("hidden", itemCount === 0);
     });
-    const formatPrice = (price) => __privateGet(this, _app8).campaign?.formatPrice(price) ?? price.toFixed(2);
+    const formatPrice = (price) => __privateGet(this, _app9).campaign?.formatPrice(price) ?? price.toFixed(2);
     __privateGet(this, _cartElements).cartTotal.forEach((element) => element.textContent = formatPrice(cart.totals.total));
     const updateElement = (selector, value, hideIfZero = false) => {
       const element = document.querySelector(selector);
@@ -4766,7 +4955,7 @@ var TwentyNineNext = (() => {
   };
   _createCartItemElement = new WeakSet();
   createCartItemElement_fn = function(item) {
-    const formatPrice = (price2) => __privateGet(this, _app8).campaign?.formatPrice(price2) ?? price2.toFixed(2);
+    const formatPrice = (price2) => __privateGet(this, _app9).campaign?.formatPrice(price2) ?? price2.toFixed(2);
     const itemElement = document.createElement("div");
     itemElement.className = "os-cart-item";
     itemElement.setAttribute("data-os-cart-item-id", item.id);
@@ -5139,7 +5328,7 @@ var TwentyNineNext = (() => {
   __privateAdd(DebugUtils, _overlays, []);
 
   // src/managers/SelectorManager.js
-  var _app9, _logger15, _selectors2, _selectedItems, _isDebugMode2, _initSelectors, initSelectors_fn, _initSelector, initSelector_fn, _initCard, initCard_fn, _handleClick, handleClick_fn, _selectItem, selectItem_fn, _updateCart, updateCart_fn, _addItemToCart, addItemToCart_fn, _removeItemFromCart, removeItemFromCart_fn, _syncWithCart, syncWithCart_fn;
+  var _app10, _logger15, _selectors2, _selectedItems, _isDebugMode2, _initSelectors, initSelectors_fn, _initSelector, initSelector_fn, _initCard, initCard_fn, _handleClick, handleClick_fn, _selectItem, selectItem_fn, _updateCart, updateCart_fn, _addItemToCart, addItemToCart_fn, _removeItemFromCart, removeItemFromCart_fn, _syncWithCart, syncWithCart_fn;
   var SelectorManager = class {
     constructor(app) {
       __privateAdd(this, _initSelectors);
@@ -5151,12 +5340,12 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _addItemToCart);
       __privateAdd(this, _removeItemFromCart);
       __privateAdd(this, _syncWithCart);
-      __privateAdd(this, _app9, void 0);
+      __privateAdd(this, _app10, void 0);
       __privateAdd(this, _logger15, void 0);
       __privateAdd(this, _selectors2, {});
       __privateAdd(this, _selectedItems, {});
       __privateAdd(this, _isDebugMode2, false);
-      __privateSet(this, _app9, app);
+      __privateSet(this, _app10, app);
       __privateSet(this, _logger15, app.logger.createModuleLogger("SELECTOR"));
       __privateSet(this, _isDebugMode2, DebugUtils.initDebugMode());
       __privateMethod(this, _initSelectors, initSelectors_fn).call(this);
@@ -5166,7 +5355,7 @@ var TwentyNineNext = (() => {
       }
     }
   };
-  _app9 = new WeakMap();
+  _app10 = new WeakMap();
   _logger15 = new WeakMap();
   _selectors2 = new WeakMap();
   _selectedItems = new WeakMap();
@@ -5175,7 +5364,7 @@ var TwentyNineNext = (() => {
   initSelectors_fn = function() {
     document.querySelectorAll('[data-os-component="selector"][data-os-selection-mode="swap"]').forEach((selector) => __privateMethod(this, _initSelector, initSelector_fn).call(this, selector));
     setTimeout(() => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this), 0);
-    __privateGet(this, _app9).state?.subscribe("cart", () => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this));
+    __privateGet(this, _app10).state?.subscribe("cart", () => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this));
   };
   _initSelector = new WeakSet();
   initSelector_fn = function(selectorElement) {
@@ -5251,7 +5440,7 @@ var TwentyNineNext = (() => {
   };
   _updateCart = new WeakSet();
   updateCart_fn = function(selectorId, previousItem) {
-    if (!__privateGet(this, _app9).cart) {
+    if (!__privateGet(this, _app10).cart) {
       __privateGet(this, _logger15).error("Cart manager not available");
       return;
     }
@@ -5261,22 +5450,22 @@ var TwentyNineNext = (() => {
     if (previousItem && previousItem.packageId !== selected.packageId) {
       __privateMethod(this, _removeItemFromCart, removeItemFromCart_fn).call(this, previousItem);
     }
-    if (!__privateGet(this, _app9).cart.isItemInCart(selected.packageId)) {
+    if (!__privateGet(this, _app10).cart.isItemInCart(selected.packageId)) {
       __privateMethod(this, _addItemToCart, addItemToCart_fn).call(this, selected);
     }
   };
   _addItemToCart = new WeakSet();
   addItemToCart_fn = function(item) {
-    if (!__privateGet(this, _app9).cart) {
+    if (!__privateGet(this, _app10).cart) {
       __privateGet(this, _logger15).error("Cart manager not available in addItemToCart");
       return;
     }
-    if (typeof __privateGet(this, _app9).cart.addToCart !== "function") {
-      __privateGet(this, _logger15).error("addToCart is not a function on this.#app.cart:", __privateGet(this, _app9).cart);
+    if (typeof __privateGet(this, _app10).cart.addToCart !== "function") {
+      __privateGet(this, _logger15).error("addToCart is not a function on this.#app.cart:", __privateGet(this, _app10).cart);
       return;
     }
     __privateGet(this, _logger15).info(`Adding item ${item.packageId} to cart`);
-    __privateGet(this, _app9).cart.addToCart({
+    __privateGet(this, _app10).cart.addToCart({
       id: item.packageId,
       name: item.name,
       price: item.price,
@@ -5288,34 +5477,34 @@ var TwentyNineNext = (() => {
   };
   _removeItemFromCart = new WeakSet();
   removeItemFromCart_fn = function(item) {
-    if (!__privateGet(this, _app9).cart) {
+    if (!__privateGet(this, _app10).cart) {
       __privateGet(this, _logger15).error("Cart manager not available in removeItemFromCart");
       return;
     }
-    if (typeof __privateGet(this, _app9).cart.removeFromCart !== "function") {
-      __privateGet(this, _logger15).error("removeFromCart is not a function on this.#app.cart:", __privateGet(this, _app9).cart);
+    if (typeof __privateGet(this, _app10).cart.removeFromCart !== "function") {
+      __privateGet(this, _logger15).error("removeFromCart is not a function on this.#app.cart:", __privateGet(this, _app10).cart);
       return;
     }
     __privateGet(this, _logger15).info(`Removing item ${item.packageId} from cart`);
-    __privateGet(this, _app9).cart.removeFromCart(item.packageId);
+    __privateGet(this, _app10).cart.removeFromCart(item.packageId);
     item.element.classList.remove("os--active");
     item.element.setAttribute("data-os-active", "false");
   };
   _syncWithCart = new WeakSet();
   syncWithCart_fn = function() {
-    if (!__privateGet(this, _app9).cart) {
+    if (!__privateGet(this, _app10).cart) {
       __privateGet(this, _logger15).debug("Cart manager not available for sync");
       return;
     }
-    const cart = __privateGet(this, _app9).state?.getState("cart");
+    const cart = __privateGet(this, _app10).state?.getState("cart");
     if (!cart) {
       __privateGet(this, _logger15).debug("Cart state not available");
       return;
     }
-    __privateGet(this, _logger15).debug("Syncing with cart, this.#app.cart:", __privateGet(this, _app9).cart);
+    __privateGet(this, _logger15).debug("Syncing with cart, this.#app.cart:", __privateGet(this, _app10).cart);
     Object.keys(__privateGet(this, _selectors2)).forEach((selectorId) => {
       const items = __privateGet(this, _selectors2)[selectorId].items;
-      const cartItemsInSelector = items.filter((item) => __privateGet(this, _app9).cart.isItemInCart(item.packageId));
+      const cartItemsInSelector = items.filter((item) => __privateGet(this, _app10).cart.isItemInCart(item.packageId));
       if (cartItemsInSelector.length > 0) {
         const itemInCart = cartItemsInSelector[0];
         __privateMethod(this, _selectItem, selectItem_fn).call(this, selectorId, itemInCart);
@@ -5331,7 +5520,7 @@ var TwentyNineNext = (() => {
         }
       }
       items.forEach((item) => {
-        const isInCart = __privateGet(this, _app9).cart.isItemInCart(item.packageId);
+        const isInCart = __privateGet(this, _app10).cart.isItemInCart(item.packageId);
         item.element.classList.toggle("os--active", isInCart);
         item.element.setAttribute("data-os-active", isInCart.toString());
       });
@@ -5339,7 +5528,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/ToggleManager.js
-  var _toggleItems, _app10, _logger16, _isDebugMode3, _initToggleItems, initToggleItems_fn, _initToggleItem, initToggleItem_fn, _addDebugOverlay, addDebugOverlay_fn, _toggleItem, toggleItem_fn, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn, _updateToggleItemUI, updateToggleItemUI_fn, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn, _isItemInCart, isItemInCart_fn, _addItemToCart2, addItemToCart_fn2, _removeItemFromCart2, removeItemFromCart_fn2;
+  var _toggleItems, _app11, _logger16, _isDebugMode3, _initToggleItems, initToggleItems_fn, _initToggleItem, initToggleItem_fn, _addDebugOverlay, addDebugOverlay_fn, _toggleItem, toggleItem_fn, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn, _updateToggleItemUI, updateToggleItemUI_fn, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn, _isItemInCart, isItemInCart_fn, _addItemToCart2, addItemToCart_fn2, _removeItemFromCart2, removeItemFromCart_fn2;
   var ToggleManager = class {
     constructor(app) {
       __privateAdd(this, _initToggleItems);
@@ -5353,14 +5542,14 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _addItemToCart2);
       __privateAdd(this, _removeItemFromCart2);
       __privateAdd(this, _toggleItems, {});
-      __privateAdd(this, _app10, void 0);
+      __privateAdd(this, _app11, void 0);
       __privateAdd(this, _logger16, void 0);
       __privateAdd(this, _isDebugMode3, false);
-      __privateSet(this, _app10, app);
+      __privateSet(this, _app11, app);
       __privateSet(this, _logger16, app.logger.createModuleLogger("TOGGLE"));
       __privateSet(this, _isDebugMode3, DebugUtils.initDebugMode());
       __privateMethod(this, _initToggleItems, initToggleItems_fn).call(this);
-      __privateGet(this, _app10).state.subscribe("cart", () => __privateMethod(this, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn).call(this));
+      __privateGet(this, _app11).state.subscribe("cart", () => __privateMethod(this, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn).call(this));
       __privateGet(this, _logger16).info("ToggleManager initialized");
       if (__privateGet(this, _isDebugMode3)) {
         __privateGet(this, _logger16).info("Debug mode enabled for toggle items");
@@ -5368,7 +5557,7 @@ var TwentyNineNext = (() => {
     }
   };
   _toggleItems = new WeakMap();
-  _app10 = new WeakMap();
+  _app11 = new WeakMap();
   _logger16 = new WeakMap();
   _isDebugMode3 = new WeakMap();
   _initToggleItems = new WeakSet();
@@ -5439,15 +5628,15 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger16).info(`Toggled ON item ${packageId}`);
     }
     __privateMethod(this, _updateToggleItemUI, updateToggleItemUI_fn).call(this, element, packageId);
-    __privateGet(this, _app10).triggerEvent("toggle.changed", { toggleId, packageId, isActive: !isInCart });
+    __privateGet(this, _app11).triggerEvent("toggle.changed", { toggleId, packageId, isActive: !isInCart });
   };
   _getPackageDataFromCampaign = new WeakSet();
   getPackageDataFromCampaign_fn = function(packageId) {
-    if (!__privateGet(this, _app10).campaignData?.packages) {
+    if (!__privateGet(this, _app11).campaignData?.packages) {
       __privateGet(this, _logger16).error("Campaign data not available");
       return null;
     }
-    return __privateGet(this, _app10).campaignData.packages.find((pkg) => pkg.ref_id.toString() === packageId.toString()) ?? null;
+    return __privateGet(this, _app11).campaignData.packages.find((pkg) => pkg.ref_id.toString() === packageId.toString()) ?? null;
   };
   _updateToggleItemUI = new WeakSet();
   updateToggleItemUI_fn = function(element, packageId) {
@@ -5463,27 +5652,27 @@ var TwentyNineNext = (() => {
   };
   _isItemInCart = new WeakSet();
   isItemInCart_fn = function(itemId) {
-    return __privateGet(this, _app10).state.getState("cart").items.some((item) => item.id === itemId);
+    return __privateGet(this, _app11).state.getState("cart").items.some((item) => item.id === itemId);
   };
   _addItemToCart2 = new WeakSet();
   addItemToCart_fn2 = function(item) {
-    if (!__privateGet(this, _app10).cart) {
+    if (!__privateGet(this, _app11).cart) {
       __privateGet(this, _logger16).error("Cart manager not available");
       return;
     }
-    __privateGet(this, _app10).cart.addToCart(item);
+    __privateGet(this, _app11).cart.addToCart(item);
   };
   _removeItemFromCart2 = new WeakSet();
   removeItemFromCart_fn2 = function(itemId) {
-    if (!__privateGet(this, _app10).cart) {
+    if (!__privateGet(this, _app11).cart) {
       __privateGet(this, _logger16).error("Cart manager not available");
       return;
     }
-    __privateGet(this, _app10).cart.removeFromCart(itemId);
+    __privateGet(this, _app11).cart.removeFromCart(itemId);
   };
 
   // src/managers/DebugManager.js
-  var _app11, _logger17, _miniCartVisible, _miniCartElement, _debugBarElement, _isDebugMode4, _init6, init_fn6, _createDebugBar, createDebugBar_fn, _toggleXray, toggleXray_fn, _showMiniCart, showMiniCart_fn, _hideMiniCart, hideMiniCart_fn, _toggleMiniCart, toggleMiniCart_fn, _createMiniCartElement, createMiniCartElement_fn, _updateMiniCart, updateMiniCart_fn;
+  var _app12, _logger17, _miniCartVisible, _miniCartElement, _debugBarElement, _isDebugMode4, _init6, init_fn6, _createDebugBar, createDebugBar_fn, _toggleXray, toggleXray_fn, _showMiniCart, showMiniCart_fn, _hideMiniCart, hideMiniCart_fn, _toggleMiniCart, toggleMiniCart_fn, _createMiniCartElement, createMiniCartElement_fn, _updateMiniCart, updateMiniCart_fn;
   var DebugManager = class {
     constructor(app) {
       __privateAdd(this, _init6);
@@ -5494,20 +5683,20 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _toggleMiniCart);
       __privateAdd(this, _createMiniCartElement);
       __privateAdd(this, _updateMiniCart);
-      __privateAdd(this, _app11, void 0);
+      __privateAdd(this, _app12, void 0);
       __privateAdd(this, _logger17, void 0);
       __privateAdd(this, _miniCartVisible, false);
       __privateAdd(this, _miniCartElement, null);
       __privateAdd(this, _debugBarElement, null);
       __privateAdd(this, _isDebugMode4, false);
-      __privateSet(this, _app11, app);
+      __privateSet(this, _app12, app);
       __privateSet(this, _logger17, app.logger.createModuleLogger("DEBUG"));
       __privateSet(this, _isDebugMode4, DebugUtils.initDebugMode());
       __privateMethod(this, _init6, init_fn6).call(this);
       __privateGet(this, _logger17).info("DebugManager initialized");
     }
   };
-  _app11 = new WeakMap();
+  _app12 = new WeakMap();
   _logger17 = new WeakMap();
   _miniCartVisible = new WeakMap();
   _miniCartElement = new WeakMap();
@@ -5526,7 +5715,7 @@ var TwentyNineNext = (() => {
         __privateMethod(this, _showMiniCart, showMiniCart_fn).call(this);
       }
     }
-    __privateGet(this, _app11).state?.subscribe("cart", () => {
+    __privateGet(this, _app12).state?.subscribe("cart", () => {
       if (__privateGet(this, _miniCartVisible))
         __privateMethod(this, _updateMiniCart, updateMiniCart_fn).call(this);
     });
@@ -5706,13 +5895,13 @@ var TwentyNineNext = (() => {
     const content = __privateGet(this, _miniCartElement).querySelector(".os-debug-mini-cart-content");
     if (!content)
       return;
-    const cart = __privateGet(this, _app11).state?.getState("cart");
+    const cart = __privateGet(this, _app12).state?.getState("cart");
     if (!cart) {
       content.innerHTML = '<div style="color: #999; text-align: center;">Cart data not available</div>';
       return;
     }
     __privateGet(this, _logger17).debug("Updating mini-cart with cart data:", cart);
-    const formatPrice = (price) => __privateGet(this, _app11).campaign?.formatPrice(price) ?? `$${price.toFixed(2)}`;
+    const formatPrice = (price) => __privateGet(this, _app12).campaign?.formatPrice(price) ?? `$${price.toFixed(2)}`;
     let html = "";
     if (!cart.items?.length) {
       html += '<div style="color: #999; text-align: center; margin-bottom: 15px;">Cart is empty</div>';
@@ -5792,7 +5981,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/TimerManager.js
-  var _app12, _logger18, _timers, _storagePrefix, _initTimers, initTimers_fn, _setupTimer, setupTimer_fn, _getTimerConfig, getTimerConfig_fn, _formatTime, formatTime_fn, _triggerTimerEvent, triggerTimerEvent_fn;
+  var _app13, _logger18, _timers, _storagePrefix, _initTimers, initTimers_fn, _setupTimer, setupTimer_fn, _getTimerConfig, getTimerConfig_fn, _formatTime, formatTime_fn, _triggerTimerEvent, triggerTimerEvent_fn;
   var TimerManager = class {
     constructor(app) {
       /**
@@ -5827,11 +6016,11 @@ var TwentyNineNext = (() => {
        * @param {Object} detail - Event details
        */
       __privateAdd(this, _triggerTimerEvent);
-      __privateAdd(this, _app12, void 0);
+      __privateAdd(this, _app13, void 0);
       __privateAdd(this, _logger18, void 0);
       __privateAdd(this, _timers, /* @__PURE__ */ new Map());
       __privateAdd(this, _storagePrefix, "os-timer-");
-      __privateSet(this, _app12, app);
+      __privateSet(this, _app13, app);
       __privateSet(this, _logger18, app.logger.createModuleLogger("TIMER"));
       __privateMethod(this, _initTimers, initTimers_fn).call(this);
       __privateGet(this, _logger18).infoWithTime("TimerManager initialized");
@@ -5859,7 +6048,7 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _timers);
     }
   };
-  _app12 = new WeakMap();
+  _app13 = new WeakMap();
   _logger18 = new WeakMap();
   _timers = new WeakMap();
   _storagePrefix = new WeakMap();
@@ -6023,7 +6212,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/DisplayManager.js
-  var _app13, _logger19, _displayElements, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn;
+  var _app14, _logger19, _displayElements, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn;
   var DisplayManager = class {
     constructor(app) {
       /**
@@ -6044,13 +6233,13 @@ var TwentyNineNext = (() => {
        * @param {Object} detail - Event details
        */
       __privateAdd(this, _triggerDisplayEvent);
-      __privateAdd(this, _app13, void 0);
+      __privateAdd(this, _app14, void 0);
       __privateAdd(this, _logger19, void 0);
       __privateAdd(this, _displayElements, /* @__PURE__ */ new Map());
-      __privateSet(this, _app13, app);
+      __privateSet(this, _app14, app);
       __privateSet(this, _logger19, app.logger.createModuleLogger("DISPLAY"));
       __privateMethod(this, _initDisplayElements, initDisplayElements_fn).call(this);
-      __privateGet(this, _app13).state.subscribe("cart", () => this.refreshDisplayElements());
+      __privateGet(this, _app14).state.subscribe("cart", () => this.refreshDisplayElements());
       __privateGet(this, _logger19).infoWithTime("DisplayManager initialized");
     }
     /**
@@ -6058,7 +6247,7 @@ var TwentyNineNext = (() => {
      */
     refreshDisplayElements() {
       __privateGet(this, _logger19).debugWithTime("Refreshing display elements");
-      const cart = __privateGet(this, _app13).state.getState("cart");
+      const cart = __privateGet(this, _app14).state.getState("cart");
       const cartItemIds = cart.items.map((item) => item.id.toString());
       __privateGet(this, _displayElements).forEach((containerData, container) => {
         __privateMethod(this, _updateContainerDisplay, updateContainerDisplay_fn).call(this, container, containerData, cartItemIds);
@@ -6074,7 +6263,7 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _initDisplayElements, initDisplayElements_fn).call(this);
     }
   };
-  _app13 = new WeakMap();
+  _app14 = new WeakMap();
   _logger19 = new WeakMap();
   _displayElements = new WeakMap();
   _initDisplayElements = new WeakSet();
@@ -6138,7 +6327,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CartDisplayManager.js
-  var _app14, _logger20, _elements3, _config, _lineItemTemplate, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice, formatPrice_fn, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
+  var _app15, _logger20, _elements3, _config2, _lineItemTemplate, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice, formatPrice_fn, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
   var CartDisplayManager = class {
     constructor(app) {
       /**
@@ -6210,7 +6399,7 @@ var TwentyNineNext = (() => {
        * @returns {NodeList} - All matching elements
        */
       __privateAdd(this, _findAllSummaryElements);
-      __privateAdd(this, _app14, void 0);
+      __privateAdd(this, _app15, void 0);
       __privateAdd(this, _logger20, void 0);
       __privateAdd(this, _elements3, {
         lineDisplays: [],
@@ -6235,17 +6424,17 @@ var TwentyNineNext = (() => {
         // Compare total elements
         compareTotalElements: []
       });
-      __privateAdd(this, _config, {
+      __privateAdd(this, _config2, {
         currencySymbol: "$",
         showComparePricing: true,
         showProductImages: true,
         showTaxPendingMessage: true
       });
       __privateAdd(this, _lineItemTemplate, null);
-      __privateSet(this, _app14, app);
+      __privateSet(this, _app15, app);
       __privateSet(this, _logger20, app.logger.createModuleLogger("CART_DISPLAY"));
       __privateMethod(this, _initCartDisplay, initCartDisplay_fn).call(this);
-      __privateGet(this, _app14).state.subscribe("cart", () => this.updateCartDisplay());
+      __privateGet(this, _app15).state.subscribe("cart", () => this.updateCartDisplay());
       __privateGet(this, _logger20).infoWithTime("CartDisplayManager initialized");
     }
     /**
@@ -6253,7 +6442,7 @@ var TwentyNineNext = (() => {
      */
     updateCartDisplay() {
       __privateGet(this, _logger20).debugWithTime("Updating cart display");
-      const cart = __privateGet(this, _app14).state.getState("cart");
+      const cart = __privateGet(this, _app15).state.getState("cart");
       if (!cart) {
         __privateGet(this, _logger20).warnWithTime("Cart data not available");
         return;
@@ -6276,10 +6465,10 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _initCartDisplay, initCartDisplay_fn).call(this);
     }
   };
-  _app14 = new WeakMap();
+  _app15 = new WeakMap();
   _logger20 = new WeakMap();
   _elements3 = new WeakMap();
-  _config = new WeakMap();
+  _config2 = new WeakMap();
   _lineItemTemplate = new WeakMap();
   _initCartDisplay = new WeakSet();
   initCartDisplay_fn = function() {
@@ -6306,10 +6495,10 @@ var TwentyNineNext = (() => {
     __privateGet(this, _logger20).debugWithTime(`Compare total elements found: ${__privateGet(this, _elements3).compareTotalElements.length}`);
     if (__privateGet(this, _elements3).summaryContainers.length > 0) {
       const firstContainer = __privateGet(this, _elements3).summaryContainers[0];
-      __privateGet(this, _config).showComparePricing = firstContainer.dataset.showComparePricing !== "false";
-      __privateGet(this, _config).showProductImages = firstContainer.dataset.showProductImages !== "false";
-      __privateGet(this, _config).showTaxPendingMessage = firstContainer.dataset.showTaxPendingMessage !== "false";
-      __privateGet(this, _config).currencySymbol = firstContainer.dataset.currencySymbol || "$";
+      __privateGet(this, _config2).showComparePricing = firstContainer.dataset.showComparePricing !== "false";
+      __privateGet(this, _config2).showProductImages = firstContainer.dataset.showProductImages !== "false";
+      __privateGet(this, _config2).showTaxPendingMessage = firstContainer.dataset.showTaxPendingMessage !== "false";
+      __privateGet(this, _config2).currencySymbol = firstContainer.dataset.currencySymbol || "$";
     }
     const existingLineItem = document.querySelector('[data-os-cart-summary="line-item"]');
     if (existingLineItem) {
@@ -6435,7 +6624,7 @@ var TwentyNineNext = (() => {
     if (titleElement) {
       titleElement.textContent = item.name;
     }
-    if (__privateGet(this, _config).showProductImages) {
+    if (__privateGet(this, _config2).showProductImages) {
       const imageElement = lineItem.querySelector('[data-os-cart-summary="line-image"]');
       if (imageElement && item.image) {
         imageElement.src = item.image;
@@ -6448,7 +6637,7 @@ var TwentyNineNext = (() => {
     }
     const comparePrice = lineItem.querySelector('[data-os-cart-summary="line-compare"]');
     const salePrice = lineItem.querySelector('[data-os-cart-summary="line-sale"]');
-    if (comparePrice && item.retail_price && __privateGet(this, _config).showComparePricing) {
+    if (comparePrice && item.retail_price && __privateGet(this, _config2).showComparePricing) {
       comparePrice.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, item.retail_price * (item.quantity || 1));
       comparePrice.classList.remove("hide");
     } else if (comparePrice) {
@@ -6552,10 +6741,10 @@ var TwentyNineNext = (() => {
   };
   _formatPrice = new WeakSet();
   formatPrice_fn = function(price) {
-    if (__privateGet(this, _app14).campaign?.formatPrice) {
-      return __privateGet(this, _app14).campaign.formatPrice(price);
+    if (__privateGet(this, _app15).campaign?.formatPrice) {
+      return __privateGet(this, _app15).campaign.formatPrice(price);
     }
-    return `${__privateGet(this, _config).currencySymbol}${price.toFixed(2)} USD`;
+    return `${__privateGet(this, _config2).currencySymbol}${price.toFixed(2)} USD`;
   };
   _debounce = new WeakSet();
   debounce_fn = function(func, wait) {
@@ -6611,7 +6800,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/AttributionManager.js
-  var _app15, _logger21, _attributionData, _initialized2, _init7, init_fn7, _collectAttributionData, collectAttributionData_fn, _collectTrackingTags, collectTrackingTags_fn, _storeAttributionData, storeAttributionData_fn, _persistAttributionData, persistAttributionData_fn, _loadPersistedAttributionData, loadPersistedAttributionData_fn, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn, _setupEventListeners4, setupEventListeners_fn4, _reinitializeAttributionData, reinitializeAttributionData_fn, _getStoredValue, getStoredValue_fn, _getCookie, getCookie_fn, _getDeviceType, getDeviceType_fn, _getFacebookPixelId, getFacebookPixelId_fn;
+  var _app16, _logger21, _attributionData, _initialized2, _init7, init_fn7, _collectAttributionData, collectAttributionData_fn, _collectTrackingTags, collectTrackingTags_fn, _storeAttributionData, storeAttributionData_fn, _persistAttributionData, persistAttributionData_fn, _loadPersistedAttributionData, loadPersistedAttributionData_fn, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn, _setupEventListeners4, setupEventListeners_fn4, _reinitializeAttributionData, reinitializeAttributionData_fn, _getStoredValue, getStoredValue_fn, _getCookie, getCookie_fn, _getDeviceType, getDeviceType_fn, _getFacebookPixelId, getFacebookPixelId_fn;
   var AttributionManager = class {
     /**
      * Initialize the AttributionManager
@@ -6680,11 +6869,11 @@ var TwentyNineNext = (() => {
        * @returns {string} The Facebook Pixel ID or empty string if not found
        */
       __privateAdd(this, _getFacebookPixelId);
-      __privateAdd(this, _app15, void 0);
+      __privateAdd(this, _app16, void 0);
       __privateAdd(this, _logger21, void 0);
       __privateAdd(this, _attributionData, {});
       __privateAdd(this, _initialized2, false);
-      __privateSet(this, _app15, app);
+      __privateSet(this, _app16, app);
       __privateSet(this, _logger21, app.logger.createModuleLogger("ATTRIBUTION"));
       __privateMethod(this, _init7, init_fn7).call(this);
     }
@@ -6708,8 +6897,8 @@ var TwentyNineNext = (() => {
       });
       __privateMethod(this, _storeAttributionData, storeAttributionData_fn).call(this);
       __privateGet(this, _logger21).debug("Attribution data updated", newData);
-      if (__privateGet(this, _app15).events) {
-        __privateGet(this, _app15).events.trigger("attribution.updated", {
+      if (__privateGet(this, _app16).events) {
+        __privateGet(this, _app16).events.trigger("attribution.updated", {
           attribution: __privateGet(this, _attributionData)
         });
       }
@@ -6754,7 +6943,7 @@ var TwentyNineNext = (() => {
       console.group("AttributionManager Debug Info");
       const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
       const funnelFromTag = funnelMetaTag ? funnelMetaTag.getAttribute("data-tag-value") : "";
-      const campaignName = __privateGet(this, _app15).campaign?.getCampaignName() || __privateGet(this, _app15).campaignData?.name || "";
+      const campaignName = __privateGet(this, _app16).campaign?.getCampaignName() || __privateGet(this, _app16).campaignData?.name || "";
       /* @__PURE__ */ console.log("Key Attribution Values:");
       /* @__PURE__ */ console.log("- Affiliate:", __privateGet(this, _attributionData).affiliate);
       /* @__PURE__ */ console.log("- Funnel:", __privateGet(this, _attributionData).funnel);
@@ -6808,15 +6997,15 @@ var TwentyNineNext = (() => {
       } : {
         exists: false
       });
-      /* @__PURE__ */ console.log("Campaign Name:", __privateGet(this, _app15).campaignData?.name || "Not available");
-      if (__privateGet(this, _app15).state) {
-        /* @__PURE__ */ console.log("API-formatted State Attribution:", __privateGet(this, _app15).state.getState("attribution"));
+      /* @__PURE__ */ console.log("Campaign Name:", __privateGet(this, _app16).campaignData?.name || "Not available");
+      if (__privateGet(this, _app16).state) {
+        /* @__PURE__ */ console.log("API-formatted State Attribution:", __privateGet(this, _app16).state.getState("attribution"));
       }
       console.groupEnd();
       return "Attribution debug info logged to console.";
     }
   };
-  _app15 = new WeakMap();
+  _app16 = new WeakMap();
   _logger21 = new WeakMap();
   _attributionData = new WeakMap();
   _initialized2 = new WeakMap();
@@ -6833,7 +7022,7 @@ var TwentyNineNext = (() => {
   collectAttributionData_fn = function() {
     const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
     const funnelIdFromTag = funnelMetaTag ? funnelMetaTag.getAttribute("data-tag-value") : "";
-    const campaignName = __privateGet(this, _app15).campaign?.getCampaignName() || __privateGet(this, _app15).campaignData?.name || "";
+    const campaignName = __privateGet(this, _app16).campaign?.getCampaignName() || __privateGet(this, _app16).campaignData?.name || "";
     const funnelId = funnelIdFromTag || campaignName;
     __privateGet(this, _logger21).debug(`Using funnel value: ${funnelId} (from ${funnelIdFromTag ? "meta tag" : "campaign name"})`);
     const affiliate = __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "affid") || __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "aff") || "";
@@ -6883,7 +7072,7 @@ var TwentyNineNext = (() => {
       current_visit_timestamp: Date.now()
     });
     __privateGet(this, _logger21).debug("Attribution data collected", __privateGet(this, _attributionData));
-    if (!campaignName && __privateGet(this, _app15).events) {
+    if (!campaignName && __privateGet(this, _app16).events) {
       __privateGet(this, _logger21).debug("Campaign data not available yet, will update when loaded");
     }
   };
@@ -6911,12 +7100,12 @@ var TwentyNineNext = (() => {
   };
   _storeAttributionData = new WeakSet();
   storeAttributionData_fn = function() {
-    if (!__privateGet(this, _app15).state) {
+    if (!__privateGet(this, _app16).state) {
       __privateGet(this, _logger21).warn("State manager not available, attribution data will not be stored");
       return;
     }
-    __privateGet(this, _app15).state.setState("cart.attribution", __privateGet(this, _attributionData));
-    __privateGet(this, _app15).state.setState("attribution", this.getAttributionForApi());
+    __privateGet(this, _app16).state.setState("cart.attribution", __privateGet(this, _attributionData));
+    __privateGet(this, _app16).state.setState("attribution", this.getAttributionForApi());
     __privateGet(this, _logger21).info("Attribution data stored in state");
     __privateMethod(this, _persistAttributionData, persistAttributionData_fn).call(this);
   };
@@ -6958,10 +7147,10 @@ var TwentyNineNext = (() => {
         metadata
       });
     });
-    if (__privateGet(this, _app15).events) {
-      __privateGet(this, _app15).events.on("campaign.loaded", (data) => {
+    if (__privateGet(this, _app16).events) {
+      __privateGet(this, _app16).events.on("campaign.loaded", (data) => {
         if (data && data.campaign) {
-          const campaignName = __privateGet(this, _app15).campaign?.getCampaignName() || data.campaign.name || "";
+          const campaignName = __privateGet(this, _app16).campaign?.getCampaignName() || data.campaign.name || "";
           if (!campaignName) {
             __privateGet(this, _logger21).warn("Campaign loaded but name is not available");
             return;
@@ -6977,7 +7166,7 @@ var TwentyNineNext = (() => {
           __privateGet(this, _logger21).debug(`Updated funnel to: ${funnel} (from ${funnelIdFromTag ? "meta tag" : "campaign name"})`);
         }
       });
-      __privateGet(this, _app15).events.on("prospect.cartCreated", () => {
+      __privateGet(this, _app16).events.on("prospect.cartCreated", () => {
         const metadata = __privateGet(this, _attributionData).metadata || {};
         metadata.conversion_timestamp = Date.now();
         this.updateAttributionData({
@@ -6990,7 +7179,7 @@ var TwentyNineNext = (() => {
   _reinitializeAttributionData = new WeakSet();
   reinitializeAttributionData_fn = function() {
     __privateGet(this, _logger21).info("Reinitializing attribution data with campaign information");
-    const campaignName = __privateGet(this, _app15).campaign?.getCampaignName() || __privateGet(this, _app15).campaignData?.name || "";
+    const campaignName = __privateGet(this, _app16).campaign?.getCampaignName() || __privateGet(this, _app16).campaignData?.name || "";
     if (!campaignName) {
       __privateGet(this, _logger21).warn("Cannot reinitialize attribution data: Campaign name not available");
       return;
@@ -7002,8 +7191,8 @@ var TwentyNineNext = (() => {
     __privateGet(this, _attributionData).funnel = funnelId;
     __privateMethod(this, _storeAttributionData, storeAttributionData_fn).call(this);
     __privateGet(this, _logger21).info(`Attribution data reinitialized with funnel: ${funnelId}`);
-    if (__privateGet(this, _app15).events) {
-      __privateGet(this, _app15).events.trigger("attribution.updated", {
+    if (__privateGet(this, _app16).events) {
+      __privateGet(this, _app16).events.trigger("attribution.updated", {
         attribution: __privateGet(this, _attributionData)
       });
     }
@@ -7082,7 +7271,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/EventManager.js
-  var _app16, _logger22, _isInitialized, _platforms, _debugMode4, _processedOrderIds, _loadProcessedOrderIds, loadProcessedOrderIds_fn, _saveProcessedOrderIds, saveProcessedOrderIds_fn, _detectPlatforms, detectPlatforms_fn, _setupEventListeners5, setupEventListeners_fn5, _getUserDataForTracking, getUserDataForTracking_fn, _hashString, hashString_fn, _fireEvent, fireEvent_fn;
+  var _app17, _logger22, _isInitialized, _platforms, _debugMode4, _processedOrderIds, _loadProcessedOrderIds, loadProcessedOrderIds_fn, _saveProcessedOrderIds, saveProcessedOrderIds_fn, _detectPlatforms, detectPlatforms_fn, _setupEventListeners5, setupEventListeners_fn5, _getUserDataForTracking, getUserDataForTracking_fn, _hashString, hashString_fn, _fireEvent, fireEvent_fn;
   var EventManager = class {
     // Track processed order IDs to prevent duplicates
     constructor(app) {
@@ -7120,7 +7309,7 @@ var TwentyNineNext = (() => {
        * @param {Object} eventData - The event data
        */
       __privateAdd(this, _fireEvent);
-      __privateAdd(this, _app16, void 0);
+      __privateAdd(this, _app17, void 0);
       __privateAdd(this, _logger22, void 0);
       __privateAdd(this, _isInitialized, false);
       __privateAdd(this, _platforms, {
@@ -7130,7 +7319,7 @@ var TwentyNineNext = (() => {
       });
       __privateAdd(this, _debugMode4, false);
       __privateAdd(this, _processedOrderIds, /* @__PURE__ */ new Set());
-      __privateSet(this, _app16, app);
+      __privateSet(this, _app17, app);
       __privateSet(this, _logger22, app.logger.createModuleLogger("EVENT"));
       __privateSet(this, _debugMode4, app.options?.debug || false);
       this.init();
@@ -7194,7 +7383,7 @@ var TwentyNineNext = (() => {
           item_id: pkg.external_id || pkg.ref_id || pkg.id,
           item_name: pkg.name,
           price: parseFloat(pkg.price) || 0,
-          currency: pkg.currency || __privateGet(this, _app16).getCampaignData()?.currency || "USD",
+          currency: pkg.currency || __privateGet(this, _app17).getCampaignData()?.currency || "USD",
           quantity: pkg.quantity || 1
         };
         items = [item];
@@ -7281,7 +7470,7 @@ var TwentyNineNext = (() => {
         item_id: packageData.ref_id || packageData.external_id || packageData.id,
         item_name: packageData.name,
         price: parseFloat(packageData.price) || 0,
-        currency: packageData.currency || __privateGet(this, _app16).getCampaignData()?.currency || "USD",
+        currency: packageData.currency || __privateGet(this, _app17).getCampaignData()?.currency || "USD",
         quantity: 1
       };
       const eventData = {
@@ -7298,7 +7487,7 @@ var TwentyNineNext = (() => {
      * Manually fire a begin_checkout event
      */
     beginCheckout() {
-      const cart = __privateGet(this, _app16).state.getState("cart");
+      const cart = __privateGet(this, _app17).state.getState("cart");
       if (!cart || !cart.items || cart.items.length === 0) {
         __privateGet(this, _logger22).warn("Cannot fire begin_checkout event: No items in cart");
         return;
@@ -7375,7 +7564,7 @@ var TwentyNineNext = (() => {
       return { ...__privateGet(this, _platforms) };
     }
   };
-  _app16 = new WeakMap();
+  _app17 = new WeakMap();
   _logger22 = new WeakMap();
   _isInitialized = new WeakMap();
   _platforms = new WeakMap();
@@ -7432,7 +7621,7 @@ var TwentyNineNext = (() => {
   };
   _setupEventListeners5 = new WeakSet();
   setupEventListeners_fn5 = function() {
-    __privateGet(this, _app16).on("campaign.loaded", (data) => {
+    __privateGet(this, _app17).on("campaign.loaded", (data) => {
       __privateGet(this, _logger22).debug("Campaign loaded event received, firing view_item_list");
       if (data && data.campaign) {
         this.viewItemList(data.campaign);
@@ -7440,15 +7629,15 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger22).warn("Campaign loaded event received but no campaign data found");
       }
     });
-    __privateGet(this, _app16).on("cart.updated", (data) => {
+    __privateGet(this, _app17).on("cart.updated", (data) => {
       if (data.cart && data.cart.items && data.cart.items.length > 0) {
         this.addToCart(data.cart);
       }
     });
-    __privateGet(this, _app16).on("order.created", (data) => {
+    __privateGet(this, _app17).on("order.created", (data) => {
       this.purchase(data);
     });
-    __privateGet(this, _app16).on("order.loaded", (data) => {
+    __privateGet(this, _app17).on("order.loaded", (data) => {
       if (data.order) {
         __privateGet(this, _logger22).info("Order loaded on receipt page, checking if purchase event needed");
         this.purchase(data.order);
@@ -8774,7 +8963,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/TooltipManager.js
-  var _app17, _logger23, _tooltip, _arrowElement, _textContainer, _currentElement, _showTimeout, _hideTimeout, _initialized3, _init8, init_fn8, _createTooltip, createTooltip_fn, _setupEventListeners6, setupEventListeners_fn6, _showTooltip, showTooltip_fn, _hideTooltip, hideTooltip_fn;
+  var _app18, _logger23, _tooltip, _arrowElement, _textContainer, _currentElement, _showTimeout, _hideTimeout, _initialized3, _init8, init_fn8, _createTooltip, createTooltip_fn, _setupEventListeners6, setupEventListeners_fn6, _showTooltip, showTooltip_fn, _hideTooltip, hideTooltip_fn;
   var TooltipManager = class {
     constructor(app) {
       /**
@@ -8797,7 +8986,7 @@ var TwentyNineNext = (() => {
        * Hide the tooltip
        */
       __privateAdd(this, _hideTooltip);
-      __privateAdd(this, _app17, void 0);
+      __privateAdd(this, _app18, void 0);
       __privateAdd(this, _logger23, void 0);
       __privateAdd(this, _tooltip, void 0);
       __privateAdd(this, _arrowElement, void 0);
@@ -8806,13 +8995,13 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _showTimeout, null);
       __privateAdd(this, _hideTimeout, null);
       __privateAdd(this, _initialized3, false);
-      __privateSet(this, _app17, app);
+      __privateSet(this, _app18, app);
       __privateSet(this, _logger23, app.logger.createModuleLogger("TOOLTIP"));
       __privateMethod(this, _init8, init_fn8).call(this);
       __privateGet(this, _logger23).info("TooltipManager initialized");
     }
   };
-  _app17 = new WeakMap();
+  _app18 = new WeakMap();
   _logger23 = new WeakMap();
   _tooltip = new WeakMap();
   _arrowElement = new WeakMap();
@@ -8946,7 +9135,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/UpsellManager.js
-  var _app18, _logger24, _stateManager2, _api, _upsellElements, _orderRef, _init9, init_fn9, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _redirect, redirect_fn, _displayError, displayError_fn;
+  var _app19, _logger24, _stateManager2, _api, _upsellElements, _orderRef, _init9, init_fn9, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _redirect, redirect_fn, _displayError, displayError_fn;
   var UpsellManager = class {
     constructor(app) {
       __privateAdd(this, _init9);
@@ -8981,13 +9170,13 @@ var TwentyNineNext = (() => {
        * @param {string} message - The error message to display
        */
       __privateAdd(this, _displayError);
-      __privateAdd(this, _app18, void 0);
+      __privateAdd(this, _app19, void 0);
       __privateAdd(this, _logger24, void 0);
       __privateAdd(this, _stateManager2, void 0);
       __privateAdd(this, _api, void 0);
       __privateAdd(this, _upsellElements, {});
       __privateAdd(this, _orderRef, null);
-      __privateSet(this, _app18, app);
+      __privateSet(this, _app19, app);
       __privateSet(this, _logger24, app.logger.createModuleLogger("UPSELL"));
       __privateSet(this, _stateManager2, app.state);
       __privateSet(this, _api, app.api);
@@ -9035,7 +9224,7 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _redirect, redirect_fn).call(this, nextUrl);
     }
   };
-  _app18 = new WeakMap();
+  _app19 = new WeakMap();
   _logger24 = new WeakMap();
   _stateManager2 = new WeakMap();
   _api = new WeakMap();
@@ -9398,10 +9587,15 @@ var TwentyNineNext = (() => {
   };
 
   // src/core/TwentyNineNext.js
-  var _isInitialized2, _isCheckoutPage, _campaignData, _loadConfig, loadConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn;
+  var _isInitialized2, _isCheckoutPage, _campaignData, _loadConfig2, loadConfig_fn2, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn;
   var TwentyNineNext = class {
     constructor(options = {}) {
-      __privateAdd(this, _loadConfig);
+      __privateAdd(this, _loadConfig2);
+      /**
+       * Initialize Spreedly configuration from global config
+       * This allows users to customize Spreedly iframe behavior
+       */
+      __privateAdd(this, _initSpreedlyConfig);
       __privateAdd(this, _loadGoogleMapsApi);
       __privateAdd(this, _fetchCampaignData);
       __privateAdd(this, _initializeManagers);
@@ -9415,17 +9609,19 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _isInitialized2, false);
       __privateAdd(this, _isCheckoutPage, false);
       __privateAdd(this, _campaignData, null);
+      const googleMapsConfig = window.osConfig?.googleMaps || {};
       this.options = {
         debug: false,
         autoInit: true,
-        googleMapsApiKey: "YOUR_API_KEY_HERE",
-        // Replace with configurable key
+        googleMapsApiKey: googleMapsConfig.apiKey || "YOUR_API_KEY_HERE",
+        googleMapsRegion: googleMapsConfig.region || "US",
+        enableGoogleMapsAutocomplete: googleMapsConfig.enableAutocomplete !== false,
         ...options
       };
       this.logger = new Logger(this.options.debug);
       this.coreLogger = this.logger.createModuleLogger("CORE");
       this.api = new ApiClient(this);
-      this.config = __privateMethod(this, _loadConfig, loadConfig_fn).call(this);
+      this.config = __privateMethod(this, _loadConfig2, loadConfig_fn2).call(this);
       this.state = new StateManager(this);
       this.attribution = new AttributionManager(this);
       this.cart = new CartManager(this);
@@ -9544,8 +9740,8 @@ var TwentyNineNext = (() => {
   _isInitialized2 = new WeakMap();
   _isCheckoutPage = new WeakMap();
   _campaignData = new WeakMap();
-  _loadConfig = new WeakSet();
-  loadConfig_fn = function() {
+  _loadConfig2 = new WeakSet();
+  loadConfig_fn2 = function() {
     const config = { apiKey: null, campaignId: null, debug: this.options.debug };
     const apiKeyMeta = document.querySelector('meta[name="os-api-key"]');
     config.apiKey = apiKeyMeta?.getAttribute("content") ?? null;
@@ -9559,10 +9755,40 @@ var TwentyNineNext = (() => {
       this.logger.setDebug(true);
       this.coreLogger.info("Debug mode: ✓ Enabled");
     }
+    __privateMethod(this, _initSpreedlyConfig, initSpreedlyConfig_fn).call(this);
     return config;
+  };
+  _initSpreedlyConfig = new WeakSet();
+  initSpreedlyConfig_fn = function() {
+    window.osConfig = window.osConfig || {};
+    if (!window.osConfig.spreedlyConfig) {
+      this.coreLogger.debug("Initializing default Spreedly configuration");
+      window.osConfig.spreedlyConfig = {
+        fieldType: {
+          number: "text",
+          cvv: "text"
+        },
+        numberFormat: "prettyFormat",
+        placeholder: {
+          number: "Credit Card Number",
+          cvv: "CVV *"
+        },
+        labels: {
+          number: "Card Number",
+          cvv: "CVV"
+        }
+        // Other properties will use defaults from SpreedlyManager
+      };
+    } else {
+      this.coreLogger.info("Found custom Spreedly configuration");
+    }
   };
   _loadGoogleMapsApi = new WeakSet();
   loadGoogleMapsApi_fn = async function() {
+    if (!this.options.enableGoogleMapsAutocomplete) {
+      this.coreLogger.debug("Google Maps Autocomplete is disabled in configuration");
+      return;
+    }
     if (typeof google !== "undefined" && typeof google.maps !== "undefined") {
       this.coreLogger.debug("Google Maps API already loaded");
       return;
@@ -9570,7 +9796,8 @@ var TwentyNineNext = (() => {
     this.coreLogger.debug("Loading Google Maps API...");
     return new Promise((resolve) => {
       const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${this.options.googleMapsApiKey}&libraries=places`;
+      const regionParam = this.options.googleMapsRegion ? `&region=${this.options.googleMapsRegion}` : "";
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${this.options.googleMapsApiKey}&libraries=places${regionParam}`;
       script.async = true;
       script.defer = true;
       script.onload = () => {

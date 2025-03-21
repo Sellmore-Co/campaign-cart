@@ -17,16 +17,23 @@ export class SpreedlyManager {
   #onErrorCallback = null;
   #onPaymentMethodCallback = null;
   #onValidationCallback = null;
+  #config = null;
+  #app = null;
 
   /**
    * Create a new SpreedlyManager
    * @param {string} environmentKey - The Spreedly environment key
    * @param {Object} options - Configuration options
    * @param {boolean} options.debug - Enable debug mode
+   * @param {Object} options.app - The app instance for accessing global config
    */
   constructor(environmentKey, options = {}) {
     this.#environmentKey = environmentKey;
     this.#debugMode = options.debug || false;
+    this.#app = options.app || null;
+    
+    // Load Spreedly configuration
+    this.#loadConfig();
     
     if (!environmentKey) {
       this.#log('error', 'No environment key provided to SpreedlyManager');
@@ -35,6 +42,112 @@ export class SpreedlyManager {
     
     this.#log('debug', `SpreedlyManager initialized with environment key: ${environmentKey}`);
     this.#initialize();
+  }
+
+  /**
+   * Load Spreedly configuration from global config
+   */
+  #loadConfig() {
+    // Default configuration
+    this.#config = {
+      fieldType: {
+        number: 'text',
+        cvv: 'text'
+      },
+      numberFormat: 'prettyFormat',
+      placeholder: {
+        number: 'Credit Card Number',
+        cvv: 'CVV *'
+      },
+      labels: {
+        number: 'Card Number',
+        cvv: 'CVV'
+      },
+      titles: {
+        number: 'Credit card number',
+        cvv: 'Card verification value'
+      },
+      styling: {
+        number: 'color: #212529; font-size: .925rem; font-weight: 400; width: 100%; height:100%; font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";',
+        cvv: 'color: #212529; font-size: .925rem; font-weight: 400; width: 100%; height: 100%; font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";'
+      },
+      placeholder_styling: '',
+      required: {
+        number: true,
+        cvv: true
+      },
+      autocomplete: true
+    };
+
+    // Merge with global configuration if it exists
+    if (window.osConfig && window.osConfig.spreedlyConfig) {
+      this.#log('debug', 'Found global Spreedly configuration', window.osConfig.spreedlyConfig);
+      
+      // Merge field types
+      if (window.osConfig.spreedlyConfig.fieldType) {
+        this.#config.fieldType = {
+          ...this.#config.fieldType,
+          ...window.osConfig.spreedlyConfig.fieldType
+        };
+      }
+      
+      // Merge number format
+      if (window.osConfig.spreedlyConfig.numberFormat) {
+        this.#config.numberFormat = window.osConfig.spreedlyConfig.numberFormat;
+      }
+      
+      // Merge placeholders
+      if (window.osConfig.spreedlyConfig.placeholder) {
+        this.#config.placeholder = {
+          ...this.#config.placeholder,
+          ...window.osConfig.spreedlyConfig.placeholder
+        };
+      }
+      
+      // Merge labels
+      if (window.osConfig.spreedlyConfig.labels) {
+        this.#config.labels = {
+          ...this.#config.labels,
+          ...window.osConfig.spreedlyConfig.labels
+        };
+      }
+      
+      // Merge titles
+      if (window.osConfig.spreedlyConfig.titles) {
+        this.#config.titles = {
+          ...this.#config.titles,
+          ...window.osConfig.spreedlyConfig.titles
+        };
+      }
+      
+      // Merge styling
+      if (window.osConfig.spreedlyConfig.styling) {
+        this.#config.styling = {
+          ...this.#config.styling,
+          ...window.osConfig.spreedlyConfig.styling
+        };
+      }
+      
+      // Merge placeholder styling
+      if (window.osConfig.spreedlyConfig.placeholder_styling) {
+        this.#config.placeholder_styling = window.osConfig.spreedlyConfig.placeholder_styling;
+      }
+      
+      // Merge required attributes
+      if (window.osConfig.spreedlyConfig.required) {
+        this.#config.required = {
+          ...this.#config.required,
+          ...window.osConfig.spreedlyConfig.required
+        };
+      }
+      
+      // Merge autocomplete setting
+      if (window.osConfig.spreedlyConfig.hasOwnProperty('autocomplete')) {
+        this.#config.autocomplete = window.osConfig.spreedlyConfig.autocomplete;
+      }
+    }
+    
+    this.#log('debug', 'Spreedly configuration initialized', this.#config);
   }
 
   /**
@@ -92,22 +205,12 @@ export class SpreedlyManager {
         "cvvEl": "spreedly-cvv"
       });
       
-      // Use exactly the same style as in the original implementation
-      const style = 'color: #212529; font-size: 1rem; line-height: 1.5; font-weight: 400; \
-      width: calc(100% - 20px); height: calc(100% - 2px); position: absolute; \
-      font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";';
-      
       // Set up event listeners
       Spreedly.on('ready', () => {
         this.#log('debug', 'Spreedly iframe ready');
         
-        // Configure the iframe fields exactly as in the original
-        Spreedly.setFieldType('text');
-        Spreedly.setPlaceholder('cvv', 'CVV *');
-        Spreedly.setPlaceholder('number', 'Credit Card Number');
-        Spreedly.setNumberFormat('prettyFormat');
-        Spreedly.setStyle('cvv', style);
-        Spreedly.setStyle('number', style);
+        // Apply configuration from the loaded config
+        this.#applySpreedlyConfig();
         
         // Mark as ready and call the ready callback if set
         this.#isReady = true;
@@ -129,14 +232,68 @@ export class SpreedlyManager {
   }
 
   /**
+   * Apply configuration to Spreedly iframe fields
+   */
+  #applySpreedlyConfig() {
+    try {
+      this.#log('debug', 'Applying Spreedly configuration...');
+      
+      // Apply field types
+      Spreedly.setFieldType('number', this.#config.fieldType.number);
+      Spreedly.setFieldType('cvv', this.#config.fieldType.cvv);
+      
+      // Apply number format
+      Spreedly.setNumberFormat(this.#config.numberFormat);
+      
+      // Apply placeholders
+      Spreedly.setPlaceholder('number', this.#config.placeholder.number);
+      Spreedly.setPlaceholder('cvv', this.#config.placeholder.cvv);
+      
+      // Apply labels
+      Spreedly.setLabel('number', this.#config.labels.number);
+      Spreedly.setLabel('cvv', this.#config.labels.cvv);
+      
+      // Apply titles
+      Spreedly.setTitle('number', this.#config.titles.number);
+      Spreedly.setTitle('cvv', this.#config.titles.cvv);
+      
+      // Apply styling
+      Spreedly.setStyle('number', this.#config.styling.number);
+      Spreedly.setStyle('cvv', this.#config.styling.cvv);
+      
+      // Apply placeholder styling if specified
+      if (this.#config.placeholder_styling) {
+        Spreedly.setStyle('placeholder', this.#config.placeholder_styling);
+      }
+      
+      // Set required attributes if needed
+      if (this.#config.required.number) {
+        Spreedly.setRequiredAttribute('number');
+      }
+      if (this.#config.required.cvv) {
+        Spreedly.setRequiredAttribute('cvv');
+      }
+      
+      // Handle autocomplete
+      if (!this.#config.autocomplete) {
+        Spreedly.toggleAutoComplete();
+      }
+      
+      this.#log('debug', 'Spreedly configuration applied');
+    } catch (error) {
+      this.#log('error', 'Error applying Spreedly configuration', error);
+    }
+  }
+
+  /**
    * Prepare the HTML structure for the iframe fields
-   * This creates the containers for the iframe fields and hides the original inputs
+   * This uses the existing inputs rather than creating new ones
    */
   #prepareHtmlStructure() {
     try {
       this.#log('debug', 'Preparing HTML structure for Spreedly iframe fields');
       
-      // Find the original input containers - exactly as in the original implementation
+      // Find the existing input containers
       const numberField = document.querySelector('[os-checkout-field="cc-number"]');
       const cvvField = document.querySelector('[os-checkout-field="cvv"]');
       
@@ -145,39 +302,15 @@ export class SpreedlyManager {
         return;
       }
       
-      const numberContainer = numberField.closest('.frm-flds');
-      const cvvContainer = cvvField.closest('.frm-flds');
+      // Simply use the IDs of the existing fields
+      numberField.id = 'spreedly-number';
+      cvvField.id = 'spreedly-cvv';
       
-      if (numberContainer && cvvContainer) {
-        // Hide original inputs
-        numberField.style.display = 'none';
-        cvvField.style.display = 'none';
-        
-        // Create and add Spreedly containers
-        const numberDiv = document.createElement('div');
-        numberDiv.id = 'spreedly-number';
-        numberDiv.className = 'input-flds spreedly-field';
-        numberContainer.appendChild(numberDiv);
-        
-        const cvvDiv = document.createElement('div');
-        cvvDiv.id = 'spreedly-cvv';
-        cvvDiv.className = 'input-flds spreedly-field';
-        cvvContainer.appendChild(cvvDiv);
-        
-        // Add necessary styles - exactly as in the original implementation
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = `
-          .spreedly-field {
-            position: relative;
-            overflow: hidden;
-          }
-        `;
-        document.head.appendChild(styleSheet);
-      } else {
-        this.#log('error', 'Could not find credit card field containers');
-      }
+      // Make sure the fields are set up for the iframe
+      numberField.setAttribute('data-spreedly', 'number');
+      cvvField.setAttribute('data-spreedly', 'cvv');
       
-      this.#log('debug', 'HTML structure prepared for Spreedly iframe fields');
+      this.#log('debug', 'HTML structure prepared for Spreedly iframe fields - using existing DOM elements');
     } catch (error) {
       this.#log('error', 'Error preparing HTML structure for Spreedly iframe fields', error);
     }
@@ -237,28 +370,28 @@ export class SpreedlyManager {
   #showErrors(errors) {
     errors.forEach(error => {
       const fieldType = error.attribute;
-      let container = null;
+      let field = null;
       
-      // Map Spreedly field types to our containers
+      // Map Spreedly field types to our fields
       if (fieldType === 'number' || fieldType === 'card_number') {
-        container = document.getElementById('spreedly-number');
+        field = document.getElementById('spreedly-number');
       } else if (fieldType === 'cvv') {
-        container = document.getElementById('spreedly-cvv');
+        field = document.getElementById('spreedly-cvv');
       } else if (fieldType === 'month' || fieldType === 'year') {
         // Find the month/year select elements
-        container = document.querySelector(`[os-checkout-field="cc-${fieldType}"]`) || 
-                   document.querySelector(`[os-checkout-field="exp-${fieldType}"]`) || 
-                   document.querySelector(`#credit_card_exp_${fieldType}`);
+        field = document.querySelector(`[os-checkout-field="cc-${fieldType}"]`) || 
+               document.querySelector(`[os-checkout-field="exp-${fieldType}"]`) || 
+               document.querySelector(`#credit_card_exp_${fieldType}`);
       } else if (fieldType === 'full_name' || fieldType === 'first_name' || fieldType === 'last_name') {
-        container = document.querySelector('[os-checkout-field="cc-name"]');
+        field = document.querySelector('[os-checkout-field="cc-name"]');
       }
       
-      if (container) {
-        // Add error class to the container
-        container.classList.add('error');
+      if (field) {
+        // Add error class to the field
+        field.classList.add('error');
         
         // Find the parent wrapper
-        const wrapper = container.closest('.frm-flds') || container.parentElement;
+        const wrapper = field.closest('.frm-flds') || field.parentElement;
         
         // Create or update error message
         let errorElement = wrapper.querySelector('.pb-input-error');
@@ -282,21 +415,21 @@ export class SpreedlyManager {
    * @param {string} fieldType - The field type (number, cvv, etc.)
    */
   #clearFieldError(fieldType) {
-    let container = null;
+    let field = null;
     
-    // Map Spreedly field types to our containers
+    // Map Spreedly field types to our fields
     if (fieldType === 'number' || fieldType === 'card_number') {
-      container = document.getElementById('spreedly-number');
+      field = document.getElementById('spreedly-number');
     } else if (fieldType === 'cvv') {
-      container = document.getElementById('spreedly-cvv');
+      field = document.getElementById('spreedly-cvv');
     }
     
-    if (container) {
-      // Remove error class from the container
-      container.classList.remove('error');
+    if (field) {
+      // Remove error class from the field
+      field.classList.remove('error');
       
       // Find the parent wrapper
-      const wrapper = container.closest('.frm-flds') || container.parentElement;
+      const wrapper = field.closest('.frm-flds') || field.parentElement;
       
       // Remove error message if it exists
       const errorElement = wrapper.querySelector('.pb-input-error');
@@ -453,4 +586,4 @@ export class SpreedlyManager {
       }
     }
   }
-} 
+}  
