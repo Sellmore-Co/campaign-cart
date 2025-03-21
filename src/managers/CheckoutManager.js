@@ -220,7 +220,12 @@ export class CheckoutPage {
 
   #initAddressAutocomplete() {
     try {
-      this.addressAutocomplete = new AddressAutocomplete(this.#logger);
+      // Pass Google Maps options from the app instance
+      const googleMapsOptions = {
+        enableGoogleMapsAutocomplete: this.#app.options.enableGoogleMapsAutocomplete
+      };
+      
+      this.addressAutocomplete = new AddressAutocomplete(this.#logger, googleMapsOptions);
     } catch (error) {
       this.#logger.error('Error initializing AddressAutocomplete', error);
     }

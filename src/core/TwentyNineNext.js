@@ -29,10 +29,15 @@ export class TwentyNineNext {
   #campaignData = null;
 
   constructor(options = {}) {
+    // Get Google Maps config from window.osConfig if available
+    const googleMapsConfig = window.osConfig?.googleMaps || {};
+    
     this.options = {
       debug: false,
       autoInit: true,
-      googleMapsApiKey: 'YOUR_API_KEY_HERE', // Replace with configurable key
+      googleMapsApiKey: googleMapsConfig.apiKey || 'YOUR_API_KEY_HERE',
+      googleMapsRegion: googleMapsConfig.region || 'US',
+      enableGoogleMapsAutocomplete: googleMapsConfig.enableAutocomplete !== false,
       ...options
     };
     this.logger = new Logger(this.options.debug);
@@ -105,10 +110,52 @@ export class TwentyNineNext {
       this.logger.setDebug(true);
       this.coreLogger.info('Debug mode: ✓ Enabled');
     }
+    
+    // Initialize the spreedly configuration if present
+    this.#initSpreedlyConfig();
+    
     return config;
+  }
+  
+  /**
+   * Initialize Spreedly configuration from global config
+   * This allows users to customize Spreedly iframe behavior
+   */
+  #initSpreedlyConfig() {
+    // Ensure osConfig exists
+    window.osConfig = window.osConfig || {};
+    
+    // If spreedlyConfig doesn't exist, create it with defaults
+    if (!window.osConfig.spreedlyConfig) {
+      this.coreLogger.debug('Initializing default Spreedly configuration');
+      window.osConfig.spreedlyConfig = {
+        fieldType: {
+          number: 'text',
+          cvv: 'text'
+        },
+        numberFormat: 'prettyFormat',
+        placeholder: {
+          number: 'Credit Card Number',
+          cvv: 'CVV *'
+        },
+        labels: {
+          number: 'Card Number',
+          cvv: 'CVV'
+        }
+        // Other properties will use defaults from SpreedlyManager
+      };
+    } else {
+      this.coreLogger.info('Found custom Spreedly configuration');
+    }
   }
 
   async #loadGoogleMapsApi() {
+    // Skip loading if autocomplete is disabled
+    if (!this.options.enableGoogleMapsAutocomplete) {
+      this.coreLogger.debug('Google Maps Autocomplete is disabled in configuration');
+      return;
+    }
+    
     if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
       this.coreLogger.debug('Google Maps API already loaded');
       return;
@@ -117,7 +164,8 @@ export class TwentyNineNext {
     this.coreLogger.debug('Loading Google Maps API...');
     return new Promise((resolve) => {
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${this.options.googleMapsApiKey}&libraries=places`;
+      const regionParam = this.options.googleMapsRegion ? `&region=${this.options.googleMapsRegion}` : '';
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${this.options.googleMapsApiKey}&libraries=places${regionParam}`;
       script.async = true;
       script.defer = true;
       script.onload = () => {

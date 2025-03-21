@@ -2,7 +2,7 @@
  * 29next Webflow Integration Styles
  */
 
-/* Base styles for payment fields */
+/* Base styles for payment fields
 .spreedly-field {
     background-color: #fff;
     border: .5px #d4d4d4;
@@ -18,7 +18,7 @@
     display: flex;
     position: relative;
     box-shadow: 0 0 0 1px #ddd;
-  }
+  } */
   
   /* Expiration date fields */
   [data-os-payment-field="expiry-month"],
