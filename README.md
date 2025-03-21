@@ -4,6 +4,9 @@
 
 Campaign Cart is a JavaScript library designed to provide ecommerce and checkout functionality for campaign websites. This document provides a brief overview of the main features and components available in the library.
 
+### [Setup and Configuration Guide](docs/README.md)
+
+
 ## Core Features
 
 ### Main Initialization
@@ -89,6 +92,7 @@ Campaign Cart is a JavaScript library designed to provide ecommerce and checkout
 - **Spreedly Manager**: Integrates with Spreedly payment service
 - **Logger**: Provides logging functionality
 
+<!---
 ## Integration Guide
 
 To integrate the library into your website:
@@ -99,4 +103,5 @@ To integrate the library into your website:
 4. Initialize the library (automatic or manual)
 5. Subscribe to events as needed
 
-A more detailed integration guide will be provided in subsequent documentation. 
+A more detailed integration guide will be provided in subsequent documentation.
+--->
