@@ -134,7 +134,8 @@ export class UpsellManager {
       const upsellData = {
         lines: [{
           package_id: Number(packageId),
-          quantity: Number(quantity)
+          quantity: Number(quantity),
+          is_upsell: true
         }]
       };
       
