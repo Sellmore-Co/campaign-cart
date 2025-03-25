@@ -153,6 +153,24 @@ export class DebugUtils {
         border: 2px solid rgba(255, 165, 0, 0.9);
       }
       
+      /* Upsell styles */
+      .os-debug-upsell-overlay {
+        border: 2px dashed rgba(76, 175, 80, 0.9) !important;
+      }
+      .os-debug-upsell-label {
+        background-color: rgba(76, 175, 80, 0.9) !important;
+      }
+      .os-debug-upsell-badge {
+        display: inline-block;
+        background-color: rgba(76, 175, 80, 0.9);
+        color: white;
+        font-size: 9px;
+        padding: 1px 3px;
+        border-radius: 2px;
+        margin-left: 4px;
+        vertical-align: middle;
+      }
+      
       /* Debug bar styles */
       .os-debug-bar {
         position: fixed;
@@ -275,15 +293,27 @@ export class DebugUtils {
     const label = document.createElement('div');
     label.className = `os-debug-${type}-label`;
     
+    // Check if this is an upsell element
+    const isUpsell = additionalInfo.Upsell === 'Yes';
+    if (isUpsell) {
+      overlay.classList.add('os-debug-upsell-overlay');
+      label.classList.add('os-debug-upsell-label');
+    }
+    
     // Build label text
     let labelText = `ID: ${id}`;
     
     // Add additional info
     Object.entries(additionalInfo).forEach(([key, value]) => {
-      labelText += ` | ${key}: ${value}`;
+      // Add upsell badge if this is the upsell property
+      if (key === 'Upsell' && value === 'Yes') {
+        labelText += ` | ${key}: <span class="os-debug-upsell-badge">UPSELL</span>`;
+      } else {
+        labelText += ` | ${key}: ${value}`;
+      }
     });
     
-    label.textContent = labelText;
+    label.innerHTML = labelText;
     
     // Set initial visibility based on X-ray mode
     if (!this.#xrayEnabled) {

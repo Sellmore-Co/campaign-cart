@@ -56,7 +56,7 @@ var TwentyNineNext = (() => {
   __export(ReceiptPage_exports, {
     ReceiptPage: () => ReceiptPage
   });
-  var _apiClient3, _logger25, _app20, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError2, showError_fn2, ReceiptPage;
+  var _apiClient3, _logger25, _app20, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError3, showError_fn3, ReceiptPage;
   var init_ReceiptPage = __esm({
     "src/components/checkout/ReceiptPage.js"() {
       "use strict";
@@ -135,7 +135,7 @@ var TwentyNineNext = (() => {
            * Show an error message on the page
            * @param {string} message - The error message
            */
-          __privateAdd(this, _showError2);
+          __privateAdd(this, _showError3);
           __privateAdd(this, _apiClient3, void 0);
           __privateAdd(this, _logger25, void 0);
           __privateAdd(this, _app20, void 0);
@@ -167,7 +167,7 @@ var TwentyNineNext = (() => {
           const refId = urlParams.get("ref_id");
           if (!refId) {
             __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "error", "No ref_id found in URL parameters");
-            __privateMethod(this, _showError2, showError_fn2).call(this, "Order reference not found. Please check your URL.");
+            __privateMethod(this, _showError3, showError_fn3).call(this, "Order reference not found. Please check your URL.");
             return;
           }
           __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "info", `Found ref_id in URL: ${refId}`);
@@ -176,7 +176,7 @@ var TwentyNineNext = (() => {
             __privateMethod(this, _updateReceiptContent, updateReceiptContent_fn).call(this);
           } catch (error) {
             __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "error", "Error initializing receipt page:", error);
-            __privateMethod(this, _showError2, showError_fn2).call(this, "Failed to load order details. Please try again later.");
+            __privateMethod(this, _showError3, showError_fn3).call(this, "Failed to load order details. Please try again later.");
           }
         }
       };
@@ -402,8 +402,8 @@ var TwentyNineNext = (() => {
           return `$${numericAmount.toFixed(2)} ${currency}`;
         }
       };
-      _showError2 = new WeakSet();
-      showError_fn2 = function(message) {
+      _showError3 = new WeakSet();
+      showError_fn3 = function(message) {
         __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "error", `Displaying error message: ${message}`);
         const container = document.querySelector(".receipt-content") || document.body;
         const errorElement = document.createElement("div");
@@ -996,7 +996,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/FormValidator.js
-  var _logger3, _form2, _validationErrors, _debugMode, _spreedlyEnabled, _spreedlyFieldsValid, _spreedlyReady, _getFormElement, getFormElement_fn, _safeLog, safeLog_fn, _setupListeners, setupListeners_fn, _setupSpreedlyListeners, setupSpreedlyListeners_fn, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn, _handleSpreedlyError, handleSpreedlyError_fn, _handleSubmit, handleSubmit_fn, _logValidationStart, logValidationStart_fn, _validateFields, validateFields_fn, _shouldSkipField, shouldSkipField_fn, _validateCreditCardExpiryFields, validateCreditCardExpiryFields_fn, _getExpiryFields, getExpiryFields_fn, _validateExpiryField, validateExpiryField_fn, _clearSpreedlyErrors, clearSpreedlyErrors_fn, _validateField, validateField_fn, _getReadableFieldLabel, getReadableFieldLabel_fn, _getFieldValidation, getFieldValidation_fn, _validateCity, validateCity_fn, _validateZipCode, validateZipCode_fn, _showError, showError_fn, _getOrCreateErrorElement, getOrCreateErrorElement_fn, _scrollToError, scrollToError_fn, _isValidEmail, isValidEmail_fn;
+  var _logger3, _form2, _validationErrors, _debugMode, _spreedlyEnabled, _spreedlyFieldsValid, _spreedlyReady, _getFormElement, getFormElement_fn, _safeLog, safeLog_fn, _setupListeners, setupListeners_fn, _setupSpreedlyListeners, setupSpreedlyListeners_fn, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn, _handleSpreedlyError, handleSpreedlyError_fn, _handleSubmit, handleSubmit_fn, _logValidationStart, logValidationStart_fn, _validateFields, validateFields_fn, _shouldSkipField, shouldSkipField_fn, _validateCreditCardExpiryFields, validateCreditCardExpiryFields_fn, _getExpiryFields, getExpiryFields_fn, _validateExpiryField, validateExpiryField_fn, _clearSpreedlyErrors, clearSpreedlyErrors_fn, _validateField, validateField_fn, _getReadableFieldLabel, getReadableFieldLabel_fn, _getFieldValidation, getFieldValidation_fn, _validateCity, validateCity_fn, _validateZipCode, validateZipCode_fn, _showError, showError_fn, _getOrCreateErrorElement, getOrCreateErrorElement_fn, _scrollToError, scrollToError_fn, _isValidEmail, isValidEmail_fn, _validatePhoneFields, validatePhoneFields_fn, _setupZipCodeFormatting, setupZipCodeFormatting_fn, _formatZipCode, formatZipCode_fn;
   var FormValidator = class {
     constructor(options = {}) {
       __privateAdd(this, _getFormElement);
@@ -1017,11 +1017,29 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _getReadableFieldLabel);
       __privateAdd(this, _getFieldValidation);
       __privateAdd(this, _validateCity);
+      /**
+       * Validate a US ZIP code (5 digits or ZIP+4 format)
+       * @param {string} value - ZIP code to validate
+       * @param {string} fieldName - Name of the field for error message
+       * @returns {Object} Validation result with isValid and errorMessage
+       */
       __privateAdd(this, _validateZipCode);
       __privateAdd(this, _showError);
       __privateAdd(this, _getOrCreateErrorElement);
       __privateAdd(this, _scrollToError);
       __privateAdd(this, _isValidEmail);
+      __privateAdd(this, _validatePhoneFields);
+      /**
+       * Set up auto-formatting for ZIP code fields
+       */
+      __privateAdd(this, _setupZipCodeFormatting);
+      /**
+       * Format ZIP code as user types: 
+       * - Allow only numbers and hyphen
+       * - Automatically add hyphen after 5 digits if the user is entering more
+       * @param {Event} event - Input event
+       */
+      __privateAdd(this, _formatZipCode);
       __privateAdd(this, _logger3, void 0);
       __privateAdd(this, _form2, void 0);
       __privateAdd(this, _validationErrors, {});
@@ -1040,17 +1058,23 @@ var TwentyNineNext = (() => {
     validateAllFields(selectedPaymentMethod = this.getSelectedPaymentMethod()) {
       __privateGet(this, _debugMode) && __privateMethod(this, _logValidationStart, logValidationStart_fn).call(this, selectedPaymentMethod);
       const isCreditCard = ["credit", "credit-card"].includes(selectedPaymentMethod);
+      let isValid = true;
       const requiredFields = Array.from(document.querySelectorAll('[os-checkout-validate="required"]'));
       const firstErrorField = __privateMethod(this, _validateFields, validateFields_fn).call(this, requiredFields, isCreditCard);
       let ccValid = true;
       if (isCreditCard) {
         ccValid = this.validateCreditCard();
       }
+      const phoneError = __privateMethod(this, _validatePhoneFields, validatePhoneFields_fn).call(this);
       if (firstErrorField) {
         __privateMethod(this, _scrollToError, scrollToError_fn).call(this, firstErrorField);
-        return false;
+        isValid = false;
+      } else if (phoneError) {
+        isValid = false;
+      } else if (!ccValid) {
+        isValid = false;
       }
-      return ccValid;
+      return isValid;
     }
     clearErrorForField(field) {
       if (!field)
@@ -1172,6 +1196,7 @@ var TwentyNineNext = (() => {
     if (__privateGet(this, _spreedlyEnabled) && typeof Spreedly.on === "function") {
       __privateMethod(this, _setupSpreedlyListeners, setupSpreedlyListeners_fn).call(this);
     }
+    __privateMethod(this, _setupZipCodeFormatting, setupZipCodeFormatting_fn).call(this);
   };
   _setupSpreedlyListeners = new WeakSet();
   setupSpreedlyListeners_fn = function() {
@@ -1362,19 +1387,24 @@ var TwentyNineNext = (() => {
         isValid: !!value,
         errorMessage: `Please select a ${label}`
       };
+    if (field.type === "tel" && field.iti) {
+      if (!value.trim()) {
+        return { isValid: true, errorMessage: "" };
+      }
+      const isValid = field.iti.isValidNumber();
+      return {
+        isValid,
+        errorMessage: `Please enter a valid US phone number (e.g. 555-555-5555)`
+      };
+    }
     if (!value)
       return { isValid: false, errorMessage: `Please enter your ${label}` };
     if (fieldName && (fieldName.includes("city") || fieldName.endsWith("-city"))) {
       return __privateMethod(this, _validateCity, validateCity_fn).call(this, value, label);
     }
     if (fieldName && (fieldName.includes("zip") || fieldName.includes("postal") || fieldName.endsWith("-zip"))) {
-      return __privateMethod(this, _validateZipCode, validateZipCode_fn).call(this, value, label);
+      return __privateMethod(this, _validateZipCode, validateZipCode_fn).call(this, value, fieldName);
     }
-    if (field.type === "tel" && field.iti)
-      return {
-        isValid: field.iti.isValidNumber(),
-        errorMessage: `Please enter a valid phone number`
-      };
     if (field.type === "email")
       return {
         isValid: __privateMethod(this, _isValidEmail, isValidEmail_fn).call(this, value),
@@ -1391,11 +1421,12 @@ var TwentyNineNext = (() => {
     };
   };
   _validateZipCode = new WeakSet();
-  validateZipCode_fn = function(value, label) {
-    const zipRegex = /^\d{5}$/;
+  validateZipCode_fn = function(value, fieldName = "Zip") {
+    const zipPattern = /(^\d{5}$)|(^\d{5}-\d{4}$)/;
+    const isValid = zipPattern.test(value);
     return {
-      isValid: zipRegex.test(value),
-      errorMessage: `Please enter a valid 5-digit ZIP code`
+      isValid,
+      errorMessage: isValid ? "" : `${fieldName} must be a valid US Zip code (5 digits or 12345-6789 format).`
     };
   };
   _showError = new WeakSet();
@@ -1442,6 +1473,78 @@ var TwentyNineNext = (() => {
   _isValidEmail = new WeakSet();
   isValidEmail_fn = function(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+  _validatePhoneFields = new WeakSet();
+  validatePhoneFields_fn = function() {
+    const phoneFields = Array.from(document.querySelectorAll('input[type="tel"]'));
+    let hasError = false;
+    for (const field of phoneFields) {
+      if (!field.value.trim() || !field.iti)
+        continue;
+      const isValid = field.iti.isValidNumber();
+      if (!isValid) {
+        const errorCode = field.iti.getValidationError();
+        const errorMessages = {
+          0: "Please enter a valid US phone number (e.g. 555-555-5555)",
+          1: "Invalid country code",
+          2: "Phone number is too short",
+          3: "Phone number is too long",
+          4: "Please enter a valid phone number",
+          5: "Invalid phone number format"
+        };
+        const message = errorMessages[errorCode] || "Please enter a valid US phone number";
+        __privateMethod(this, _showError, showError_fn).call(this, field, message);
+        if (!hasError) {
+          __privateMethod(this, _scrollToError, scrollToError_fn).call(this, field);
+          hasError = true;
+        }
+      } else {
+        this.clearErrorForField(field);
+      }
+    }
+    return hasError;
+  };
+  _setupZipCodeFormatting = new WeakSet();
+  setupZipCodeFormatting_fn = function() {
+    const zipFields = [
+      ...document.querySelectorAll('[os-checkout-field="postal"]'),
+      ...document.querySelectorAll('[os-checkout-field="billing-postal"]'),
+      ...document.querySelectorAll('[os-checkout-field="zip"]')
+    ];
+    zipFields.forEach((field) => {
+      if (field) {
+        field.addEventListener("input", (e) => __privateMethod(this, _formatZipCode, formatZipCode_fn).call(this, e));
+        __privateGet(this, _logger3).debug(`ZIP code formatting setup for: ${field.getAttribute("os-checkout-field") || field.name || "unknown"}`);
+      }
+    });
+  };
+  _formatZipCode = new WeakSet();
+  formatZipCode_fn = function(event) {
+    const input = event.target;
+    const cursorPos = input.selectionStart;
+    const oldValue = input.value;
+    let cleaned = oldValue.replace(/[^\d-]/g, "");
+    if (cleaned.length > 5) {
+      const firstPart = cleaned.slice(0, 5);
+      if (cleaned.charAt(5) !== "-") {
+        const secondPart = cleaned.slice(5).replace(/-/g, "");
+        cleaned = `${firstPart}-${secondPart}`;
+      } else {
+        const secondPart = cleaned.slice(6).replace(/-/g, "");
+        cleaned = `${firstPart}-${secondPart}`;
+      }
+    }
+    if (cleaned.includes("-")) {
+      const [first, second] = cleaned.split("-");
+      cleaned = `${first.slice(0, 5)}-${second.slice(0, 4)}`;
+    } else {
+      cleaned = cleaned.slice(0, 5);
+    }
+    if (cleaned !== oldValue) {
+      input.value = cleaned;
+      const posAdjust = cleaned.length - oldValue.length;
+      input.setSelectionRange(cursorPos + posAdjust, cursorPos + posAdjust);
+    }
   };
 
   // src/managers/SpreedlyManager.js
@@ -2635,7 +2738,15 @@ var TwentyNineNext = (() => {
       let packageId = parseInt(item.id || item.external_id, 10) || __privateMethod(this, _getPackageIdFromUrl, getPackageIdFromUrl_fn).call(this);
       if (!packageId)
         throw new Error(`Invalid package ID for item: ${item.name}`);
-      return { package_id: packageId, quantity: item.quantity || 1 };
+      const lineItem = {
+        package_id: packageId,
+        quantity: item.quantity || 1
+      };
+      if (item.is_upsell === true) {
+        lineItem.is_upsell = true;
+        __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Adding line item with is_upsell=true: ${packageId}`);
+      }
+      return lineItem;
     });
   };
   _createOrder = new WeakSet();
@@ -3430,12 +3541,16 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/PhoneInputHandler.js
-  var _logger9, _intlTelInputAvailable, _loadIntlTelInput, loadIntlTelInput_fn, _initPhoneInputs, initPhoneInputs_fn, _initializePhoneInput, initializePhoneInput_fn, _setupPhoneInputSync, setupPhoneInputSync_fn, _setupPhoneValidation, setupPhoneValidation_fn;
+  var _logger9, _intlTelInputAvailable, _loadIntlTelInput, loadIntlTelInput_fn, _initPhoneInputs, initPhoneInputs_fn, _initializePhoneInput, initializePhoneInput_fn, _showError2, showError_fn2, _clearError, clearError_fn, _getNumberTypeName, getNumberTypeName_fn, _setupPhoneInputSync, setupPhoneInputSync_fn, _setupPhoneValidation, setupPhoneValidation_fn;
   var PhoneInputHandler = class {
     constructor(logger) {
       __privateAdd(this, _loadIntlTelInput);
       __privateAdd(this, _initPhoneInputs);
       __privateAdd(this, _initializePhoneInput);
+      __privateAdd(this, _showError2);
+      __privateAdd(this, _clearError);
+      // Helper method to convert number type to readable name
+      __privateAdd(this, _getNumberTypeName);
       __privateAdd(this, _setupPhoneInputSync);
       __privateAdd(this, _setupPhoneValidation);
       __privateAdd(this, _logger9, void 0);
@@ -3489,15 +3604,139 @@ var TwentyNineNext = (() => {
         useFullscreenPopup: true,
         formatOnDisplay: true,
         autoPlaceholder: "aggressive",
-        customContainer: "iti-tel-input"
+        customContainer: "iti-tel-input",
+        autoFormat: true,
+        nationalMode: true
       });
       input.iti = iti;
       __privateGet(this, _logger9).debug(`Phone input ${index} (${input.getAttribute("os-checkout-field") ?? "unknown"}) initialized`);
       __privateMethod(this, _setupPhoneInputSync, setupPhoneInputSync_fn).call(this, input, iti);
       __privateMethod(this, _setupPhoneValidation, setupPhoneValidation_fn).call(this, input, iti);
+      input.addEventListener("input", () => {
+        const number = input.value.trim();
+        if (number) {
+          const numericValue = number.replace(/\D/g, "");
+          let formattedNumber = "";
+          if (numericValue.length > 0) {
+            if (numericValue.length <= 3) {
+              formattedNumber = `(${numericValue}`;
+            } else if (numericValue.length <= 6) {
+              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3)}`;
+            } else {
+              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
+            }
+          }
+          if (input.value !== formattedNumber) {
+            const cursorPos = input.selectionStart;
+            const oldLength = input.value.length;
+            input.value = formattedNumber;
+            if (cursorPos !== null) {
+              const newLength = formattedNumber.length;
+              const cursorOffset = newLength - oldLength;
+              input.setSelectionRange(cursorPos + cursorOffset, cursorPos + cursorOffset);
+            }
+          }
+        }
+        const isValid = iti.isValidNumber();
+        const numberType = iti.getNumberType();
+        const validationError = iti.getValidationError();
+        if (!number) {
+          __privateMethod(this, _clearError, clearError_fn).call(this, input);
+          return;
+        }
+        console.group("Phone Number Validation");
+        /* @__PURE__ */ console.log("Number:", number);
+        /* @__PURE__ */ console.log("Is Valid:", isValid);
+        /* @__PURE__ */ console.log("Formatted Number:", iti.getNumber());
+        /* @__PURE__ */ console.log("Number Type:", __privateMethod(this, _getNumberTypeName, getNumberTypeName_fn).call(this, numberType));
+        /* @__PURE__ */ console.log("Validation Error:", validationError);
+        console.groupEnd();
+        __privateGet(this, _logger9).debug("Phone validation:", {
+          number,
+          isValid,
+          formattedNumber: iti.getNumber(),
+          type: __privateMethod(this, _getNumberTypeName, getNumberTypeName_fn).call(this, numberType),
+          error: validationError
+        });
+      });
+      input.addEventListener("blur", () => {
+        const number = input.value.trim();
+        if (number) {
+          const isValid = iti.isValidNumber();
+          if (isValid) {
+            input.value = iti.getNumber(intlTelInputUtils.numberFormat.NATIONAL);
+          }
+          /* @__PURE__ */ console.log("Phone field blur - Final validation:", {
+            number,
+            isValid,
+            formattedNumber: iti.getNumber()
+          });
+          if (!isValid) {
+            __privateMethod(this, _showError2, showError_fn2).call(this, input, "Please enter a valid US phone number (e.g. 555-555-5555)");
+          } else {
+            __privateMethod(this, _clearError, clearError_fn).call(this, input);
+          }
+        }
+      });
     } catch (error) {
       __privateGet(this, _logger9).error(`Error initializing phone input ${index}:`, error);
     }
+  };
+  _showError2 = new WeakSet();
+  showError_fn2 = function(input, message) {
+    input.classList.add("error");
+    const itiContainer = input.closest(".iti");
+    if (itiContainer) {
+      itiContainer.classList.add("error");
+      itiContainer.style.border = "1px solid red";
+    }
+    const wrapper = input.closest(".frm-flds") || input.closest(".form-group");
+    let errorElement = wrapper.querySelector(".pb-input-error");
+    if (!errorElement) {
+      errorElement = document.createElement("div");
+      errorElement.className = "pb-input-error";
+      wrapper.appendChild(errorElement);
+    }
+    errorElement.textContent = message;
+    Object.assign(errorElement.style, {
+      color: "red",
+      fontSize: "0.875rem",
+      marginTop: "0.25rem",
+      display: "block",
+      position: "relative",
+      clear: "both"
+    });
+  };
+  _clearError = new WeakSet();
+  clearError_fn = function(input) {
+    input.classList.remove("error");
+    const itiContainer = input.closest(".iti");
+    if (itiContainer) {
+      itiContainer.classList.remove("error");
+      itiContainer.style.border = "";
+    }
+    const wrapper = input.closest(".frm-flds") || input.closest(".form-group");
+    const errorElement = wrapper.querySelector(".pb-input-error");
+    if (errorElement) {
+      errorElement.remove();
+    }
+  };
+  _getNumberTypeName = new WeakSet();
+  getNumberTypeName_fn = function(type) {
+    const types = {
+      0: "FIXED_LINE",
+      1: "MOBILE",
+      2: "FIXED_LINE_OR_MOBILE",
+      3: "TOLL_FREE",
+      4: "PREMIUM_RATE",
+      5: "SHARED_COST",
+      6: "VOIP",
+      7: "PERSONAL_NUMBER",
+      8: "PAGER",
+      9: "UAN",
+      10: "UNKNOWN"
+    };
+    return types[type] || "UNKNOWN";
   };
   _setupPhoneInputSync = new WeakSet();
   setupPhoneInputSync_fn = function(input, iti) {
@@ -3862,10 +4101,17 @@ var TwentyNineNext = (() => {
     const phone = __privateMethod(this, _getPhoneNumber, getPhoneNumber_fn).call(this);
     __privateMethod(this, _updateUserState, updateUserState_fn).call(this, email, firstName, lastName, phone);
     const prospectCartData = {
-      lines: cartData.items.map((item) => ({
-        package_id: item.id,
-        quantity: item.quantity || 1
-      })),
+      lines: cartData.items.map((item) => {
+        const lineItem = {
+          package_id: item.id,
+          quantity: item.quantity || 1
+        };
+        if (item.is_upsell === true) {
+          lineItem.is_upsell = true;
+          __privateGet(this, _logger10).debug(`Adding upsell item to prospect cart: ${item.id}`);
+        }
+        return lineItem;
+      }),
       user: {
         first_name: firstName,
         last_name: lastName,
@@ -5187,6 +5433,24 @@ var TwentyNineNext = (() => {
         border: 2px solid rgba(255, 165, 0, 0.9);
       }
       
+      /* Upsell styles */
+      .os-debug-upsell-overlay {
+        border: 2px dashed rgba(76, 175, 80, 0.9) !important;
+      }
+      .os-debug-upsell-label {
+        background-color: rgba(76, 175, 80, 0.9) !important;
+      }
+      .os-debug-upsell-badge {
+        display: inline-block;
+        background-color: rgba(76, 175, 80, 0.9);
+        color: white;
+        font-size: 9px;
+        padding: 1px 3px;
+        border-radius: 2px;
+        margin-left: 4px;
+        vertical-align: middle;
+      }
+      
       /* Debug bar styles */
       .os-debug-bar {
         position: fixed;
@@ -5303,11 +5567,20 @@ var TwentyNineNext = (() => {
       overlay.className = `os-debug-${type}-overlay`;
       const label = document.createElement("div");
       label.className = `os-debug-${type}-label`;
+      const isUpsell = additionalInfo.Upsell === "Yes";
+      if (isUpsell) {
+        overlay.classList.add("os-debug-upsell-overlay");
+        label.classList.add("os-debug-upsell-label");
+      }
       let labelText = `ID: ${id}`;
       Object.entries(additionalInfo).forEach(([key, value]) => {
-        labelText += ` | ${key}: ${value}`;
+        if (key === "Upsell" && value === "Yes") {
+          labelText += ` | ${key}: <span class="os-debug-upsell-badge">UPSELL</span>`;
+        } else {
+          labelText += ` | ${key}: ${value}`;
+        }
       });
-      label.textContent = labelText;
+      label.innerHTML = labelText;
       if (!__privateGet(this, _xrayEnabled)) {
         overlay.style.display = "none";
         label.style.display = "none";
@@ -5594,10 +5867,12 @@ var TwentyNineNext = (() => {
   addDebugOverlay_fn = function(element, toggleId, packageId, quantity) {
     const packageData = __privateMethod(this, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn).call(this, packageId);
     const price = packageData ? packageData.price : "N/A";
+    const isUpsell = element.hasAttribute("data-os-upsell") ? element.getAttribute("data-os-upsell") === "true" : element.closest("[data-os-upsell-section]") !== null;
     DebugUtils.addDebugOverlay(element, toggleId, "toggle", {
       "Package": packageId,
       "Qty": quantity,
-      "Price": price
+      "Price": price,
+      "Upsell": isUpsell ? "Yes" : "No"
     });
   };
   _toggleItem = new WeakSet();
@@ -5618,14 +5893,16 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger16).error(`Package ${packageId} not found in campaign data`);
         return;
       }
+      const isUpsell = element.hasAttribute("data-os-upsell") ? element.getAttribute("data-os-upsell") === "true" : element.closest("[data-os-upsell-section]") !== null;
       __privateMethod(this, _addItemToCart2, addItemToCart_fn2).call(this, {
         id: packageId,
         name: packageData.name,
         price: Number.parseFloat(packageData.price),
         quantity,
-        type: "package"
+        type: "package",
+        is_upsell: isUpsell
       });
-      __privateGet(this, _logger16).info(`Toggled ON item ${packageId}`);
+      __privateGet(this, _logger16).info(`Toggled ON item ${packageId}${isUpsell ? " (upsell)" : ""}`);
     }
     __privateMethod(this, _updateToggleItemUI, updateToggleItemUI_fn).call(this, element, packageId);
     __privateGet(this, _app11).triggerEvent("toggle.changed", { toggleId, packageId, isActive: !isInCart });
@@ -5910,14 +6187,19 @@ var TwentyNineNext = (() => {
       html += '<div style="font-weight: 600; margin-bottom: 10px;">Items:</div>';
       html += '<ul style="list-style: none; padding: 0; margin: 0;">';
       cart.items.forEach((item) => {
+        const isUpsell = !!item.is_upsell;
+        const upsellBadge = isUpsell ? `<span style="display: inline-block; background-color: #4CAF50; color: white; font-size: 10px; padding: 2px 5px; border-radius: 3px; margin-left: 5px;">UPSELL</span>` : "";
         html += `
-          <li style="padding: 5px 0; border-bottom: 1px solid #eee;">
+          <li style="padding: 5px 0; border-bottom: 1px solid #eee; ${isUpsell ? "background-color: rgba(76, 175, 80, 0.1);" : ""}">
             <div style="display: flex; justify-content: space-between;">
-              <div style="font-weight: 500;">${item.name}</div>
+              <div style="font-weight: 500;">${item.name}${upsellBadge}</div>
               <div>${item.quantity} × ${formatPrice(item.price)}</div>
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-              <div style="color: #666; font-size: 12px;">ID: ${item.id}</div>
+              <div style="color: #666; font-size: 12px;">
+                ID: ${item.id}
+                ${isUpsell ? '<span style="color: #4CAF50; margin-left: 5px;">✓ is_upsell=true</span>' : ""}
+              </div>
               <div style="font-weight: 500;">${formatPrice(item.price * item.quantity)}</div>
             </div>
           </li>
@@ -9201,7 +9483,8 @@ var TwentyNineNext = (() => {
         const upsellData = {
           lines: [{
             package_id: Number(packageId),
-            quantity: Number(quantity)
+            quantity: Number(quantity),
+            is_upsell: true
           }]
         };
         const response = await __privateGet(this, _api).createOrderUpsell(__privateGet(this, _orderRef), upsellData);

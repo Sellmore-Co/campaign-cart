@@ -184,4 +184,57 @@ You can use the toggle state to conditionally show additional content:
       }
     });
   });
-</script> 
+</script>
+
+## Marking Items as Upsells
+
+You can mark toggle items as upsells, which will include the `is_upsell: true` property when these items are added to orders. This is useful for tracking and reporting on upsell conversions.
+
+There are two ways to mark toggle items as upsells:
+
+### 1. Using the data-os-upsell attribute
+
+Add the `data-os-upsell="true"` attribute directly to the toggle button:
+
+```html
+<button data-os-action="toggle-item" 
+        data-os-package="premium-support" 
+        data-os-upsell="true"
+        class="addon-toggle">
+  Add to Cart
+</button>
+```
+
+### 2. Using an upsell section container
+
+Alternatively, you can wrap toggle items in a container with the `data-os-upsell-section` attribute:
+
+```html
+<div data-os-upsell-section>
+  <h3>Recommended Upgrades</h3>
+  
+  <button data-os-action="toggle-item" 
+          data-os-package="premium-support" 
+          class="addon-toggle">
+    Add Premium Support
+  </button>
+  
+  <button data-os-action="toggle-item" 
+          data-os-package="extended-warranty" 
+          class="addon-toggle">
+    Add Extended Warranty
+  </button>
+</div>
+```
+
+All toggle items within this container will be automatically marked as upsells.
+
+### How Upsell Data is Used
+
+When a toggle item marked as an upsell is added to the cart:
+
+1. The `is_upsell: true` property is included with the item in the cart
+2. When an order is created, this property is preserved in the order line item
+3. This data can be used for reporting, analytics, and conversion tracking of upsell items
+
+This feature works seamlessly with the UpsellManager for post-purchase upsells, ensuring consistent tracking of all upsell types throughout the customer journey. 

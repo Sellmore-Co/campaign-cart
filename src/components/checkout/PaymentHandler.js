@@ -545,7 +545,20 @@ export class PaymentHandler {
     return items.map(item => {
       let packageId = parseInt(item.id || item.external_id, 10) || this.#getPackageIdFromUrl();
       if (!packageId) throw new Error(`Invalid package ID for item: ${item.name}`);
-      return { package_id: packageId, quantity: item.quantity || 1 };
+      
+      // Create the line item
+      const lineItem = {
+        package_id: packageId,
+        quantity: item.quantity || 1
+      };
+      
+      // If is_upsell property exists on the item, add it to the line item
+      if (item.is_upsell === true) {
+        lineItem.is_upsell = true;
+        this.#safeLog('debug', `Adding line item with is_upsell=true: ${packageId}`);
+      }
+      
+      return lineItem;
     });
   }
 

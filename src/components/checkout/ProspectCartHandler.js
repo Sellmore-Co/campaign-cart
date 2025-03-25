@@ -333,10 +333,21 @@ export class ProspectCartHandler {
     
     // Create cart data object with essential information
     const prospectCartData = {
-      lines: cartData.items.map(item => ({
-        package_id: item.id,
-        quantity: item.quantity || 1
-      })),
+      lines: cartData.items.map(item => {
+        // Create the line item with required properties
+        const lineItem = {
+          package_id: item.id,
+          quantity: item.quantity || 1
+        };
+        
+        // Preserve is_upsell flag if it exists
+        if (item.is_upsell === true) {
+          lineItem.is_upsell = true;
+          this.#logger.debug(`Adding upsell item to prospect cart: ${item.id}`);
+        }
+        
+        return lineItem;
+      }),
       user: {
         first_name: firstName,
         last_name: lastName,
