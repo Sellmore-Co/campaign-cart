@@ -1426,7 +1426,7 @@ var TwentyNineNext = (() => {
     const isValid = zipPattern.test(value);
     return {
       isValid,
-      errorMessage: isValid ? "" : `${fieldName} must be a valid US Zip code (5 digits or 12345-6789 format).`
+      errorMessage: isValid ? "" : `Field must be a valid US Zip code.`
     };
   };
   _showError = new WeakSet();
@@ -2310,13 +2310,13 @@ var TwentyNineNext = (() => {
       __privateSet(this, _isProcessing, true);
       __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Processing payment with method: ${__privateGet(this, _paymentMethod)}`);
       try {
-        if (isKonamiMode || __privateMethod(this, _isTestMode, isTestMode_fn).call(this)) {
+        if (isKonamiMode) {
           __privateMethod(this, _showProcessingState, showProcessingState_fn).call(this);
-          const orderData2 = isKonamiMode ? KonamiCodeHandler.getTestOrderData(
+          const orderData2 = KonamiCodeHandler.getTestOrderData(
             __privateGet(this, _app3)?.state?.getState(),
             __privateMethod(this, _getPackageIdFromUrl, getPackageIdFromUrl_fn).bind(this),
             __privateMethod(this, _getCartLines, getCartLines_fn).bind(this)
-          ) : __privateMethod(this, _getOrderData, getOrderData_fn).call(this);
+          );
           if (!orderData2) {
             __privateMethod(this, _hideProcessingState, hideProcessingState_fn).call(this);
             return;
@@ -2325,8 +2325,9 @@ var TwentyNineNext = (() => {
             ...orderData2,
             payment_detail: {
               payment_method: "card_token",
-              card_token: "test_card"
-              // Use the same token as test=true for consistency
+              card_token: "test_card",
+              test_card_number: "6011111111111117"
+              // Use specific test card for Konami mode
             }
           });
           return;
@@ -2340,6 +2341,17 @@ var TwentyNineNext = (() => {
         const orderData = __privateMethod(this, _getOrderData, getOrderData_fn).call(this);
         if (!orderData)
           return;
+        if (__privateMethod(this, _isTestMode, isTestMode_fn).call(this)) {
+          __privateMethod(this, _createOrder, createOrder_fn).call(this, {
+            ...orderData,
+            payment_detail: {
+              payment_method: "card_token",
+              card_token: "test_card"
+              // Use test_card token for test mode
+            }
+          });
+          return;
+        }
         switch (__privateGet(this, _paymentMethod)) {
           case "credit-card":
           case "credit":
@@ -2614,7 +2626,7 @@ var TwentyNineNext = (() => {
       return;
     }
     const [fullName, month, year] = __privateMethod(this, _getCreditCardFields, getCreditCardFields_fn).call(this);
-    if (__privateMethod(this, _isDebugTestCardMode, isDebugTestCardMode_fn).call(this)) {
+    if (__privateMethod(this, _isDebugTestCardMode, isDebugTestCardMode_fn).call(this) || __privateMethod(this, _isTestMode, isTestMode_fn).call(this)) {
       __privateMethod(this, _processTestCard, processTestCard_fn).call(this, fullName, month, year);
       return;
     }
@@ -2643,17 +2655,17 @@ var TwentyNineNext = (() => {
   };
   _processTestCard = new WeakSet();
   processTestCard_fn = function(fullName, month, year) {
-    const testCardType = new URLSearchParams(window.location.search).get("test-card");
-    const testCard = __privateGet(this, _testCards)[testCardType];
-    if (testCard) {
-      __privateMethod(this, _createOrder, createOrder_fn).call(this, {
-        payment_token: `test_card_token_${testCardType}_${Date.now()}`,
-        payment_method: "credit-card",
-        test_card_type: testCardType,
-        test_card_number: testCard,
-        ...__privateMethod(this, _getOrderData, getOrderData_fn).call(this)
-      });
+    const cardNumber = document.querySelector('[os-checkout-field="cc-number"]')?.value || document.querySelector("#credit_card_number")?.value;
+    if (!cardNumber) {
+      __privateMethod(this, _handlePaymentError, handlePaymentError_fn).call(this, "Please enter a credit card number");
+      return;
     }
+    __privateMethod(this, _createOrder, createOrder_fn).call(this, {
+      payment_token: `test_card_token_${Date.now()}`,
+      payment_method: "credit-card",
+      test_card_number: cardNumber,
+      ...__privateMethod(this, _getOrderData, getOrderData_fn).call(this)
+    });
   };
   _processPaypal = new WeakSet();
   processPaypal_fn = function() {
@@ -2817,16 +2829,19 @@ var TwentyNineNext = (() => {
     if (isCreditCardError) {
       __privateMethod(this, _displayCreditCardError, displayCreditCardError_fn).call(this, message);
     }
-    const errorContainer = document.querySelector('[os-checkout-element="payment-error"]');
-    if (errorContainer) {
-      errorContainer.textContent = message;
-      errorContainer.style.display = "block";
-      errorContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+    const spreedlyErrorContainer = document.querySelector('[os-checkout-element="spreedly-error"]');
+    if (spreedlyErrorContainer) {
+      const errorMessageElement = spreedlyErrorContainer.querySelector('[data-os-message="error"]');
+      if (errorMessageElement) {
+        errorMessageElement.textContent = message;
+        spreedlyErrorContainer.style.display = "flex";
+      }
     } else {
-      const spreedlyErrorContainer = document.querySelector(".spreedly-error") || document.querySelector("[data-spreedly-errors]");
-      if (spreedlyErrorContainer) {
-        spreedlyErrorContainer.textContent = message;
-        spreedlyErrorContainer.style.display = "block";
+      const errorContainer = document.querySelector('[os-checkout-element="payment-error"]');
+      if (errorContainer) {
+        errorContainer.textContent = message;
+        errorContainer.style.display = "block";
+        errorContainer.scrollIntoView({ behavior: "smooth", block: "center" });
       } else {
         alert(`Payment Error: ${message}`);
       }
@@ -4115,11 +4130,15 @@ var TwentyNineNext = (() => {
       user: {
         first_name: firstName,
         last_name: lastName,
-        email,
-        phone_number: phone
+        email
       },
       attribution: attributionData
     };
+    if (phone) {
+      prospectCartData.user.phone_number = phone;
+    } else {
+      __privateGet(this, _logger10).warn("Invalid phone number format - sending cart without phone number");
+    }
     if (cartData.shippingMethod) {
       prospectCartData.shipping_method = cartData.shippingMethod.code || cartData.shippingMethod.id;
     }
@@ -4234,9 +4253,17 @@ var TwentyNineNext = (() => {
     if (!__privateGet(this, _fields).phone)
       return "";
     if (__privateGet(this, _fields).phone.iti && typeof __privateGet(this, _fields).phone.iti.getNumber === "function") {
-      return __privateGet(this, _fields).phone.iti.getNumber();
+      const number = __privateGet(this, _fields).phone.iti.getNumber();
+      if (__privateGet(this, _fields).phone.iti.isValidNumber()) {
+        return number;
+      }
+      return "";
     }
-    return __privateGet(this, _fields).phone.value;
+    const value = __privateGet(this, _fields).phone.value;
+    if (!value)
+      return "";
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    return phoneRegex.test(value.replace(/\D/g, "")) ? value : "";
   };
   _createCartViaApi = new WeakSet();
   createCartViaApi_fn = function(cartData) {
