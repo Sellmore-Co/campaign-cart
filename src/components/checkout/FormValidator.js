@@ -340,7 +340,7 @@ export class FormValidator {
     
     return {
       isValid,
-      errorMessage: isValid ? '' : `${fieldName} must be a valid US Zip code (5 digits or 12345-6789 format).`
+      errorMessage: isValid ? '' : `Field must be a valid US Zip code.`
     };
   }
 
