@@ -65,10 +65,16 @@ export class ToggleManager {
     const packageData = this.#getPackageDataFromCampaign(packageId);
     const price = packageData ? packageData.price : 'N/A';
     
+    // Check if this is an upsell toggle
+    const isUpsell = element.hasAttribute('data-os-upsell') ? 
+      element.getAttribute('data-os-upsell') === 'true' : 
+      (element.closest('[data-os-upsell-section]') !== null);
+    
     DebugUtils.addDebugOverlay(element, toggleId, 'toggle', {
       'Package': packageId,
       'Qty': quantity,
-      'Price': price
+      'Price': price,
+      'Upsell': isUpsell ? 'Yes' : 'No'
     });
   }
 
@@ -92,14 +98,21 @@ export class ToggleManager {
         return;
       }
 
+      // Check if this is an upsell toggle
+      const isUpsell = element.hasAttribute('data-os-upsell') ? 
+        element.getAttribute('data-os-upsell') === 'true' : 
+        (element.closest('[data-os-upsell-section]') !== null);
+
       this.#addItemToCart({
         id: packageId,
         name: packageData.name,
         price: Number.parseFloat(packageData.price),
         quantity,
-        type: 'package'
+        type: 'package',
+        is_upsell: isUpsell
       });
-      this.#logger.info(`Toggled ON item ${packageId}`);
+      
+      this.#logger.info(`Toggled ON item ${packageId}${isUpsell ? ' (upsell)' : ''}`);
     }
 
     this.#updateToggleItemUI(element, packageId);

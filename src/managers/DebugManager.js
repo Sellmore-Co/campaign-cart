@@ -276,14 +276,25 @@ export class DebugManager {
       html += '<div style="font-weight: 600; margin-bottom: 10px;">Items:</div>';
       html += '<ul style="list-style: none; padding: 0; margin: 0;">';
       cart.items.forEach(item => {
+        // Check if item is marked as an upsell
+        const isUpsell = !!item.is_upsell;
+        
+        // Create upsell badge if needed
+        const upsellBadge = isUpsell ? 
+          `<span style="display: inline-block; background-color: #4CAF50; color: white; font-size: 10px; padding: 2px 5px; border-radius: 3px; margin-left: 5px;">UPSELL</span>` : 
+          '';
+        
         html += `
-          <li style="padding: 5px 0; border-bottom: 1px solid #eee;">
+          <li style="padding: 5px 0; border-bottom: 1px solid #eee; ${isUpsell ? 'background-color: rgba(76, 175, 80, 0.1);' : ''}">
             <div style="display: flex; justify-content: space-between;">
-              <div style="font-weight: 500;">${item.name}</div>
+              <div style="font-weight: 500;">${item.name}${upsellBadge}</div>
               <div>${item.quantity} × ${formatPrice(item.price)}</div>
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-              <div style="color: #666; font-size: 12px;">ID: ${item.id}</div>
+              <div style="color: #666; font-size: 12px;">
+                ID: ${item.id}
+                ${isUpsell ? '<span style="color: #4CAF50; margin-left: 5px;">✓ is_upsell=true</span>' : ''}
+              </div>
               <div style="font-weight: 500;">${formatPrice(item.price * item.quantity)}</div>
             </div>
           </li>

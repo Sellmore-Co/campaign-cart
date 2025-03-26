@@ -312,36 +312,35 @@ export class PaymentHandler {
     this.#safeLog('debug', `Processing payment with method: ${this.#paymentMethod}`);
 
     try {
-      // If in Konami mode or test mode, bypass validation and directly create a test order
-      if (isKonamiMode || this.#isTestMode()) {
+      // If in Konami mode, bypass validation and use predefined test data
+      if (isKonamiMode) {
         this.#showProcessingState();
         
-        // Get order data - for Konami mode, use predefined test data
-        const orderData = isKonamiMode ? 
-          KonamiCodeHandler.getTestOrderData(
-            this.#app?.state?.getState(),
-            this.#getPackageIdFromUrl.bind(this),
-            this.#getCartLines.bind(this)
-          ) : 
-          this.#getOrderData();
+        // Get order data using predefined test data
+        const orderData = KonamiCodeHandler.getTestOrderData(
+          this.#app?.state?.getState(),
+          this.#getPackageIdFromUrl.bind(this),
+          this.#getCartLines.bind(this)
+        );
           
         if (!orderData) {
           this.#hideProcessingState();
           return;
         }
         
-        // Create the order with test payment details
+        // Create the order with test payment details using the specific test card
         this.#createOrder({
           ...orderData,
           payment_detail: { 
             payment_method: 'card_token', 
-            card_token: 'test_card' // Use the same token as test=true for consistency
+            card_token: 'test_card',
+            test_card_number: '6011111111111117' // Use specific test card for Konami mode
           }
         });
         return;
       }
       
-      // Regular payment flow
+      // Regular payment flow (including test mode)
       if (!this.#formValidator.validateAllFields(this.#paymentMethod)) {
         this.#isProcessing = false;
         this.#hideProcessingState();
@@ -351,6 +350,18 @@ export class PaymentHandler {
       this.#showProcessingState();
       const orderData = this.#getOrderData();
       if (!orderData) return;
+
+      // If in test mode, bypass Spreedly validation and use test card token
+      if (this.#isTestMode()) {
+        this.#createOrder({
+          ...orderData,
+          payment_detail: { 
+            payment_method: 'card_token', 
+            card_token: 'test_card' // Use test_card token for test mode
+          }
+        });
+        return;
+      }
 
       switch (this.#paymentMethod) {
         case 'credit-card':
@@ -406,17 +417,15 @@ export class PaymentHandler {
   
     const [fullName, month, year] = this.#getCreditCardFields();
   
-    // If we're in debug test card mode, use that flow
-    if (this.#isDebugTestCardMode()) {
+    // If we're in debug test card mode or regular test mode, use test card flow
+    if (this.#isDebugTestCardMode() || this.#isTestMode()) {
       this.#processTestCard(fullName, month, year);
       return;
     }
   
     // Validate credit card fields using the FormValidator
-    // The validation is now only checking the field state, not waiting for Spreedly validation
     if (!this.#formValidator.validateCreditCard()) {
       this.#safeLog('debug', 'Credit card validation failed on initial check');
-      // We'll still attempt to tokenize if fields are filled in
       if (!month || !year) {
         this.#isProcessing = false;
         this.#hideProcessingState();
@@ -446,17 +455,22 @@ export class PaymentHandler {
   }
 
   #processTestCard(fullName, month, year) {
-    const testCardType = new URLSearchParams(window.location.search).get('test-card');
-    const testCard = this.#testCards[testCardType];
-    if (testCard) {
-      this.#createOrder({
-        payment_token: `test_card_token_${testCardType}_${Date.now()}`,
-        payment_method: 'credit-card',
-        test_card_type: testCardType,
-        test_card_number: testCard,
-        ...this.#getOrderData()
-      });
+    // Get the actual card number from the input field
+    const cardNumber = document.querySelector('[os-checkout-field="cc-number"]')?.value || 
+                      document.querySelector('#credit_card_number')?.value;
+    
+    if (!cardNumber) {
+      this.#handlePaymentError('Please enter a credit card number');
+      return;
     }
+
+    // Create a test token with the actual card number
+    this.#createOrder({
+      payment_token: `test_card_token_${Date.now()}`,
+      payment_method: 'credit-card',
+      test_card_number: cardNumber,
+      ...this.#getOrderData()
+    });
   }
 
   #processPaypal() {
@@ -545,7 +559,20 @@ export class PaymentHandler {
     return items.map(item => {
       let packageId = parseInt(item.id || item.external_id, 10) || this.#getPackageIdFromUrl();
       if (!packageId) throw new Error(`Invalid package ID for item: ${item.name}`);
-      return { package_id: packageId, quantity: item.quantity || 1 };
+      
+      // Create the line item
+      const lineItem = {
+        package_id: packageId,
+        quantity: item.quantity || 1
+      };
+      
+      // If is_upsell property exists on the item, add it to the line item
+      if (item.is_upsell === true) {
+        lineItem.is_upsell = true;
+        this.#safeLog('debug', `Adding line item with is_upsell=true: ${packageId}`);
+      }
+      
+      return lineItem;
     });
   }
 
@@ -640,19 +667,21 @@ export class PaymentHandler {
       this.#displayCreditCardError(message);
     }
     
-    // Also display in the general error container
-    const errorContainer = document.querySelector('[os-checkout-element="payment-error"]');
-    if (errorContainer) {
-      errorContainer.textContent = message;
-      errorContainer.style.display = 'block';
-      errorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Handle Spreedly errors in the toast handler
+    const spreedlyErrorContainer = document.querySelector('[os-checkout-element="spreedly-error"]');
+    if (spreedlyErrorContainer) {
+      const errorMessageElement = spreedlyErrorContainer.querySelector('[data-os-message="error"]');
+      if (errorMessageElement) {
+        errorMessageElement.textContent = message;
+        spreedlyErrorContainer.style.display = 'flex';
+      }
     } else {
-      // Try to find any error container element for Spreedly errors
-      const spreedlyErrorContainer = document.querySelector('.spreedly-error') || 
-                                     document.querySelector('[data-spreedly-errors]');
-      if (spreedlyErrorContainer) {
-        spreedlyErrorContainer.textContent = message;
-        spreedlyErrorContainer.style.display = 'block';
+      // Fallback to general error container
+      const errorContainer = document.querySelector('[os-checkout-element="payment-error"]');
+      if (errorContainer) {
+        errorContainer.textContent = message;
+        errorContainer.style.display = 'block';
+        errorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
       } else {
         alert(`Payment Error: ${message}`);
       }

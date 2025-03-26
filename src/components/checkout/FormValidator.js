@@ -46,6 +46,9 @@ export class FormValidator {
     if (this.#spreedlyEnabled && typeof Spreedly.on === 'function') {
       this.#setupSpreedlyListeners();
     }
+
+    // Add ZIP code formatting
+    this.#setupZipCodeFormatting();
   }
 
   #setupSpreedlyListeners() {
@@ -133,21 +136,32 @@ export class FormValidator {
     this.#debugMode && this.#logValidationStart(selectedPaymentMethod);
     
     const isCreditCard = ['credit', 'credit-card'].includes(selectedPaymentMethod);
+    let isValid = true;
+    
+    // First validate required fields
     const requiredFields = Array.from(document.querySelectorAll('[os-checkout-validate="required"]'));
     const firstErrorField = this.#validateFields(requiredFields, isCreditCard);
-
+    
     // For credit card payments, validate credit card fields
     let ccValid = true;
     if (isCreditCard) {
       ccValid = this.validateCreditCard();
     }
-
+    
+    // Now validate any filled phone fields (even if not required)
+    const phoneError = this.#validatePhoneFields();
+    
+    // Handle validation results
     if (firstErrorField) {
       this.#scrollToError(firstErrorField);
-      return false;
+      isValid = false;
+    } else if (phoneError) {
+      isValid = false;
+    } else if (!ccValid) {
+      isValid = false;
     }
-    
-    return ccValid;
+
+    return isValid;
   }
 
   #logValidationStart(method) {
@@ -270,6 +284,23 @@ export class FormValidator {
       isValid: !!value,
       errorMessage: `Please select a ${label}`
     };
+    
+    // Special handling for phone field - allow empty but validate if has value
+    if (field.type === 'tel' && field.iti) {
+      // If empty, it's valid (phone is optional)
+      if (!value.trim()) {
+        return { isValid: true, errorMessage: '' };
+      }
+      
+      // If they entered something, validate it as a US number
+      const isValid = field.iti.isValidNumber();
+      
+      return {
+        isValid: isValid,
+        errorMessage: `Please enter a valid US phone number (e.g. 555-555-5555)`
+      };
+    }
+    
     if (!value) return { isValid: false, errorMessage: `Please enter your ${label}` };
     
     if (fieldName && (fieldName.includes('city') || fieldName.endsWith('-city'))) {
@@ -277,13 +308,9 @@ export class FormValidator {
     }
     
     if (fieldName && (fieldName.includes('zip') || fieldName.includes('postal') || fieldName.endsWith('-zip'))) {
-      return this.#validateZipCode(value, label);
+      return this.#validateZipCode(value, fieldName);
     }
     
-    if (field.type === 'tel' && field.iti) return {
-      isValid: field.iti.isValidNumber(),
-      errorMessage: `Please enter a valid phone number`
-    };
     if (field.type === 'email') return {
       isValid: this.#isValidEmail(value),
       errorMessage: `Please enter a valid email address`
@@ -300,12 +327,20 @@ export class FormValidator {
     };
   }
 
-  #validateZipCode(value, label) {
-    // ZIP code - Maximum and minimum characters are 5, no special characters, no letters
-    const zipRegex = /^\d{5}$/;
+  /**
+   * Validate a US ZIP code (5 digits or ZIP+4 format)
+   * @param {string} value - ZIP code to validate
+   * @param {string} fieldName - Name of the field for error message
+   * @returns {Object} Validation result with isValid and errorMessage
+   */
+  #validateZipCode(value, fieldName = 'Zip') {
+    // US ZIP code pattern: 5 digits or 5 digits + hyphen + 4 digits
+    const zipPattern = /(^\d{5}$)|(^\d{5}-\d{4}$)/;
+    const isValid = zipPattern.test(value);
+    
     return {
-      isValid: zipRegex.test(value),
-      errorMessage: `Please enter a valid 5-digit ZIP code`
+      isValid,
+      errorMessage: isValid ? '' : `Field must be a valid US Zip code.`
     };
   }
 
@@ -462,5 +497,112 @@ export class FormValidator {
     }
   
     return isValid;
+  }
+
+  #validatePhoneFields() {
+    // Find all phone input fields
+    const phoneFields = Array.from(document.querySelectorAll('input[type="tel"]'));
+    let hasError = false;
+    
+    for (const field of phoneFields) {
+      // Skip if field is empty (phone is optional)
+      if (!field.value.trim() || !field.iti) continue;
+      
+      // Validate phone number if entered
+      const isValid = field.iti.isValidNumber();
+      
+      if (!isValid) {
+        // Get specific error code for better error messages
+        const errorCode = field.iti.getValidationError();
+        
+        // Map error codes to user-friendly messages
+        const errorMessages = {
+          0: 'Please enter a valid US phone number (e.g. 555-555-5555)',
+          1: 'Invalid country code',
+          2: 'Phone number is too short',
+          3: 'Phone number is too long',
+          4: 'Please enter a valid phone number',
+          5: 'Invalid phone number format'
+        };
+        
+        const message = errorMessages[errorCode] || 'Please enter a valid US phone number';
+        this.#showError(field, message);
+        
+        if (!hasError) {
+          this.#scrollToError(field);
+          hasError = true;
+        }
+      } else {
+        this.clearErrorForField(field);
+      }
+    }
+    
+    return hasError;
+  }
+
+  /**
+   * Set up auto-formatting for ZIP code fields
+   */
+  #setupZipCodeFormatting() {
+    // Find all ZIP/postal code fields
+    const zipFields = [
+      ...document.querySelectorAll('[os-checkout-field="postal"]'),
+      ...document.querySelectorAll('[os-checkout-field="billing-postal"]'),
+      ...document.querySelectorAll('[os-checkout-field="zip"]')
+    ];
+    
+    zipFields.forEach(field => {
+      if (field) {
+        field.addEventListener('input', (e) => this.#formatZipCode(e));
+        this.#logger.debug(`ZIP code formatting setup for: ${field.getAttribute('os-checkout-field') || field.name || 'unknown'}`);
+      }
+    });
+  }
+  
+  /**
+   * Format ZIP code as user types: 
+   * - Allow only numbers and hyphen
+   * - Automatically add hyphen after 5 digits if the user is entering more
+   * @param {Event} event - Input event
+   */
+  #formatZipCode(event) {
+    const input = event.target;
+    const cursorPos = input.selectionStart;
+    const oldValue = input.value;
+    
+    // Remove non-digits and non-hyphens
+    let cleaned = oldValue.replace(/[^\d-]/g, '');
+    
+    // Only allow one hyphen after the 5th digit
+    if (cleaned.length > 5) {
+      const firstPart = cleaned.slice(0, 5);
+      
+      if (cleaned.charAt(5) !== '-') {
+        // Insert hyphen after 5 digits
+        const secondPart = cleaned.slice(5).replace(/-/g, '');
+        cleaned = `${firstPart}-${secondPart}`;
+      } else {
+        // Keep existing hyphen and remove any others
+        const secondPart = cleaned.slice(6).replace(/-/g, '');
+        cleaned = `${firstPart}-${secondPart}`;
+      }
+    }
+    
+    // Limit to ZIP+4 format (12345-6789)
+    if (cleaned.includes('-')) {
+      const [first, second] = cleaned.split('-');
+      cleaned = `${first.slice(0, 5)}-${second.slice(0, 4)}`;
+    } else {
+      cleaned = cleaned.slice(0, 5);
+    }
+    
+    // Only update if changed to avoid cursor jumping
+    if (cleaned !== oldValue) {
+      input.value = cleaned;
+      
+      // Adjust cursor position
+      const posAdjust = cleaned.length - oldValue.length;
+      input.setSelectionRange(cursorPos + posAdjust, cursorPos + posAdjust);
+    }
   }
 }

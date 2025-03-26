@@ -333,18 +333,35 @@ export class ProspectCartHandler {
     
     // Create cart data object with essential information
     const prospectCartData = {
-      lines: cartData.items.map(item => ({
-        package_id: item.id,
-        quantity: item.quantity || 1
-      })),
+      lines: cartData.items.map(item => {
+        // Create the line item with required properties
+        const lineItem = {
+          package_id: item.id,
+          quantity: item.quantity || 1
+        };
+        
+        // Preserve is_upsell flag if it exists
+        if (item.is_upsell === true) {
+          lineItem.is_upsell = true;
+          this.#logger.debug(`Adding upsell item to prospect cart: ${item.id}`);
+        }
+        
+        return lineItem;
+      }),
       user: {
         first_name: firstName,
         last_name: lastName,
-        email: email,
-        phone_number: phone
+        email: email
       },
       attribution: attributionData
     };
+
+    // Only add phone number if it's valid
+    if (phone) {
+      prospectCartData.user.phone_number = phone;
+    } else {
+      this.#logger.warn('Invalid phone number format - sending cart without phone number');
+    }
     
     // Add shipping method if available
     if (cartData.shippingMethod) {
@@ -544,11 +561,21 @@ export class ProspectCartHandler {
     
     // Check if we have an international telephone input instance
     if (this.#fields.phone.iti && typeof this.#fields.phone.iti.getNumber === 'function') {
-      return this.#fields.phone.iti.getNumber();
+      const number = this.#fields.phone.iti.getNumber();
+      // Only return the number if it's valid
+      if (this.#fields.phone.iti.isValidNumber()) {
+        return number;
+      }
+      return ''; // Return empty string if invalid
     }
     
-    // Otherwise just return the value
-    return this.#fields.phone.value;
+    // If no international telephone input, validate the number format
+    const value = this.#fields.phone.value;
+    if (!value) return '';
+    
+    // Basic phone number validation
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    return phoneRegex.test(value.replace(/\D/g, '')) ? value : '';
   }
   
   /**
