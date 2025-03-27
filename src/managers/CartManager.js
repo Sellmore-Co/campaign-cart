@@ -145,11 +145,11 @@ export class CartManager {
   #addToCart(item) {
     try {
       const result = this.#stateManager.addToCart(item);
-      this.#showMessage(`${item.name} added to cart`);
+      // this.#showMessage(`${item.name} added to cart`);
       return result;
     } catch (error) {
       this.#logger.error('Error adding item to cart:', error);
-      this.#showMessage('Error adding item to cart', 'error');
+      // this.#showMessage('Error adding item to cart', 'error');
       throw error;
     }
   }
@@ -159,7 +159,7 @@ export class CartManager {
       return quantity <= 0 ? this.#removeFromCart(itemId) : this.#stateManager.updateCartItem(itemId, { quantity });
     } catch (error) {
       this.#logger.error('Error updating cart item quantity:', error);
-      this.#showMessage('Error updating cart', 'error');
+      // this.#showMessage('Error updating cart', 'error');
       throw error;
     }
   }
@@ -169,7 +169,7 @@ export class CartManager {
       return this.#stateManager.removeFromCart(itemId);
     } catch (error) {
       this.#logger.error('Error removing item from cart:', error);
-      this.#showMessage('Error removing item from cart', 'error');
+      // this.#showMessage('Error removing item from cart', 'error');
       throw error;
     }
   }
@@ -179,7 +179,7 @@ export class CartManager {
       return this.#stateManager.clearCart();
     } catch (error) {
       this.#logger.error('Error clearing cart:', error);
-      this.#showMessage('Error clearing cart', 'error');
+      // this.#showMessage('Error clearing cart', 'error');
       throw error;
     }
   }
@@ -197,7 +197,7 @@ export class CartManager {
       return this.#stateManager.setShippingMethod(shippingMethod);
     } catch (error) {
       this.#logger.error('Error setting shipping method:', error);
-      this.#showMessage('Error setting shipping method', 'error');
+      // this.#showMessage('Error setting shipping method', 'error');
       throw error;
     }
   }
@@ -207,7 +207,7 @@ export class CartManager {
       return this.#stateManager.applyCoupon(couponCode);
     } catch (error) {
       this.#logger.error('Error applying coupon:', error);
-      this.#showMessage('Error applying coupon', 'error');
+      // this.#showMessage('Error applying coupon', 'error');
       throw error;
     }
   }
@@ -217,7 +217,7 @@ export class CartManager {
       return this.#stateManager.removeCoupon();
     } catch (error) {
       this.#logger.error('Error removing coupon:', error);
-      this.#showMessage('Error removing coupon', 'error');
+      // this.#showMessage('Error removing coupon', 'error');
       throw error;
     }
   }
@@ -227,7 +227,7 @@ export class CartManager {
       return await this.#stateManager.syncCartWithApi();
     } catch (error) {
       this.#logger.error('Error syncing cart with API:', error);
-      this.#showMessage('Error syncing cart with server', 'error');
+      // this.#showMessage('Error syncing cart with server', 'error');
       throw error;
     }
   }
@@ -236,14 +236,14 @@ export class CartManager {
     return this.#stateManager.isItemInCart?.(itemId) ?? this.#stateManager.getState('cart').items.some(item => item.id === itemId);
   }
 
-  #showMessage(message, type = 'success') {
-    const messageElement = document.createElement('div');
-    messageElement.className = `os-message os-message-${type}`;
-    messageElement.textContent = message;
-    document.body.appendChild(messageElement);
-    setTimeout(() => {
-      messageElement.classList.add('os-message-hide');
-      setTimeout(() => document.body.removeChild(messageElement), 300);
-    }, 3000);
-  }
+  // #showMessage(message, type = 'success') {
+  //   const messageElement = document.createElement('div');
+  //   messageElement.className = `os-message os-message-${type}`;
+  //   messageElement.textContent = message;
+  //   document.body.appendChild(messageElement);
+  //   setTimeout(() => {
+  //     messageElement.classList.add('os-message-hide');
+  //     setTimeout(() => document.body.removeChild(messageElement), 300);
+  //   }, 3000);
+  // }
 }
