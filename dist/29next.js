@@ -5083,7 +5083,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CartManager.js
-  var _app9, _stateManager, _logger14, _cartElements, _initCartUI, initCartUI_fn, _updateCartUI, updateCartUI_fn, _createCartItemElement, createCartItemElement_fn, _addToCart, addToCart_fn, _updateCartItemQuantity, updateCartItemQuantity_fn, _removeFromCart, removeFromCart_fn, _showMessage, showMessage_fn;
+  var _app9, _stateManager, _logger14, _cartElements, _initCartUI, initCartUI_fn, _updateCartUI, updateCartUI_fn, _createCartItemElement, createCartItemElement_fn, _addToCart, addToCart_fn, _updateCartItemQuantity, updateCartItemQuantity_fn, _removeFromCart, removeFromCart_fn;
   var CartManager = class {
     constructor(app) {
       __privateAdd(this, _initCartUI);
@@ -5092,7 +5092,6 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _addToCart);
       __privateAdd(this, _updateCartItemQuantity);
       __privateAdd(this, _removeFromCart);
-      __privateAdd(this, _showMessage);
       __privateAdd(this, _app9, void 0);
       __privateAdd(this, _stateManager, void 0);
       __privateAdd(this, _logger14, void 0);
@@ -5108,7 +5107,6 @@ var TwentyNineNext = (() => {
         return __privateGet(this, _stateManager).clearCart();
       } catch (error) {
         __privateGet(this, _logger14).error("Error clearing cart:", error);
-        __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error clearing cart", "error");
         throw error;
       }
     }
@@ -5123,7 +5121,6 @@ var TwentyNineNext = (() => {
         return __privateGet(this, _stateManager).setShippingMethod(shippingMethod);
       } catch (error) {
         __privateGet(this, _logger14).error("Error setting shipping method:", error);
-        __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error setting shipping method", "error");
         throw error;
       }
     }
@@ -5132,7 +5129,6 @@ var TwentyNineNext = (() => {
         return __privateGet(this, _stateManager).applyCoupon(couponCode);
       } catch (error) {
         __privateGet(this, _logger14).error("Error applying coupon:", error);
-        __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error applying coupon", "error");
         throw error;
       }
     }
@@ -5141,7 +5137,6 @@ var TwentyNineNext = (() => {
         return __privateGet(this, _stateManager).removeCoupon();
       } catch (error) {
         __privateGet(this, _logger14).error("Error removing coupon:", error);
-        __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error removing coupon", "error");
         throw error;
       }
     }
@@ -5150,13 +5145,22 @@ var TwentyNineNext = (() => {
         return await __privateGet(this, _stateManager).syncCartWithApi();
       } catch (error) {
         __privateGet(this, _logger14).error("Error syncing cart with API:", error);
-        __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error syncing cart with server", "error");
         throw error;
       }
     }
     isItemInCart(itemId) {
       return __privateGet(this, _stateManager).isItemInCart?.(itemId) ?? __privateGet(this, _stateManager).getState("cart").items.some((item) => item.id === itemId);
     }
+    // #showMessage(message, type = 'success') {
+    //   const messageElement = document.createElement('div');
+    //   messageElement.className = `os-message os-message-${type}`;
+    //   messageElement.textContent = message;
+    //   document.body.appendChild(messageElement);
+    //   setTimeout(() => {
+    //     messageElement.classList.add('os-message-hide');
+    //     setTimeout(() => document.body.removeChild(messageElement), 300);
+    //   }, 3000);
+    // }
   };
   _app9 = new WeakMap();
   _stateManager = new WeakMap();
@@ -5281,11 +5285,9 @@ var TwentyNineNext = (() => {
   addToCart_fn = function(item) {
     try {
       const result = __privateGet(this, _stateManager).addToCart(item);
-      __privateMethod(this, _showMessage, showMessage_fn).call(this, `${item.name} added to cart`);
       return result;
     } catch (error) {
       __privateGet(this, _logger14).error("Error adding item to cart:", error);
-      __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error adding item to cart", "error");
       throw error;
     }
   };
@@ -5295,7 +5297,6 @@ var TwentyNineNext = (() => {
       return quantity <= 0 ? __privateMethod(this, _removeFromCart, removeFromCart_fn).call(this, itemId) : __privateGet(this, _stateManager).updateCartItem(itemId, { quantity });
     } catch (error) {
       __privateGet(this, _logger14).error("Error updating cart item quantity:", error);
-      __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error updating cart", "error");
       throw error;
     }
   };
@@ -5305,20 +5306,8 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _stateManager).removeFromCart(itemId);
     } catch (error) {
       __privateGet(this, _logger14).error("Error removing item from cart:", error);
-      __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error removing item from cart", "error");
       throw error;
     }
-  };
-  _showMessage = new WeakSet();
-  showMessage_fn = function(message, type = "success") {
-    const messageElement = document.createElement("div");
-    messageElement.className = `os-message os-message-${type}`;
-    messageElement.textContent = message;
-    document.body.appendChild(messageElement);
-    setTimeout(() => {
-      messageElement.classList.add("os-message-hide");
-      setTimeout(() => document.body.removeChild(messageElement), 300);
-    }, 3e3);
   };
 
   // src/utils/DebugUtils.js
