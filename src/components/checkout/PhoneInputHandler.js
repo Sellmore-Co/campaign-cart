@@ -37,16 +37,27 @@ export class PhoneInputHandler {
 
     const phoneInputs = document.querySelectorAll('input[type="tel"]');
     this.#logger.info(`Found ${phoneInputs.length} phone inputs`);
+    
+    // Initialize phone inputs immediately with default US
     phoneInputs.forEach((input, i) => this.#initializePhoneInput(input, i + 1));
   }
 
   #initializePhoneInput(input, index) {
     try {
+      // Get the corresponding country select first
+      const fieldAttr = input.getAttribute('os-checkout-field');
+      const countrySelect = document.querySelector(
+        fieldAttr === 'phone' ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
+      );
+
+      // Get country from select or default to US
+      const countryCode = countrySelect?.value?.toLowerCase() || 'us';
+      this.#logger.debug(`Initializing phone input ${index} with country: ${countryCode}`);
+
       const iti = window.intlTelInput(input, {
         utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js',
-        separateDialCode: true,
-        onlyCountries: ['us'],
-        initialCountry: 'us',
+        separateDialCode: false,
+        initialCountry: countryCode,
         allowDropdown: false,
         dropdownContainer: document.body,
         useFullscreenPopup: true,
@@ -58,7 +69,21 @@ export class PhoneInputHandler {
       });
 
       input.iti = iti;
-      this.#logger.debug(`Phone input ${index} (${input.getAttribute('os-checkout-field') ?? 'unknown'}) initialized`);
+      this.#logger.debug(`Phone input ${index} (${fieldAttr ?? 'unknown'}) initialized`);
+
+      // Add country change event listener
+      input.addEventListener('countrychange', () => {
+        const countryData = iti.getSelectedCountryData();
+        this.#logger.debug(`Country changed to ${countryData.iso2.toUpperCase()}`);
+        
+        if (countrySelect) {
+          countrySelect.value = countryData.iso2.toUpperCase();
+          countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        
+        // Clear any existing error
+        this.#clearError(input);
+      });
 
       this.#setupPhoneInputSync(input, iti);
       this.#setupPhoneValidation(input, iti);
@@ -69,20 +94,8 @@ export class PhoneInputHandler {
         
         // Format the number as user types
         if (number) {
-          // Remove all non-numeric characters
-          const numericValue = number.replace(/\D/g, '');
-          
-          // Format according to US pattern (XXX) XXX-XXXX
-          let formattedNumber = '';
-          if (numericValue.length > 0) {
-            if (numericValue.length <= 3) {
-              formattedNumber = `(${numericValue}`;
-            } else if (numericValue.length <= 6) {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3)}`;
-            } else {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
-            }
-          }
+          const isValid = iti.isValidNumber();
+          const formattedNumber = iti.getNumber(intlTelInputUtils.numberFormat.NATIONAL);
           
           // Only update if the format is different to avoid cursor jumping
           if (input.value !== formattedNumber) {
@@ -100,33 +113,26 @@ export class PhoneInputHandler {
               input.setSelectionRange(cursorPos + cursorOffset, cursorPos + cursorOffset);
             }
           }
+
+          const numberType = iti.getNumberType();
+          const validationError = iti.getValidationError();
+
+          console.group('Phone Number Validation');
+          console.log('Number:', number);
+          console.log('Is Valid:', isValid);
+          console.log('Formatted Number:', iti.getNumber());
+          console.log('Number Type:', this.#getNumberTypeName(numberType));
+          console.log('Validation Error:', validationError);
+          console.groupEnd();
+
+          this.#logger.debug('Phone validation:', {
+            number,
+            isValid,
+            formattedNumber: iti.getNumber(),
+            type: this.#getNumberTypeName(numberType),
+            error: validationError
+          });
         }
-
-        const isValid = iti.isValidNumber();
-        const numberType = iti.getNumberType();
-        const validationError = iti.getValidationError();
-
-        // Clear any existing error if the field is empty
-        if (!number) {
-          this.#clearError(input);
-          return;
-        }
-
-        console.group('Phone Number Validation');
-        console.log('Number:', number);
-        console.log('Is Valid:', isValid);
-        console.log('Formatted Number:', iti.getNumber());
-        console.log('Number Type:', this.#getNumberTypeName(numberType));
-        console.log('Validation Error:', validationError);
-        console.groupEnd();
-
-        this.#logger.debug('Phone validation:', {
-          number,
-          isValid,
-          formattedNumber: iti.getNumber(),
-          type: this.#getNumberTypeName(numberType),
-          error: validationError
-        });
       });
 
       // Add blur event for validation and final formatting
@@ -137,7 +143,7 @@ export class PhoneInputHandler {
           
           // On blur, ensure the number is in full international format
           if (isValid) {
-            input.value = iti.getNumber(intlTelInputUtils.numberFormat.NATIONAL);
+            input.value = iti.getNumber(intlTelInputUtils.numberFormat.INTERNATIONAL);
           }
           
           console.log('Phone field blur - Final validation:', {
@@ -147,7 +153,8 @@ export class PhoneInputHandler {
           });
 
           if (!isValid) {
-            this.#showError(input, 'Please enter a valid US phone number (e.g. 555-555-5555)');
+            const countryData = iti.getSelectedCountryData();
+            this.#showError(input, `Please enter a valid ${countryData.name} phone number`);
           } else {
             this.#clearError(input);
           }
@@ -244,22 +251,24 @@ export class PhoneInputHandler {
       return;
     }
 
-    // Set country select to US if it exists
-    if (countrySelect.value !== 'US') {
-      countrySelect.value = 'US';
-      countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
-      this.#logger.debug('Country select updated to US');
-    }
+    // Listen for country select changes
+    countrySelect.addEventListener('change', () => {
+      const countryCode = countrySelect.value.toLowerCase();
+      if (countryCode && countryCode !== iti.getSelectedCountryData().iso2) {
+        iti.setCountry(countryCode);
+        this.#logger.debug(`Phone input country updated to ${countryCode}`);
+      }
+    });
   }
 
   #setupPhoneValidation(input, iti) {
     input.validatePhone = () => !input.value.trim() ? !input.hasAttribute('required') : iti.isValidNumber();
-    input.getFormattedNumber = () => iti.getNumber();
+    input.getFormattedNumber = () => iti.getNumber(intlTelInputUtils.numberFormat.INTERNATIONAL);
 
     const form = input.closest('form');
     form?.addEventListener('submit', () => {
       if (input.value.trim() && iti.isValidNumber()) {
-        input.value = iti.getNumber();
+        input.value = iti.getNumber(intlTelInputUtils.numberFormat.INTERNATIONAL);
         this.#logger.debug(`Formatted phone number set to ${input.value} on submit`);
       }
     });

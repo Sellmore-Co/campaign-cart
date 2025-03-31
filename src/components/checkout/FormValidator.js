@@ -292,12 +292,13 @@ export class FormValidator {
         return { isValid: true, errorMessage: '' };
       }
       
-      // If they entered something, validate it as a US number
+      // If they entered something, validate it
       const isValid = field.iti.isValidNumber();
+      const countryData = field.iti.getSelectedCountryData();
       
       return {
         isValid: isValid,
-        errorMessage: `Please enter a valid US phone number (e.g. 555-555-5555)`
+        errorMessage: `Please enter a valid ${countryData.name} phone number`
       };
     }
     
@@ -510,6 +511,7 @@ export class FormValidator {
       
       // Validate phone number if entered
       const isValid = field.iti.isValidNumber();
+      const countryData = field.iti.getSelectedCountryData();
       
       if (!isValid) {
         // Get specific error code for better error messages
@@ -517,7 +519,7 @@ export class FormValidator {
         
         // Map error codes to user-friendly messages
         const errorMessages = {
-          0: 'Please enter a valid US phone number (e.g. 555-555-5555)',
+          0: `Please enter a valid ${countryData.name} phone number`,
           1: 'Invalid country code',
           2: 'Phone number is too short',
           3: 'Phone number is too long',
@@ -525,7 +527,7 @@ export class FormValidator {
           5: 'Invalid phone number format'
         };
         
-        const message = errorMessages[errorCode] || 'Please enter a valid US phone number';
+        const message = errorMessages[errorCode] || `Please enter a valid ${countryData.name} phone number`;
         this.#showError(field, message);
         
         if (!hasError) {

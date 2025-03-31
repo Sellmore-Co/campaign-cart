@@ -961,16 +961,54 @@ var TwentyNineNext = (() => {
   };
   _detectUserCountry = new WeakSet();
   detectUserCountry_fn = async function() {
-    if (__privateGet(this, _elements).shippingCountry?.value || __privateGet(this, _elements).billingCountry?.value)
-      return;
-    const countryCode = __privateGet(this, _addressConfig).defaultCountry || (await Promise.any(["https://ipapi.co/json/", "https://ipinfo.io/json"].map((u) => fetch(u).then((r) => r.json()))))?.country_code;
-    [__privateGet(this, _elements).shippingCountry, __privateGet(this, _elements).billingCountry].forEach((c) => {
-      if (c) {
-        c.value = countryCode;
-        c.dispatchEvent(new Event("change"));
+    let countryCode = __privateGet(this, _addressConfig).defaultCountry;
+    __privateGet(this, _logger2).info(`Starting country detection. Default country from config: ${countryCode}`);
+    try {
+      __privateGet(this, _logger2).info("Attempting to detect country from IP services...");
+      const ipServices = ["https://ipapi.co/json/", "https://ipinfo.io/json"];
+      for (const url of ipServices) {
+        try {
+          __privateGet(this, _logger2).info(`Trying IP service: ${url}`);
+          const response = await fetch(url);
+          const data = await response.json();
+          /* @__PURE__ */ console.log(`IP service response from ${url}:`, data);
+          if (data?.country_code || data?.country) {
+            countryCode = data.country_code || data.country;
+            __privateGet(this, _logger2).info(`Country detected from IP service (${url}): ${countryCode}`);
+            break;
+          } else {
+            __privateGet(this, _logger2).warn(`No country code found in response from ${url}`);
+          }
+        } catch (e) {
+          __privateGet(this, _logger2).warn(`IP service ${url} failed:`, e);
+          console.error(`IP service ${url} error:`, e);
+        }
       }
-    });
-    __privateGet(this, _logger2).debug(`User country detected/set to ${countryCode}`);
+    } catch (error) {
+      __privateGet(this, _logger2).warn("All IP detection services failed:", error);
+      console.error("All IP detection services failed:", error);
+    }
+    const isCountryAllowed = __privateGet(this, _countries).some((c) => c.iso2 === countryCode);
+    __privateGet(this, _logger2).info(`Checking if country ${countryCode} is allowed. Allowed: ${isCountryAllowed}`);
+    if (!isCountryAllowed) {
+      __privateGet(this, _logger2).info(`Detected country ${countryCode} not in allowed list, defaulting to US`);
+      countryCode = "US";
+    }
+    const currentShippingCountry = __privateGet(this, _elements).shippingCountry?.value;
+    const currentBillingCountry = __privateGet(this, _elements).billingCountry?.value;
+    __privateGet(this, _logger2).info(`Current shipping country: ${currentShippingCountry}, Current billing country: ${currentBillingCountry}`);
+    if (!currentShippingCountry || !currentBillingCountry || currentShippingCountry === "US" || currentBillingCountry === "US") {
+      [__privateGet(this, _elements).shippingCountry, __privateGet(this, _elements).billingCountry].forEach((c) => {
+        if (c && (!c.value || c.value === "US")) {
+          __privateGet(this, _logger2).info(`Setting country ${countryCode} on ${c.getAttribute("os-checkout-field")}`);
+          c.value = countryCode;
+          c.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+      __privateGet(this, _logger2).info(`User country set to ${countryCode}`);
+    } else {
+      __privateGet(this, _logger2).info("Country already selected on both shipping and billing, skipping update");
+    }
   };
   _setupAutocompleteDetection = new WeakSet();
   setupAutocompleteDetection_fn = function() {
@@ -1392,9 +1430,10 @@ var TwentyNineNext = (() => {
         return { isValid: true, errorMessage: "" };
       }
       const isValid = field.iti.isValidNumber();
+      const countryData = field.iti.getSelectedCountryData();
       return {
         isValid,
-        errorMessage: `Please enter a valid US phone number (e.g. 555-555-5555)`
+        errorMessage: `Please enter a valid ${countryData.name} phone number`
       };
     }
     if (!value)
@@ -1482,17 +1521,18 @@ var TwentyNineNext = (() => {
       if (!field.value.trim() || !field.iti)
         continue;
       const isValid = field.iti.isValidNumber();
+      const countryData = field.iti.getSelectedCountryData();
       if (!isValid) {
         const errorCode = field.iti.getValidationError();
         const errorMessages = {
-          0: "Please enter a valid US phone number (e.g. 555-555-5555)",
+          0: `Please enter a valid ${countryData.name} phone number`,
           1: "Invalid country code",
           2: "Phone number is too short",
           3: "Phone number is too long",
           4: "Please enter a valid phone number",
           5: "Invalid phone number format"
         };
-        const message = errorMessages[errorCode] || "Please enter a valid US phone number";
+        const message = errorMessages[errorCode] || `Please enter a valid ${countryData.name} phone number`;
         __privateMethod(this, _showError, showError_fn).call(this, field, message);
         if (!hasError) {
           __privateMethod(this, _scrollToError, scrollToError_fn).call(this, field);
@@ -3609,11 +3649,16 @@ var TwentyNineNext = (() => {
   _initializePhoneInput = new WeakSet();
   initializePhoneInput_fn = function(input, index) {
     try {
+      const fieldAttr = input.getAttribute("os-checkout-field");
+      const countrySelect = document.querySelector(
+        fieldAttr === "phone" ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
+      );
+      const countryCode = countrySelect?.value?.toLowerCase() || "us";
+      __privateGet(this, _logger9).debug(`Initializing phone input ${index} with country: ${countryCode}`);
       const iti = window.intlTelInput(input, {
         utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js",
-        separateDialCode: true,
-        onlyCountries: ["us"],
-        initialCountry: "us",
+        separateDialCode: false,
+        initialCountry: countryCode,
         allowDropdown: false,
         dropdownContainer: document.body,
         useFullscreenPopup: true,
@@ -3624,23 +3669,23 @@ var TwentyNineNext = (() => {
         nationalMode: true
       });
       input.iti = iti;
-      __privateGet(this, _logger9).debug(`Phone input ${index} (${input.getAttribute("os-checkout-field") ?? "unknown"}) initialized`);
+      __privateGet(this, _logger9).debug(`Phone input ${index} (${fieldAttr ?? "unknown"}) initialized`);
+      input.addEventListener("countrychange", () => {
+        const countryData = iti.getSelectedCountryData();
+        __privateGet(this, _logger9).debug(`Country changed to ${countryData.iso2.toUpperCase()}`);
+        if (countrySelect) {
+          countrySelect.value = countryData.iso2.toUpperCase();
+          countrySelect.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        __privateMethod(this, _clearError, clearError_fn).call(this, input);
+      });
       __privateMethod(this, _setupPhoneInputSync, setupPhoneInputSync_fn).call(this, input, iti);
       __privateMethod(this, _setupPhoneValidation, setupPhoneValidation_fn).call(this, input, iti);
       input.addEventListener("input", () => {
         const number = input.value.trim();
         if (number) {
-          const numericValue = number.replace(/\D/g, "");
-          let formattedNumber = "";
-          if (numericValue.length > 0) {
-            if (numericValue.length <= 3) {
-              formattedNumber = `(${numericValue}`;
-            } else if (numericValue.length <= 6) {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3)}`;
-            } else {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
-            }
-          }
+          const isValid = iti.isValidNumber();
+          const formattedNumber = iti.getNumber(intlTelInputUtils.numberFormat.NATIONAL);
           if (input.value !== formattedNumber) {
             const cursorPos = input.selectionStart;
             const oldLength = input.value.length;
@@ -3651,35 +3696,30 @@ var TwentyNineNext = (() => {
               input.setSelectionRange(cursorPos + cursorOffset, cursorPos + cursorOffset);
             }
           }
+          const numberType = iti.getNumberType();
+          const validationError = iti.getValidationError();
+          console.group("Phone Number Validation");
+          /* @__PURE__ */ console.log("Number:", number);
+          /* @__PURE__ */ console.log("Is Valid:", isValid);
+          /* @__PURE__ */ console.log("Formatted Number:", iti.getNumber());
+          /* @__PURE__ */ console.log("Number Type:", __privateMethod(this, _getNumberTypeName, getNumberTypeName_fn).call(this, numberType));
+          /* @__PURE__ */ console.log("Validation Error:", validationError);
+          console.groupEnd();
+          __privateGet(this, _logger9).debug("Phone validation:", {
+            number,
+            isValid,
+            formattedNumber: iti.getNumber(),
+            type: __privateMethod(this, _getNumberTypeName, getNumberTypeName_fn).call(this, numberType),
+            error: validationError
+          });
         }
-        const isValid = iti.isValidNumber();
-        const numberType = iti.getNumberType();
-        const validationError = iti.getValidationError();
-        if (!number) {
-          __privateMethod(this, _clearError, clearError_fn).call(this, input);
-          return;
-        }
-        console.group("Phone Number Validation");
-        /* @__PURE__ */ console.log("Number:", number);
-        /* @__PURE__ */ console.log("Is Valid:", isValid);
-        /* @__PURE__ */ console.log("Formatted Number:", iti.getNumber());
-        /* @__PURE__ */ console.log("Number Type:", __privateMethod(this, _getNumberTypeName, getNumberTypeName_fn).call(this, numberType));
-        /* @__PURE__ */ console.log("Validation Error:", validationError);
-        console.groupEnd();
-        __privateGet(this, _logger9).debug("Phone validation:", {
-          number,
-          isValid,
-          formattedNumber: iti.getNumber(),
-          type: __privateMethod(this, _getNumberTypeName, getNumberTypeName_fn).call(this, numberType),
-          error: validationError
-        });
       });
       input.addEventListener("blur", () => {
         const number = input.value.trim();
         if (number) {
           const isValid = iti.isValidNumber();
           if (isValid) {
-            input.value = iti.getNumber(intlTelInputUtils.numberFormat.NATIONAL);
+            input.value = iti.getNumber(intlTelInputUtils.numberFormat.INTERNATIONAL);
           }
           /* @__PURE__ */ console.log("Phone field blur - Final validation:", {
             number,
@@ -3687,7 +3727,8 @@ var TwentyNineNext = (() => {
             formattedNumber: iti.getNumber()
           });
           if (!isValid) {
-            __privateMethod(this, _showError2, showError_fn2).call(this, input, "Please enter a valid US phone number (e.g. 555-555-5555)");
+            const countryData = iti.getSelectedCountryData();
+            __privateMethod(this, _showError2, showError_fn2).call(this, input, `Please enter a valid ${countryData.name} phone number`);
           } else {
             __privateMethod(this, _clearError, clearError_fn).call(this, input);
           }
@@ -3767,20 +3808,22 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger9).warn(`Country select not found for ${fieldAttr}`);
       return;
     }
-    if (countrySelect.value !== "US") {
-      countrySelect.value = "US";
-      countrySelect.dispatchEvent(new Event("change", { bubbles: true }));
-      __privateGet(this, _logger9).debug("Country select updated to US");
-    }
+    countrySelect.addEventListener("change", () => {
+      const countryCode = countrySelect.value.toLowerCase();
+      if (countryCode && countryCode !== iti.getSelectedCountryData().iso2) {
+        iti.setCountry(countryCode);
+        __privateGet(this, _logger9).debug(`Phone input country updated to ${countryCode}`);
+      }
+    });
   };
   _setupPhoneValidation = new WeakSet();
   setupPhoneValidation_fn = function(input, iti) {
     input.validatePhone = () => !input.value.trim() ? !input.hasAttribute("required") : iti.isValidNumber();
-    input.getFormattedNumber = () => iti.getNumber();
+    input.getFormattedNumber = () => iti.getNumber(intlTelInputUtils.numberFormat.INTERNATIONAL);
     const form = input.closest("form");
     form?.addEventListener("submit", () => {
       if (input.value.trim() && iti.isValidNumber()) {
-        input.value = iti.getNumber();
+        input.value = iti.getNumber(intlTelInputUtils.numberFormat.INTERNATIONAL);
         __privateGet(this, _logger9).debug(`Formatted phone number set to ${input.value} on submit`);
       }
     });
@@ -4295,7 +4338,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CheckoutManager.js
-  var _apiClient2, _logger11, _form4, _app6, _konamiCodeHandler, _initializeComponents, initializeComponents_fn, _initKonamiCodeHandler, initKonamiCodeHandler_fn, _triggerKonamiCodeEasterEgg, triggerKonamiCodeEasterEgg_fn, _initAddressHandler, initAddressHandler_fn, _initBillingAddressHandler, initBillingAddressHandler_fn, _initPaymentSelector, initPaymentSelector_fn, _initFormValidator, initFormValidator_fn, _initPaymentHandler, initPaymentHandler_fn, _initAddressAutocomplete, initAddressAutocomplete_fn, _initPhoneInputHandler, initPhoneInputHandler_fn, _initProspectCartHandler, initProspectCartHandler_fn, _injectBillingFormFields, injectBillingFormFields_fn, _setupEventListeners3, setupEventListeners_fn3, _handleSubmit2, handleSubmit_fn2, _disableSubmitButtons, disableSubmitButtons_fn;
+  var _apiClient2, _logger11, _form4, _app6, _konamiCodeHandler, _addressHandler, _phoneInputHandler, _formValidator2, _addressAutocomplete, _initializeComponents, initializeComponents_fn, _initKonamiCodeHandler, initKonamiCodeHandler_fn, _triggerKonamiCodeEasterEgg, triggerKonamiCodeEasterEgg_fn, _initBillingAddressHandler, initBillingAddressHandler_fn, _initPaymentSelector, initPaymentSelector_fn, _initPaymentHandler, initPaymentHandler_fn, _initProspectCartHandler, initProspectCartHandler_fn, _injectBillingFormFields, injectBillingFormFields_fn, _setupEventListeners3, setupEventListeners_fn3, _handleSubmit2, handleSubmit_fn2, _disableSubmitButtons, disableSubmitButtons_fn;
   var CheckoutPage = class {
     constructor(apiClient, logger, app) {
       __privateAdd(this, _initializeComponents);
@@ -4307,13 +4350,9 @@ var TwentyNineNext = (() => {
        * Trigger the Konami code Easter egg - create a test order with predefined data
        */
       __privateAdd(this, _triggerKonamiCodeEasterEgg);
-      __privateAdd(this, _initAddressHandler);
       __privateAdd(this, _initBillingAddressHandler);
       __privateAdd(this, _initPaymentSelector);
-      __privateAdd(this, _initFormValidator);
       __privateAdd(this, _initPaymentHandler);
-      __privateAdd(this, _initAddressAutocomplete);
-      __privateAdd(this, _initPhoneInputHandler);
       __privateAdd(this, _initProspectCartHandler);
       /**
        * Fix billing form by duplicating shipping form fields
@@ -4332,6 +4371,10 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _form4, void 0);
       __privateAdd(this, _app6, void 0);
       __privateAdd(this, _konamiCodeHandler, void 0);
+      __privateAdd(this, _addressHandler, void 0);
+      __privateAdd(this, _phoneInputHandler, void 0);
+      __privateAdd(this, _formValidator2, void 0);
+      __privateAdd(this, _addressAutocomplete, void 0);
       __privateSet(this, _apiClient2, apiClient);
       __privateSet(this, _logger11, logger);
       __privateSet(this, _app6, app);
@@ -4380,17 +4423,25 @@ var TwentyNineNext = (() => {
   _form4 = new WeakMap();
   _app6 = new WeakMap();
   _konamiCodeHandler = new WeakMap();
+  _addressHandler = new WeakMap();
+  _phoneInputHandler = new WeakMap();
+  _formValidator2 = new WeakMap();
+  _addressAutocomplete = new WeakMap();
   _initializeComponents = new WeakSet();
-  initializeComponents_fn = function() {
+  initializeComponents_fn = async function() {
     try {
       __privateMethod(this, _injectBillingFormFields, injectBillingFormFields_fn).call(this);
-      __privateMethod(this, _initAddressHandler, initAddressHandler_fn).call(this);
+      __privateSet(this, _addressHandler, new AddressHandler(__privateGet(this, _form4), __privateGet(this, _logger11)));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      __privateSet(this, _phoneInputHandler, new PhoneInputHandler(__privateGet(this, _logger11)));
+      __privateSet(this, _formValidator2, new FormValidator(__privateGet(this, _form4), __privateGet(this, _logger11)));
+      const googleMapsOptions = {
+        enableGoogleMapsAutocomplete: __privateGet(this, _app6).options.enableGoogleMapsAutocomplete
+      };
+      __privateSet(this, _addressAutocomplete, new AddressAutocomplete(__privateGet(this, _logger11), googleMapsOptions));
       __privateMethod(this, _initBillingAddressHandler, initBillingAddressHandler_fn).call(this);
       __privateMethod(this, _initPaymentSelector, initPaymentSelector_fn).call(this);
-      __privateMethod(this, _initFormValidator, initFormValidator_fn).call(this);
       __privateMethod(this, _initPaymentHandler, initPaymentHandler_fn).call(this);
-      __privateMethod(this, _initAddressAutocomplete, initAddressAutocomplete_fn).call(this);
-      __privateMethod(this, _initPhoneInputHandler, initPhoneInputHandler_fn).call(this);
       __privateMethod(this, _initProspectCartHandler, initProspectCartHandler_fn).call(this);
       __privateMethod(this, _setupEventListeners3, setupEventListeners_fn3).call(this);
       document.dispatchEvent(new CustomEvent("os:checkout.ready", {
@@ -4399,6 +4450,7 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger11).info("Checkout page components initialized successfully");
     } catch (error) {
       __privateGet(this, _logger11).error("Error initializing checkout components", error);
+      throw error;
     }
   };
   _initKonamiCodeHandler = new WeakSet();
@@ -4433,14 +4485,6 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger11).error("Error triggering Konami code Easter egg:", error);
     }
   };
-  _initAddressHandler = new WeakSet();
-  initAddressHandler_fn = function() {
-    try {
-      this.addressHandler = new AddressHandler(__privateGet(this, _form4), __privateGet(this, _logger11));
-    } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing AddressHandler", error);
-    }
-  };
   _initBillingAddressHandler = new WeakSet();
   initBillingAddressHandler_fn = function() {
     try {
@@ -4461,46 +4505,12 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger11).error("Error initializing PaymentSelector", error);
     }
   };
-  _initFormValidator = new WeakSet();
-  initFormValidator_fn = function() {
-    try {
-      this.formValidator = new FormValidator({
-        debugMode: window.location.search.includes("debug=true"),
-        logger: __privateGet(this, _logger11)
-      });
-      if (__privateGet(this, _form4) && this.formValidator) {
-        __privateGet(this, _form4).__formValidator = this.formValidator;
-        __privateGet(this, _logger11).debug("FormValidator initialized and attached to form");
-      }
-    } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing FormValidator", error);
-    }
-  };
   _initPaymentHandler = new WeakSet();
   initPaymentHandler_fn = function() {
     try {
       this.paymentHandler = new PaymentHandler(__privateGet(this, _apiClient2), __privateGet(this, _logger11), __privateGet(this, _app6));
     } catch (error) {
       __privateGet(this, _logger11).error("Error initializing PaymentHandler", error);
-    }
-  };
-  _initAddressAutocomplete = new WeakSet();
-  initAddressAutocomplete_fn = function() {
-    try {
-      const googleMapsOptions = {
-        enableGoogleMapsAutocomplete: __privateGet(this, _app6).options.enableGoogleMapsAutocomplete
-      };
-      this.addressAutocomplete = new AddressAutocomplete(__privateGet(this, _logger11), googleMapsOptions);
-    } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing AddressAutocomplete", error);
-    }
-  };
-  _initPhoneInputHandler = new WeakSet();
-  initPhoneInputHandler_fn = function() {
-    try {
-      this.phoneInputHandler = new PhoneInputHandler(__privateGet(this, _logger11));
-    } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing PhoneInputHandler", error);
     }
   };
   _initProspectCartHandler = new WeakSet();
@@ -5083,7 +5093,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CartManager.js
-  var _app9, _stateManager, _logger14, _cartElements, _initCartUI, initCartUI_fn, _updateCartUI, updateCartUI_fn, _createCartItemElement, createCartItemElement_fn, _addToCart, addToCart_fn, _updateCartItemQuantity, updateCartItemQuantity_fn, _removeFromCart, removeFromCart_fn;
+  var _app9, _stateManager, _logger14, _cartElements, _initCartUI, initCartUI_fn, _updateCartUI, updateCartUI_fn, _createCartItemElement, createCartItemElement_fn, _addToCart, addToCart_fn, _updateCartItemQuantity, updateCartItemQuantity_fn, _removeFromCart, removeFromCart_fn, _showMessage, showMessage_fn;
   var CartManager = class {
     constructor(app) {
       __privateAdd(this, _initCartUI);
@@ -5092,6 +5102,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _addToCart);
       __privateAdd(this, _updateCartItemQuantity);
       __privateAdd(this, _removeFromCart);
+      __privateAdd(this, _showMessage);
       __privateAdd(this, _app9, void 0);
       __privateAdd(this, _stateManager, void 0);
       __privateAdd(this, _logger14, void 0);
@@ -5107,6 +5118,7 @@ var TwentyNineNext = (() => {
         return __privateGet(this, _stateManager).clearCart();
       } catch (error) {
         __privateGet(this, _logger14).error("Error clearing cart:", error);
+        __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error clearing cart", "error");
         throw error;
       }
     }
@@ -5121,6 +5133,7 @@ var TwentyNineNext = (() => {
         return __privateGet(this, _stateManager).setShippingMethod(shippingMethod);
       } catch (error) {
         __privateGet(this, _logger14).error("Error setting shipping method:", error);
+        __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error setting shipping method", "error");
         throw error;
       }
     }
@@ -5129,6 +5142,7 @@ var TwentyNineNext = (() => {
         return __privateGet(this, _stateManager).applyCoupon(couponCode);
       } catch (error) {
         __privateGet(this, _logger14).error("Error applying coupon:", error);
+        __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error applying coupon", "error");
         throw error;
       }
     }
@@ -5137,6 +5151,7 @@ var TwentyNineNext = (() => {
         return __privateGet(this, _stateManager).removeCoupon();
       } catch (error) {
         __privateGet(this, _logger14).error("Error removing coupon:", error);
+        __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error removing coupon", "error");
         throw error;
       }
     }
@@ -5145,22 +5160,13 @@ var TwentyNineNext = (() => {
         return await __privateGet(this, _stateManager).syncCartWithApi();
       } catch (error) {
         __privateGet(this, _logger14).error("Error syncing cart with API:", error);
+        __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error syncing cart with server", "error");
         throw error;
       }
     }
     isItemInCart(itemId) {
       return __privateGet(this, _stateManager).isItemInCart?.(itemId) ?? __privateGet(this, _stateManager).getState("cart").items.some((item) => item.id === itemId);
     }
-    // #showMessage(message, type = 'success') {
-    //   const messageElement = document.createElement('div');
-    //   messageElement.className = `os-message os-message-${type}`;
-    //   messageElement.textContent = message;
-    //   document.body.appendChild(messageElement);
-    //   setTimeout(() => {
-    //     messageElement.classList.add('os-message-hide');
-    //     setTimeout(() => document.body.removeChild(messageElement), 300);
-    //   }, 3000);
-    // }
   };
   _app9 = new WeakMap();
   _stateManager = new WeakMap();
@@ -5285,9 +5291,11 @@ var TwentyNineNext = (() => {
   addToCart_fn = function(item) {
     try {
       const result = __privateGet(this, _stateManager).addToCart(item);
+      __privateMethod(this, _showMessage, showMessage_fn).call(this, `${item.name} added to cart`);
       return result;
     } catch (error) {
       __privateGet(this, _logger14).error("Error adding item to cart:", error);
+      __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error adding item to cart", "error");
       throw error;
     }
   };
@@ -5297,6 +5305,7 @@ var TwentyNineNext = (() => {
       return quantity <= 0 ? __privateMethod(this, _removeFromCart, removeFromCart_fn).call(this, itemId) : __privateGet(this, _stateManager).updateCartItem(itemId, { quantity });
     } catch (error) {
       __privateGet(this, _logger14).error("Error updating cart item quantity:", error);
+      __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error updating cart", "error");
       throw error;
     }
   };
@@ -5306,8 +5315,20 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _stateManager).removeFromCart(itemId);
     } catch (error) {
       __privateGet(this, _logger14).error("Error removing item from cart:", error);
+      __privateMethod(this, _showMessage, showMessage_fn).call(this, "Error removing item from cart", "error");
       throw error;
     }
+  };
+  _showMessage = new WeakSet();
+  showMessage_fn = function(message, type = "success") {
+    const messageElement = document.createElement("div");
+    messageElement.className = `os-message os-message-${type}`;
+    messageElement.textContent = message;
+    document.body.appendChild(messageElement);
+    setTimeout(() => {
+      messageElement.classList.add("os-message-hide");
+      setTimeout(() => document.body.removeChild(messageElement), 300);
+    }, 3e3);
   };
 
   // src/utils/DebugUtils.js

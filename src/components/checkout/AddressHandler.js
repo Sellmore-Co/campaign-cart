@@ -132,15 +132,68 @@ export class AddressHandler {
   }
 
   async #detectUserCountry() {
-    if (this.#elements.shippingCountry?.value || this.#elements.billingCountry?.value) return;
-    const countryCode = this.#addressConfig.defaultCountry || (await Promise.any(['https://ipapi.co/json/', 'https://ipinfo.io/json'].map(u => fetch(u).then(r => r.json()))))?.country_code;
-    [this.#elements.shippingCountry, this.#elements.billingCountry].forEach(c => {
-      if (c) {
-        c.value = countryCode;
-        c.dispatchEvent(new Event('change'));
+    // Try to detect country from IP regardless of current selection
+    let countryCode = this.#addressConfig.defaultCountry;
+    this.#logger.info(`Starting country detection. Default country from config: ${countryCode}`);
+    
+    try {
+      this.#logger.info('Attempting to detect country from IP services...');
+      const ipServices = ['https://ipapi.co/json/', 'https://ipinfo.io/json'];
+      
+      for (const url of ipServices) {
+        try {
+          this.#logger.info(`Trying IP service: ${url}`);
+          const response = await fetch(url);
+          const data = await response.json();
+          console.log(`IP service response from ${url}:`, data);
+          
+          if (data?.country_code || data?.country) {
+            countryCode = data.country_code || data.country;
+            this.#logger.info(`Country detected from IP service (${url}): ${countryCode}`);
+            break;
+          } else {
+            this.#logger.warn(`No country code found in response from ${url}`);
+          }
+        } catch (e) {
+          this.#logger.warn(`IP service ${url} failed:`, e);
+          console.error(`IP service ${url} error:`, e);
+        }
       }
-    });
-    this.#logger.debug(`User country detected/set to ${countryCode}`);
+    } catch (error) {
+      this.#logger.warn('All IP detection services failed:', error);
+      console.error('All IP detection services failed:', error);
+    }
+
+    // Check if detected country is in the allowed list
+    const isCountryAllowed = this.#countries.some(c => c.iso2 === countryCode);
+    this.#logger.info(`Checking if country ${countryCode} is allowed. Allowed: ${isCountryAllowed}`);
+    
+    if (!isCountryAllowed) {
+      this.#logger.info(`Detected country ${countryCode} not in allowed list, defaulting to US`);
+      countryCode = 'US';
+    }
+
+    // Check current values and update if they're just the default US
+    const currentShippingCountry = this.#elements.shippingCountry?.value;
+    const currentBillingCountry = this.#elements.billingCountry?.value;
+    
+    this.#logger.info(`Current shipping country: ${currentShippingCountry}, Current billing country: ${currentBillingCountry}`);
+    
+    // Update if either field is empty or has the default US value
+    if (!currentShippingCountry || !currentBillingCountry || 
+        currentShippingCountry === 'US' || currentBillingCountry === 'US') {
+      // Set the country and trigger change event for fields that are empty or have default US
+      [this.#elements.shippingCountry, this.#elements.billingCountry].forEach(c => {
+        if (c && (!c.value || c.value === 'US')) {
+          this.#logger.info(`Setting country ${countryCode} on ${c.getAttribute('os-checkout-field')}`);
+          c.value = countryCode;
+          c.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+      this.#logger.info(`User country set to ${countryCode}`);
+    } else {
+      this.#logger.info('Country already selected on both shipping and billing, skipping update');
+    }
   }
 
   #setupAutocompleteDetection() {

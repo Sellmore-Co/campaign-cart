@@ -21,6 +21,10 @@ export class CheckoutPage {
   #form;
   #app;
   #konamiCodeHandler;
+  #addressHandler;
+  #phoneInputHandler;
+  #formValidator;
+  #addressAutocomplete;
 
   constructor(apiClient, logger, app) {
     this.#apiClient = apiClient;
@@ -86,19 +90,30 @@ export class CheckoutPage {
     this.#initKonamiCodeHandler();
   }
 
-  #initializeComponents() {
+  async #initializeComponents() {
     try {
       // First, fix the billing form by duplicating shipping form fields
       this.#injectBillingFormFields();
       
-      // Initialize components one by one with proper error handling
-      this.#initAddressHandler();
+      // Initialize AddressHandler first
+      this.#addressHandler = new AddressHandler(this.#form, this.#logger);
+      
+      // Wait a short moment for AddressHandler to complete country detection
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Initialize other components
+      this.#phoneInputHandler = new PhoneInputHandler(this.#logger);
+      this.#formValidator = new FormValidator(this.#form, this.#logger);
+      
+      // Initialize AddressAutocomplete with proper logger
+      const googleMapsOptions = {
+        enableGoogleMapsAutocomplete: this.#app.options.enableGoogleMapsAutocomplete
+      };
+      this.#addressAutocomplete = new AddressAutocomplete(this.#logger, googleMapsOptions);
+      
       this.#initBillingAddressHandler();
       this.#initPaymentSelector();
-      this.#initFormValidator();
       this.#initPaymentHandler();
-      this.#initAddressAutocomplete();
-      this.#initPhoneInputHandler();
       this.#initProspectCartHandler();
       
       this.#setupEventListeners();
@@ -110,6 +125,7 @@ export class CheckoutPage {
       this.#logger.info('Checkout page components initialized successfully');
     } catch (error) {
       this.#logger.error('Error initializing checkout components', error);
+      throw error;
     }
   }
 
@@ -164,14 +180,6 @@ export class CheckoutPage {
     }
   }
 
-  #initAddressHandler() {
-    try {
-      this.addressHandler = new AddressHandler(this.#form, this.#logger);
-    } catch (error) {
-      this.#logger.error('Error initializing AddressHandler', error);
-    }
-  }
-
   #initBillingAddressHandler() {
     try {
       this.billingAddressHandler = new BillingAddressHandler(this.#app);
@@ -194,48 +202,11 @@ export class CheckoutPage {
     }
   }
 
-  #initFormValidator() {
-    try {
-      this.formValidator = new FormValidator({ 
-        debugMode: window.location.search.includes('debug=true'),
-        logger: this.#logger
-      });
-      
-      if (this.#form && this.formValidator) {
-        this.#form.__formValidator = this.formValidator;
-        this.#logger.debug('FormValidator initialized and attached to form');
-      }
-    } catch (error) {
-      this.#logger.error('Error initializing FormValidator', error);
-    }
-  }
-
   #initPaymentHandler() {
     try {
       this.paymentHandler = new PaymentHandler(this.#apiClient, this.#logger, this.#app);
     } catch (error) {
       this.#logger.error('Error initializing PaymentHandler', error);
-    }
-  }
-
-  #initAddressAutocomplete() {
-    try {
-      // Pass Google Maps options from the app instance
-      const googleMapsOptions = {
-        enableGoogleMapsAutocomplete: this.#app.options.enableGoogleMapsAutocomplete
-      };
-      
-      this.addressAutocomplete = new AddressAutocomplete(this.#logger, googleMapsOptions);
-    } catch (error) {
-      this.#logger.error('Error initializing AddressAutocomplete', error);
-    }
-  }
-
-  #initPhoneInputHandler() {
-    try {
-      this.phoneInputHandler = new PhoneInputHandler(this.#logger);
-    } catch (error) {
-      this.#logger.error('Error initializing PhoneInputHandler', error);
     }
   }
 
