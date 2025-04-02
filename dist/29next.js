@@ -2638,12 +2638,26 @@ var TwentyNineNext = (() => {
         return;
       }
     }
-    __privateGet(this, _spreedlyManager).tokenizeCard({ full_name: fullName || "Test User", month, year });
+    __privateGet(this, _spreedlyManager).tokenizeCard({
+      full_name: fullName || "Test User",
+      month,
+      year
+    });
+    __privateGet(this, _spreedlyManager).setOnPaymentMethod((token, pmData) => {
+      /* @__PURE__ */ console.log("Card tokenization successful:", {
+        token,
+        paymentMethodData: pmData,
+        cardholderName: fullName,
+        expirationMonth: month,
+        expirationYear: year
+      });
+    });
   };
   _getCreditCardFields = new WeakSet();
   getCreditCardFields_fn = function() {
-    const firstName = document.querySelector('[os-checkout-field="fname"]')?.value || "";
-    const lastName = document.querySelector('[os-checkout-field="lname"]')?.value || "";
+    const isDifferentBilling = !__privateGet(this, _formValidator).isSameAsShipping();
+    const firstName = document.querySelector(`[os-checkout-field="${isDifferentBilling ? "billing-fname" : "fname"}"]`)?.value || "";
+    const lastName = document.querySelector(`[os-checkout-field="${isDifferentBilling ? "billing-lname" : "lname"}"]`)?.value || "";
     const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
     const fullName = `${capitalize(firstName)} ${capitalize(lastName)}`.trim();
     return [
@@ -10290,4 +10304,3 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
-//# sourceMappingURL=29next.js.map
