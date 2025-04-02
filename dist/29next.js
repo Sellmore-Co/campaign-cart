@@ -2642,8 +2642,12 @@ var TwentyNineNext = (() => {
   };
   _getCreditCardFields = new WeakSet();
   getCreditCardFields_fn = function() {
+    const firstName = document.querySelector('[os-checkout-field="fname"]')?.value || "";
+    const lastName = document.querySelector('[os-checkout-field="lname"]')?.value || "";
+    const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    const fullName = `${capitalize(firstName)} ${capitalize(lastName)}`.trim();
     return [
-      document.querySelector('[os-checkout-field="cc-name"]')?.value || "",
+      fullName,
       document.querySelector('[os-checkout-field="cc-month"]')?.value || document.querySelector('[os-checkout-field="exp-month"]')?.value || document.querySelector("#credit_card_exp_month")?.value || "",
       document.querySelector('[os-checkout-field="cc-year"]')?.value || document.querySelector('[os-checkout-field="exp-year"]')?.value || document.querySelector("#credit_card_exp_year")?.value || ""
     ];
@@ -10286,3 +10290,4 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
+//# sourceMappingURL=29next.js.map

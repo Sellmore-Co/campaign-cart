@@ -438,8 +438,16 @@ export class PaymentHandler {
   }
 
   #getCreditCardFields() {
+    // Get first and last name from the form
+    const firstName = document.querySelector('[os-checkout-field="fname"]')?.value || '';
+    const lastName = document.querySelector('[os-checkout-field="lname"]')?.value || '';
+    
+    // Capitalize the names
+    const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    const fullName = `${capitalize(firstName)} ${capitalize(lastName)}`.trim();
+    
     return [
-      document.querySelector('[os-checkout-field="cc-name"]')?.value || '',
+      fullName,
       document.querySelector('[os-checkout-field="cc-month"]')?.value || 
       document.querySelector('[os-checkout-field="exp-month"]')?.value || 
       document.querySelector('#credit_card_exp_month')?.value || '',
