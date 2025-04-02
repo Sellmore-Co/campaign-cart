@@ -2638,12 +2638,30 @@ var TwentyNineNext = (() => {
         return;
       }
     }
-    __privateGet(this, _spreedlyManager).tokenizeCard({ full_name: fullName || "Test User", month, year });
+    __privateGet(this, _spreedlyManager).tokenizeCard({
+      full_name: fullName || "Test User",
+      month,
+      year
+    });
+    __privateGet(this, _spreedlyManager).setOnPaymentMethod((token, pmData) => {
+      /* @__PURE__ */ console.log("Card tokenization successful:", {
+        token,
+        paymentMethodData: pmData,
+        cardholderName: fullName,
+        expirationMonth: month,
+        expirationYear: year
+      });
+    });
   };
   _getCreditCardFields = new WeakSet();
   getCreditCardFields_fn = function() {
+    const isDifferentBilling = !__privateGet(this, _formValidator).isSameAsShipping();
+    const firstName = document.querySelector(`[os-checkout-field="${isDifferentBilling ? "billing-fname" : "fname"}"]`)?.value || "";
+    const lastName = document.querySelector(`[os-checkout-field="${isDifferentBilling ? "billing-lname" : "lname"}"]`)?.value || "";
+    const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    const fullName = `${capitalize(firstName)} ${capitalize(lastName)}`.trim();
     return [
-      document.querySelector('[os-checkout-field="cc-name"]')?.value || "",
+      fullName,
       document.querySelector('[os-checkout-field="cc-month"]')?.value || document.querySelector('[os-checkout-field="exp-month"]')?.value || document.querySelector("#credit_card_exp_month")?.value || "",
       document.querySelector('[os-checkout-field="cc-year"]')?.value || document.querySelector('[os-checkout-field="exp-year"]')?.value || document.querySelector("#credit_card_exp_year")?.value || ""
     ];

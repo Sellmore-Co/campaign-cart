@@ -434,12 +434,45 @@ export class PaymentHandler {
     }
   
     // Proceed with tokenization
-    this.#spreedlyManager.tokenizeCard({ full_name: fullName || 'Test User', month, year });
+    this.#spreedlyManager.tokenizeCard({ 
+      full_name: fullName || '', 
+      month, 
+      year 
+    });
+
+    // Add callback to log tokenization results
+    this.#spreedlyManager.setOnPaymentMethod((token, pmData) => {
+    //   console.log('Card tokenization successful:', {
+    //     token,
+    //     paymentMethodData: pmData,
+    //     cardholderName: fullName,
+    //     expirationMonth: month,
+    //     expirationYear: year
+    //   });
+      
+      // Comment out order creation
+      this.#createOrder({
+        payment_token: token,
+        payment_method: 'credit-card',
+        ...this.#getOrderData()
+      });
+    });
   }
 
   #getCreditCardFields() {
+    // Check if billing address is different from shipping
+    const isDifferentBilling = !this.#formValidator.isSameAsShipping();
+    
+    // Get first and last name from the appropriate form (billing or shipping)
+    const firstName = document.querySelector(`[os-checkout-field="${isDifferentBilling ? 'billing-fname' : 'fname'}"]`)?.value || '';
+    const lastName = document.querySelector(`[os-checkout-field="${isDifferentBilling ? 'billing-lname' : 'lname'}"]`)?.value || '';
+    
+    // Capitalize the names
+    const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    const fullName = `${capitalize(firstName)} ${capitalize(lastName)}`.trim();
+    
     return [
-      document.querySelector('[os-checkout-field="cc-name"]')?.value || '',
+      fullName,
       document.querySelector('[os-checkout-field="cc-month"]')?.value || 
       document.querySelector('[os-checkout-field="exp-month"]')?.value || 
       document.querySelector('#credit_card_exp_month')?.value || '',
