@@ -441,7 +441,7 @@ export class PaymentHandler {
     });
 
     // Add callback to log tokenization results
-    // this.#spreedlyManager.setOnPaymentMethod((token, pmData) => {
+    this.#spreedlyManager.setOnPaymentMethod((token, pmData) => {
     //   console.log('Card tokenization successful:', {
     //     token,
     //     paymentMethodData: pmData,
