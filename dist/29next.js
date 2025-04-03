@@ -5633,7 +5633,7 @@ var TwentyNineNext = (() => {
   __privateAdd(DebugUtils, _overlays, []);
 
   // src/managers/SelectorManager.js
-  var _app10, _logger15, _selectors2, _selectedItems, _isDebugMode2, _initSelectors, initSelectors_fn, _initSelector, initSelector_fn, _initCard, initCard_fn, _handleClick, handleClick_fn, _selectItem, selectItem_fn, _updateCart, updateCart_fn, _addItemToCart, addItemToCart_fn, _removeItemFromCart, removeItemFromCart_fn, _syncWithCart, syncWithCart_fn;
+  var _app10, _logger15, _selectors2, _selectedItems, _isDebugMode2, _initSelectors, initSelectors_fn, _initSelector, initSelector_fn, _initCard, initCard_fn, _handleClick, handleClick_fn, _selectItem, selectItem_fn, _updateCart, updateCart_fn, _addItemToCart, addItemToCart_fn, _removeItemFromCart, removeItemFromCart_fn, _syncWithCart, syncWithCart_fn, _initUnitPricingForSelector, initUnitPricingForSelector_fn, _updateUnitPricingForCard, updateUnitPricingForCard_fn, _formatPrice, formatPrice_fn, _updatePriceElement, updatePriceElement_fn;
   var SelectorManager = class {
     constructor(app) {
       __privateAdd(this, _initSelectors);
@@ -5645,6 +5645,31 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _addItemToCart);
       __privateAdd(this, _removeItemFromCart);
       __privateAdd(this, _syncWithCart);
+      /**
+       * Initialize unit pricing for a specific selector
+       * @param {string} selectorId - The ID of the selector
+       */
+      __privateAdd(this, _initUnitPricingForSelector);
+      /**
+       * Update unit pricing for a specific card
+       * @param {Object} item - The item object
+       * @param {Array} packages - The packages array from campaign data
+       */
+      __privateAdd(this, _updateUnitPricingForCard);
+      /**
+       * Format a price with currency symbol
+       * @param {number} price - Price to format
+       * @returns {string} Formatted price
+       */
+      __privateAdd(this, _formatPrice);
+      /**
+       * Update a price element with the calculated value
+       * @param {HTMLElement} cardElement - The card element
+       * @param {string} type - The price type
+       * @param {string} value - The formatted price value
+       * @param {Set} processedElements - Set of elements that have already been processed
+       */
+      __privateAdd(this, _updatePriceElement);
       __privateAdd(this, _app10, void 0);
       __privateAdd(this, _logger15, void 0);
       __privateAdd(this, _selectors2, {});
@@ -5659,6 +5684,25 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger15).info("Debug mode enabled for selectors");
       }
     }
+    /**
+     * Initialize unit pricing for all selectors
+     * This populates any elements with data-card-price attributes
+     */
+    initUnitPricing() {
+      __privateGet(this, _logger15).info("Initializing unit pricing for selectors");
+      setTimeout(() => {
+        Object.keys(__privateGet(this, _selectors2)).forEach((selectorId) => {
+          __privateMethod(this, _initUnitPricingForSelector, initUnitPricingForSelector_fn).call(this, selectorId);
+        });
+      }, 100);
+    }
+    /**
+     * Refresh unit pricing for all selectors
+     * This can be called after campaign data is updated
+     */
+    refreshUnitPricing() {
+      this.initUnitPricing();
+    }
   };
   _app10 = new WeakMap();
   _logger15 = new WeakMap();
@@ -5670,6 +5714,7 @@ var TwentyNineNext = (() => {
     document.querySelectorAll('[data-os-component="selector"][data-os-selection-mode="swap"]').forEach((selector) => __privateMethod(this, _initSelector, initSelector_fn).call(this, selector));
     setTimeout(() => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this), 0);
     __privateGet(this, _app10).state?.subscribe("cart", () => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this));
+    this.initUnitPricing();
   };
   _initSelector = new WeakSet();
   initSelector_fn = function(selectorElement) {
@@ -5830,6 +5875,170 @@ var TwentyNineNext = (() => {
         item.element.setAttribute("data-os-active", isInCart.toString());
       });
     });
+  };
+  _initUnitPricingForSelector = new WeakSet();
+  initUnitPricingForSelector_fn = function(selectorId) {
+    const selector = __privateGet(this, _selectors2)[selectorId];
+    if (!selector) {
+      __privateGet(this, _logger15).warn(`Selector ${selectorId} not found for unit pricing`);
+      return;
+    }
+    const campaignData = __privateGet(this, _app10)?.campaignData;
+    if (!campaignData || !campaignData.packages) {
+      __privateGet(this, _logger15).warn("Campaign data not available for unit pricing");
+      return;
+    }
+    selector.items.forEach((item) => {
+      __privateMethod(this, _updateUnitPricingForCard, updateUnitPricingForCard_fn).call(this, item, campaignData.packages);
+    });
+  };
+  _updateUnitPricingForCard = new WeakSet();
+  updateUnitPricingForCard_fn = function(item, packages) {
+    const packageData = packages.find(
+      (pkg) => pkg.ref_id.toString() === item.packageId.toString() || pkg.external_id && pkg.external_id.toString() === item.packageId.toString()
+    );
+    if (!packageData) {
+      __privateGet(this, _logger15).debug(`Package data not found for item ${item.packageId}`);
+      return;
+    }
+    const cardElement = item.element;
+    __privateGet(this, _logger15).debug(`Processing unit pricing for package ${item.packageId}:`, {
+      packageId: item.packageId,
+      name: packageData.name,
+      price: packageData.price,
+      price_total: packageData.price_total,
+      price_retail: packageData.price_retail,
+      price_retail_total: packageData.price_retail_total,
+      qty: packageData.qty
+    });
+    const totalUnits = packageData.qty || 1;
+    const totalPrice = Number.parseFloat(packageData.price_total) || Number.parseFloat(packageData.price) * totalUnits;
+    const totalRetailPrice = Number.parseFloat(packageData.price_retail_total) || Number.parseFloat(packageData.price_retail) * totalUnits || totalPrice;
+    const unitPrice = totalPrice / totalUnits;
+    const unitRetailPrice = totalRetailPrice / totalUnits;
+    const unitSavings = unitRetailPrice - unitPrice;
+    const unitSavingsPercentage = unitRetailPrice > 0 ? unitSavings / unitRetailPrice * 100 : 0;
+    const totalSavings = totalRetailPrice - totalPrice;
+    const totalSavingsPercentage = totalRetailPrice > 0 ? totalSavings / totalRetailPrice * 100 : 0;
+    __privateGet(this, _logger15).debug(`Calculated prices for package ${item.packageId}:`, {
+      totalUnits,
+      totalPrice,
+      totalRetailPrice,
+      totalSavings,
+      totalSavingsPercentage,
+      unitPrice,
+      unitRetailPrice,
+      unitSavings,
+      unitSavingsPercentage
+    });
+    const formatPrice = (price) => {
+      if (__privateGet(this, _app10).campaign?.formatPrice) {
+        return __privateGet(this, _app10).campaign.formatPrice(price);
+      }
+      return `$${price.toFixed(2)}`;
+    };
+    const processedElements = /* @__PURE__ */ new Set();
+    const subunitElements = cardElement.querySelectorAll("[data-divide-by]");
+    if (subunitElements.length > 0) {
+      __privateGet(this, _logger15).debug(`Found ${subunitElements.length} elements with data-divide-by in card ${item.packageId}`);
+      subunitElements.forEach((element) => {
+        const divisor = parseFloat(element.getAttribute("data-divide-by"));
+        if (!isNaN(divisor) && divisor > 0) {
+          const type = element.getAttribute("data-card-price");
+          if (!type) {
+            __privateGet(this, _logger15).debug(`Skipping element with data-divide-by but no data-card-price attribute`);
+            return;
+          }
+          let value;
+          switch (type) {
+            case "each-sale":
+              value = unitPrice / divisor;
+              break;
+            case "each-regular":
+              value = unitRetailPrice / divisor;
+              break;
+            case "saving-amount":
+              value = unitSavings / divisor;
+              break;
+            case "saving-percentage":
+              value = unitSavingsPercentage;
+              break;
+            case "total-sale":
+              value = totalPrice / divisor;
+              break;
+            case "total-regular":
+              value = totalRetailPrice / divisor;
+              break;
+            case "total-saving-amount":
+              value = totalSavings / divisor;
+              break;
+            case "total-saving-percentage":
+              value = totalSavingsPercentage;
+              break;
+            default:
+              __privateGet(this, _logger15).debug(`Unknown price type: ${type}`);
+              return;
+          }
+          let formattedValue;
+          if (type.includes("percentage")) {
+            formattedValue = `${Math.round(value)}%`;
+          } else {
+            formattedValue = formatPrice(value);
+          }
+          __privateGet(this, _logger15).debug(`Setting price for element with data-divide-by="${divisor}":`, {
+            attributeType: type,
+            originalValue: element.textContent,
+            calculatedValue: value,
+            formattedValue,
+            element: element.outerHTML
+          });
+          element.textContent = formattedValue;
+          processedElements.add(element);
+          __privateGet(this, _logger15).debug(`Updated element with data-divide-by="${divisor}" for ${type}: ${formattedValue}`);
+        }
+      });
+    }
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "each-sale", formatPrice(unitPrice), processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "each-regular", formatPrice(unitRetailPrice), processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "saving-amount", formatPrice(unitSavings), processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "saving-percentage", `${Math.round(unitSavingsPercentage)}%`, processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "total-sale", formatPrice(totalPrice), processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "total-regular", formatPrice(totalRetailPrice), processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "total-saving-amount", formatPrice(totalSavings), processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "total-saving-percentage", `${Math.round(totalSavingsPercentage)}%`, processedElements);
+    __privateGet(this, _logger15).debug(`Updated pricing for card ${item.packageId}: ${formatPrice(unitPrice)} per unit, ${formatPrice(totalPrice)} total`);
+  };
+  _formatPrice = new WeakSet();
+  formatPrice_fn = function(price) {
+    if (__privateGet(this, _app10).campaign?.formatPrice) {
+      return __privateGet(this, _app10).campaign.formatPrice(price);
+    }
+    return `$${price.toFixed(2)}`;
+  };
+  _updatePriceElement = new WeakSet();
+  updatePriceElement_fn = function(cardElement, type, value, processedElements = /* @__PURE__ */ new Set()) {
+    const priceElements = cardElement.querySelectorAll(`[data-card-price="${type}"]`);
+    if (priceElements.length > 0) {
+      priceElements.forEach((element) => {
+        if (processedElements.has(element)) {
+          return;
+        }
+        element.textContent = value;
+        const hideIfZero = element.getAttribute("data-hide-if-zero") === "true";
+        const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, ""));
+        if (hideIfZero && numericValue <= 0) {
+          element.style.display = "none";
+          const container = element.closest('[data-container="true"]');
+          if (container)
+            container.style.display = "none";
+        } else {
+          element.style.display = "";
+          const container = element.closest('[data-container="true"]');
+          if (container)
+            container.style.display = "";
+        }
+      });
+    }
   };
 
   // src/managers/ToggleManager.js
@@ -6641,7 +6850,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CartDisplayManager.js
-  var _app15, _logger20, _elements3, _config2, _lineItemTemplate, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice, formatPrice_fn, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
+  var _app15, _logger20, _elements3, _config2, _lineItemTemplate, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice2, formatPrice_fn2, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
   var CartDisplayManager = class {
     constructor(app) {
       /**
@@ -6694,7 +6903,7 @@ var TwentyNineNext = (() => {
        * @param {number} price - Price to format
        * @returns {string} Formatted price
        */
-      __privateAdd(this, _formatPrice);
+      __privateAdd(this, _formatPrice2);
       /**
        * Simple debounce function for resize events
        * @param {Function} func - Function to debounce
@@ -6956,13 +7165,13 @@ var TwentyNineNext = (() => {
     const comparePrice = lineItem.querySelector('[data-os-cart-summary="line-compare"]');
     const salePrice = lineItem.querySelector('[data-os-cart-summary="line-sale"]');
     if (comparePrice && item.retail_price && __privateGet(this, _config2).showComparePricing) {
-      comparePrice.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, item.retail_price * (item.quantity || 1));
+      comparePrice.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, item.retail_price * (item.quantity || 1));
       comparePrice.classList.remove("hide");
     } else if (comparePrice) {
       comparePrice.classList.add("hide");
     }
     if (salePrice) {
-      salePrice.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, item.price * (item.quantity || 1));
+      salePrice.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, item.price * (item.quantity || 1));
     }
     const savingsPercentElement = lineItem.querySelector('[data-os-cart-summary="line-saving-percent"]');
     if (savingsPercentElement && item.retail_price) {
@@ -6989,9 +7198,9 @@ var TwentyNineNext = (() => {
       return;
     if (__privateGet(this, _elements3).subtotals.length) {
       __privateGet(this, _elements3).subtotals.forEach((element) => {
-        element.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, totals.subtotal);
+        element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.subtotal);
       });
-      __privateGet(this, _logger20).debugWithTime(`Updated subtotal to: ${__privateMethod(this, _formatPrice, formatPrice_fn).call(this, totals.subtotal)}`);
+      __privateGet(this, _logger20).debugWithTime(`Updated subtotal to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.subtotal)}`);
     }
   };
   _updateShipping = new WeakSet();
@@ -7005,11 +7214,11 @@ var TwentyNineNext = (() => {
       const shippingCurrent = shippingBar.querySelector('[data-os-cart-summary="shipping-current"]');
       if (shippingCompare && shippingCurrent) {
         if (shippingCost === 0 && shippingMethod?.standard_cost > 0) {
-          shippingCompare.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, shippingMethod.standard_cost);
+          shippingCompare.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, shippingMethod.standard_cost);
           shippingCurrent.textContent = "FREE";
           shippingCompare.classList.remove("hide");
         } else if (shippingCost > 0) {
-          shippingCurrent.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, shippingCost);
+          shippingCurrent.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, shippingCost);
           shippingCompare.classList.add("hide");
         } else {
           shippingCurrent.textContent = "FREE";
@@ -7029,8 +7238,8 @@ var TwentyNineNext = (() => {
       const savingsPercentage = savingsBar.querySelector('[data-os-cart-summary="savings-percentage"]');
       if (totals.savings > 0 && totals.savings_percentage > 0) {
         if (savingsAmount) {
-          savingsAmount.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, totals.savings);
-          __privateGet(this, _logger20).debugWithTime(`Updated savings amount to: ${__privateMethod(this, _formatPrice, formatPrice_fn).call(this, totals.savings)}`);
+          savingsAmount.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.savings);
+          __privateGet(this, _logger20).debugWithTime(`Updated savings amount to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.savings)}`);
         }
         if (savingsPercentage) {
           savingsPercentage.textContent = `${Math.round(totals.savings_percentage)}% OFF`;
@@ -7045,7 +7254,7 @@ var TwentyNineNext = (() => {
     const allSavingsPercentages = document.querySelectorAll('[data-os-cart-summary="savings-percentage"]');
     if (totals.savings > 0 && totals.savings_percentage > 0) {
       allSavingsAmounts.forEach((element) => {
-        element.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, totals.savings);
+        element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.savings);
       });
       allSavingsPercentages.forEach((element) => {
         element.textContent = `${Math.round(totals.savings_percentage)}% OFF`;
@@ -7059,12 +7268,12 @@ var TwentyNineNext = (() => {
       return;
     }
     __privateGet(this, _elements3).grandTotals.forEach((element) => {
-      element.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, total);
+      element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, total);
     });
-    __privateGet(this, _logger20).debugWithTime(`Updated grand total to: ${__privateMethod(this, _formatPrice, formatPrice_fn).call(this, total)}`);
+    __privateGet(this, _logger20).debugWithTime(`Updated grand total to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, total)}`);
   };
-  _formatPrice = new WeakSet();
-  formatPrice_fn = function(price) {
+  _formatPrice2 = new WeakSet();
+  formatPrice_fn2 = function(price) {
     if (__privateGet(this, _app15).campaign?.formatPrice) {
       return __privateGet(this, _app15).campaign.formatPrice(price);
     }
@@ -7109,9 +7318,9 @@ var TwentyNineNext = (() => {
           compareValue = totals.retail_subtotal;
       }
       if (compareValue && compareValue > totals.total) {
-        element.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, compareValue);
+        element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, compareValue);
         element.classList.remove("hide");
-        __privateGet(this, _logger20).debugWithTime(`Updated compare-total (${totalType}) to: ${__privateMethod(this, _formatPrice, formatPrice_fn).call(this, compareValue)}`);
+        __privateGet(this, _logger20).debugWithTime(`Updated compare-total (${totalType}) to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, compareValue)}`);
       } else {
         element.classList.add("hide");
         __privateGet(this, _logger20).debugWithTime(`Hiding compare-total element (${totalType}): compareValue=${compareValue}, total=${totals.total}`);

@@ -5,6 +5,7 @@ This document explains the various ways to initialize and configure the Campaign
 ## Documentation Links
 
 - [Cart Display System](./components/CartDisplay.md) - Documentation on cart display attributes and usage
+- [Unit Pricing System](./components/UnitPricing.md) - Documentation on unit pricing for selector cards
 - [Events System](./Events.md) - Documentation on events and their usage
 - [Checkout System](./checkout/) - Checkout page documentation
 - [Upsell System](./Upsell.md) - Documentation on implementing upsells
