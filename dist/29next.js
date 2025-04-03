@@ -2639,17 +2639,15 @@ var TwentyNineNext = (() => {
       }
     }
     __privateGet(this, _spreedlyManager).tokenizeCard({
-      full_name: fullName || "Test User",
+      full_name: fullName || "",
       month,
       year
     });
     __privateGet(this, _spreedlyManager).setOnPaymentMethod((token, pmData) => {
-      /* @__PURE__ */ console.log("Card tokenization successful:", {
-        token,
-        paymentMethodData: pmData,
-        cardholderName: fullName,
-        expirationMonth: month,
-        expirationYear: year
+      __privateMethod(this, _createOrder, createOrder_fn).call(this, {
+        payment_token: token,
+        payment_method: "credit-card",
+        ...__privateMethod(this, _getOrderData, getOrderData_fn).call(this)
       });
     });
   };
@@ -5065,8 +5063,8 @@ var TwentyNineNext = (() => {
   _calculateCartTotals = new WeakSet();
   calculateCartTotals_fn = function() {
     const { items, shippingMethod } = __privateGet(this, _state).cart;
-    const subtotal = items.reduce((acc, item) => acc + item.price * (item.quantity || 1), 0);
-    const retailSubtotal = items.reduce((acc, item) => acc + (item.retail_price ?? item.price) * (item.quantity || 1), 0);
+    const subtotal = items.reduce((acc, item) => acc + (item.price_total ?? item.price * (item.quantity || 1)), 0);
+    const retailSubtotal = items.reduce((acc, item) => acc + (item.retail_price_total ?? (item.retail_price ?? item.price) * (item.quantity || 1)), 0);
     const savings = retailSubtotal - subtotal;
     const savingsPercentage = retailSubtotal > 0 ? savings / retailSubtotal * 100 : 0;
     const recurringTotal = items.reduce((acc, item) => acc + (item.is_recurring && item.price_recurring ? item.price_recurring * (item.quantity || 1) : 0), 0);
@@ -6728,6 +6726,8 @@ var TwentyNineNext = (() => {
         // Changed to array
         grandTotals: [],
         // Changed to array
+        subtotals: [],
+        // Added for subtotal elements
         // Summary toggle elements
         summaryBars: [],
         // Changed to array
@@ -6794,6 +6794,7 @@ var TwentyNineNext = (() => {
     __privateGet(this, _elements3).savingsBars = document.querySelectorAll('[data-os-cart-summary="savings"]');
     __privateGet(this, _elements3).shippingBars = document.querySelectorAll('[data-os-cart-summary="shipping-bar"]');
     __privateGet(this, _elements3).grandTotals = document.querySelectorAll('[data-os-cart-summary="grand-total"]');
+    __privateGet(this, _elements3).subtotals = document.querySelectorAll('[data-os-cart-summary="subtotal"]');
     __privateGet(this, _elements3).summaryBars = document.querySelectorAll('[os-checkout-element="summary-bar"]');
     __privateGet(this, _elements3).summaryPanels = document.querySelectorAll('[os-checkout-element="summary-mobile"]');
     __privateGet(this, _elements3).summaryTexts = document.querySelectorAll('[os-checkout-element="summary-text"]');
@@ -6804,6 +6805,7 @@ var TwentyNineNext = (() => {
     __privateGet(this, _logger20).debugWithTime(`Savings bars found: ${__privateGet(this, _elements3).savingsBars.length}`);
     __privateGet(this, _logger20).debugWithTime(`Shipping bars found: ${__privateGet(this, _elements3).shippingBars.length}`);
     __privateGet(this, _logger20).debugWithTime(`Grand total elements found: ${__privateGet(this, _elements3).grandTotals.length}`);
+    __privateGet(this, _logger20).debugWithTime(`Subtotal elements found: ${__privateGet(this, _elements3).subtotals.length}`);
     __privateGet(this, _logger20).debugWithTime(`Summary bars found: ${__privateGet(this, _elements3).summaryBars.length}`);
     __privateGet(this, _logger20).debugWithTime(`Summary panels found: ${__privateGet(this, _elements3).summaryPanels.length}`);
     __privateGet(this, _logger20).debugWithTime(`Summary texts found: ${__privateGet(this, _elements3).summaryTexts.length}`);
@@ -6985,6 +6987,12 @@ var TwentyNineNext = (() => {
   updateSummary_fn = function(totals) {
     if (!totals)
       return;
+    if (__privateGet(this, _elements3).subtotals.length) {
+      __privateGet(this, _elements3).subtotals.forEach((element) => {
+        element.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, totals.subtotal);
+      });
+      __privateGet(this, _logger20).debugWithTime(`Updated subtotal to: ${__privateMethod(this, _formatPrice, formatPrice_fn).call(this, totals.subtotal)}`);
+    }
   };
   _updateShipping = new WeakSet();
   updateShipping_fn = function(shippingCost, shippingMethod) {
@@ -10304,3 +10312,4 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
+//# sourceMappingURL=29next.js.map

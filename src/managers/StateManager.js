@@ -270,9 +270,15 @@ export class StateManager {
 
   #calculateCartTotals() {
     const { items, shippingMethod } = this.#state.cart;
-    const subtotal = items.reduce((acc, item) => acc + (item.price * (item.quantity || 1)), 0);
+    
+    // Use price_total if available, otherwise calculate from price * quantity
+    const subtotal = items.reduce((acc, item) => 
+      acc + (item.price_total ?? (item.price * (item.quantity || 1))), 0);
+    
+    // Use retail_price_total if available, otherwise calculate from retail_price * quantity
     const retailSubtotal = items.reduce((acc, item) => 
-      acc + ((item.retail_price ?? item.price) * (item.quantity || 1)), 0);
+      acc + (item.retail_price_total ?? ((item.retail_price ?? item.price) * (item.quantity || 1))), 0);
+      
     const savings = retailSubtotal - subtotal;
     const savingsPercentage = retailSubtotal > 0 ? (savings / retailSubtotal) * 100 : 0;
     const recurringTotal = items.reduce((acc, item) => 
