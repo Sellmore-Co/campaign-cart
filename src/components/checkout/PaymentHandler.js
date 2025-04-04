@@ -21,6 +21,15 @@ export class PaymentHandler {
     amex: '378282246310005',
     discover: '6011111111111117'
   };
+  #expressCheckoutButtons = {
+    paypal: null,
+    applePay: null,
+    googlePay: null
+  };
+  #deviceSupport = {
+    applePay: false,
+    googlePay: false
+  };
 
   constructor(apiClient, logger, app) {
     this.#apiClient = apiClient;
@@ -41,6 +50,8 @@ export class PaymentHandler {
 
     this.#initPaymentMethods();
     this.#initSpreedly();
+    this.#initExpressCheckout();
+    this.#checkForPaymentFailedParameters();
   }
 
   #getCheckoutForm() {
@@ -626,7 +637,33 @@ export class PaymentHandler {
   }
 
   #formatOrderData(orderData) {
-    const formatted = { ...orderData, success_url: orderData.success_url || window.location.origin + '/checkout/confirmation/' };
+    const formatted = { ...orderData };
+    
+    // Only set success_url from meta tag if not already set in orderData
+    if (!formatted.success_url && this.#apiClient) {
+      // Use ApiClient to get next page URL from meta tag
+      const nextPageUrl = this.#apiClient.getNextPageUrlFromMeta(orderData.ref_id);
+      if (nextPageUrl) {
+        formatted.success_url = nextPageUrl;
+      }
+    }
+    
+    // Add payment_failed_url to redirect back to the current page with error parameters
+    if (!formatted.payment_failed_url) {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('payment_failed', 'true');
+      
+      // Add the payment method to the failed URL if available
+      if (orderData.payment_method) {
+        currentUrl.searchParams.set('payment_method', orderData.payment_method);
+      } else if (formatted.payment_detail?.payment_method) {
+        currentUrl.searchParams.set('payment_method', formatted.payment_detail.payment_method);
+      }
+      
+      formatted.payment_failed_url = currentUrl.href;
+      this.#safeLog('debug', `Set payment_failed_url to: ${formatted.payment_failed_url}`);
+    }
+    
     if (orderData.payment_token) {
       formatted.payment_detail = { card_token: orderData.payment_token };
       delete formatted.payment_token;
@@ -806,13 +843,452 @@ export class PaymentHandler {
     // Trigger order.created event for the EventManager
     this.#app?.triggerEvent?.('order.created', orderData);
     
+    // If payment_complete_url exists, use it directly
+    // This is primarily for PayPal and other redirect payment flows
+    if (orderData.payment_complete_url) {
+      this.#safeLog('debug', `Redirecting to payment gateway: ${orderData.payment_complete_url}`);
+      window.location.href = orderData.payment_complete_url;
+      return;
+    }
+    
+    // Otherwise use the standard redirect approach for completed payments
     const redirectUrl = this.#getRedirectUrl(orderData);
     window.location.href = redirectUrl;
   }
 
   #getRedirectUrl(orderData) {
+    // If we have ApiClient, use its method for consistency
+    if (this.#apiClient) {
+      return this.#apiClient.getNextUrlFromOrderResponse(orderData);
+    }
+    
+    // Fallback implementation if ApiClient is not available
+    // First check for meta tag (highest priority after payment_complete_url)
     const metaUrl = document.querySelector('meta[name="os-next-page"]')?.content;
-    if (metaUrl) return `${metaUrl}${metaUrl.includes('?') ? '&' : '?'}ref_id=${orderData.ref_id}`;
-    return orderData.confirmation_url || orderData.order_status_url || `/checkout/confirmation/?ref_id=${orderData.ref_id}`;
+    if (metaUrl) {
+      const url = metaUrl.startsWith('http') ? 
+        metaUrl : 
+        new URL(metaUrl, window.location.origin).href;
+      
+      return `${url}${url.includes('?') ? '&' : '?'}ref_id=${orderData.ref_id}`;
+    }
+    
+    // Then use order_status_url as the fallback
+    if (orderData.order_status_url) {
+      return orderData.order_status_url;
+    }
+    
+    // Last resort - use confirmation_url or construct one
+    return orderData.confirmation_url || 
+           `${window.location.origin}/checkout/confirmation/?ref_id=${orderData.ref_id}`;
+  }
+
+  /**
+   * Initialize express checkout buttons
+   */
+  #initExpressCheckout() {
+    try {
+      // Detect device support for payment methods
+      this.#detectDeviceSupport();
+
+      // Initialize PayPal Express button
+      const paypalButton = document.querySelector('[os-checkout-payment="paypal"]');
+      if (paypalButton) {
+        paypalButton.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.processExpressCheckout('paypal');
+        });
+        this.#expressCheckoutButtons.paypal = paypalButton;
+      }
+
+      // Initialize Apple Pay button if supported
+      if (this.#deviceSupport.applePay) {
+        const applePayButton = document.querySelector('[os-checkout-payment="apple-pay"]');
+        if (applePayButton) {
+          applePayButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.processExpressCheckout('apple_pay');
+          });
+          this.#expressCheckoutButtons.applePay = applePayButton;
+        }
+      } else {
+        // Hide Apple Pay button if not supported
+        const applePayBtn = document.querySelector('[os-checkout-payment="apple-pay"]');
+        if (applePayBtn) {
+          applePayBtn.style.display = 'none';
+        }
+      }
+
+      // Initialize Google Pay button if supported
+      if (this.#deviceSupport.googlePay) {
+        const googlePayButton = document.querySelector('[os-checkout-payment="google-pay"]');
+        if (googlePayButton) {
+          googlePayButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.processExpressCheckout('google_pay');
+          });
+          this.#expressCheckoutButtons.googlePay = googlePayButton;
+        }
+      } else {
+        // Hide Google Pay button if not supported
+        const googlePayBtn = document.querySelector('[os-checkout-payment="google-pay"]');
+        if (googlePayBtn) {
+          googlePayBtn.style.display = 'none';
+        }
+      }
+
+      // Hide the express checkout container if no buttons are active
+      if (!this.#hasActiveExpressButtons()) {
+        const container = document.querySelector('[os-checkout-container="express-checkout"]');
+        if (container) {
+          container.style.display = 'none';
+        }
+      }
+
+    } catch (error) {
+      this.#safeLog('error', 'Error initializing express checkout:', error);
+    }
+  }
+
+  /**
+   * Detect which payment methods are supported by the device/browser
+   */
+  #detectDeviceSupport() {
+    // Check for Apple Pay support
+    if (window.ApplePaySession && window.ApplePaySession.canMakePayments) {
+      this.#deviceSupport.applePay = window.ApplePaySession.canMakePayments();
+      this.#safeLog('debug', `Apple Pay support: ${this.#deviceSupport.applePay}`);
+    }
+
+    // Basic Google Pay support check
+    this.#deviceSupport.googlePay = !!(window.chrome && window.chrome.runtime);
+    this.#safeLog('debug', `Google Pay support: ${this.#deviceSupport.googlePay}`);
+  }
+
+  /**
+   * Check if there are any active express checkout buttons
+   * @returns {boolean} True if at least one express button is initialized
+   */
+  #hasActiveExpressButtons() {
+    return !!(
+      this.#expressCheckoutButtons.paypal || 
+      this.#expressCheckoutButtons.applePay || 
+      this.#expressCheckoutButtons.googlePay
+    );
+  }
+
+  /**
+   * Process an express checkout payment
+   * @param {string} method - Payment method ('paypal', 'apple_pay', 'google_pay')
+   */
+  processExpressCheckout(method) {
+    this.#safeLog('info', `Processing ${method} express checkout`);
+    
+    // Determine which button to use based on the method
+    let button;
+    switch (method) {
+      case 'paypal':
+        button = this.#expressCheckoutButtons.paypal;
+        break;
+      case 'apple_pay':
+        button = this.#expressCheckoutButtons.applePay;
+        break;
+      case 'google_pay':
+        button = this.#expressCheckoutButtons.googlePay;
+        break;
+      default:
+        this.#safeLog('error', `Unknown express checkout method: ${method}`);
+        return;
+    }
+    
+    // Show processing state
+    this.#setExpressButtonProcessing(button, true);
+    
+    try {
+      // Get cart data from state manager
+      const cart = this.#app.state.getState('cart');
+      
+      if (!cart || !cart.items || cart.items.length === 0) {
+        this.#safeLog('error', `Cannot process ${method} checkout: cart is empty`);
+        this.#handleExpressCheckoutError('Your cart is empty. Please add items to your cart before checking out.', button);
+        return;
+      }
+
+      // Prepare simplified API request for express checkout
+      // Express checkout doesn't need user and address information
+      const orderData = {
+        lines: cart.items.map(item => ({
+          package_id: item.id,
+          quantity: item.quantity || 1,
+          is_upsell: !!item.is_upsell
+        })),
+        payment_detail: {
+          payment_method: method
+        },
+        attribution: this.#app.attribution?.getAttributionData() || cart.attribution || {},
+        shipping_method: (cart.shippingMethod?.id || 1).toString()
+      };
+
+      // Get success_url from meta tag using ApiClient
+      if (this.#apiClient) {
+        const nextPageUrl = this.#apiClient.getNextPageUrlFromMeta();
+        if (nextPageUrl) {
+          orderData.success_url = nextPageUrl;
+          this.#safeLog('debug', `Express checkout success URL set from meta tag: ${nextPageUrl}`);
+        } else {
+          this.#safeLog('debug', 'No meta tag found for express checkout success_url, API will use order_status_url');
+        }
+      }
+      
+      // Add payment_failed_url to redirect back to current page with error parameters
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('payment_failed', 'true');
+      currentUrl.searchParams.set('payment_method', method);
+      orderData.payment_failed_url = currentUrl.href;
+      this.#safeLog('debug', `Express checkout payment_failed_url set to: ${orderData.payment_failed_url}`);
+
+      // Add vouchers if available
+      if (cart.vouchers && cart.vouchers.length > 0) {
+        orderData.vouchers = cart.vouchers.map(voucher => voucher.code || voucher);
+      }
+
+      this.#safeLog('debug', 'Express checkout order data:', orderData);
+
+      // Create order through API
+      this.#apiClient.createOrder(orderData)
+        .then(response => {
+          this.#safeLog('debug', `${method} express checkout order created:`, response);
+          
+          if (response.payment_complete_url) {
+            // Trigger event before redirect
+            this.#app.triggerEvent('express.checkout.started', {
+              method,
+              order: response
+            });
+            
+            // Redirect to payment processor
+            window.location.href = response.payment_complete_url;
+          } else {
+            throw new Error('No payment URL returned from API');
+          }
+        })
+        .catch(error => {
+          this.#safeLog('error', `${method} express checkout error:`, error);
+          this.#handleExpressCheckoutError(`There was an error processing your ${method.replace('_', ' ')} payment. Please try again or use a different payment method.`, button);
+        });
+    } catch (error) {
+      this.#safeLog('error', `Error in ${method} express checkout:`, error);
+      this.#handleExpressCheckoutError('An unexpected error occurred. Please try again.', button);
+    }
+  }
+
+  /**
+   * Set express checkout button to processing state
+   * @param {HTMLElement} button - Button element
+   * @param {boolean} isProcessing - Whether the button is processing
+   */
+  #setExpressButtonProcessing(button, isProcessing) {
+    if (!button) return;
+    
+    if (isProcessing) {
+      button.setAttribute('disabled', 'disabled');
+      button.classList.add('processing');
+      
+      // Store original content and replace with processing indicator
+      if (!button.dataset.originalHtml) {
+        button.dataset.originalHtml = button.innerHTML;
+        const loadingSpinner = document.createElement('div');
+        loadingSpinner.className = 'payment-btn-spinner';
+        loadingSpinner.innerHTML = '<div class="spinner"></div>';
+        button.innerHTML = '';
+        button.appendChild(loadingSpinner);
+      }
+    } else {
+      button.removeAttribute('disabled');
+      button.classList.remove('processing');
+      
+      // Restore original content
+      if (button.dataset.originalHtml) {
+        button.innerHTML = button.dataset.originalHtml;
+        delete button.dataset.originalHtml;
+      }
+    }
+  }
+
+  /**
+   * Handle express checkout error
+   * @param {string} message - Error message
+   * @param {HTMLElement} button - Button element that was clicked
+   */
+  #handleExpressCheckoutError(message, button) {
+    // Reset button state
+    this.#setExpressButtonProcessing(button, false);
+    
+    // Create or update error message
+    const container = document.querySelector('.express-checkout-wrapper');
+    if (!container) return;
+    
+    let errorContainer = container.querySelector('.express-checkout-error');
+    
+    if (!errorContainer) {
+      errorContainer = document.createElement('div');
+      errorContainer.className = 'express-checkout-error';
+      container.appendChild(errorContainer);
+    }
+    
+    errorContainer.textContent = message;
+    errorContainer.style.display = 'block';
+    
+    // Hide error after 5 seconds
+    setTimeout(() => {
+      errorContainer.style.display = 'none';
+    }, 5000);
+    
+    // Trigger error event
+    this.#app.triggerEvent('express.checkout.error', { message });
+  }
+
+  /**
+   * Reset processing state for all express checkout buttons
+   */
+  resetExpressButtons() {
+    this.#setExpressButtonProcessing(this.#expressCheckoutButtons.paypal, false);
+    this.#setExpressButtonProcessing(this.#expressCheckoutButtons.applePay, false);
+    this.#setExpressButtonProcessing(this.#expressCheckoutButtons.googlePay, false);
+  }
+
+  /**
+   * Check URL parameters for payment_failed and display appropriate error message
+   */
+  #checkForPaymentFailedParameters() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentFailed = urlParams.get('payment_failed');
+      
+      if (paymentFailed === 'true') {
+        const paymentMethod = urlParams.get('payment_method');
+        let errorMessage = 'Your payment could not be processed. Please try again or use a different payment method.';
+        
+        // Customize message based on payment method
+        if (paymentMethod) {
+          const methodDisplay = {
+            'paypal': 'PayPal',
+            'apple_pay': 'Apple Pay',
+            'google_pay': 'Google Pay',
+            'card_token': 'credit card',
+            'credit-card': 'credit card',
+            'credit': 'credit card'
+          }[paymentMethod] || paymentMethod;
+          
+          errorMessage = `Your ${methodDisplay} payment could not be processed. Please try again or use a different payment method.`;
+        }
+        
+        // Handle errors from express checkout methods differently
+        const isExpressCheckout = ['paypal', 'apple_pay', 'google_pay'].includes(paymentMethod);
+        if (isExpressCheckout) {
+          this.#displayTopBannerError(errorMessage, paymentMethod);
+        } else {
+          // Default to credit card error display for card_token or unknown methods
+          this.#handlePaymentError(errorMessage);
+        }
+        
+        // Clear the URL parameters to prevent showing the error again on refresh
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('payment_failed');
+        newUrl.searchParams.delete('payment_method');
+        window.history.replaceState({}, document.title, newUrl.href);
+      }
+    } catch (error) {
+      this.#safeLog('error', 'Error checking payment failed parameters:', error);
+    }
+  }
+  
+  /**
+   * Display a prominent error banner at the top of the checkout form
+   * @param {string} message - Error message to display
+   * @param {string} method - Payment method that failed
+   */
+  #displayTopBannerError(message, method) {
+    try {
+      // Check if there's already a top banner error
+      let errorBanner = document.querySelector('[os-checkout-element="top-error-banner"]');
+      
+      if (!errorBanner) {
+        // Create the banner
+        errorBanner = document.createElement('div');
+        errorBanner.setAttribute('os-checkout-element', 'top-error-banner');
+        errorBanner.className = 'checkout-error-banner';
+        errorBanner.style.width = '100%';
+        errorBanner.style.padding = '12px 16px';
+        errorBanner.style.backgroundColor = '#fff3cd';
+        errorBanner.style.color = '#856404';
+        errorBanner.style.borderRadius = '4px';
+        errorBanner.style.marginBottom = '20px';
+        errorBanner.style.border = '1px solid #ffeeba';
+        errorBanner.style.display = 'flex';
+        errorBanner.style.alignItems = 'center';
+        errorBanner.style.justifyContent = 'space-between';
+        
+        // Create message div
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = message;
+        
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.textContent = '×';
+        closeButton.style.background = 'none';
+        closeButton.style.border = 'none';
+        closeButton.style.fontSize = '20px';
+        closeButton.style.fontWeight = 'bold';
+        closeButton.style.cursor = 'pointer';
+        closeButton.style.marginLeft = '10px';
+        closeButton.addEventListener('click', () => {
+          errorBanner.style.display = 'none';
+        });
+        
+        // Assemble banner
+        errorBanner.appendChild(messageDiv);
+        errorBanner.appendChild(closeButton);
+        
+        // Insert banner at the top of the checkout form
+        const checkoutForm = this.#form;
+        if (checkoutForm) {
+          checkoutForm.insertBefore(errorBanner, checkoutForm.firstChild);
+        } else {
+          // Try to find other common checkout container elements
+          const checkoutContainer = 
+            document.querySelector('[os-checkout-container="form"]') || 
+            document.querySelector('.checkout-form') ||
+            document.querySelector('.checkout-container');
+          
+          if (checkoutContainer) {
+            checkoutContainer.insertBefore(errorBanner, checkoutContainer.firstChild);
+          } else {
+            // Last resort - add to body
+            const mainContent = document.querySelector('main') || document.body;
+            mainContent.insertBefore(errorBanner, mainContent.firstChild);
+          }
+        }
+        
+        // Scroll to error banner
+        errorBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        // Update existing banner
+        const messageDiv = errorBanner.querySelector('div');
+        if (messageDiv) {
+          messageDiv.textContent = message;
+        } else {
+          errorBanner.textContent = message;
+        }
+        errorBanner.style.display = 'flex';
+        errorBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      
+      this.#safeLog('debug', `Displayed top banner error for ${method}: ${message}`);
+    } catch (error) {
+      this.#safeLog('error', 'Error displaying top banner error:', error);
+      // Fall back to the standard error method
+      this.#handlePaymentError(message);
+    }
   }
 }

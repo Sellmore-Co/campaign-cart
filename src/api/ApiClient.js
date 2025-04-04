@@ -263,6 +263,34 @@ export class ApiClient {
     }
   }
 
+  /**
+   * Get the next page URL from the meta tag
+   * @param {string} refId - Optional reference ID to append to the URL
+   * @returns {string|null} Formatted next page URL or null if meta tag not found
+   */
+  getNextPageUrlFromMeta(refId = null) {
+    const nextPageMeta = document.querySelector('meta[name="os-next-page"]');
+    if (!nextPageMeta || !nextPageMeta.getAttribute('content')) {
+      this.#logger.debug('No meta tag found for next page URL');
+      return null;
+    }
+    
+    const nextPagePath = nextPageMeta.getAttribute('content');
+    this.#logger.debug(`Found meta tag with next page URL: ${nextPagePath}`);
+    
+    // Convert to full URL if it's not already
+    const redirectUrl = nextPagePath.startsWith('http') ? 
+      new URL(nextPagePath) : 
+      new URL(nextPagePath, `${location.protocol}//${location.host}`);
+    
+    // Add ref_id as query param if provided
+    if (refId) {
+      redirectUrl.searchParams.append('ref_id', refId);
+    }
+    
+    return redirectUrl.href;
+  }
+
   async processPayment(orderData, paymentMethod) {
     this.#logger.debug(`Processing ${paymentMethod} payment for order`);
 
@@ -280,37 +308,56 @@ export class ApiClient {
       throw new Error('Credit card payment requires a card token');
     }
     if (paymentMethod !== 'credit') delete orderData.payment_detail.card_token;
+    
+    // Only set success_url from meta tag if available
+    if (!orderData.success_url) {
+      // Get from meta tag using utility method
+      const nextPageUrl = this.getNextPageUrlFromMeta(orderData.ref_id);
+      if (nextPageUrl) {
+        orderData.success_url = nextPageUrl;
+        this.#logger.debug(`Set success_url from meta tag: ${orderData.success_url}`);
+      } else {
+        this.#logger.debug('No meta tag found for success_url, API will use order_status_url as fallback');
+      }
+    }
+    
+    // Add payment_failed_url to redirect back to current page with error parameters
+    if (!orderData.payment_failed_url) {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('payment_failed', 'true');
+      currentUrl.searchParams.set('payment_method', paymentMethod);
+      orderData.payment_failed_url = currentUrl.href;
+      this.#logger.debug(`Set payment_failed_url to: ${orderData.payment_failed_url}`);
+    }
 
     return this.createOrder(orderData);
   }
 
-  getNextUrlFromOrderResponse(orderResponse, defaultPath = '/checkout/complete') {
+  getNextUrlFromOrderResponse(orderResponse) {
     this.#logger.debug('Getting next URL for redirect');
 
     const refId = orderResponse.ref_id;
-    const nextPageMeta = document.querySelector('meta[name="os-next-page"]');
-    let defaultUrl = defaultPath;
-
-    if (nextPageMeta?.getAttribute('content')) {
-      const nextPagePath = nextPageMeta.getAttribute('content');
-      this.#logger.debug(`Found meta tag with next page URL: ${nextPagePath}`);
-
-      const redirectUrl = nextPagePath.startsWith('http') ? 
-        new URL(nextPagePath) : 
-        new URL(nextPagePath, `${location.protocol}//${location.host}`);
-      
-      if (refId) redirectUrl.searchParams.append('ref_id', refId);
-      return redirectUrl.href;
-    }
-
-    if (orderResponse.payment_complete_url) return orderResponse.payment_complete_url;
-    if (orderResponse.order_status_url) return orderResponse.order_status_url;
-
-    const currentPath = location.pathname.split("/");
-    const basePath = currentPath.slice(0, -1).join("/");
-    const defaultFullUrl = new URL(`${basePath}${defaultUrl}`, `${location.protocol}//${location.host}`);
     
-    if (refId) defaultFullUrl.searchParams.append('ref_id', refId);
-    return defaultFullUrl.href;
+    // If the API provides a payment_complete_url, use it directly (highest priority)
+    if (orderResponse.payment_complete_url) {
+      this.#logger.debug(`Using payment complete URL from API: ${orderResponse.payment_complete_url}`);
+      return orderResponse.payment_complete_url;
+    }
+    
+    // Check for next page URL in meta tag (second priority) using utility method
+    const nextPageUrl = this.getNextPageUrlFromMeta(refId);
+    if (nextPageUrl) {
+      return nextPageUrl;
+    }
+    
+    // Always use order_status_url as final fallback
+    if (orderResponse.order_status_url) {
+      this.#logger.debug(`Using order status URL from API: ${orderResponse.order_status_url}`);
+      return orderResponse.order_status_url;
+    }
+    
+    // If somehow no order_status_url exists (should not happen), log a warning
+    this.#logger.warn('No order_status_url found in API response - using fallback URL');
+    return `${window.location.origin}/checkout/confirmation/?ref_id=${refId || ''}`;
   }
 }

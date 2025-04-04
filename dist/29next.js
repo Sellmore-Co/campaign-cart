@@ -574,6 +574,25 @@ var TwentyNineNext = (() => {
         throw error;
       }
     }
+    /**
+     * Get the next page URL from the meta tag
+     * @param {string} refId - Optional reference ID to append to the URL
+     * @returns {string|null} Formatted next page URL or null if meta tag not found
+     */
+    getNextPageUrlFromMeta(refId = null) {
+      const nextPageMeta = document.querySelector('meta[name="os-next-page"]');
+      if (!nextPageMeta || !nextPageMeta.getAttribute("content")) {
+        __privateGet(this, _logger).debug("No meta tag found for next page URL");
+        return null;
+      }
+      const nextPagePath = nextPageMeta.getAttribute("content");
+      __privateGet(this, _logger).debug(`Found meta tag with next page URL: ${nextPagePath}`);
+      const redirectUrl = nextPagePath.startsWith("http") ? new URL(nextPagePath) : new URL(nextPagePath, `${location.protocol}//${location.host}`);
+      if (refId) {
+        redirectUrl.searchParams.append("ref_id", refId);
+      }
+      return redirectUrl.href;
+    }
     async processPayment(orderData, paymentMethod) {
       __privateGet(this, _logger).debug(`Processing ${paymentMethod} payment for order`);
       const paymentMethodMap = {
@@ -589,31 +608,41 @@ var TwentyNineNext = (() => {
       }
       if (paymentMethod !== "credit")
         delete orderData.payment_detail.card_token;
+      if (!orderData.success_url) {
+        const nextPageUrl = this.getNextPageUrlFromMeta(orderData.ref_id);
+        if (nextPageUrl) {
+          orderData.success_url = nextPageUrl;
+          __privateGet(this, _logger).debug(`Set success_url from meta tag: ${orderData.success_url}`);
+        } else {
+          __privateGet(this, _logger).debug("No meta tag found for success_url, API will use order_status_url as fallback");
+        }
+      }
+      if (!orderData.payment_failed_url) {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set("payment_failed", "true");
+        currentUrl.searchParams.set("payment_method", paymentMethod);
+        orderData.payment_failed_url = currentUrl.href;
+        __privateGet(this, _logger).debug(`Set payment_failed_url to: ${orderData.payment_failed_url}`);
+      }
       return this.createOrder(orderData);
     }
-    getNextUrlFromOrderResponse(orderResponse, defaultPath = "/checkout/complete") {
+    getNextUrlFromOrderResponse(orderResponse) {
       __privateGet(this, _logger).debug("Getting next URL for redirect");
       const refId = orderResponse.ref_id;
-      const nextPageMeta = document.querySelector('meta[name="os-next-page"]');
-      let defaultUrl = defaultPath;
-      if (nextPageMeta?.getAttribute("content")) {
-        const nextPagePath = nextPageMeta.getAttribute("content");
-        __privateGet(this, _logger).debug(`Found meta tag with next page URL: ${nextPagePath}`);
-        const redirectUrl = nextPagePath.startsWith("http") ? new URL(nextPagePath) : new URL(nextPagePath, `${location.protocol}//${location.host}`);
-        if (refId)
-          redirectUrl.searchParams.append("ref_id", refId);
-        return redirectUrl.href;
-      }
-      if (orderResponse.payment_complete_url)
+      if (orderResponse.payment_complete_url) {
+        __privateGet(this, _logger).debug(`Using payment complete URL from API: ${orderResponse.payment_complete_url}`);
         return orderResponse.payment_complete_url;
-      if (orderResponse.order_status_url)
+      }
+      const nextPageUrl = this.getNextPageUrlFromMeta(refId);
+      if (nextPageUrl) {
+        return nextPageUrl;
+      }
+      if (orderResponse.order_status_url) {
+        __privateGet(this, _logger).debug(`Using order status URL from API: ${orderResponse.order_status_url}`);
         return orderResponse.order_status_url;
-      const currentPath = location.pathname.split("/");
-      const basePath = currentPath.slice(0, -1).join("/");
-      const defaultFullUrl = new URL(`${basePath}${defaultUrl}`, `${location.protocol}//${location.host}`);
-      if (refId)
-        defaultFullUrl.searchParams.append("ref_id", refId);
-      return defaultFullUrl.href;
+      }
+      __privateGet(this, _logger).warn("No order_status_url found in API response - using fallback URL");
+      return `${window.location.origin}/checkout/confirmation/?ref_id=${refId || ""}`;
     }
   };
   _app = new WeakMap();
@@ -2214,7 +2243,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/PaymentHandler.js
-  var _apiClient, _logger5, _app3, _form3, _spreedlyManager, _formValidator, _paymentMethod, _isProcessing, _debugMode3, _testCards, _getCheckoutForm, getCheckoutForm_fn, _setupFormPrevention, setupFormPrevention_fn, _preventFormSubmission, preventFormSubmission_fn, _convertSubmitButtons, convertSubmitButtons_fn, _setupCheckoutButton, setupCheckoutButton_fn, _safeLog2, safeLog_fn2, _initPaymentMethods, initPaymentMethods_fn, _setupPaymentMethodListeners, setupPaymentMethodListeners_fn, _initSpreedly, initSpreedly_fn, _setupSpreedlyCallbacks, setupSpreedlyCallbacks_fn, _formatSpreedlyErrors, formatSpreedlyErrors_fn, _initializeExpirationFields, initializeExpirationFields_fn, _getExpirationElements, getExpirationElements_fn, _populateExpirationOptions, populateExpirationOptions_fn, _isTestMode, isTestMode_fn, _enforceFormPrevention, enforceFormPrevention_fn, _showProcessingState, showProcessingState_fn, _hideProcessingState, hideProcessingState_fn, _processCreditCard, processCreditCard_fn, _getCreditCardFields, getCreditCardFields_fn, _isDebugTestCardMode, isDebugTestCardMode_fn, _processTestCard, processTestCard_fn, _processPaypal, processPaypal_fn, _getPackageIdFromUrl, getPackageIdFromUrl_fn, _getOrderData, getOrderData_fn, _getAddressData, getAddressData_fn, _formatAddress, formatAddress_fn, _getShippingMethod, getShippingMethod_fn, _getCartLines, getCartLines_fn, _createOrder, createOrder_fn, _formatOrderData, formatOrderData_fn, _formatErrorMessage, formatErrorMessage_fn, _formatPaymentErrorMessage, formatPaymentErrorMessage_fn, _handlePaymentError, handlePaymentError_fn, _displayCreditCardError, displayCreditCardError_fn, _clearPaymentErrors, clearPaymentErrors_fn, _handleOrderSuccess, handleOrderSuccess_fn, _getRedirectUrl, getRedirectUrl_fn;
+  var _apiClient, _logger5, _app3, _form3, _spreedlyManager, _formValidator, _paymentMethod, _isProcessing, _debugMode3, _testCards, _expressCheckoutButtons, _deviceSupport, _getCheckoutForm, getCheckoutForm_fn, _setupFormPrevention, setupFormPrevention_fn, _preventFormSubmission, preventFormSubmission_fn, _convertSubmitButtons, convertSubmitButtons_fn, _setupCheckoutButton, setupCheckoutButton_fn, _safeLog2, safeLog_fn2, _initPaymentMethods, initPaymentMethods_fn, _setupPaymentMethodListeners, setupPaymentMethodListeners_fn, _initSpreedly, initSpreedly_fn, _setupSpreedlyCallbacks, setupSpreedlyCallbacks_fn, _formatSpreedlyErrors, formatSpreedlyErrors_fn, _initializeExpirationFields, initializeExpirationFields_fn, _getExpirationElements, getExpirationElements_fn, _populateExpirationOptions, populateExpirationOptions_fn, _isTestMode, isTestMode_fn, _enforceFormPrevention, enforceFormPrevention_fn, _showProcessingState, showProcessingState_fn, _hideProcessingState, hideProcessingState_fn, _processCreditCard, processCreditCard_fn, _getCreditCardFields, getCreditCardFields_fn, _isDebugTestCardMode, isDebugTestCardMode_fn, _processTestCard, processTestCard_fn, _processPaypal, processPaypal_fn, _getPackageIdFromUrl, getPackageIdFromUrl_fn, _getOrderData, getOrderData_fn, _getAddressData, getAddressData_fn, _formatAddress, formatAddress_fn, _getShippingMethod, getShippingMethod_fn, _getCartLines, getCartLines_fn, _createOrder, createOrder_fn, _formatOrderData, formatOrderData_fn, _formatErrorMessage, formatErrorMessage_fn, _formatPaymentErrorMessage, formatPaymentErrorMessage_fn, _handlePaymentError, handlePaymentError_fn, _displayCreditCardError, displayCreditCardError_fn, _clearPaymentErrors, clearPaymentErrors_fn, _handleOrderSuccess, handleOrderSuccess_fn, _getRedirectUrl, getRedirectUrl_fn, _initExpressCheckout, initExpressCheckout_fn, _detectDeviceSupport, detectDeviceSupport_fn, _hasActiveExpressButtons, hasActiveExpressButtons_fn, _setExpressButtonProcessing, setExpressButtonProcessing_fn, _handleExpressCheckoutError, handleExpressCheckoutError_fn, _checkForPaymentFailedParameters, checkForPaymentFailedParameters_fn, _displayTopBannerError, displayTopBannerError_fn;
   var PaymentHandler = class {
     constructor(apiClient, logger, app) {
       __privateAdd(this, _getCheckoutForm);
@@ -2255,6 +2284,41 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _clearPaymentErrors);
       __privateAdd(this, _handleOrderSuccess);
       __privateAdd(this, _getRedirectUrl);
+      /**
+       * Initialize express checkout buttons
+       */
+      __privateAdd(this, _initExpressCheckout);
+      /**
+       * Detect which payment methods are supported by the device/browser
+       */
+      __privateAdd(this, _detectDeviceSupport);
+      /**
+       * Check if there are any active express checkout buttons
+       * @returns {boolean} True if at least one express button is initialized
+       */
+      __privateAdd(this, _hasActiveExpressButtons);
+      /**
+       * Set express checkout button to processing state
+       * @param {HTMLElement} button - Button element
+       * @param {boolean} isProcessing - Whether the button is processing
+       */
+      __privateAdd(this, _setExpressButtonProcessing);
+      /**
+       * Handle express checkout error
+       * @param {string} message - Error message
+       * @param {HTMLElement} button - Button element that was clicked
+       */
+      __privateAdd(this, _handleExpressCheckoutError);
+      /**
+       * Check URL parameters for payment_failed and display appropriate error message
+       */
+      __privateAdd(this, _checkForPaymentFailedParameters);
+      /**
+       * Display a prominent error banner at the top of the checkout form
+       * @param {string} message - Error message to display
+       * @param {string} method - Payment method that failed
+       */
+      __privateAdd(this, _displayTopBannerError);
       __privateAdd(this, _apiClient, void 0);
       __privateAdd(this, _logger5, void 0);
       __privateAdd(this, _app3, void 0);
@@ -2269,6 +2333,15 @@ var TwentyNineNext = (() => {
         mastercard: "5555555555554444",
         amex: "378282246310005",
         discover: "6011111111111117"
+      });
+      __privateAdd(this, _expressCheckoutButtons, {
+        paypal: null,
+        applePay: null,
+        googlePay: null
+      });
+      __privateAdd(this, _deviceSupport, {
+        applePay: false,
+        googlePay: false
       });
       __privateSet(this, _apiClient, apiClient);
       __privateSet(this, _logger5, logger);
@@ -2285,6 +2358,8 @@ var TwentyNineNext = (() => {
       __privateGet(this, _form3).__formValidator = __privateGet(this, _formValidator);
       __privateMethod(this, _initPaymentMethods, initPaymentMethods_fn).call(this);
       __privateMethod(this, _initSpreedly, initSpreedly_fn).call(this);
+      __privateMethod(this, _initExpressCheckout, initExpressCheckout_fn).call(this);
+      __privateMethod(this, _checkForPaymentFailedParameters, checkForPaymentFailedParameters_fn).call(this);
     }
     /**
      * Set Konami code test mode flag
@@ -2369,6 +2444,93 @@ var TwentyNineNext = (() => {
         __privateMethod(this, _hideProcessingState, hideProcessingState_fn).call(this);
       }
     }
+    /**
+     * Process an express checkout payment
+     * @param {string} method - Payment method ('paypal', 'apple_pay', 'google_pay')
+     */
+    processExpressCheckout(method) {
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "info", `Processing ${method} express checkout`);
+      let button;
+      switch (method) {
+        case "paypal":
+          button = __privateGet(this, _expressCheckoutButtons).paypal;
+          break;
+        case "apple_pay":
+          button = __privateGet(this, _expressCheckoutButtons).applePay;
+          break;
+        case "google_pay":
+          button = __privateGet(this, _expressCheckoutButtons).googlePay;
+          break;
+        default:
+          __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", `Unknown express checkout method: ${method}`);
+          return;
+      }
+      __privateMethod(this, _setExpressButtonProcessing, setExpressButtonProcessing_fn).call(this, button, true);
+      try {
+        const cart = __privateGet(this, _app3).state.getState("cart");
+        if (!cart || !cart.items || cart.items.length === 0) {
+          __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", `Cannot process ${method} checkout: cart is empty`);
+          __privateMethod(this, _handleExpressCheckoutError, handleExpressCheckoutError_fn).call(this, "Your cart is empty. Please add items to your cart before checking out.", button);
+          return;
+        }
+        const orderData = {
+          lines: cart.items.map((item) => ({
+            package_id: item.id,
+            quantity: item.quantity || 1,
+            is_upsell: !!item.is_upsell
+          })),
+          payment_detail: {
+            payment_method: method
+          },
+          attribution: __privateGet(this, _app3).attribution?.getAttributionData() || cart.attribution || {},
+          shipping_method: (cart.shippingMethod?.id || 1).toString()
+        };
+        if (__privateGet(this, _apiClient)) {
+          const nextPageUrl = __privateGet(this, _apiClient).getNextPageUrlFromMeta();
+          if (nextPageUrl) {
+            orderData.success_url = nextPageUrl;
+            __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Express checkout success URL set from meta tag: ${nextPageUrl}`);
+          } else {
+            __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "No meta tag found for express checkout success_url, API will use order_status_url");
+          }
+        }
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set("payment_failed", "true");
+        currentUrl.searchParams.set("payment_method", method);
+        orderData.payment_failed_url = currentUrl.href;
+        __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Express checkout payment_failed_url set to: ${orderData.payment_failed_url}`);
+        if (cart.vouchers && cart.vouchers.length > 0) {
+          orderData.vouchers = cart.vouchers.map((voucher) => voucher.code || voucher);
+        }
+        __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "Express checkout order data:", orderData);
+        __privateGet(this, _apiClient).createOrder(orderData).then((response) => {
+          __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `${method} express checkout order created:`, response);
+          if (response.payment_complete_url) {
+            __privateGet(this, _app3).triggerEvent("express.checkout.started", {
+              method,
+              order: response
+            });
+            window.location.href = response.payment_complete_url;
+          } else {
+            throw new Error("No payment URL returned from API");
+          }
+        }).catch((error) => {
+          __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", `${method} express checkout error:`, error);
+          __privateMethod(this, _handleExpressCheckoutError, handleExpressCheckoutError_fn).call(this, `There was an error processing your ${method.replace("_", " ")} payment. Please try again or use a different payment method.`, button);
+        });
+      } catch (error) {
+        __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", `Error in ${method} express checkout:`, error);
+        __privateMethod(this, _handleExpressCheckoutError, handleExpressCheckoutError_fn).call(this, "An unexpected error occurred. Please try again.", button);
+      }
+    }
+    /**
+     * Reset processing state for all express checkout buttons
+     */
+    resetExpressButtons() {
+      __privateMethod(this, _setExpressButtonProcessing, setExpressButtonProcessing_fn).call(this, __privateGet(this, _expressCheckoutButtons).paypal, false);
+      __privateMethod(this, _setExpressButtonProcessing, setExpressButtonProcessing_fn).call(this, __privateGet(this, _expressCheckoutButtons).applePay, false);
+      __privateMethod(this, _setExpressButtonProcessing, setExpressButtonProcessing_fn).call(this, __privateGet(this, _expressCheckoutButtons).googlePay, false);
+    }
   };
   _apiClient = new WeakMap();
   _logger5 = new WeakMap();
@@ -2380,6 +2542,8 @@ var TwentyNineNext = (() => {
   _isProcessing = new WeakMap();
   _debugMode3 = new WeakMap();
   _testCards = new WeakMap();
+  _expressCheckoutButtons = new WeakMap();
+  _deviceSupport = new WeakMap();
   _getCheckoutForm = new WeakSet();
   getCheckoutForm_fn = function() {
     const form = document.querySelector('form[os-checkout="form"]') || document.querySelector("form#combo_form");
@@ -2790,7 +2954,24 @@ var TwentyNineNext = (() => {
   };
   _formatOrderData = new WeakSet();
   formatOrderData_fn = function(orderData) {
-    const formatted = { ...orderData, success_url: orderData.success_url || window.location.origin + "/checkout/confirmation/" };
+    const formatted = { ...orderData };
+    if (!formatted.success_url && __privateGet(this, _apiClient)) {
+      const nextPageUrl = __privateGet(this, _apiClient).getNextPageUrlFromMeta(orderData.ref_id);
+      if (nextPageUrl) {
+        formatted.success_url = nextPageUrl;
+      }
+    }
+    if (!formatted.payment_failed_url) {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set("payment_failed", "true");
+      if (orderData.payment_method) {
+        currentUrl.searchParams.set("payment_method", orderData.payment_method);
+      } else if (formatted.payment_detail?.payment_method) {
+        currentUrl.searchParams.set("payment_method", formatted.payment_detail.payment_method);
+      }
+      formatted.payment_failed_url = currentUrl.href;
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Set payment_failed_url to: ${formatted.payment_failed_url}`);
+    }
     if (orderData.payment_token) {
       formatted.payment_detail = { card_token: orderData.payment_token };
       delete formatted.payment_token;
@@ -2933,15 +3114,232 @@ var TwentyNineNext = (() => {
   handleOrderSuccess_fn = function(orderData) {
     sessionStorage.setItem("order_reference", orderData.ref_id);
     __privateGet(this, _app3)?.triggerEvent?.("order.created", orderData);
+    if (orderData.payment_complete_url) {
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Redirecting to payment gateway: ${orderData.payment_complete_url}`);
+      window.location.href = orderData.payment_complete_url;
+      return;
+    }
     const redirectUrl = __privateMethod(this, _getRedirectUrl, getRedirectUrl_fn).call(this, orderData);
     window.location.href = redirectUrl;
   };
   _getRedirectUrl = new WeakSet();
   getRedirectUrl_fn = function(orderData) {
+    if (__privateGet(this, _apiClient)) {
+      return __privateGet(this, _apiClient).getNextUrlFromOrderResponse(orderData);
+    }
     const metaUrl = document.querySelector('meta[name="os-next-page"]')?.content;
-    if (metaUrl)
-      return `${metaUrl}${metaUrl.includes("?") ? "&" : "?"}ref_id=${orderData.ref_id}`;
-    return orderData.confirmation_url || orderData.order_status_url || `/checkout/confirmation/?ref_id=${orderData.ref_id}`;
+    if (metaUrl) {
+      const url = metaUrl.startsWith("http") ? metaUrl : new URL(metaUrl, window.location.origin).href;
+      return `${url}${url.includes("?") ? "&" : "?"}ref_id=${orderData.ref_id}`;
+    }
+    if (orderData.order_status_url) {
+      return orderData.order_status_url;
+    }
+    return orderData.confirmation_url || `${window.location.origin}/checkout/confirmation/?ref_id=${orderData.ref_id}`;
+  };
+  _initExpressCheckout = new WeakSet();
+  initExpressCheckout_fn = function() {
+    try {
+      __privateMethod(this, _detectDeviceSupport, detectDeviceSupport_fn).call(this);
+      const paypalButton = document.querySelector('[os-checkout-payment="paypal"]');
+      if (paypalButton) {
+        paypalButton.addEventListener("click", (e) => {
+          e.preventDefault();
+          this.processExpressCheckout("paypal");
+        });
+        __privateGet(this, _expressCheckoutButtons).paypal = paypalButton;
+      }
+      if (__privateGet(this, _deviceSupport).applePay) {
+        const applePayButton = document.querySelector('[os-checkout-payment="apple-pay"]');
+        if (applePayButton) {
+          applePayButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            this.processExpressCheckout("apple_pay");
+          });
+          __privateGet(this, _expressCheckoutButtons).applePay = applePayButton;
+        }
+      } else {
+        const applePayBtn = document.querySelector('[os-checkout-payment="apple-pay"]');
+        if (applePayBtn) {
+          applePayBtn.style.display = "none";
+        }
+      }
+      if (__privateGet(this, _deviceSupport).googlePay) {
+        const googlePayButton = document.querySelector('[os-checkout-payment="google-pay"]');
+        if (googlePayButton) {
+          googlePayButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            this.processExpressCheckout("google_pay");
+          });
+          __privateGet(this, _expressCheckoutButtons).googlePay = googlePayButton;
+        }
+      } else {
+        const googlePayBtn = document.querySelector('[os-checkout-payment="google-pay"]');
+        if (googlePayBtn) {
+          googlePayBtn.style.display = "none";
+        }
+      }
+      if (!__privateMethod(this, _hasActiveExpressButtons, hasActiveExpressButtons_fn).call(this)) {
+        const container = document.querySelector('[os-checkout-container="express-checkout"]');
+        if (container) {
+          container.style.display = "none";
+        }
+      }
+    } catch (error) {
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", "Error initializing express checkout:", error);
+    }
+  };
+  _detectDeviceSupport = new WeakSet();
+  detectDeviceSupport_fn = function() {
+    if (window.ApplePaySession && window.ApplePaySession.canMakePayments) {
+      __privateGet(this, _deviceSupport).applePay = window.ApplePaySession.canMakePayments();
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Apple Pay support: ${__privateGet(this, _deviceSupport).applePay}`);
+    }
+    __privateGet(this, _deviceSupport).googlePay = !!(window.chrome && window.chrome.runtime);
+    __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Google Pay support: ${__privateGet(this, _deviceSupport).googlePay}`);
+  };
+  _hasActiveExpressButtons = new WeakSet();
+  hasActiveExpressButtons_fn = function() {
+    return !!(__privateGet(this, _expressCheckoutButtons).paypal || __privateGet(this, _expressCheckoutButtons).applePay || __privateGet(this, _expressCheckoutButtons).googlePay);
+  };
+  _setExpressButtonProcessing = new WeakSet();
+  setExpressButtonProcessing_fn = function(button, isProcessing) {
+    if (!button)
+      return;
+    if (isProcessing) {
+      button.setAttribute("disabled", "disabled");
+      button.classList.add("processing");
+      if (!button.dataset.originalHtml) {
+        button.dataset.originalHtml = button.innerHTML;
+        const loadingSpinner = document.createElement("div");
+        loadingSpinner.className = "payment-btn-spinner";
+        loadingSpinner.innerHTML = '<div class="spinner"></div>';
+        button.innerHTML = "";
+        button.appendChild(loadingSpinner);
+      }
+    } else {
+      button.removeAttribute("disabled");
+      button.classList.remove("processing");
+      if (button.dataset.originalHtml) {
+        button.innerHTML = button.dataset.originalHtml;
+        delete button.dataset.originalHtml;
+      }
+    }
+  };
+  _handleExpressCheckoutError = new WeakSet();
+  handleExpressCheckoutError_fn = function(message, button) {
+    __privateMethod(this, _setExpressButtonProcessing, setExpressButtonProcessing_fn).call(this, button, false);
+    const container = document.querySelector(".express-checkout-wrapper");
+    if (!container)
+      return;
+    let errorContainer = container.querySelector(".express-checkout-error");
+    if (!errorContainer) {
+      errorContainer = document.createElement("div");
+      errorContainer.className = "express-checkout-error";
+      container.appendChild(errorContainer);
+    }
+    errorContainer.textContent = message;
+    errorContainer.style.display = "block";
+    setTimeout(() => {
+      errorContainer.style.display = "none";
+    }, 5e3);
+    __privateGet(this, _app3).triggerEvent("express.checkout.error", { message });
+  };
+  _checkForPaymentFailedParameters = new WeakSet();
+  checkForPaymentFailedParameters_fn = function() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentFailed = urlParams.get("payment_failed");
+      if (paymentFailed === "true") {
+        const paymentMethod = urlParams.get("payment_method");
+        let errorMessage = "Your payment could not be processed. Please try again or use a different payment method.";
+        if (paymentMethod) {
+          const methodDisplay = {
+            "paypal": "PayPal",
+            "apple_pay": "Apple Pay",
+            "google_pay": "Google Pay",
+            "card_token": "credit card",
+            "credit-card": "credit card",
+            "credit": "credit card"
+          }[paymentMethod] || paymentMethod;
+          errorMessage = `Your ${methodDisplay} payment could not be processed. Please try again or use a different payment method.`;
+        }
+        const isExpressCheckout = ["paypal", "apple_pay", "google_pay"].includes(paymentMethod);
+        if (isExpressCheckout) {
+          __privateMethod(this, _displayTopBannerError, displayTopBannerError_fn).call(this, errorMessage, paymentMethod);
+        } else {
+          __privateMethod(this, _handlePaymentError, handlePaymentError_fn).call(this, errorMessage);
+        }
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("payment_failed");
+        newUrl.searchParams.delete("payment_method");
+        window.history.replaceState({}, document.title, newUrl.href);
+      }
+    } catch (error) {
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", "Error checking payment failed parameters:", error);
+    }
+  };
+  _displayTopBannerError = new WeakSet();
+  displayTopBannerError_fn = function(message, method) {
+    try {
+      let errorBanner = document.querySelector('[os-checkout-element="top-error-banner"]');
+      if (!errorBanner) {
+        errorBanner = document.createElement("div");
+        errorBanner.setAttribute("os-checkout-element", "top-error-banner");
+        errorBanner.className = "checkout-error-banner";
+        errorBanner.style.width = "100%";
+        errorBanner.style.padding = "12px 16px";
+        errorBanner.style.backgroundColor = "#fff3cd";
+        errorBanner.style.color = "#856404";
+        errorBanner.style.borderRadius = "4px";
+        errorBanner.style.marginBottom = "20px";
+        errorBanner.style.border = "1px solid #ffeeba";
+        errorBanner.style.display = "flex";
+        errorBanner.style.alignItems = "center";
+        errorBanner.style.justifyContent = "space-between";
+        const messageDiv = document.createElement("div");
+        messageDiv.textContent = message;
+        const closeButton = document.createElement("button");
+        closeButton.textContent = "×";
+        closeButton.style.background = "none";
+        closeButton.style.border = "none";
+        closeButton.style.fontSize = "20px";
+        closeButton.style.fontWeight = "bold";
+        closeButton.style.cursor = "pointer";
+        closeButton.style.marginLeft = "10px";
+        closeButton.addEventListener("click", () => {
+          errorBanner.style.display = "none";
+        });
+        errorBanner.appendChild(messageDiv);
+        errorBanner.appendChild(closeButton);
+        const checkoutForm = __privateGet(this, _form3);
+        if (checkoutForm) {
+          checkoutForm.insertBefore(errorBanner, checkoutForm.firstChild);
+        } else {
+          const checkoutContainer = document.querySelector('[os-checkout-container="form"]') || document.querySelector(".checkout-form") || document.querySelector(".checkout-container");
+          if (checkoutContainer) {
+            checkoutContainer.insertBefore(errorBanner, checkoutContainer.firstChild);
+          } else {
+            const mainContent = document.querySelector("main") || document.body;
+            mainContent.insertBefore(errorBanner, mainContent.firstChild);
+          }
+        }
+        errorBanner.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        const messageDiv = errorBanner.querySelector("div");
+        if (messageDiv) {
+          messageDiv.textContent = message;
+        } else {
+          errorBanner.textContent = message;
+        }
+        errorBanner.style.display = "flex";
+        errorBanner.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Displayed top banner error for ${method}: ${message}`);
+    } catch (error) {
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", "Error displaying top banner error:", error);
+      __privateMethod(this, _handlePaymentError, handlePaymentError_fn).call(this, message);
+    }
   };
 
   // src/components/checkout/BillingAddressHandler.js
@@ -7333,7 +7731,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/AttributionManager.js
-  var _app16, _logger21, _attributionData, _initialized2, _init7, init_fn7, _collectAttributionData, collectAttributionData_fn, _collectTrackingTags, collectTrackingTags_fn, _storeAttributionData, storeAttributionData_fn, _persistAttributionData, persistAttributionData_fn, _loadPersistedAttributionData, loadPersistedAttributionData_fn, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn, _setupEventListeners4, setupEventListeners_fn4, _reinitializeAttributionData, reinitializeAttributionData_fn, _getStoredValue, getStoredValue_fn, _getCookie, getCookie_fn, _getDeviceType, getDeviceType_fn, _getFacebookPixelId, getFacebookPixelId_fn;
+  var _app16, _logger21, _attributionData, _initialized2, _init7, init_fn7, _collectAttributionData, collectAttributionData_fn, _collectTrackingTags, collectTrackingTags_fn, _storeAttributionData, storeAttributionData_fn, _persistAttributionData, persistAttributionData_fn, _loadPersistedAttributionData, loadPersistedAttributionData_fn, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn, _setupEventListeners4, setupEventListeners_fn4, _getStoredValue, getStoredValue_fn, _getCookie, getCookie_fn, _getDeviceType, getDeviceType_fn, _getFacebookPixelId, getFacebookPixelId_fn;
   var AttributionManager = class {
     /**
      * Initialize the AttributionManager
@@ -7375,11 +7773,6 @@ var TwentyNineNext = (() => {
        * Set up event listeners for page navigation
        */
       __privateAdd(this, _setupEventListeners4);
-      /**
-       * Reinitialize attribution data after campaign data is loaded
-       * This ensures we have the latest campaign information
-       */
-      __privateAdd(this, _reinitializeAttributionData);
       /**
        * Get a value from URL parameters, sessionStorage, or localStorage
        * @param {string} key - The key to get
@@ -7537,6 +7930,21 @@ var TwentyNineNext = (() => {
       console.groupEnd();
       return "Attribution debug info logged to console.";
     }
+    /**
+     * Set the funnel name in attribution data
+     * Simple method to set the funnel name
+     * @param {string} funnelName - The funnel name to set
+     */
+    setFunnelName(funnelName) {
+      if (!funnelName) {
+        __privateGet(this, _logger21).warn("Cannot set empty funnel name");
+        return false;
+      }
+      __privateGet(this, _attributionData).funnel = funnelName;
+      __privateMethod(this, _storeAttributionData, storeAttributionData_fn).call(this);
+      __privateGet(this, _logger21).info(`Funnel name set to: ${funnelName}`);
+      return true;
+    }
   };
   _app16 = new WeakMap();
   _logger21 = new WeakMap();
@@ -7553,15 +7961,6 @@ var TwentyNineNext = (() => {
   };
   _collectAttributionData = new WeakSet();
   collectAttributionData_fn = function() {
-    const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
-    const funnelIdFromTag = funnelMetaTag ? funnelMetaTag.getAttribute("data-tag-value") : "";
-    const campaignName = __privateGet(this, _app16).campaign?.getCampaignName() || __privateGet(this, _app16).campaignData?.name || "";
-    const funnelId = funnelIdFromTag || campaignName;
-    __privateGet(this, _logger21).debug(`Using funnel value: ${funnelId} (from ${funnelIdFromTag ? "meta tag" : "campaign name"})`);
-    const affiliate = __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "affid") || __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "aff") || "";
-    const fbcValue = __privateMethod(this, _getCookie, getCookie_fn).call(this, "_fbc") || "";
-    const fbpValue = __privateMethod(this, _getCookie, getCookie_fn).call(this, "_fbp") || "";
-    const fbPixelId = __privateMethod(this, _getFacebookPixelId, getFacebookPixelId_fn).call(this);
     const metadata = {
       landing_page: window.location.href || "",
       referrer: document.referrer || "",
@@ -7569,21 +7968,22 @@ var TwentyNineNext = (() => {
       device_type: __privateMethod(this, _getDeviceType, getDeviceType_fn).call(this),
       timestamp: Date.now(),
       domain: window.location.hostname,
-      // Facebook tracking data - using the exact variable names from the example
-      fb_fbp: fbpValue,
-      fb_fbc: fbcValue,
-      fb_pixel_id: fbPixelId
+      // Facebook tracking data
+      fb_fbp: __privateMethod(this, _getCookie, getCookie_fn).call(this, "_fbp") || "",
+      fb_fbc: __privateMethod(this, _getCookie, getCookie_fn).call(this, "_fbc") || "",
+      fb_pixel_id: __privateMethod(this, _getFacebookPixelId, getFacebookPixelId_fn).call(this)
     };
     const fbclid = __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "fbclid") || "";
     if (fbclid) {
       metadata.fbclid = fbclid;
     }
     __privateMethod(this, _collectTrackingTags, collectTrackingTags_fn).call(this, metadata);
+    const affiliate = __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "affid") || __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "aff") || "";
     __privateSet(this, _attributionData, {
       // Attribution API compatible fields
       affiliate,
-      funnel: funnelId,
-      // Using funnelId which is either from the meta tag or campaign name
+      funnel: "",
+      // Will be set later when campaign data is available
       gclid: __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "gclid") || "",
       metadata,
       // Standard UTM parameters
@@ -7594,7 +7994,7 @@ var TwentyNineNext = (() => {
       utm_term: __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "utm_term") || "",
       // Other tracking parameters
       fbclid,
-      // Sub-affiliate parameters (renamed from sub1, sub2, etc.)
+      // Sub-affiliate parameters
       subaffiliate1: __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "subaffiliate1") || __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "sub1") || "",
       subaffiliate2: __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "subaffiliate2") || __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "sub2") || "",
       subaffiliate3: __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "subaffiliate3") || __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "sub3") || "",
@@ -7604,10 +8004,7 @@ var TwentyNineNext = (() => {
       first_visit_timestamp: __privateMethod(this, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn).call(this),
       current_visit_timestamp: Date.now()
     });
-    __privateGet(this, _logger21).debug("Attribution data collected", __privateGet(this, _attributionData));
-    if (!campaignName && __privateGet(this, _app16).events) {
-      __privateGet(this, _logger21).debug("Campaign data not available yet, will update when loaded");
-    }
+    __privateGet(this, _logger21).debug("Attribution data collected");
   };
   _collectTrackingTags = new WeakSet();
   collectTrackingTags_fn = function(metadata) {
@@ -7639,8 +8036,13 @@ var TwentyNineNext = (() => {
     }
     __privateGet(this, _app16).state.setState("cart.attribution", __privateGet(this, _attributionData));
     __privateGet(this, _app16).state.setState("attribution", this.getAttributionForApi());
-    __privateGet(this, _logger21).info("Attribution data stored in state");
     __privateMethod(this, _persistAttributionData, persistAttributionData_fn).call(this);
+    if (__privateGet(this, _app16).events) {
+      __privateGet(this, _app16).events.trigger("attribution.updated", {
+        attribution: __privateGet(this, _attributionData)
+      });
+    }
+    __privateGet(this, _logger21).debug("Attribution data stored in state");
   };
   _persistAttributionData = new WeakSet();
   persistAttributionData_fn = function() {
@@ -7682,21 +8084,10 @@ var TwentyNineNext = (() => {
     });
     if (__privateGet(this, _app16).events) {
       __privateGet(this, _app16).events.on("campaign.loaded", (data) => {
-        if (data && data.campaign) {
-          const campaignName = __privateGet(this, _app16).campaign?.getCampaignName() || data.campaign.name || "";
-          if (!campaignName) {
-            __privateGet(this, _logger21).warn("Campaign loaded but name is not available");
-            return;
-          }
-          __privateGet(this, _logger21).info(`Campaign loaded: ${campaignName}`);
+        if (data && data.campaign && data.campaign.name && !__privateGet(this, _attributionData).funnel) {
           const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
-          const funnelIdFromTag = funnelMetaTag ? funnelMetaTag.getAttribute("data-tag-value") : "";
-          const funnel = funnelIdFromTag || campaignName;
-          this.updateAttributionData({
-            funnel
-          });
-          __privateMethod(this, _reinitializeAttributionData, reinitializeAttributionData_fn).call(this);
-          __privateGet(this, _logger21).debug(`Updated funnel to: ${funnel} (from ${funnelIdFromTag ? "meta tag" : "campaign name"})`);
+          const funnelName = funnelMetaTag?.getAttribute("data-tag-value") || data.campaign.name;
+          this.setFunnelName(funnelName);
         }
       });
       __privateGet(this, _app16).events.on("prospect.cartCreated", () => {
@@ -7706,27 +8097,6 @@ var TwentyNineNext = (() => {
           metadata
         });
         __privateGet(this, _logger21).debug("Cart created, updated metadata with conversion timestamp");
-      });
-    }
-  };
-  _reinitializeAttributionData = new WeakSet();
-  reinitializeAttributionData_fn = function() {
-    __privateGet(this, _logger21).info("Reinitializing attribution data with campaign information");
-    const campaignName = __privateGet(this, _app16).campaign?.getCampaignName() || __privateGet(this, _app16).campaignData?.name || "";
-    if (!campaignName) {
-      __privateGet(this, _logger21).warn("Cannot reinitialize attribution data: Campaign name not available");
-      return;
-    }
-    const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
-    const funnelIdFromTag = funnelMetaTag ? funnelMetaTag.getAttribute("data-tag-value") : "";
-    const funnelId = funnelIdFromTag || campaignName;
-    __privateGet(this, _logger21).debug(`Using funnel value: ${funnelId} (from ${funnelIdFromTag ? "meta tag" : "campaign name"})`);
-    __privateGet(this, _attributionData).funnel = funnelId;
-    __privateMethod(this, _storeAttributionData, storeAttributionData_fn).call(this);
-    __privateGet(this, _logger21).info(`Attribution data reinitialized with funnel: ${funnelId}`);
-    if (__privateGet(this, _app16).events) {
-      __privateGet(this, _app16).events.trigger("attribution.updated", {
-        attribution: __privateGet(this, _attributionData)
       });
     }
   };
@@ -10357,6 +10727,11 @@ var TwentyNineNext = (() => {
       window.osConfig = window.osConfig || {};
       window.osConfig.campaign = __privateGet(this, _campaignData);
       window.dataLayer = window.dataLayer || [];
+      if (__privateGet(this, _campaignData).name && this.attribution) {
+        const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
+        const funnelName = funnelMetaTag?.getAttribute("data-tag-value") || __privateGet(this, _campaignData).name;
+        this.attribution.setFunnelName(funnelName);
+      }
       this.triggerEvent("campaign.loaded", { campaign: __privateGet(this, _campaignData) });
     } catch (error) {
       this.coreLogger.error("Failed to retrieve campaign data:", error);
@@ -10521,4 +10896,3 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
-//# sourceMappingURL=29next.js.map
