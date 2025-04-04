@@ -574,6 +574,25 @@ var TwentyNineNext = (() => {
         throw error;
       }
     }
+    /**
+     * Get the next page URL from the meta tag
+     * @param {string} refId - Optional reference ID to append to the URL
+     * @returns {string|null} Formatted next page URL or null if meta tag not found
+     */
+    getNextPageUrlFromMeta(refId = null) {
+      const nextPageMeta = document.querySelector('meta[name="os-next-page"]');
+      if (!nextPageMeta || !nextPageMeta.getAttribute("content")) {
+        __privateGet(this, _logger).debug("No meta tag found for next page URL");
+        return null;
+      }
+      const nextPagePath = nextPageMeta.getAttribute("content");
+      __privateGet(this, _logger).debug(`Found meta tag with next page URL: ${nextPagePath}`);
+      const redirectUrl = nextPagePath.startsWith("http") ? new URL(nextPagePath) : new URL(nextPagePath, `${location.protocol}//${location.host}`);
+      if (refId) {
+        redirectUrl.searchParams.append("ref_id", refId);
+      }
+      return redirectUrl.href;
+    }
     async processPayment(orderData, paymentMethod) {
       __privateGet(this, _logger).debug(`Processing ${paymentMethod} payment for order`);
       const paymentMethodMap = {
@@ -589,31 +608,41 @@ var TwentyNineNext = (() => {
       }
       if (paymentMethod !== "credit")
         delete orderData.payment_detail.card_token;
+      if (!orderData.success_url) {
+        const nextPageUrl = this.getNextPageUrlFromMeta(orderData.ref_id);
+        if (nextPageUrl) {
+          orderData.success_url = nextPageUrl;
+          __privateGet(this, _logger).debug(`Set success_url from meta tag: ${orderData.success_url}`);
+        } else {
+          __privateGet(this, _logger).debug("No meta tag found for success_url, API will use order_status_url as fallback");
+        }
+      }
+      if (!orderData.payment_failed_url) {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set("payment_failed", "true");
+        currentUrl.searchParams.set("payment_method", paymentMethod);
+        orderData.payment_failed_url = currentUrl.href;
+        __privateGet(this, _logger).debug(`Set payment_failed_url to: ${orderData.payment_failed_url}`);
+      }
       return this.createOrder(orderData);
     }
-    getNextUrlFromOrderResponse(orderResponse, defaultPath = "/checkout/complete") {
+    getNextUrlFromOrderResponse(orderResponse) {
       __privateGet(this, _logger).debug("Getting next URL for redirect");
       const refId = orderResponse.ref_id;
-      const nextPageMeta = document.querySelector('meta[name="os-next-page"]');
-      let defaultUrl = defaultPath;
-      if (nextPageMeta?.getAttribute("content")) {
-        const nextPagePath = nextPageMeta.getAttribute("content");
-        __privateGet(this, _logger).debug(`Found meta tag with next page URL: ${nextPagePath}`);
-        const redirectUrl = nextPagePath.startsWith("http") ? new URL(nextPagePath) : new URL(nextPagePath, `${location.protocol}//${location.host}`);
-        if (refId)
-          redirectUrl.searchParams.append("ref_id", refId);
-        return redirectUrl.href;
-      }
-      if (orderResponse.payment_complete_url)
+      if (orderResponse.payment_complete_url) {
+        __privateGet(this, _logger).debug(`Using payment complete URL from API: ${orderResponse.payment_complete_url}`);
         return orderResponse.payment_complete_url;
-      if (orderResponse.order_status_url)
+      }
+      const nextPageUrl = this.getNextPageUrlFromMeta(refId);
+      if (nextPageUrl) {
+        return nextPageUrl;
+      }
+      if (orderResponse.order_status_url) {
+        __privateGet(this, _logger).debug(`Using order status URL from API: ${orderResponse.order_status_url}`);
         return orderResponse.order_status_url;
-      const currentPath = location.pathname.split("/");
-      const basePath = currentPath.slice(0, -1).join("/");
-      const defaultFullUrl = new URL(`${basePath}${defaultUrl}`, `${location.protocol}//${location.host}`);
-      if (refId)
-        defaultFullUrl.searchParams.append("ref_id", refId);
-      return defaultFullUrl.href;
+      }
+      __privateGet(this, _logger).warn("No order_status_url found in API response - using fallback URL");
+      return `${window.location.origin}/checkout/confirmation/?ref_id=${refId || ""}`;
     }
   };
   _app = new WeakMap();
@@ -2214,7 +2243,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/PaymentHandler.js
-  var _apiClient, _logger5, _app3, _form3, _spreedlyManager, _formValidator, _paymentMethod, _isProcessing, _debugMode3, _testCards, _getCheckoutForm, getCheckoutForm_fn, _setupFormPrevention, setupFormPrevention_fn, _preventFormSubmission, preventFormSubmission_fn, _convertSubmitButtons, convertSubmitButtons_fn, _setupCheckoutButton, setupCheckoutButton_fn, _safeLog2, safeLog_fn2, _initPaymentMethods, initPaymentMethods_fn, _setupPaymentMethodListeners, setupPaymentMethodListeners_fn, _initSpreedly, initSpreedly_fn, _setupSpreedlyCallbacks, setupSpreedlyCallbacks_fn, _formatSpreedlyErrors, formatSpreedlyErrors_fn, _initializeExpirationFields, initializeExpirationFields_fn, _getExpirationElements, getExpirationElements_fn, _populateExpirationOptions, populateExpirationOptions_fn, _isTestMode, isTestMode_fn, _enforceFormPrevention, enforceFormPrevention_fn, _showProcessingState, showProcessingState_fn, _hideProcessingState, hideProcessingState_fn, _processCreditCard, processCreditCard_fn, _getCreditCardFields, getCreditCardFields_fn, _isDebugTestCardMode, isDebugTestCardMode_fn, _processTestCard, processTestCard_fn, _processPaypal, processPaypal_fn, _getPackageIdFromUrl, getPackageIdFromUrl_fn, _getOrderData, getOrderData_fn, _getAddressData, getAddressData_fn, _formatAddress, formatAddress_fn, _getShippingMethod, getShippingMethod_fn, _getCartLines, getCartLines_fn, _createOrder, createOrder_fn, _formatOrderData, formatOrderData_fn, _formatErrorMessage, formatErrorMessage_fn, _formatPaymentErrorMessage, formatPaymentErrorMessage_fn, _handlePaymentError, handlePaymentError_fn, _displayCreditCardError, displayCreditCardError_fn, _clearPaymentErrors, clearPaymentErrors_fn, _handleOrderSuccess, handleOrderSuccess_fn, _getRedirectUrl, getRedirectUrl_fn;
+  var _apiClient, _logger5, _app3, _form3, _spreedlyManager, _formValidator, _paymentMethod, _isProcessing, _debugMode3, _testCards, _expressCheckoutButtons, _deviceSupport, _getCheckoutForm, getCheckoutForm_fn, _setupFormPrevention, setupFormPrevention_fn, _preventFormSubmission, preventFormSubmission_fn, _convertSubmitButtons, convertSubmitButtons_fn, _setupCheckoutButton, setupCheckoutButton_fn, _safeLog2, safeLog_fn2, _initPaymentMethods, initPaymentMethods_fn, _setupPaymentMethodListeners, setupPaymentMethodListeners_fn, _initSpreedly, initSpreedly_fn, _setupSpreedlyCallbacks, setupSpreedlyCallbacks_fn, _formatSpreedlyErrors, formatSpreedlyErrors_fn, _initializeExpirationFields, initializeExpirationFields_fn, _getExpirationElements, getExpirationElements_fn, _populateExpirationOptions, populateExpirationOptions_fn, _isTestMode, isTestMode_fn, _enforceFormPrevention, enforceFormPrevention_fn, _showProcessingState, showProcessingState_fn, _hideProcessingState, hideProcessingState_fn, _processCreditCard, processCreditCard_fn, _getCreditCardFields, getCreditCardFields_fn, _isDebugTestCardMode, isDebugTestCardMode_fn, _processTestCard, processTestCard_fn, _processPaypal, processPaypal_fn, _getPackageIdFromUrl, getPackageIdFromUrl_fn, _getOrderData, getOrderData_fn, _getAddressData, getAddressData_fn, _formatAddress, formatAddress_fn, _getShippingMethod, getShippingMethod_fn, _getCartLines, getCartLines_fn, _createOrder, createOrder_fn, _formatOrderData, formatOrderData_fn, _formatErrorMessage, formatErrorMessage_fn, _formatPaymentErrorMessage, formatPaymentErrorMessage_fn, _handlePaymentError, handlePaymentError_fn, _displayCreditCardError, displayCreditCardError_fn, _clearPaymentErrors, clearPaymentErrors_fn, _handleOrderSuccess, handleOrderSuccess_fn, _getRedirectUrl, getRedirectUrl_fn, _initExpressCheckout, initExpressCheckout_fn, _detectDeviceSupport, detectDeviceSupport_fn, _hasActiveExpressButtons, hasActiveExpressButtons_fn, _setExpressButtonProcessing, setExpressButtonProcessing_fn, _handleExpressCheckoutError, handleExpressCheckoutError_fn, _checkForPaymentFailedParameters, checkForPaymentFailedParameters_fn, _displayTopBannerError, displayTopBannerError_fn;
   var PaymentHandler = class {
     constructor(apiClient, logger, app) {
       __privateAdd(this, _getCheckoutForm);
@@ -2255,6 +2284,41 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _clearPaymentErrors);
       __privateAdd(this, _handleOrderSuccess);
       __privateAdd(this, _getRedirectUrl);
+      /**
+       * Initialize express checkout buttons
+       */
+      __privateAdd(this, _initExpressCheckout);
+      /**
+       * Detect which payment methods are supported by the device/browser
+       */
+      __privateAdd(this, _detectDeviceSupport);
+      /**
+       * Check if there are any active express checkout buttons
+       * @returns {boolean} True if at least one express button is initialized
+       */
+      __privateAdd(this, _hasActiveExpressButtons);
+      /**
+       * Set express checkout button to processing state
+       * @param {HTMLElement} button - Button element
+       * @param {boolean} isProcessing - Whether the button is processing
+       */
+      __privateAdd(this, _setExpressButtonProcessing);
+      /**
+       * Handle express checkout error
+       * @param {string} message - Error message
+       * @param {HTMLElement} button - Button element that was clicked
+       */
+      __privateAdd(this, _handleExpressCheckoutError);
+      /**
+       * Check URL parameters for payment_failed and display appropriate error message
+       */
+      __privateAdd(this, _checkForPaymentFailedParameters);
+      /**
+       * Display a prominent error banner at the top of the checkout form
+       * @param {string} message - Error message to display
+       * @param {string} method - Payment method that failed
+       */
+      __privateAdd(this, _displayTopBannerError);
       __privateAdd(this, _apiClient, void 0);
       __privateAdd(this, _logger5, void 0);
       __privateAdd(this, _app3, void 0);
@@ -2269,6 +2333,15 @@ var TwentyNineNext = (() => {
         mastercard: "5555555555554444",
         amex: "378282246310005",
         discover: "6011111111111117"
+      });
+      __privateAdd(this, _expressCheckoutButtons, {
+        paypal: null,
+        applePay: null,
+        googlePay: null
+      });
+      __privateAdd(this, _deviceSupport, {
+        applePay: false,
+        googlePay: false
       });
       __privateSet(this, _apiClient, apiClient);
       __privateSet(this, _logger5, logger);
@@ -2285,6 +2358,8 @@ var TwentyNineNext = (() => {
       __privateGet(this, _form3).__formValidator = __privateGet(this, _formValidator);
       __privateMethod(this, _initPaymentMethods, initPaymentMethods_fn).call(this);
       __privateMethod(this, _initSpreedly, initSpreedly_fn).call(this);
+      __privateMethod(this, _initExpressCheckout, initExpressCheckout_fn).call(this);
+      __privateMethod(this, _checkForPaymentFailedParameters, checkForPaymentFailedParameters_fn).call(this);
     }
     /**
      * Set Konami code test mode flag
@@ -2369,6 +2444,93 @@ var TwentyNineNext = (() => {
         __privateMethod(this, _hideProcessingState, hideProcessingState_fn).call(this);
       }
     }
+    /**
+     * Process an express checkout payment
+     * @param {string} method - Payment method ('paypal', 'apple_pay', 'google_pay')
+     */
+    processExpressCheckout(method) {
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "info", `Processing ${method} express checkout`);
+      let button;
+      switch (method) {
+        case "paypal":
+          button = __privateGet(this, _expressCheckoutButtons).paypal;
+          break;
+        case "apple_pay":
+          button = __privateGet(this, _expressCheckoutButtons).applePay;
+          break;
+        case "google_pay":
+          button = __privateGet(this, _expressCheckoutButtons).googlePay;
+          break;
+        default:
+          __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", `Unknown express checkout method: ${method}`);
+          return;
+      }
+      __privateMethod(this, _setExpressButtonProcessing, setExpressButtonProcessing_fn).call(this, button, true);
+      try {
+        const cart = __privateGet(this, _app3).state.getState("cart");
+        if (!cart || !cart.items || cart.items.length === 0) {
+          __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", `Cannot process ${method} checkout: cart is empty`);
+          __privateMethod(this, _handleExpressCheckoutError, handleExpressCheckoutError_fn).call(this, "Your cart is empty. Please add items to your cart before checking out.", button);
+          return;
+        }
+        const orderData = {
+          lines: cart.items.map((item) => ({
+            package_id: item.id,
+            quantity: item.quantity || 1,
+            is_upsell: !!item.is_upsell
+          })),
+          payment_detail: {
+            payment_method: method
+          },
+          attribution: __privateGet(this, _app3).attribution?.getAttributionData() || cart.attribution || {},
+          shipping_method: (cart.shippingMethod?.id || 1).toString()
+        };
+        if (__privateGet(this, _apiClient)) {
+          const nextPageUrl = __privateGet(this, _apiClient).getNextPageUrlFromMeta();
+          if (nextPageUrl) {
+            orderData.success_url = nextPageUrl;
+            __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Express checkout success URL set from meta tag: ${nextPageUrl}`);
+          } else {
+            __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "No meta tag found for express checkout success_url, API will use order_status_url");
+          }
+        }
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set("payment_failed", "true");
+        currentUrl.searchParams.set("payment_method", method);
+        orderData.payment_failed_url = currentUrl.href;
+        __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Express checkout payment_failed_url set to: ${orderData.payment_failed_url}`);
+        if (cart.vouchers && cart.vouchers.length > 0) {
+          orderData.vouchers = cart.vouchers.map((voucher) => voucher.code || voucher);
+        }
+        __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "Express checkout order data:", orderData);
+        __privateGet(this, _apiClient).createOrder(orderData).then((response) => {
+          __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `${method} express checkout order created:`, response);
+          if (response.payment_complete_url) {
+            __privateGet(this, _app3).triggerEvent("express.checkout.started", {
+              method,
+              order: response
+            });
+            window.location.href = response.payment_complete_url;
+          } else {
+            throw new Error("No payment URL returned from API");
+          }
+        }).catch((error) => {
+          __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", `${method} express checkout error:`, error);
+          __privateMethod(this, _handleExpressCheckoutError, handleExpressCheckoutError_fn).call(this, `There was an error processing your ${method.replace("_", " ")} payment. Please try again or use a different payment method.`, button);
+        });
+      } catch (error) {
+        __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", `Error in ${method} express checkout:`, error);
+        __privateMethod(this, _handleExpressCheckoutError, handleExpressCheckoutError_fn).call(this, "An unexpected error occurred. Please try again.", button);
+      }
+    }
+    /**
+     * Reset processing state for all express checkout buttons
+     */
+    resetExpressButtons() {
+      __privateMethod(this, _setExpressButtonProcessing, setExpressButtonProcessing_fn).call(this, __privateGet(this, _expressCheckoutButtons).paypal, false);
+      __privateMethod(this, _setExpressButtonProcessing, setExpressButtonProcessing_fn).call(this, __privateGet(this, _expressCheckoutButtons).applePay, false);
+      __privateMethod(this, _setExpressButtonProcessing, setExpressButtonProcessing_fn).call(this, __privateGet(this, _expressCheckoutButtons).googlePay, false);
+    }
   };
   _apiClient = new WeakMap();
   _logger5 = new WeakMap();
@@ -2380,6 +2542,8 @@ var TwentyNineNext = (() => {
   _isProcessing = new WeakMap();
   _debugMode3 = new WeakMap();
   _testCards = new WeakMap();
+  _expressCheckoutButtons = new WeakMap();
+  _deviceSupport = new WeakMap();
   _getCheckoutForm = new WeakSet();
   getCheckoutForm_fn = function() {
     const form = document.querySelector('form[os-checkout="form"]') || document.querySelector("form#combo_form");
@@ -2639,17 +2803,15 @@ var TwentyNineNext = (() => {
       }
     }
     __privateGet(this, _spreedlyManager).tokenizeCard({
-      full_name: fullName || "Test User",
+      full_name: fullName || "",
       month,
       year
     });
     __privateGet(this, _spreedlyManager).setOnPaymentMethod((token, pmData) => {
-      /* @__PURE__ */ console.log("Card tokenization successful:", {
-        token,
-        paymentMethodData: pmData,
-        cardholderName: fullName,
-        expirationMonth: month,
-        expirationYear: year
+      __privateMethod(this, _createOrder, createOrder_fn).call(this, {
+        payment_token: token,
+        payment_method: "credit-card",
+        ...__privateMethod(this, _getOrderData, getOrderData_fn).call(this)
       });
     });
   };
@@ -2792,7 +2954,24 @@ var TwentyNineNext = (() => {
   };
   _formatOrderData = new WeakSet();
   formatOrderData_fn = function(orderData) {
-    const formatted = { ...orderData, success_url: orderData.success_url || window.location.origin + "/checkout/confirmation/" };
+    const formatted = { ...orderData };
+    if (!formatted.success_url && __privateGet(this, _apiClient)) {
+      const nextPageUrl = __privateGet(this, _apiClient).getNextPageUrlFromMeta(orderData.ref_id);
+      if (nextPageUrl) {
+        formatted.success_url = nextPageUrl;
+      }
+    }
+    if (!formatted.payment_failed_url) {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set("payment_failed", "true");
+      if (orderData.payment_method) {
+        currentUrl.searchParams.set("payment_method", orderData.payment_method);
+      } else if (formatted.payment_detail?.payment_method) {
+        currentUrl.searchParams.set("payment_method", formatted.payment_detail.payment_method);
+      }
+      formatted.payment_failed_url = currentUrl.href;
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Set payment_failed_url to: ${formatted.payment_failed_url}`);
+    }
     if (orderData.payment_token) {
       formatted.payment_detail = { card_token: orderData.payment_token };
       delete formatted.payment_token;
@@ -2935,15 +3114,232 @@ var TwentyNineNext = (() => {
   handleOrderSuccess_fn = function(orderData) {
     sessionStorage.setItem("order_reference", orderData.ref_id);
     __privateGet(this, _app3)?.triggerEvent?.("order.created", orderData);
+    if (orderData.payment_complete_url) {
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Redirecting to payment gateway: ${orderData.payment_complete_url}`);
+      window.location.href = orderData.payment_complete_url;
+      return;
+    }
     const redirectUrl = __privateMethod(this, _getRedirectUrl, getRedirectUrl_fn).call(this, orderData);
     window.location.href = redirectUrl;
   };
   _getRedirectUrl = new WeakSet();
   getRedirectUrl_fn = function(orderData) {
+    if (__privateGet(this, _apiClient)) {
+      return __privateGet(this, _apiClient).getNextUrlFromOrderResponse(orderData);
+    }
     const metaUrl = document.querySelector('meta[name="os-next-page"]')?.content;
-    if (metaUrl)
-      return `${metaUrl}${metaUrl.includes("?") ? "&" : "?"}ref_id=${orderData.ref_id}`;
-    return orderData.confirmation_url || orderData.order_status_url || `/checkout/confirmation/?ref_id=${orderData.ref_id}`;
+    if (metaUrl) {
+      const url = metaUrl.startsWith("http") ? metaUrl : new URL(metaUrl, window.location.origin).href;
+      return `${url}${url.includes("?") ? "&" : "?"}ref_id=${orderData.ref_id}`;
+    }
+    if (orderData.order_status_url) {
+      return orderData.order_status_url;
+    }
+    return orderData.confirmation_url || `${window.location.origin}/checkout/confirmation/?ref_id=${orderData.ref_id}`;
+  };
+  _initExpressCheckout = new WeakSet();
+  initExpressCheckout_fn = function() {
+    try {
+      __privateMethod(this, _detectDeviceSupport, detectDeviceSupport_fn).call(this);
+      const paypalButton = document.querySelector('[os-checkout-payment="paypal"]');
+      if (paypalButton) {
+        paypalButton.addEventListener("click", (e) => {
+          e.preventDefault();
+          this.processExpressCheckout("paypal");
+        });
+        __privateGet(this, _expressCheckoutButtons).paypal = paypalButton;
+      }
+      if (__privateGet(this, _deviceSupport).applePay) {
+        const applePayButton = document.querySelector('[os-checkout-payment="apple-pay"]');
+        if (applePayButton) {
+          applePayButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            this.processExpressCheckout("apple_pay");
+          });
+          __privateGet(this, _expressCheckoutButtons).applePay = applePayButton;
+        }
+      } else {
+        const applePayBtn = document.querySelector('[os-checkout-payment="apple-pay"]');
+        if (applePayBtn) {
+          applePayBtn.style.display = "none";
+        }
+      }
+      if (__privateGet(this, _deviceSupport).googlePay) {
+        const googlePayButton = document.querySelector('[os-checkout-payment="google-pay"]');
+        if (googlePayButton) {
+          googlePayButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            this.processExpressCheckout("google_pay");
+          });
+          __privateGet(this, _expressCheckoutButtons).googlePay = googlePayButton;
+        }
+      } else {
+        const googlePayBtn = document.querySelector('[os-checkout-payment="google-pay"]');
+        if (googlePayBtn) {
+          googlePayBtn.style.display = "none";
+        }
+      }
+      if (!__privateMethod(this, _hasActiveExpressButtons, hasActiveExpressButtons_fn).call(this)) {
+        const container = document.querySelector('[os-checkout-container="express-checkout"]');
+        if (container) {
+          container.style.display = "none";
+        }
+      }
+    } catch (error) {
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", "Error initializing express checkout:", error);
+    }
+  };
+  _detectDeviceSupport = new WeakSet();
+  detectDeviceSupport_fn = function() {
+    if (window.ApplePaySession && window.ApplePaySession.canMakePayments) {
+      __privateGet(this, _deviceSupport).applePay = window.ApplePaySession.canMakePayments();
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Apple Pay support: ${__privateGet(this, _deviceSupport).applePay}`);
+    }
+    __privateGet(this, _deviceSupport).googlePay = !!(window.chrome && window.chrome.runtime);
+    __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Google Pay support: ${__privateGet(this, _deviceSupport).googlePay}`);
+  };
+  _hasActiveExpressButtons = new WeakSet();
+  hasActiveExpressButtons_fn = function() {
+    return !!(__privateGet(this, _expressCheckoutButtons).paypal || __privateGet(this, _expressCheckoutButtons).applePay || __privateGet(this, _expressCheckoutButtons).googlePay);
+  };
+  _setExpressButtonProcessing = new WeakSet();
+  setExpressButtonProcessing_fn = function(button, isProcessing) {
+    if (!button)
+      return;
+    if (isProcessing) {
+      button.setAttribute("disabled", "disabled");
+      button.classList.add("processing");
+      if (!button.dataset.originalHtml) {
+        button.dataset.originalHtml = button.innerHTML;
+        const loadingSpinner = document.createElement("div");
+        loadingSpinner.className = "payment-btn-spinner";
+        loadingSpinner.innerHTML = '<div class="spinner"></div>';
+        button.innerHTML = "";
+        button.appendChild(loadingSpinner);
+      }
+    } else {
+      button.removeAttribute("disabled");
+      button.classList.remove("processing");
+      if (button.dataset.originalHtml) {
+        button.innerHTML = button.dataset.originalHtml;
+        delete button.dataset.originalHtml;
+      }
+    }
+  };
+  _handleExpressCheckoutError = new WeakSet();
+  handleExpressCheckoutError_fn = function(message, button) {
+    __privateMethod(this, _setExpressButtonProcessing, setExpressButtonProcessing_fn).call(this, button, false);
+    const container = document.querySelector(".express-checkout-wrapper");
+    if (!container)
+      return;
+    let errorContainer = container.querySelector(".express-checkout-error");
+    if (!errorContainer) {
+      errorContainer = document.createElement("div");
+      errorContainer.className = "express-checkout-error";
+      container.appendChild(errorContainer);
+    }
+    errorContainer.textContent = message;
+    errorContainer.style.display = "block";
+    setTimeout(() => {
+      errorContainer.style.display = "none";
+    }, 5e3);
+    __privateGet(this, _app3).triggerEvent("express.checkout.error", { message });
+  };
+  _checkForPaymentFailedParameters = new WeakSet();
+  checkForPaymentFailedParameters_fn = function() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentFailed = urlParams.get("payment_failed");
+      if (paymentFailed === "true") {
+        const paymentMethod = urlParams.get("payment_method");
+        let errorMessage = "Your payment could not be processed. Please try again or use a different payment method.";
+        if (paymentMethod) {
+          const methodDisplay = {
+            "paypal": "PayPal",
+            "apple_pay": "Apple Pay",
+            "google_pay": "Google Pay",
+            "card_token": "credit card",
+            "credit-card": "credit card",
+            "credit": "credit card"
+          }[paymentMethod] || paymentMethod;
+          errorMessage = `Your ${methodDisplay} payment could not be processed. Please try again or use a different payment method.`;
+        }
+        const isExpressCheckout = ["paypal", "apple_pay", "google_pay"].includes(paymentMethod);
+        if (isExpressCheckout) {
+          __privateMethod(this, _displayTopBannerError, displayTopBannerError_fn).call(this, errorMessage, paymentMethod);
+        } else {
+          __privateMethod(this, _handlePaymentError, handlePaymentError_fn).call(this, errorMessage);
+        }
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("payment_failed");
+        newUrl.searchParams.delete("payment_method");
+        window.history.replaceState({}, document.title, newUrl.href);
+      }
+    } catch (error) {
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", "Error checking payment failed parameters:", error);
+    }
+  };
+  _displayTopBannerError = new WeakSet();
+  displayTopBannerError_fn = function(message, method) {
+    try {
+      let errorBanner = document.querySelector('[os-checkout-element="top-error-banner"]');
+      if (!errorBanner) {
+        errorBanner = document.createElement("div");
+        errorBanner.setAttribute("os-checkout-element", "top-error-banner");
+        errorBanner.className = "checkout-error-banner";
+        errorBanner.style.width = "100%";
+        errorBanner.style.padding = "12px 16px";
+        errorBanner.style.backgroundColor = "#fff3cd";
+        errorBanner.style.color = "#856404";
+        errorBanner.style.borderRadius = "4px";
+        errorBanner.style.marginBottom = "20px";
+        errorBanner.style.border = "1px solid #ffeeba";
+        errorBanner.style.display = "flex";
+        errorBanner.style.alignItems = "center";
+        errorBanner.style.justifyContent = "space-between";
+        const messageDiv = document.createElement("div");
+        messageDiv.textContent = message;
+        const closeButton = document.createElement("button");
+        closeButton.textContent = "×";
+        closeButton.style.background = "none";
+        closeButton.style.border = "none";
+        closeButton.style.fontSize = "20px";
+        closeButton.style.fontWeight = "bold";
+        closeButton.style.cursor = "pointer";
+        closeButton.style.marginLeft = "10px";
+        closeButton.addEventListener("click", () => {
+          errorBanner.style.display = "none";
+        });
+        errorBanner.appendChild(messageDiv);
+        errorBanner.appendChild(closeButton);
+        const checkoutForm = __privateGet(this, _form3);
+        if (checkoutForm) {
+          checkoutForm.insertBefore(errorBanner, checkoutForm.firstChild);
+        } else {
+          const checkoutContainer = document.querySelector('[os-checkout-container="form"]') || document.querySelector(".checkout-form") || document.querySelector(".checkout-container");
+          if (checkoutContainer) {
+            checkoutContainer.insertBefore(errorBanner, checkoutContainer.firstChild);
+          } else {
+            const mainContent = document.querySelector("main") || document.body;
+            mainContent.insertBefore(errorBanner, mainContent.firstChild);
+          }
+        }
+        errorBanner.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        const messageDiv = errorBanner.querySelector("div");
+        if (messageDiv) {
+          messageDiv.textContent = message;
+        } else {
+          errorBanner.textContent = message;
+        }
+        errorBanner.style.display = "flex";
+        errorBanner.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Displayed top banner error for ${method}: ${message}`);
+    } catch (error) {
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", "Error displaying top banner error:", error);
+      __privateMethod(this, _handlePaymentError, handlePaymentError_fn).call(this, message);
+    }
   };
 
   // src/components/checkout/BillingAddressHandler.js
@@ -5065,8 +5461,8 @@ var TwentyNineNext = (() => {
   _calculateCartTotals = new WeakSet();
   calculateCartTotals_fn = function() {
     const { items, shippingMethod } = __privateGet(this, _state).cart;
-    const subtotal = items.reduce((acc, item) => acc + item.price * (item.quantity || 1), 0);
-    const retailSubtotal = items.reduce((acc, item) => acc + (item.retail_price ?? item.price) * (item.quantity || 1), 0);
+    const subtotal = items.reduce((acc, item) => acc + (item.price_total ?? item.price * (item.quantity || 1)), 0);
+    const retailSubtotal = items.reduce((acc, item) => acc + (item.retail_price_total ?? (item.retail_price ?? item.price) * (item.quantity || 1)), 0);
     const savings = retailSubtotal - subtotal;
     const savingsPercentage = retailSubtotal > 0 ? savings / retailSubtotal * 100 : 0;
     const recurringTotal = items.reduce((acc, item) => acc + (item.is_recurring && item.price_recurring ? item.price_recurring * (item.quantity || 1) : 0), 0);
@@ -5635,7 +6031,7 @@ var TwentyNineNext = (() => {
   __privateAdd(DebugUtils, _overlays, []);
 
   // src/managers/SelectorManager.js
-  var _app10, _logger15, _selectors2, _selectedItems, _isDebugMode2, _initSelectors, initSelectors_fn, _initSelector, initSelector_fn, _initCard, initCard_fn, _handleClick, handleClick_fn, _selectItem, selectItem_fn, _updateCart, updateCart_fn, _addItemToCart, addItemToCart_fn, _removeItemFromCart, removeItemFromCart_fn, _syncWithCart, syncWithCart_fn;
+  var _app10, _logger15, _selectors2, _selectedItems, _isDebugMode2, _initSelectors, initSelectors_fn, _initSelector, initSelector_fn, _initCard, initCard_fn, _handleClick, handleClick_fn, _selectItem, selectItem_fn, _updateCart, updateCart_fn, _addItemToCart, addItemToCart_fn, _removeItemFromCart, removeItemFromCart_fn, _syncWithCart, syncWithCart_fn, _initUnitPricingForSelector, initUnitPricingForSelector_fn, _updateUnitPricingForCard, updateUnitPricingForCard_fn, _formatPrice, formatPrice_fn, _updatePriceElement, updatePriceElement_fn;
   var SelectorManager = class {
     constructor(app) {
       __privateAdd(this, _initSelectors);
@@ -5647,6 +6043,31 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _addItemToCart);
       __privateAdd(this, _removeItemFromCart);
       __privateAdd(this, _syncWithCart);
+      /**
+       * Initialize unit pricing for a specific selector
+       * @param {string} selectorId - The ID of the selector
+       */
+      __privateAdd(this, _initUnitPricingForSelector);
+      /**
+       * Update unit pricing for a specific card
+       * @param {Object} item - The item object
+       * @param {Array} packages - The packages array from campaign data
+       */
+      __privateAdd(this, _updateUnitPricingForCard);
+      /**
+       * Format a price with currency symbol
+       * @param {number} price - Price to format
+       * @returns {string} Formatted price
+       */
+      __privateAdd(this, _formatPrice);
+      /**
+       * Update a price element with the calculated value
+       * @param {HTMLElement} cardElement - The card element
+       * @param {string} type - The price type
+       * @param {string} value - The formatted price value
+       * @param {Set} processedElements - Set of elements that have already been processed
+       */
+      __privateAdd(this, _updatePriceElement);
       __privateAdd(this, _app10, void 0);
       __privateAdd(this, _logger15, void 0);
       __privateAdd(this, _selectors2, {});
@@ -5661,6 +6082,25 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger15).info("Debug mode enabled for selectors");
       }
     }
+    /**
+     * Initialize unit pricing for all selectors
+     * This populates any elements with data-card-price attributes
+     */
+    initUnitPricing() {
+      __privateGet(this, _logger15).info("Initializing unit pricing for selectors");
+      setTimeout(() => {
+        Object.keys(__privateGet(this, _selectors2)).forEach((selectorId) => {
+          __privateMethod(this, _initUnitPricingForSelector, initUnitPricingForSelector_fn).call(this, selectorId);
+        });
+      }, 100);
+    }
+    /**
+     * Refresh unit pricing for all selectors
+     * This can be called after campaign data is updated
+     */
+    refreshUnitPricing() {
+      this.initUnitPricing();
+    }
   };
   _app10 = new WeakMap();
   _logger15 = new WeakMap();
@@ -5672,6 +6112,7 @@ var TwentyNineNext = (() => {
     document.querySelectorAll('[data-os-component="selector"][data-os-selection-mode="swap"]').forEach((selector) => __privateMethod(this, _initSelector, initSelector_fn).call(this, selector));
     setTimeout(() => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this), 0);
     __privateGet(this, _app10).state?.subscribe("cart", () => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this));
+    this.initUnitPricing();
   };
   _initSelector = new WeakSet();
   initSelector_fn = function(selectorElement) {
@@ -5832,6 +6273,170 @@ var TwentyNineNext = (() => {
         item.element.setAttribute("data-os-active", isInCart.toString());
       });
     });
+  };
+  _initUnitPricingForSelector = new WeakSet();
+  initUnitPricingForSelector_fn = function(selectorId) {
+    const selector = __privateGet(this, _selectors2)[selectorId];
+    if (!selector) {
+      __privateGet(this, _logger15).warn(`Selector ${selectorId} not found for unit pricing`);
+      return;
+    }
+    const campaignData = __privateGet(this, _app10)?.campaignData;
+    if (!campaignData || !campaignData.packages) {
+      __privateGet(this, _logger15).warn("Campaign data not available for unit pricing");
+      return;
+    }
+    selector.items.forEach((item) => {
+      __privateMethod(this, _updateUnitPricingForCard, updateUnitPricingForCard_fn).call(this, item, campaignData.packages);
+    });
+  };
+  _updateUnitPricingForCard = new WeakSet();
+  updateUnitPricingForCard_fn = function(item, packages) {
+    const packageData = packages.find(
+      (pkg) => pkg.ref_id.toString() === item.packageId.toString() || pkg.external_id && pkg.external_id.toString() === item.packageId.toString()
+    );
+    if (!packageData) {
+      __privateGet(this, _logger15).debug(`Package data not found for item ${item.packageId}`);
+      return;
+    }
+    const cardElement = item.element;
+    __privateGet(this, _logger15).debug(`Processing unit pricing for package ${item.packageId}:`, {
+      packageId: item.packageId,
+      name: packageData.name,
+      price: packageData.price,
+      price_total: packageData.price_total,
+      price_retail: packageData.price_retail,
+      price_retail_total: packageData.price_retail_total,
+      qty: packageData.qty
+    });
+    const totalUnits = packageData.qty || 1;
+    const totalPrice = Number.parseFloat(packageData.price_total) || Number.parseFloat(packageData.price) * totalUnits;
+    const totalRetailPrice = Number.parseFloat(packageData.price_retail_total) || Number.parseFloat(packageData.price_retail) * totalUnits || totalPrice;
+    const unitPrice = totalPrice / totalUnits;
+    const unitRetailPrice = totalRetailPrice / totalUnits;
+    const unitSavings = unitRetailPrice - unitPrice;
+    const unitSavingsPercentage = unitRetailPrice > 0 ? unitSavings / unitRetailPrice * 100 : 0;
+    const totalSavings = totalRetailPrice - totalPrice;
+    const totalSavingsPercentage = totalRetailPrice > 0 ? totalSavings / totalRetailPrice * 100 : 0;
+    __privateGet(this, _logger15).debug(`Calculated prices for package ${item.packageId}:`, {
+      totalUnits,
+      totalPrice,
+      totalRetailPrice,
+      totalSavings,
+      totalSavingsPercentage,
+      unitPrice,
+      unitRetailPrice,
+      unitSavings,
+      unitSavingsPercentage
+    });
+    const formatPrice = (price) => {
+      if (__privateGet(this, _app10).campaign?.formatPrice) {
+        return __privateGet(this, _app10).campaign.formatPrice(price);
+      }
+      return `$${price.toFixed(2)}`;
+    };
+    const processedElements = /* @__PURE__ */ new Set();
+    const subunitElements = cardElement.querySelectorAll("[data-divide-by]");
+    if (subunitElements.length > 0) {
+      __privateGet(this, _logger15).debug(`Found ${subunitElements.length} elements with data-divide-by in card ${item.packageId}`);
+      subunitElements.forEach((element) => {
+        const divisor = parseFloat(element.getAttribute("data-divide-by"));
+        if (!isNaN(divisor) && divisor > 0) {
+          const type = element.getAttribute("data-card-price");
+          if (!type) {
+            __privateGet(this, _logger15).debug(`Skipping element with data-divide-by but no data-card-price attribute`);
+            return;
+          }
+          let value;
+          switch (type) {
+            case "each-sale":
+              value = unitPrice / divisor;
+              break;
+            case "each-regular":
+              value = unitRetailPrice / divisor;
+              break;
+            case "saving-amount":
+              value = unitSavings / divisor;
+              break;
+            case "saving-percentage":
+              value = unitSavingsPercentage;
+              break;
+            case "total-sale":
+              value = totalPrice / divisor;
+              break;
+            case "total-regular":
+              value = totalRetailPrice / divisor;
+              break;
+            case "total-saving-amount":
+              value = totalSavings / divisor;
+              break;
+            case "total-saving-percentage":
+              value = totalSavingsPercentage;
+              break;
+            default:
+              __privateGet(this, _logger15).debug(`Unknown price type: ${type}`);
+              return;
+          }
+          let formattedValue;
+          if (type.includes("percentage")) {
+            formattedValue = `${Math.round(value)}%`;
+          } else {
+            formattedValue = formatPrice(value);
+          }
+          __privateGet(this, _logger15).debug(`Setting price for element with data-divide-by="${divisor}":`, {
+            attributeType: type,
+            originalValue: element.textContent,
+            calculatedValue: value,
+            formattedValue,
+            element: element.outerHTML
+          });
+          element.textContent = formattedValue;
+          processedElements.add(element);
+          __privateGet(this, _logger15).debug(`Updated element with data-divide-by="${divisor}" for ${type}: ${formattedValue}`);
+        }
+      });
+    }
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "each-sale", formatPrice(unitPrice), processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "each-regular", formatPrice(unitRetailPrice), processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "saving-amount", formatPrice(unitSavings), processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "saving-percentage", `${Math.round(unitSavingsPercentage)}%`, processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "total-sale", formatPrice(totalPrice), processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "total-regular", formatPrice(totalRetailPrice), processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "total-saving-amount", formatPrice(totalSavings), processedElements);
+    __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "total-saving-percentage", `${Math.round(totalSavingsPercentage)}%`, processedElements);
+    __privateGet(this, _logger15).debug(`Updated pricing for card ${item.packageId}: ${formatPrice(unitPrice)} per unit, ${formatPrice(totalPrice)} total`);
+  };
+  _formatPrice = new WeakSet();
+  formatPrice_fn = function(price) {
+    if (__privateGet(this, _app10).campaign?.formatPrice) {
+      return __privateGet(this, _app10).campaign.formatPrice(price);
+    }
+    return `$${price.toFixed(2)}`;
+  };
+  _updatePriceElement = new WeakSet();
+  updatePriceElement_fn = function(cardElement, type, value, processedElements = /* @__PURE__ */ new Set()) {
+    const priceElements = cardElement.querySelectorAll(`[data-card-price="${type}"]`);
+    if (priceElements.length > 0) {
+      priceElements.forEach((element) => {
+        if (processedElements.has(element)) {
+          return;
+        }
+        element.textContent = value;
+        const hideIfZero = element.getAttribute("data-hide-if-zero") === "true";
+        const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, ""));
+        if (hideIfZero && numericValue <= 0) {
+          element.style.display = "none";
+          const container = element.closest('[data-container="true"]');
+          if (container)
+            container.style.display = "none";
+        } else {
+          element.style.display = "";
+          const container = element.closest('[data-container="true"]');
+          if (container)
+            container.style.display = "";
+        }
+      });
+    }
   };
 
   // src/managers/ToggleManager.js
@@ -6643,7 +7248,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CartDisplayManager.js
-  var _app15, _logger20, _elements3, _config2, _lineItemTemplate, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice, formatPrice_fn, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
+  var _app15, _logger20, _elements3, _config2, _lineItemTemplate, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice2, formatPrice_fn2, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
   var CartDisplayManager = class {
     constructor(app) {
       /**
@@ -6696,7 +7301,7 @@ var TwentyNineNext = (() => {
        * @param {number} price - Price to format
        * @returns {string} Formatted price
        */
-      __privateAdd(this, _formatPrice);
+      __privateAdd(this, _formatPrice2);
       /**
        * Simple debounce function for resize events
        * @param {Function} func - Function to debounce
@@ -6728,6 +7333,8 @@ var TwentyNineNext = (() => {
         // Changed to array
         grandTotals: [],
         // Changed to array
+        subtotals: [],
+        // Added for subtotal elements
         // Summary toggle elements
         summaryBars: [],
         // Changed to array
@@ -6794,6 +7401,7 @@ var TwentyNineNext = (() => {
     __privateGet(this, _elements3).savingsBars = document.querySelectorAll('[data-os-cart-summary="savings"]');
     __privateGet(this, _elements3).shippingBars = document.querySelectorAll('[data-os-cart-summary="shipping-bar"]');
     __privateGet(this, _elements3).grandTotals = document.querySelectorAll('[data-os-cart-summary="grand-total"]');
+    __privateGet(this, _elements3).subtotals = document.querySelectorAll('[data-os-cart-summary="subtotal"]');
     __privateGet(this, _elements3).summaryBars = document.querySelectorAll('[os-checkout-element="summary-bar"]');
     __privateGet(this, _elements3).summaryPanels = document.querySelectorAll('[os-checkout-element="summary-mobile"]');
     __privateGet(this, _elements3).summaryTexts = document.querySelectorAll('[os-checkout-element="summary-text"]');
@@ -6804,6 +7412,7 @@ var TwentyNineNext = (() => {
     __privateGet(this, _logger20).debugWithTime(`Savings bars found: ${__privateGet(this, _elements3).savingsBars.length}`);
     __privateGet(this, _logger20).debugWithTime(`Shipping bars found: ${__privateGet(this, _elements3).shippingBars.length}`);
     __privateGet(this, _logger20).debugWithTime(`Grand total elements found: ${__privateGet(this, _elements3).grandTotals.length}`);
+    __privateGet(this, _logger20).debugWithTime(`Subtotal elements found: ${__privateGet(this, _elements3).subtotals.length}`);
     __privateGet(this, _logger20).debugWithTime(`Summary bars found: ${__privateGet(this, _elements3).summaryBars.length}`);
     __privateGet(this, _logger20).debugWithTime(`Summary panels found: ${__privateGet(this, _elements3).summaryPanels.length}`);
     __privateGet(this, _logger20).debugWithTime(`Summary texts found: ${__privateGet(this, _elements3).summaryTexts.length}`);
@@ -6954,13 +7563,13 @@ var TwentyNineNext = (() => {
     const comparePrice = lineItem.querySelector('[data-os-cart-summary="line-compare"]');
     const salePrice = lineItem.querySelector('[data-os-cart-summary="line-sale"]');
     if (comparePrice && item.retail_price && __privateGet(this, _config2).showComparePricing) {
-      comparePrice.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, item.retail_price * (item.quantity || 1));
+      comparePrice.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, item.retail_price * (item.quantity || 1));
       comparePrice.classList.remove("hide");
     } else if (comparePrice) {
       comparePrice.classList.add("hide");
     }
     if (salePrice) {
-      salePrice.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, item.price * (item.quantity || 1));
+      salePrice.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, item.price * (item.quantity || 1));
     }
     const savingsPercentElement = lineItem.querySelector('[data-os-cart-summary="line-saving-percent"]');
     if (savingsPercentElement && item.retail_price) {
@@ -6985,6 +7594,12 @@ var TwentyNineNext = (() => {
   updateSummary_fn = function(totals) {
     if (!totals)
       return;
+    if (__privateGet(this, _elements3).subtotals.length) {
+      __privateGet(this, _elements3).subtotals.forEach((element) => {
+        element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.subtotal);
+      });
+      __privateGet(this, _logger20).debugWithTime(`Updated subtotal to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.subtotal)}`);
+    }
   };
   _updateShipping = new WeakSet();
   updateShipping_fn = function(shippingCost, shippingMethod) {
@@ -6997,11 +7612,11 @@ var TwentyNineNext = (() => {
       const shippingCurrent = shippingBar.querySelector('[data-os-cart-summary="shipping-current"]');
       if (shippingCompare && shippingCurrent) {
         if (shippingCost === 0 && shippingMethod?.standard_cost > 0) {
-          shippingCompare.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, shippingMethod.standard_cost);
+          shippingCompare.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, shippingMethod.standard_cost);
           shippingCurrent.textContent = "FREE";
           shippingCompare.classList.remove("hide");
         } else if (shippingCost > 0) {
-          shippingCurrent.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, shippingCost);
+          shippingCurrent.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, shippingCost);
           shippingCompare.classList.add("hide");
         } else {
           shippingCurrent.textContent = "FREE";
@@ -7021,8 +7636,8 @@ var TwentyNineNext = (() => {
       const savingsPercentage = savingsBar.querySelector('[data-os-cart-summary="savings-percentage"]');
       if (totals.savings > 0 && totals.savings_percentage > 0) {
         if (savingsAmount) {
-          savingsAmount.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, totals.savings);
-          __privateGet(this, _logger20).debugWithTime(`Updated savings amount to: ${__privateMethod(this, _formatPrice, formatPrice_fn).call(this, totals.savings)}`);
+          savingsAmount.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.savings);
+          __privateGet(this, _logger20).debugWithTime(`Updated savings amount to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.savings)}`);
         }
         if (savingsPercentage) {
           savingsPercentage.textContent = `${Math.round(totals.savings_percentage)}% OFF`;
@@ -7037,7 +7652,7 @@ var TwentyNineNext = (() => {
     const allSavingsPercentages = document.querySelectorAll('[data-os-cart-summary="savings-percentage"]');
     if (totals.savings > 0 && totals.savings_percentage > 0) {
       allSavingsAmounts.forEach((element) => {
-        element.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, totals.savings);
+        element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.savings);
       });
       allSavingsPercentages.forEach((element) => {
         element.textContent = `${Math.round(totals.savings_percentage)}% OFF`;
@@ -7051,12 +7666,12 @@ var TwentyNineNext = (() => {
       return;
     }
     __privateGet(this, _elements3).grandTotals.forEach((element) => {
-      element.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, total);
+      element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, total);
     });
-    __privateGet(this, _logger20).debugWithTime(`Updated grand total to: ${__privateMethod(this, _formatPrice, formatPrice_fn).call(this, total)}`);
+    __privateGet(this, _logger20).debugWithTime(`Updated grand total to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, total)}`);
   };
-  _formatPrice = new WeakSet();
-  formatPrice_fn = function(price) {
+  _formatPrice2 = new WeakSet();
+  formatPrice_fn2 = function(price) {
     if (__privateGet(this, _app15).campaign?.formatPrice) {
       return __privateGet(this, _app15).campaign.formatPrice(price);
     }
@@ -7101,9 +7716,9 @@ var TwentyNineNext = (() => {
           compareValue = totals.retail_subtotal;
       }
       if (compareValue && compareValue > totals.total) {
-        element.textContent = __privateMethod(this, _formatPrice, formatPrice_fn).call(this, compareValue);
+        element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, compareValue);
         element.classList.remove("hide");
-        __privateGet(this, _logger20).debugWithTime(`Updated compare-total (${totalType}) to: ${__privateMethod(this, _formatPrice, formatPrice_fn).call(this, compareValue)}`);
+        __privateGet(this, _logger20).debugWithTime(`Updated compare-total (${totalType}) to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, compareValue)}`);
       } else {
         element.classList.add("hide");
         __privateGet(this, _logger20).debugWithTime(`Hiding compare-total element (${totalType}): compareValue=${compareValue}, total=${totals.total}`);
@@ -7116,7 +7731,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/AttributionManager.js
-  var _app16, _logger21, _attributionData, _initialized2, _init7, init_fn7, _collectAttributionData, collectAttributionData_fn, _collectTrackingTags, collectTrackingTags_fn, _storeAttributionData, storeAttributionData_fn, _persistAttributionData, persistAttributionData_fn, _loadPersistedAttributionData, loadPersistedAttributionData_fn, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn, _setupEventListeners4, setupEventListeners_fn4, _reinitializeAttributionData, reinitializeAttributionData_fn, _getStoredValue, getStoredValue_fn, _getCookie, getCookie_fn, _getDeviceType, getDeviceType_fn, _getFacebookPixelId, getFacebookPixelId_fn;
+  var _app16, _logger21, _attributionData, _initialized2, _init7, init_fn7, _collectAttributionData, collectAttributionData_fn, _collectTrackingTags, collectTrackingTags_fn, _storeAttributionData, storeAttributionData_fn, _persistAttributionData, persistAttributionData_fn, _loadPersistedAttributionData, loadPersistedAttributionData_fn, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn, _setupEventListeners4, setupEventListeners_fn4, _getStoredValue, getStoredValue_fn, _getCookie, getCookie_fn, _getDeviceType, getDeviceType_fn, _getFacebookPixelId, getFacebookPixelId_fn;
   var AttributionManager = class {
     /**
      * Initialize the AttributionManager
@@ -7158,11 +7773,6 @@ var TwentyNineNext = (() => {
        * Set up event listeners for page navigation
        */
       __privateAdd(this, _setupEventListeners4);
-      /**
-       * Reinitialize attribution data after campaign data is loaded
-       * This ensures we have the latest campaign information
-       */
-      __privateAdd(this, _reinitializeAttributionData);
       /**
        * Get a value from URL parameters, sessionStorage, or localStorage
        * @param {string} key - The key to get
@@ -7320,6 +7930,21 @@ var TwentyNineNext = (() => {
       console.groupEnd();
       return "Attribution debug info logged to console.";
     }
+    /**
+     * Set the funnel name in attribution data
+     * Simple method to set the funnel name
+     * @param {string} funnelName - The funnel name to set
+     */
+    setFunnelName(funnelName) {
+      if (!funnelName) {
+        __privateGet(this, _logger21).warn("Cannot set empty funnel name");
+        return false;
+      }
+      __privateGet(this, _attributionData).funnel = funnelName;
+      __privateMethod(this, _storeAttributionData, storeAttributionData_fn).call(this);
+      __privateGet(this, _logger21).info(`Funnel name set to: ${funnelName}`);
+      return true;
+    }
   };
   _app16 = new WeakMap();
   _logger21 = new WeakMap();
@@ -7336,15 +7961,6 @@ var TwentyNineNext = (() => {
   };
   _collectAttributionData = new WeakSet();
   collectAttributionData_fn = function() {
-    const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
-    const funnelIdFromTag = funnelMetaTag ? funnelMetaTag.getAttribute("data-tag-value") : "";
-    const campaignName = __privateGet(this, _app16).campaign?.getCampaignName() || __privateGet(this, _app16).campaignData?.name || "";
-    const funnelId = funnelIdFromTag || campaignName;
-    __privateGet(this, _logger21).debug(`Using funnel value: ${funnelId} (from ${funnelIdFromTag ? "meta tag" : "campaign name"})`);
-    const affiliate = __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "affid") || __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "aff") || "";
-    const fbcValue = __privateMethod(this, _getCookie, getCookie_fn).call(this, "_fbc") || "";
-    const fbpValue = __privateMethod(this, _getCookie, getCookie_fn).call(this, "_fbp") || "";
-    const fbPixelId = __privateMethod(this, _getFacebookPixelId, getFacebookPixelId_fn).call(this);
     const metadata = {
       landing_page: window.location.href || "",
       referrer: document.referrer || "",
@@ -7352,21 +7968,22 @@ var TwentyNineNext = (() => {
       device_type: __privateMethod(this, _getDeviceType, getDeviceType_fn).call(this),
       timestamp: Date.now(),
       domain: window.location.hostname,
-      // Facebook tracking data - using the exact variable names from the example
-      fb_fbp: fbpValue,
-      fb_fbc: fbcValue,
-      fb_pixel_id: fbPixelId
+      // Facebook tracking data
+      fb_fbp: __privateMethod(this, _getCookie, getCookie_fn).call(this, "_fbp") || "",
+      fb_fbc: __privateMethod(this, _getCookie, getCookie_fn).call(this, "_fbc") || "",
+      fb_pixel_id: __privateMethod(this, _getFacebookPixelId, getFacebookPixelId_fn).call(this)
     };
     const fbclid = __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "fbclid") || "";
     if (fbclid) {
       metadata.fbclid = fbclid;
     }
     __privateMethod(this, _collectTrackingTags, collectTrackingTags_fn).call(this, metadata);
+    const affiliate = __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "affid") || __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "aff") || "";
     __privateSet(this, _attributionData, {
       // Attribution API compatible fields
       affiliate,
-      funnel: funnelId,
-      // Using funnelId which is either from the meta tag or campaign name
+      funnel: "",
+      // Will be set later when campaign data is available
       gclid: __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "gclid") || "",
       metadata,
       // Standard UTM parameters
@@ -7377,7 +7994,7 @@ var TwentyNineNext = (() => {
       utm_term: __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "utm_term") || "",
       // Other tracking parameters
       fbclid,
-      // Sub-affiliate parameters (renamed from sub1, sub2, etc.)
+      // Sub-affiliate parameters
       subaffiliate1: __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "subaffiliate1") || __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "sub1") || "",
       subaffiliate2: __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "subaffiliate2") || __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "sub2") || "",
       subaffiliate3: __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "subaffiliate3") || __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "sub3") || "",
@@ -7387,10 +8004,7 @@ var TwentyNineNext = (() => {
       first_visit_timestamp: __privateMethod(this, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn).call(this),
       current_visit_timestamp: Date.now()
     });
-    __privateGet(this, _logger21).debug("Attribution data collected", __privateGet(this, _attributionData));
-    if (!campaignName && __privateGet(this, _app16).events) {
-      __privateGet(this, _logger21).debug("Campaign data not available yet, will update when loaded");
-    }
+    __privateGet(this, _logger21).debug("Attribution data collected");
   };
   _collectTrackingTags = new WeakSet();
   collectTrackingTags_fn = function(metadata) {
@@ -7422,8 +8036,13 @@ var TwentyNineNext = (() => {
     }
     __privateGet(this, _app16).state.setState("cart.attribution", __privateGet(this, _attributionData));
     __privateGet(this, _app16).state.setState("attribution", this.getAttributionForApi());
-    __privateGet(this, _logger21).info("Attribution data stored in state");
     __privateMethod(this, _persistAttributionData, persistAttributionData_fn).call(this);
+    if (__privateGet(this, _app16).events) {
+      __privateGet(this, _app16).events.trigger("attribution.updated", {
+        attribution: __privateGet(this, _attributionData)
+      });
+    }
+    __privateGet(this, _logger21).debug("Attribution data stored in state");
   };
   _persistAttributionData = new WeakSet();
   persistAttributionData_fn = function() {
@@ -7465,21 +8084,10 @@ var TwentyNineNext = (() => {
     });
     if (__privateGet(this, _app16).events) {
       __privateGet(this, _app16).events.on("campaign.loaded", (data) => {
-        if (data && data.campaign) {
-          const campaignName = __privateGet(this, _app16).campaign?.getCampaignName() || data.campaign.name || "";
-          if (!campaignName) {
-            __privateGet(this, _logger21).warn("Campaign loaded but name is not available");
-            return;
-          }
-          __privateGet(this, _logger21).info(`Campaign loaded: ${campaignName}`);
+        if (data && data.campaign && data.campaign.name && !__privateGet(this, _attributionData).funnel) {
           const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
-          const funnelIdFromTag = funnelMetaTag ? funnelMetaTag.getAttribute("data-tag-value") : "";
-          const funnel = funnelIdFromTag || campaignName;
-          this.updateAttributionData({
-            funnel
-          });
-          __privateMethod(this, _reinitializeAttributionData, reinitializeAttributionData_fn).call(this);
-          __privateGet(this, _logger21).debug(`Updated funnel to: ${funnel} (from ${funnelIdFromTag ? "meta tag" : "campaign name"})`);
+          const funnelName = funnelMetaTag?.getAttribute("data-tag-value") || data.campaign.name;
+          this.setFunnelName(funnelName);
         }
       });
       __privateGet(this, _app16).events.on("prospect.cartCreated", () => {
@@ -7489,27 +8097,6 @@ var TwentyNineNext = (() => {
           metadata
         });
         __privateGet(this, _logger21).debug("Cart created, updated metadata with conversion timestamp");
-      });
-    }
-  };
-  _reinitializeAttributionData = new WeakSet();
-  reinitializeAttributionData_fn = function() {
-    __privateGet(this, _logger21).info("Reinitializing attribution data with campaign information");
-    const campaignName = __privateGet(this, _app16).campaign?.getCampaignName() || __privateGet(this, _app16).campaignData?.name || "";
-    if (!campaignName) {
-      __privateGet(this, _logger21).warn("Cannot reinitialize attribution data: Campaign name not available");
-      return;
-    }
-    const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
-    const funnelIdFromTag = funnelMetaTag ? funnelMetaTag.getAttribute("data-tag-value") : "";
-    const funnelId = funnelIdFromTag || campaignName;
-    __privateGet(this, _logger21).debug(`Using funnel value: ${funnelId} (from ${funnelIdFromTag ? "meta tag" : "campaign name"})`);
-    __privateGet(this, _attributionData).funnel = funnelId;
-    __privateMethod(this, _storeAttributionData, storeAttributionData_fn).call(this);
-    __privateGet(this, _logger21).info(`Attribution data reinitialized with funnel: ${funnelId}`);
-    if (__privateGet(this, _app16).events) {
-      __privateGet(this, _app16).events.trigger("attribution.updated", {
-        attribution: __privateGet(this, _attributionData)
       });
     }
   };
@@ -10140,6 +10727,11 @@ var TwentyNineNext = (() => {
       window.osConfig = window.osConfig || {};
       window.osConfig.campaign = __privateGet(this, _campaignData);
       window.dataLayer = window.dataLayer || [];
+      if (__privateGet(this, _campaignData).name && this.attribution) {
+        const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
+        const funnelName = funnelMetaTag?.getAttribute("data-tag-value") || __privateGet(this, _campaignData).name;
+        this.attribution.setFunnelName(funnelName);
+      }
       this.triggerEvent("campaign.loaded", { campaign: __privateGet(this, _campaignData) });
     } catch (error) {
       this.coreLogger.error("Failed to retrieve campaign data:", error);

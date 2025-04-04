@@ -14,6 +14,7 @@ export class CartDisplayManager {
     savingsBars: [], // Changed to array
     shippingBars: [], // Changed to array
     grandTotals: [], // Changed to array
+    subtotals: [], // Added for subtotal elements
     // Summary toggle elements
     summaryBars: [], // Changed to array
     summaryPanels: [], // Changed to array
@@ -53,6 +54,7 @@ export class CartDisplayManager {
     this.#elements.savingsBars = document.querySelectorAll('[data-os-cart-summary="savings"]');
     this.#elements.shippingBars = document.querySelectorAll('[data-os-cart-summary="shipping-bar"]');
     this.#elements.grandTotals = document.querySelectorAll('[data-os-cart-summary="grand-total"]');
+    this.#elements.subtotals = document.querySelectorAll('[data-os-cart-summary="subtotal"]');
     
     // Find all summary toggle elements
     this.#elements.summaryBars = document.querySelectorAll('[os-checkout-element="summary-bar"]');
@@ -69,6 +71,7 @@ export class CartDisplayManager {
     this.#logger.debugWithTime(`Savings bars found: ${this.#elements.savingsBars.length}`);
     this.#logger.debugWithTime(`Shipping bars found: ${this.#elements.shippingBars.length}`);
     this.#logger.debugWithTime(`Grand total elements found: ${this.#elements.grandTotals.length}`);
+    this.#logger.debugWithTime(`Subtotal elements found: ${this.#elements.subtotals.length}`);
     this.#logger.debugWithTime(`Summary bars found: ${this.#elements.summaryBars.length}`);
     this.#logger.debugWithTime(`Summary panels found: ${this.#elements.summaryPanels.length}`);
     this.#logger.debugWithTime(`Summary texts found: ${this.#elements.summaryTexts.length}`);
@@ -368,7 +371,15 @@ export class CartDisplayManager {
   #updateSummary(totals) {
     if (!totals) return;
     
-    // Update subtotal, tax, etc. if needed
+    // Update subtotal elements
+    if (this.#elements.subtotals.length) {
+      this.#elements.subtotals.forEach(element => {
+        element.textContent = this.#formatPrice(totals.subtotal);
+      });
+      this.#logger.debugWithTime(`Updated subtotal to: ${this.#formatPrice(totals.subtotal)}`);
+    }
+    
+    // Update other summary elements if needed
     // This would depend on your specific HTML structure
   }
 

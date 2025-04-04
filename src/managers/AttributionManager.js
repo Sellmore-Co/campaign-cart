@@ -38,27 +38,6 @@ export class AttributionManager {
    * Collect attribution data from various sources
    */
   #collectAttributionData() {
-    // Get campaign name for funnel ID from meta tag
-    const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
-    const funnelIdFromTag = funnelMetaTag ? funnelMetaTag.getAttribute('data-tag-value') : '';
-    
-    // Get campaign name if available - preferred method
-    const campaignName = this.#app.campaign?.getCampaignName() || this.#app.campaignData?.name || '';
-    
-    // Use funnel ID from tag if available, otherwise use campaign name
-    const funnelId = funnelIdFromTag || campaignName;
-    this.#logger.debug(`Using funnel value: ${funnelId} (from ${funnelIdFromTag ? 'meta tag' : 'campaign name'})`);
-    
-    // Get the affiliate value from affid or aff parameters (in order of priority)
-    const affiliate = this.#getStoredValue('affid') || this.#getStoredValue('aff') || '';
-    
-    // Get Facebook tracking data
-    const fbcValue = this.#getCookie('_fbc') || '';
-    const fbpValue = this.#getCookie('_fbp') || '';
-    
-    // Try to get Facebook pixel ID from meta tag or script
-    const fbPixelId = this.#getFacebookPixelId();
-    
     // Build metadata object for additional tracking data
     const metadata = {
       landing_page: window.location.href || '',
@@ -68,10 +47,10 @@ export class AttributionManager {
       timestamp: Date.now(),
       domain: window.location.hostname,
       
-      // Facebook tracking data - using the exact variable names from the example
-      fb_fbp: fbpValue,
-      fb_fbc: fbcValue,
-      fb_pixel_id: fbPixelId
+      // Facebook tracking data
+      fb_fbp: this.#getCookie('_fbp') || '',
+      fb_fbc: this.#getCookie('_fbc') || '',
+      fb_pixel_id: this.#getFacebookPixelId()
     };
     
     // Add fbclid to metadata if it exists
@@ -83,11 +62,14 @@ export class AttributionManager {
     // Collect all meta tracking tags and add them to metadata
     this.#collectTrackingTags(metadata);
 
+    // Get the affiliate value from affid or aff parameters
+    const affiliate = this.#getStoredValue('affid') || this.#getStoredValue('aff') || '';
+
     // Collect UTM parameters and other tracking data
     this.#attributionData = {
       // Attribution API compatible fields
       affiliate: affiliate,
-      funnel: funnelId,  // Using funnelId which is either from the meta tag or campaign name
+      funnel: '', // Will be set later when campaign data is available
       gclid: this.#getStoredValue('gclid') || '',
       metadata: metadata,
       
@@ -101,7 +83,7 @@ export class AttributionManager {
       // Other tracking parameters
       fbclid: fbclid,
       
-      // Sub-affiliate parameters (renamed from sub1, sub2, etc.)
+      // Sub-affiliate parameters
       subaffiliate1: this.#getStoredValue('subaffiliate1') || this.#getStoredValue('sub1') || '',
       subaffiliate2: this.#getStoredValue('subaffiliate2') || this.#getStoredValue('sub2') || '',
       subaffiliate3: this.#getStoredValue('subaffiliate3') || this.#getStoredValue('sub3') || '',
@@ -113,12 +95,7 @@ export class AttributionManager {
       current_visit_timestamp: Date.now()
     };
 
-    this.#logger.debug('Attribution data collected', this.#attributionData);
-    
-    // Check if we need to update when campaign data becomes available
-    if (!campaignName && this.#app.events) {
-      this.#logger.debug('Campaign data not available yet, will update when loaded');
-    }
+    this.#logger.debug('Attribution data collected');
   }
 
   /**
@@ -160,16 +137,23 @@ export class AttributionManager {
       return;
     }
 
-    // Store the complete attribution data
+    // Store the complete attribution data in the cart attribution
     this.#app.state.setState('cart.attribution', this.#attributionData);
     
     // Also store specific API-compatible attribution object for checkout
     this.#app.state.setState('attribution', this.getAttributionForApi());
     
-    this.#logger.info('Attribution data stored in state');
-    
-    // Also store in localStorage for persistence across sessions
+    // Store in localStorage for persistence across sessions
     this.#persistAttributionData();
+    
+    // Trigger attribution updated event
+    if (this.#app.events) {
+      this.#app.events.trigger('attribution.updated', {
+        attribution: this.#attributionData
+      });
+    }
+    
+    this.#logger.debug('Attribution data stored in state');
   }
 
   /**
@@ -232,32 +216,14 @@ export class AttributionManager {
     // Listen for campaign data loading
     if (this.#app.events) {
       this.#app.events.on('campaign.loaded', (data) => {
-        if (data && data.campaign) {
-          // Get the campaign name using the helper or directly from data
-          const campaignName = this.#app.campaign?.getCampaignName() || data.campaign.name || '';
-          if (!campaignName) {
-            this.#logger.warn('Campaign loaded but name is not available');
-            return;
-          }
-          
-          this.#logger.info(`Campaign loaded: ${campaignName}`);
-          
-          // Get the current funnel from meta tag (if any)
+        if (data && data.campaign && data.campaign.name && !this.#attributionData.funnel) {
+          // Set funnel name if not already set
+          // Check for meta tag first
           const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
-          const funnelIdFromTag = funnelMetaTag ? funnelMetaTag.getAttribute('data-tag-value') : '';
+          const funnelName = funnelMetaTag?.getAttribute('data-tag-value') || data.campaign.name;
           
-          // Use the funnel ID from meta tag if available, otherwise use campaign name
-          const funnel = funnelIdFromTag || campaignName;
-          
-          // Update the funnel field
-          this.updateAttributionData({
-            funnel: funnel
-          });
-          
-          // Also reinitialize the attribution data to ensure it includes latest campaign information
-          this.#reinitializeAttributionData();
-          
-          this.#logger.debug(`Updated funnel to: ${funnel} (from ${funnelIdFromTag ? 'meta tag' : 'campaign name'})`);
+          // Set the funnel name
+          this.setFunnelName(funnelName);
         }
       });
       
@@ -271,47 +237,6 @@ export class AttributionManager {
         });
         
         this.#logger.debug('Cart created, updated metadata with conversion timestamp');
-      });
-    }
-  }
-
-  /**
-   * Reinitialize attribution data after campaign data is loaded
-   * This ensures we have the latest campaign information
-   */
-  #reinitializeAttributionData() {
-    this.#logger.info('Reinitializing attribution data with campaign information');
-    
-    // Get campaign name for funnel ID
-    const campaignName = this.#app.campaign?.getCampaignName() || this.#app.campaignData?.name || '';
-    
-    if (!campaignName) {
-      this.#logger.warn('Cannot reinitialize attribution data: Campaign name not available');
-      return;
-    }
-    
-    // Get funnel ID from meta tag first
-    const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
-    const funnelIdFromTag = funnelMetaTag ? funnelMetaTag.getAttribute('data-tag-value') : '';
-    
-    // Use funnel ID from tag if available, otherwise use campaign name
-    const funnelId = funnelIdFromTag || campaignName;
-    
-    this.#logger.debug(`Using funnel value: ${funnelId} (from ${funnelIdFromTag ? 'meta tag' : 'campaign name'})`);
-    
-    // Update funnel in attribution data
-    this.#attributionData.funnel = funnelId;
-    
-    // Update the state with this attribution data
-    this.#storeAttributionData();
-    
-    // Log debugging information
-    this.#logger.info(`Attribution data reinitialized with funnel: ${funnelId}`);
-    
-    // Trigger event to notify other components
-    if (this.#app.events) {
-      this.#app.events.trigger('attribution.updated', {
-        attribution: this.#attributionData
       });
     }
   }
@@ -590,5 +515,27 @@ export class AttributionManager {
     }
     
     return '';
+  }
+
+  /**
+   * Set the funnel name in attribution data
+   * Simple method to set the funnel name
+   * @param {string} funnelName - The funnel name to set
+   */
+  setFunnelName(funnelName) {
+    if (!funnelName) {
+      this.#logger.warn('Cannot set empty funnel name');
+      return false;
+    }
+
+    // Update the funnel field in attribution data
+    this.#attributionData.funnel = funnelName;
+    
+    // Store in state manager - this will handle syncing with session storage
+    this.#storeAttributionData();
+    
+    this.#logger.info(`Funnel name set to: ${funnelName}`);
+    
+    return true;
   }
 } 

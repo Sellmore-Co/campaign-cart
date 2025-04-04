@@ -215,6 +215,17 @@ export class TwentyNineNext {
       window.osConfig = window.osConfig || {};
       window.osConfig.campaign = this.#campaignData;
       window.dataLayer = window.dataLayer || [];
+      
+      // Set the funnel name using campaign data
+      if (this.#campaignData.name && this.attribution) {
+        // First check for meta tag (higher priority)
+        const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
+        const funnelName = funnelMetaTag?.getAttribute('data-tag-value') || this.#campaignData.name;
+        
+        // Use our simplified method to set the funnel name
+        this.attribution.setFunnelName(funnelName);
+      }
+      
       this.triggerEvent('campaign.loaded', { campaign: this.#campaignData });
     } catch (error) {
       this.coreLogger.error('Failed to retrieve campaign data:', error);
