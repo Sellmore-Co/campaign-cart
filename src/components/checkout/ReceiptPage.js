@@ -165,6 +165,21 @@ export class ReceiptPage {
     this.#updateElement('shipping-method', shippingMethod); // Hyphen version
     this.#updateElement('shipping_method', shippingMethod); // Underscore version
     
+    // Update tax information - show only if taxes exist
+    const taxContainer = document.querySelector('[data-os-receipt="tax-container"]');
+    if (taxContainer) {
+      const totalTax = parseFloat(this.#orderData.total_tax || 0);
+      
+      if (totalTax > 0) {
+        // Show tax container and update tax amount
+        taxContainer.style.display = 'flex';
+        this.#updateElement('taxes', this.#formatCurrency(totalTax));
+      } else {
+        // Hide tax container if no taxes
+        taxContainer.style.display = 'none';
+      }
+    }
+    
     // Update total
     const total = this.#formatCurrency(parseFloat(this.#orderData.total_incl_tax) || 0);
     this.#updateElement('total', total);
@@ -260,8 +275,8 @@ export class ReceiptPage {
         if (compareElement) compareElement.style.display = 'none';
       }
       
-      // Update subtotal - ensure we're using a number
-      const price = parseFloat(line.price_incl_tax) || parseFloat(line.price_excl_tax) || 0;
+      // Update subtotal - use price excluding tax instead of price including tax
+      const price = parseFloat(line.price_excl_tax) || 0;
       this.#updateElementInNode(newLine, 'line-subtotal', this.#formatCurrency(price));
       
       // Add the line to the container
