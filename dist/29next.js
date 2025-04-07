@@ -249,6 +249,16 @@ var TwentyNineNext = (() => {
         const shippingMethod = __privateGet(this, _orderData).shipping_method || "Standard Shipping";
         __privateMethod(this, _updateElement, updateElement_fn).call(this, "shipping-method", shippingMethod);
         __privateMethod(this, _updateElement, updateElement_fn).call(this, "shipping_method", shippingMethod);
+        const taxContainer = document.querySelector('[data-os-receipt="tax-container"]');
+        if (taxContainer) {
+          const totalTax = parseFloat(__privateGet(this, _orderData).total_tax || 0);
+          if (totalTax > 0) {
+            taxContainer.style.display = "flex";
+            __privateMethod(this, _updateElement, updateElement_fn).call(this, "taxes", __privateMethod(this, _formatCurrency, formatCurrency_fn).call(this, totalTax));
+          } else {
+            taxContainer.style.display = "none";
+          }
+        }
         const total = __privateMethod(this, _formatCurrency, formatCurrency_fn).call(this, parseFloat(__privateGet(this, _orderData).total_incl_tax) || 0);
         __privateMethod(this, _updateElement, updateElement_fn).call(this, "total", total);
         __privateMethod(this, _updateElement, updateElement_fn).call(this, "order_number", __privateGet(this, _orderData).number || "");
@@ -310,7 +320,7 @@ var TwentyNineNext = (() => {
             if (compareElement)
               compareElement.style.display = "none";
           }
-          const price = parseFloat(line.price_incl_tax) || parseFloat(line.price_excl_tax) || 0;
+          const price = parseFloat(line.price_excl_tax) || 0;
           __privateMethod(this, _updateElementInNode, updateElementInNode_fn).call(this, newLine, "line-subtotal", __privateMethod(this, _formatCurrency, formatCurrency_fn).call(this, price));
           orderLinesContainer.appendChild(newLine);
         });
