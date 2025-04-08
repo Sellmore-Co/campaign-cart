@@ -8073,43 +8073,6 @@ var TwentyNineNext = (() => {
     } else if (localStorage.getItem("sg_evclid")) {
       metadata.sg_evclid = localStorage.getItem("sg_evclid");
     }
-    if (!evclid && typeof window.EF !== "undefined" && typeof window.EF.click === "function" && typeof window.EF.urlParameter === "function") {
-      try {
-        __privateGet(this, _logger21).debug("Attempting to get Everflow transaction ID from EF.click()");
-        const offer_id = window.EF.urlParameter("oid");
-        const affiliate_id = window.EF.urlParameter("affid");
-        if (offer_id && affiliate_id) {
-          window.EF.click({
-            offer_id,
-            affiliate_id
-          }).then((transactionId) => {
-            if (transactionId) {
-              localStorage.setItem("evclid", transactionId);
-              sessionStorage.setItem("evclid", transactionId);
-              metadata.everflow_transaction_id = transactionId;
-              __privateGet(this, _logger21).debug(`Everflow transaction ID obtained from EF.click(): ${transactionId}`);
-              if (__privateGet(this, _initialized2) && __privateGet(this, _app16).state) {
-                this.updateAttributionData({
-                  metadata: { ...metadata }
-                });
-                const attribution = this.getAttributionForApi();
-                __privateGet(this, _app16).state.setState("attribution", attribution);
-                if (__privateGet(this, _app16).events) {
-                  __privateGet(this, _app16).events.trigger("everflow.transactionId.updated", {
-                    transactionId
-                  });
-                }
-                __privateGet(this, _logger21).debug("State updated with Everflow transaction ID");
-              }
-            }
-          }).catch((error) => {
-            __privateGet(this, _logger21).error("Error getting Everflow transaction ID:", error);
-          });
-        }
-      } catch (error) {
-        __privateGet(this, _logger21).error("Error calling EF.click():", error);
-      }
-    }
     if (evclid) {
       metadata.everflow_transaction_id = evclid;
       __privateGet(this, _logger21).debug(`Added Everflow transaction ID to metadata: ${evclid}`);
