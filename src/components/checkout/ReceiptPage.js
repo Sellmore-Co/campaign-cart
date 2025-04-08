@@ -165,6 +165,18 @@ export class ReceiptPage {
     this.#updateElement('shipping-method', shippingMethod); // Hyphen version
     this.#updateElement('shipping_method', shippingMethod); // Underscore version
     
+    // Update shipping price
+    if (this.#orderData.shipping_excl_tax !== undefined) {
+      const shippingPrice = this.#formatCurrency(parseFloat(this.#orderData.shipping_excl_tax));
+      this.#updateElement('shipping-price', shippingPrice);
+      
+      // Always show shipping container regardless of price
+      const shippingContainer = document.querySelector('[data-os-receipt="shipping-container"]');
+      if (shippingContainer) {
+        shippingContainer.style.display = 'flex';
+      }
+    }
+    
     // Update tax information - show only if taxes exist
     const taxContainer = document.querySelector('[data-os-receipt="tax-container"]');
     if (taxContainer) {
