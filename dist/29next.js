@@ -10686,7 +10686,6 @@ var TwentyNineNext = (() => {
         this.coreLogger.warn("window.on29NextReady is not an array, resetting it");
         window.on29NextReady = [];
       }
-      this.attribution = new AttributionManager(this);
       await __privateMethod(this, _fetchCampaignData, fetchCampaignData_fn).call(this);
       await __privateMethod(this, _loadGoogleMapsApi, loadGoogleMapsApi_fn).call(this);
       __privateSet(this, _isCheckoutPage, __privateMethod(this, _detectCheckoutPage, detectCheckoutPage_fn).call(this));
@@ -11006,4 +11005,3 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
-//# sourceMappingURL=29next.js.map
