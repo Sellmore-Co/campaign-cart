@@ -7741,7 +7741,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/AttributionManager.js
-  var _app16, _logger21, _attributionData, _initialized2, _init7, init_fn7, _collectAttributionData, collectAttributionData_fn, _collectTrackingTags, collectTrackingTags_fn, _storeAttributionData, storeAttributionData_fn, _persistAttributionData, persistAttributionData_fn, _loadPersistedAttributionData, loadPersistedAttributionData_fn, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn, _setupEventListeners4, setupEventListeners_fn4, _getStoredValue, getStoredValue_fn, _getCookie, getCookie_fn, _getDeviceType, getDeviceType_fn, _getFacebookPixelId, getFacebookPixelId_fn;
+  var _app16, _logger21, _attributionData, _initialized2, _init7, init_fn7, _collectAttributionData, collectAttributionData_fn, _handleEverflowClickId, handleEverflowClickId_fn, _collectTrackingTags, collectTrackingTags_fn, _storeAttributionData, storeAttributionData_fn, _persistAttributionData, persistAttributionData_fn, _loadPersistedAttributionData, loadPersistedAttributionData_fn, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn, _setupEventListeners4, setupEventListeners_fn4, _getStoredValue, getStoredValue_fn, _getCookie, getCookie_fn, _getDeviceType, getDeviceType_fn, _getFacebookPixelId, getFacebookPixelId_fn;
   var AttributionManager = class {
     /**
      * Initialize the AttributionManager
@@ -7756,6 +7756,11 @@ var TwentyNineNext = (() => {
        * Collect attribution data from various sources
        */
       __privateAdd(this, _collectAttributionData);
+      /**
+       * Handle Everflow click ID tracking
+       * @param {Object} metadata - The metadata object to update
+       */
+      __privateAdd(this, _handleEverflowClickId);
       /**
        * Collect all meta tracking tags and add them to metadata object
        * @param {Object} metadata - The metadata object to update
@@ -7851,12 +7856,15 @@ var TwentyNineNext = (() => {
      * @returns {Object} Attribution data formatted for API
      */
     getAttributionForApi() {
+      const everflowTransactionId = __privateGet(this, _attributionData).metadata?.everflow_transaction_id || "";
       return {
         // Core attribution fields
         affiliate: __privateGet(this, _attributionData).affiliate,
         funnel: __privateGet(this, _attributionData).funnel,
         gclid: __privateGet(this, _attributionData).gclid,
         metadata: __privateGet(this, _attributionData).metadata,
+        // Everflow transaction ID at root level
+        everflow_transaction_id: everflowTransactionId,
         // UTM parameters at root level as required by API
         utm_source: __privateGet(this, _attributionData).utm_source,
         utm_medium: __privateGet(this, _attributionData).utm_medium,
@@ -7886,6 +7894,11 @@ var TwentyNineNext = (() => {
       /* @__PURE__ */ console.log("  • Funnel from meta tag:", funnelFromTag || "(not set)");
       /* @__PURE__ */ console.log("  • Campaign name:", campaignName || "(not set)");
       /* @__PURE__ */ console.log("  • Source used:", funnelFromTag ? "meta tag" : campaignName ? "campaign name" : "none");
+      /* @__PURE__ */ console.log("Everflow Information:");
+      /* @__PURE__ */ console.log("- localStorage evclid:", localStorage.getItem("evclid") || "(not set)");
+      /* @__PURE__ */ console.log("- sessionStorage evclid:", sessionStorage.getItem("evclid") || "(not set)");
+      /* @__PURE__ */ console.log("- metadata.everflow_transaction_id:", __privateGet(this, _attributionData).metadata?.everflow_transaction_id || "(not set)");
+      /* @__PURE__ */ console.log("- Is EF object available:", typeof window.EF !== "undefined" ? "Yes" : "No");
       console.group("API Formatted Attribution Data (What gets sent to API)");
       const apiData = this.getAttributionForApi();
       /* @__PURE__ */ console.log("Core Fields:");
@@ -7955,6 +7968,26 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger21).info(`Funnel name set to: ${funnelName}`);
       return true;
     }
+    /**
+     * Set the Everflow click ID (evclid) in attribution data
+     * @param {string} clickId - The Everflow click ID to set
+     * @returns {boolean} True if the ID was set successfully
+     */
+    setEverflowClickId(clickId) {
+      if (!clickId) {
+        __privateGet(this, _logger21).warn("Cannot set empty Everflow click ID");
+        return false;
+      }
+      localStorage.setItem("evclid", clickId);
+      sessionStorage.setItem("evclid", clickId);
+      const metadata = __privateGet(this, _attributionData).metadata || {};
+      metadata.everflow_transaction_id = clickId;
+      this.updateAttributionData({
+        metadata
+      });
+      __privateGet(this, _logger21).info(`Everflow click ID set to: ${clickId}`);
+      return true;
+    }
   };
   _app16 = new WeakMap();
   _logger21 = new WeakMap();
@@ -7987,6 +8020,7 @@ var TwentyNineNext = (() => {
     if (fbclid) {
       metadata.fbclid = fbclid;
     }
+    __privateMethod(this, _handleEverflowClickId, handleEverflowClickId_fn).call(this, metadata);
     __privateMethod(this, _collectTrackingTags, collectTrackingTags_fn).call(this, metadata);
     const affiliate = __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "affid") || __privateMethod(this, _getStoredValue, getStoredValue_fn).call(this, "aff") || "";
     __privateSet(this, _attributionData, {
@@ -8015,6 +8049,34 @@ var TwentyNineNext = (() => {
       current_visit_timestamp: Date.now()
     });
     __privateGet(this, _logger21).debug("Attribution data collected");
+  };
+  _handleEverflowClickId = new WeakSet();
+  handleEverflowClickId_fn = function(metadata) {
+    const urlParams = new URLSearchParams(window.location.search);
+    let evclid = localStorage.getItem("evclid");
+    if (urlParams.has("evclid")) {
+      evclid = urlParams.get("evclid");
+      localStorage.setItem("evclid", evclid);
+      sessionStorage.setItem("evclid", evclid);
+      __privateGet(this, _logger21).debug(`Everflow click ID found in URL: ${evclid}`);
+    } else if (!evclid && sessionStorage.getItem("evclid")) {
+      evclid = sessionStorage.getItem("evclid");
+      localStorage.setItem("evclid", evclid);
+      __privateGet(this, _logger21).debug(`Everflow click ID found in sessionStorage: ${evclid}`);
+    }
+    if (urlParams.has("sg_evclid")) {
+      const sg_evclid = urlParams.get("sg_evclid");
+      sessionStorage.setItem("sg_evclid", sg_evclid);
+      localStorage.setItem("sg_evclid", sg_evclid);
+      metadata.sg_evclid = sg_evclid;
+      __privateGet(this, _logger21).debug(`SG Everflow click ID found: ${sg_evclid}`);
+    } else if (localStorage.getItem("sg_evclid")) {
+      metadata.sg_evclid = localStorage.getItem("sg_evclid");
+    }
+    if (evclid) {
+      metadata.everflow_transaction_id = evclid;
+      __privateGet(this, _logger21).debug(`Added Everflow transaction ID to metadata: ${evclid}`);
+    }
   };
   _collectTrackingTags = new WeakSet();
   collectTrackingTags_fn = function(metadata) {
@@ -8160,14 +8222,12 @@ var TwentyNineNext = (() => {
   };
   _getFacebookPixelId = new WeakSet();
   getFacebookPixelId_fn = function() {
-    const metaPixelId = document.querySelector('meta[name="facebook-domain-verification"]');
-    if (metaPixelId) {
-      const content = metaPixelId.getAttribute("content");
-      if (content && content.includes("=")) {
-        const parts = content.split("=");
-        if (parts.length > 1) {
-          return parts[1];
-        }
+    const osFbPixelMeta = document.querySelector('meta[name="os-facebook-pixel"]');
+    if (osFbPixelMeta) {
+      const pixelId = osFbPixelMeta.getAttribute("content");
+      if (pixelId) {
+        __privateGet(this, _logger21).debug(`Facebook Pixel ID found from os-facebook-pixel meta tag: ${pixelId}`);
+        return pixelId;
       }
     }
     const scripts = document.querySelectorAll("script");
