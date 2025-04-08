@@ -190,9 +190,6 @@ export class TwentyNineNext {
       window.on29NextReady = [];
     }
 
-    // Initialize attribution first to ensure tracking parameters are captured
-    this.attribution = new AttributionManager(this);
-    
     await this.#fetchCampaignData();
     await this.#loadGoogleMapsApi();
     this.#isCheckoutPage = this.#detectCheckoutPage();
