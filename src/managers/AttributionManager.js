@@ -59,6 +59,9 @@ export class AttributionManager {
       metadata.fbclid = fbclid;
     }
     
+    // Handle Everflow click ID (evclid)
+    this.#handleEverflowClickId(metadata);
+    
     // Collect all meta tracking tags and add them to metadata
     this.#collectTrackingTags(metadata);
 
@@ -96,6 +99,101 @@ export class AttributionManager {
     };
 
     this.#logger.debug('Attribution data collected');
+  }
+
+  /**
+   * Handle Everflow click ID tracking
+   * @param {Object} metadata - The metadata object to update
+   */
+  #handleEverflowClickId(metadata) {
+    const urlParams = new URLSearchParams(window.location.search);
+    let evclid = localStorage.getItem("evclid");
+    
+    // Check URL parameters first
+    if (urlParams.has("evclid")) {
+      evclid = urlParams.get("evclid");
+      localStorage.setItem("evclid", evclid);
+      sessionStorage.setItem("evclid", evclid);
+      this.#logger.debug(`Everflow click ID found in URL: ${evclid}`);
+    } 
+    // Try sessionStorage as fallback
+    else if (!evclid && sessionStorage.getItem("evclid")) {
+      evclid = sessionStorage.getItem("evclid");
+      localStorage.setItem("evclid", evclid);
+      this.#logger.debug(`Everflow click ID found in sessionStorage: ${evclid}`);
+    }
+    
+    // Handle sg_evclid separately
+    if (urlParams.has("sg_evclid")) {
+      const sg_evclid = urlParams.get("sg_evclid");
+      sessionStorage.setItem("sg_evclid", sg_evclid);
+      localStorage.setItem("sg_evclid", sg_evclid);
+      metadata.sg_evclid = sg_evclid;
+      this.#logger.debug(`SG Everflow click ID found: ${sg_evclid}`);
+    } else if (localStorage.getItem("sg_evclid")) {
+      metadata.sg_evclid = localStorage.getItem("sg_evclid");
+    }
+    
+    // If we still don't have evclid and the EF object exists, try to get transaction ID from EF.click()
+    if (!evclid && typeof window.EF !== 'undefined' && typeof window.EF.click === 'function' && typeof window.EF.urlParameter === 'function') {
+      try {
+        this.#logger.debug('Attempting to get Everflow transaction ID from EF.click()');
+        
+        // Get parameters from URL
+        const offer_id = window.EF.urlParameter('oid');
+        const affiliate_id = window.EF.urlParameter('affid');
+        
+        if (offer_id && affiliate_id) {
+          window.EF.click({
+            offer_id: offer_id,
+            affiliate_id: affiliate_id
+          })
+          .then((transactionId) => {
+            if (transactionId) {
+              // Store in storage
+              localStorage.setItem("evclid", transactionId);
+              sessionStorage.setItem("evclid", transactionId);
+              
+              // Update metadata with transaction ID
+              metadata.everflow_transaction_id = transactionId;
+              this.#logger.debug(`Everflow transaction ID obtained from EF.click(): ${transactionId}`);
+              
+              // Force an immediate state update
+              if (this.#initialized && this.#app.state) {
+                // Update the full attribution data
+                this.updateAttributionData({
+                  metadata: { ...metadata }
+                });
+                
+                // Also update the root-level attribution state
+                const attribution = this.getAttributionForApi();
+                this.#app.state.setState('attribution', attribution);
+                
+                // Trigger an event to notify other components
+                if (this.#app.events) {
+                  this.#app.events.trigger('everflow.transactionId.updated', {
+                    transactionId: transactionId
+                  });
+                }
+                
+                this.#logger.debug('State updated with Everflow transaction ID');
+              }
+            }
+          })
+          .catch(error => {
+            this.#logger.error('Error getting Everflow transaction ID:', error);
+          });
+        }
+      } catch (error) {
+        this.#logger.error('Error calling EF.click():', error);
+      }
+    }
+    
+    // Set the transaction ID in metadata if we have it
+    if (evclid) {
+      metadata.everflow_transaction_id = evclid;
+      this.#logger.debug(`Added Everflow transaction ID to metadata: ${evclid}`);
+    }
   }
 
   /**
@@ -288,12 +386,18 @@ export class AttributionManager {
    * @returns {Object} Attribution data formatted for API
    */
   getAttributionForApi() {
+    // Get Everflow transaction ID from metadata
+    const everflowTransactionId = this.#attributionData.metadata?.everflow_transaction_id || '';
+    
     return {
       // Core attribution fields
       affiliate: this.#attributionData.affiliate,
       funnel: this.#attributionData.funnel,
       gclid: this.#attributionData.gclid,
       metadata: this.#attributionData.metadata,
+      
+      // Everflow transaction ID at root level
+      everflow_transaction_id: everflowTransactionId,
       
       // UTM parameters at root level as required by API
       utm_source: this.#attributionData.utm_source,
@@ -330,6 +434,13 @@ export class AttributionManager {
     console.log('  • Funnel from meta tag:', funnelFromTag || '(not set)');
     console.log('  • Campaign name:', campaignName || '(not set)');
     console.log('  • Source used:', funnelFromTag ? 'meta tag' : (campaignName ? 'campaign name' : 'none'));
+    
+    // Everflow information
+    console.log('Everflow Information:');
+    console.log('- localStorage evclid:', localStorage.getItem('evclid') || '(not set)');
+    console.log('- sessionStorage evclid:', sessionStorage.getItem('evclid') || '(not set)');
+    console.log('- metadata.everflow_transaction_id:', this.#attributionData.metadata?.everflow_transaction_id || '(not set)');
+    console.log('- Is EF object available:', typeof window.EF !== 'undefined' ? 'Yes' : 'No');
     
     // API formatted data
     console.group('API Formatted Attribution Data (What gets sent to API)');
@@ -535,6 +646,35 @@ export class AttributionManager {
     this.#storeAttributionData();
     
     this.#logger.info(`Funnel name set to: ${funnelName}`);
+    
+    return true;
+  }
+
+  /**
+   * Set the Everflow click ID (evclid) in attribution data
+   * @param {string} clickId - The Everflow click ID to set
+   * @returns {boolean} True if the ID was set successfully
+   */
+  setEverflowClickId(clickId) {
+    if (!clickId) {
+      this.#logger.warn('Cannot set empty Everflow click ID');
+      return false;
+    }
+
+    // Store in local/session storage
+    localStorage.setItem("evclid", clickId);
+    sessionStorage.setItem("evclid", clickId);
+
+    // Update the metadata with the transaction ID
+    const metadata = this.#attributionData.metadata || {};
+    metadata.everflow_transaction_id = clickId;
+    
+    // Update attribution data
+    this.updateAttributionData({
+      metadata: metadata
+    });
+    
+    this.#logger.info(`Everflow click ID set to: ${clickId}`);
     
     return true;
   }
