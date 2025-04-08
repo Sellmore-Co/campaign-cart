@@ -134,61 +134,6 @@ export class AttributionManager {
       metadata.sg_evclid = localStorage.getItem("sg_evclid");
     }
     
-    // If we still don't have evclid and the EF object exists, try to get transaction ID from EF.click()
-    if (!evclid && typeof window.EF !== 'undefined' && typeof window.EF.click === 'function' && typeof window.EF.urlParameter === 'function') {
-      try {
-        this.#logger.debug('Attempting to get Everflow transaction ID from EF.click()');
-        
-        // Get parameters from URL
-        const offer_id = window.EF.urlParameter('oid');
-        const affiliate_id = window.EF.urlParameter('affid');
-        
-        if (offer_id && affiliate_id) {
-          window.EF.click({
-            offer_id: offer_id,
-            affiliate_id: affiliate_id
-          })
-          .then((transactionId) => {
-            if (transactionId) {
-              // Store in storage
-              localStorage.setItem("evclid", transactionId);
-              sessionStorage.setItem("evclid", transactionId);
-              
-              // Update metadata with transaction ID
-              metadata.everflow_transaction_id = transactionId;
-              this.#logger.debug(`Everflow transaction ID obtained from EF.click(): ${transactionId}`);
-              
-              // Force an immediate state update
-              if (this.#initialized && this.#app.state) {
-                // Update the full attribution data
-                this.updateAttributionData({
-                  metadata: { ...metadata }
-                });
-                
-                // Also update the root-level attribution state
-                const attribution = this.getAttributionForApi();
-                this.#app.state.setState('attribution', attribution);
-                
-                // Trigger an event to notify other components
-                if (this.#app.events) {
-                  this.#app.events.trigger('everflow.transactionId.updated', {
-                    transactionId: transactionId
-                  });
-                }
-                
-                this.#logger.debug('State updated with Everflow transaction ID');
-              }
-            }
-          })
-          .catch(error => {
-            this.#logger.error('Error getting Everflow transaction ID:', error);
-          });
-        }
-      } catch (error) {
-        this.#logger.error('Error calling EF.click():', error);
-      }
-    }
-    
     // Set the transaction ID in metadata if we have it
     if (evclid) {
       metadata.everflow_transaction_id = evclid;
