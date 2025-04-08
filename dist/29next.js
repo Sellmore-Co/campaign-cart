@@ -249,6 +249,14 @@ var TwentyNineNext = (() => {
         const shippingMethod = __privateGet(this, _orderData).shipping_method || "Standard Shipping";
         __privateMethod(this, _updateElement, updateElement_fn).call(this, "shipping-method", shippingMethod);
         __privateMethod(this, _updateElement, updateElement_fn).call(this, "shipping_method", shippingMethod);
+        if (__privateGet(this, _orderData).shipping_excl_tax !== void 0) {
+          const shippingPrice = __privateMethod(this, _formatCurrency, formatCurrency_fn).call(this, parseFloat(__privateGet(this, _orderData).shipping_excl_tax));
+          __privateMethod(this, _updateElement, updateElement_fn).call(this, "shipping-price", shippingPrice);
+          const shippingContainer = document.querySelector('[data-os-receipt="shipping-container"]');
+          if (shippingContainer) {
+            shippingContainer.style.display = "flex";
+          }
+        }
         const taxContainer = document.querySelector('[data-os-receipt="tax-container"]');
         if (taxContainer) {
           const totalTax = parseFloat(__privateGet(this, _orderData).total_tax || 0);
