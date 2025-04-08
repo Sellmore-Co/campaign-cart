@@ -8222,14 +8222,12 @@ var TwentyNineNext = (() => {
   };
   _getFacebookPixelId = new WeakSet();
   getFacebookPixelId_fn = function() {
-    const metaPixelId = document.querySelector('meta[name="facebook-domain-verification"]');
-    if (metaPixelId) {
-      const content = metaPixelId.getAttribute("content");
-      if (content && content.includes("=")) {
-        const parts = content.split("=");
-        if (parts.length > 1) {
-          return parts[1];
-        }
+    const osFbPixelMeta = document.querySelector('meta[name="os-facebook-pixel"]');
+    if (osFbPixelMeta) {
+      const pixelId = osFbPixelMeta.getAttribute("content");
+      if (pixelId) {
+        __privateGet(this, _logger21).debug(`Facebook Pixel ID found from os-facebook-pixel meta tag: ${pixelId}`);
+        return pixelId;
       }
     }
     const scripts = document.querySelectorAll("script");

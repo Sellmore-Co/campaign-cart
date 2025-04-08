@@ -546,15 +546,13 @@ export class AttributionManager {
    * @returns {string} The Facebook Pixel ID or empty string if not found
    */
   #getFacebookPixelId() {
-    // Try to find FB Pixel ID from meta tag
-    const metaPixelId = document.querySelector('meta[name="facebook-domain-verification"]');
-    if (metaPixelId) {
-      const content = metaPixelId.getAttribute('content');
-      if (content && content.includes('=')) {
-        const parts = content.split('=');
-        if (parts.length > 1) {
-          return parts[1];
-        }
+    // First check for dedicated os-facebook-pixel meta tag (highest priority)
+    const osFbPixelMeta = document.querySelector('meta[name="os-facebook-pixel"]');
+    if (osFbPixelMeta) {
+      const pixelId = osFbPixelMeta.getAttribute('content');
+      if (pixelId) {
+        this.#logger.debug(`Facebook Pixel ID found from os-facebook-pixel meta tag: ${pixelId}`);
+        return pixelId;
       }
     }
     
