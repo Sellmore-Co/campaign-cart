@@ -51,14 +51,14 @@ var TwentyNineNext = (() => {
     return method;
   };
 
-  // src/components/checkout/ReceiptPage.js
-  var ReceiptPage_exports = {};
-  __export(ReceiptPage_exports, {
+  // src/managers/ReceiptManager.js
+  var ReceiptManager_exports = {};
+  __export(ReceiptManager_exports, {
     ReceiptPage: () => ReceiptPage
   });
   var _apiClient3, _logger25, _app20, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError3, showError_fn3, ReceiptPage;
-  var init_ReceiptPage = __esm({
-    "src/components/checkout/ReceiptPage.js"() {
+  var init_ReceiptManager = __esm({
+    "src/managers/ReceiptManager.js"() {
       "use strict";
       ReceiptPage = class {
         /**
@@ -8615,9 +8615,6 @@ var TwentyNineNext = (() => {
         this.addToCart(data.cart);
       }
     });
-    __privateGet(this, _app17).on("order.created", (data) => {
-      this.purchase(data);
-    });
     __privateGet(this, _app17).on("order.loaded", (data) => {
       if (data.order) {
         __privateGet(this, _logger22).info("Order loaded on receipt page, checking if purchase event needed");
@@ -10886,7 +10883,7 @@ var TwentyNineNext = (() => {
   };
   _initReceiptPage = new WeakSet();
   initReceiptPage_fn = function() {
-    Promise.resolve().then(() => (init_ReceiptPage(), ReceiptPage_exports)).then((module) => {
+    Promise.resolve().then(() => (init_ReceiptManager(), ReceiptManager_exports)).then((module) => {
       const ReceiptPage2 = module.ReceiptPage;
       this.receipt = new ReceiptPage2(this.api, this.coreLogger, this);
       this.coreLogger.info("Receipt page initialized");
@@ -10974,3 +10971,4 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
+//# sourceMappingURL=29next.js.map

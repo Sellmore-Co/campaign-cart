@@ -843,6 +843,7 @@ export class PaymentHandler {
     // Trigger order.created event for the EventManager
     this.#app?.triggerEvent?.('order.created', orderData);
     
+
     // If payment_complete_url exists, use it directly
     // This is primarily for PayPal and other redirect payment flows
     if (orderData.payment_complete_url) {

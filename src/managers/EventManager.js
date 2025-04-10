@@ -131,9 +131,11 @@ export class EventManager {
     });
 
     // Listen for order created event
-    this.#app.on('order.created', (data) => {
-      this.purchase(data);
-    });
+    // commented to trigger only on first page they load.
+    
+    // this.#app.on('order.created', (data) => {
+    //   this.purchase(data);
+    // });
     
     // Listen for order loaded event (for receipt page)
     this.#app.on('order.loaded', (data) => {

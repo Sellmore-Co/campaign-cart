@@ -311,7 +311,7 @@ export class TwentyNineNext {
   }
 
   #initReceiptPage() {
-    import('../components/checkout/ReceiptPage.js')
+    import('../managers/ReceiptManager.js')
       .then((module) => {
         const ReceiptPage = module.ReceiptPage;
         this.receipt = new ReceiptPage(this.api, this.coreLogger, this);
