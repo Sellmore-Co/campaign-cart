@@ -5,6 +5,8 @@
  * allowing customers to add additional products to their order.
  */
 
+import { initNavigationPrevention, saveAcceptedUpsell, createNextUrlWithDebug } from '../utils/NavigationPrevention.js';
+
 export class UpsellManager {
   #app;
   #logger;
@@ -24,6 +26,9 @@ export class UpsellManager {
   }
 
   #init() {
+    // Initialize navigation prevention
+    initNavigationPrevention();
+    
     // Check for order reference in URL or sessionStorage
     this.#orderRef = this.#getOrderReferenceId();
     
@@ -145,6 +150,10 @@ export class UpsellManager {
       
       // Store upsell information in sessionStorage for tracking on the next page
       this.#storeUpsellPurchaseData(response, packageId, quantity);
+      
+      // Save accepted upsell info for back navigation prevention
+      const processedNextUrl = createNextUrlWithDebug(nextUrl);
+      saveAcceptedUpsell(packageId, processedNextUrl);
       
       // Redirect to the next page
       this.#redirect(nextUrl);
@@ -277,6 +286,13 @@ export class UpsellManager {
     // Append the order reference ID if not already in the URL
     if (this.#orderRef && !redirectUrl.searchParams.has('ref_id')) {
       redirectUrl.searchParams.append('ref_id', this.#orderRef);
+    }
+    
+    // Preserve debug parameter if present
+    const currentUrlParams = new URLSearchParams(window.location.search);
+    if (currentUrlParams.has('debug') && currentUrlParams.get('debug') === 'true' && 
+        !redirectUrl.searchParams.has('debug')) {
+      redirectUrl.searchParams.append('debug', 'true');
     }
     
     this.#logger.info(`Redirecting to ${redirectUrl.href}`);

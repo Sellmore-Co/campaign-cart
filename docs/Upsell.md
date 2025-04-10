@@ -129,6 +129,53 @@ Add a loading state to your page to indicate when an upsell is being processed:
 
 When a user clicks an upsell accept or decline button, all buttons are automatically disabled to prevent multiple clicks. In case of an error during acceptance, the buttons will be re-enabled so the user can try again.
 
+### Back Navigation Prevention
+
+The system implements advanced back navigation prevention for upsell pages to protect customers from confusion, accidental double charges, and broken checkout flows. It now uses a comprehensive approach with these features:
+
+1. **Browser History Manipulation** - Prevents standard back button clicks from navigating away from upsell pages
+2. **Accepted Upsell Tracking** - Stores information about accepted upsells in sessionStorage
+3. **Smart Redirection** - If a user accepts an upsell and then tries to navigate back, they are automatically redirected to their most recent destination
+4. **Debug Parameter Preservation** - All debug=true parameters are maintained throughout the upsell flow to support testing and development
+
+#### How It Works
+
+When a customer accepts an upsell:
+- The system saves the acceptance status, package ID, and next URL in sessionStorage
+- The system attaches an event listener for the browser's popstate event (triggered by back button)
+- If the customer tries to navigate back after accepting an upsell, they are redirected to the appropriate page
+- This prevents users from accidentally resubmitting orders or creating duplicate charges
+
+#### Implementation Details
+
+The NavigationPrevention.js utility is automatically loaded on all upsell and receipt pages. The UpsellManager handles saving upsell acceptance data and the ReceiptManager reinforces the navigation controls.
+
+You can add a warning message to inform users about this behavior:
+
+```html
+<div class="upsell-warning">
+  <p>⚠️ Navigating backward may double charge you. Please use the buttons below to continue.</p>
+</div>
+```
+
+### CSS for Warning Message
+
+```css
+.upsell-warning {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  border-radius: 4px;
+  padding: 10px 15px;
+  margin: 15px 0;
+  font-size: 14px;
+}
+
+.upsell-warning p {
+  margin: 0;
+}
+```
+
 ## Analytics Tracking
 
 ### Upsell Purchase Events
