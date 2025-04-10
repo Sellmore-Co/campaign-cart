@@ -5115,15 +5115,6 @@ var TwentyNineNext = (() => {
     }
     getCampaignData() {
       const campaignData = __privateGet(this, _app7).campaignData;
-      if (campaignData && !__privateGet(this, _viewItemListFired) && __privateGet(this, _app7).events?.viewItemList) {
-        __privateGet(this, _logger12).debug("Triggering view_item_list event from getCampaignData");
-        /* @__PURE__ */ console.log("🔍 Triggering view_item_list from getCampaignData", campaignData);
-        setTimeout(() => {
-          __privateGet(this, _app7).events.viewItemList(campaignData);
-          __privateSet(this, _viewItemListFired, true);
-          /* @__PURE__ */ console.log("✅ view_item_list triggered from getCampaignData");
-        }, 500);
-      }
       return campaignData;
     }
     getCampaignName() {
@@ -5134,15 +5125,6 @@ var TwentyNineNext = (() => {
     }
     getProducts() {
       const products = __privateGet(this, _app7).campaignData?.products ?? [];
-      if (products.length > 0 && !__privateGet(this, _viewItemListFired) && __privateGet(this, _app7).events?.viewItemList) {
-        __privateGet(this, _logger12).debug("Triggering view_item_list event from getProducts");
-        /* @__PURE__ */ console.log("🔍 Triggering view_item_list from getProducts", __privateGet(this, _app7).campaignData);
-        setTimeout(() => {
-          __privateGet(this, _app7).events.viewItemList(__privateGet(this, _app7).campaignData);
-          __privateSet(this, _viewItemListFired, true);
-          /* @__PURE__ */ console.log("✅ view_item_list triggered from getProducts");
-        }, 500);
-      }
       return products;
     }
     getProductById(productId) {
@@ -5175,12 +5157,19 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger12).warn("Cannot trigger view_item_list: No campaign data available");
         return;
       }
-      if (!__privateGet(this, _app7).events?.viewItemList) {
-        __privateGet(this, _logger12).warn("Cannot trigger view_item_list: EventManager not initialized");
+      if (!__privateGet(this, _app7).eventManager) {
+        __privateGet(this, _logger12).warn("Cannot trigger view_item_list: EventManager not found");
         return;
       }
-      __privateGet(this, _logger12).debug("Manually triggering view_item_list event");
-      __privateGet(this, _app7).events.viewItemList(__privateGet(this, _app7).campaignData);
+      if (typeof __privateGet(this, _app7).eventManager.viewVisibleItemList === "function") {
+        __privateGet(this, _logger12).debug("Manually triggering viewVisibleItemList event");
+        __privateGet(this, _app7).eventManager.viewVisibleItemList();
+      } else if (__privateGet(this, _app7).events?.viewItemList) {
+        __privateGet(this, _logger12).debug("Falling back to events.viewItemList method");
+        __privateGet(this, _app7).events.viewItemList(__privateGet(this, _app7).campaignData);
+      } else {
+        __privateGet(this, _logger12).warn("No suitable method found to trigger view_item_list event");
+      }
       __privateSet(this, _viewItemListFired, true);
     }
   };
@@ -6120,6 +6109,52 @@ var TwentyNineNext = (() => {
     refreshUnitPricing() {
       this.initUnitPricing();
     }
+    /**
+     * Trigger view_item_list event for all visible packages on the page
+     * This method is public so it can be called from EventManager if needed
+     */
+    triggerViewItemList() {
+      const campaignData = __privateGet(this, _app10).getCampaignData();
+      if (!campaignData || !campaignData.packages || campaignData.packages.length === 0) {
+        __privateGet(this, _logger15).warn("Cannot trigger view_item_list: No packages in campaign data");
+        return;
+      }
+      const visiblePackageIds = /* @__PURE__ */ new Set();
+      const visiblePackages = [];
+      Object.values(__privateGet(this, _selectors2)).forEach((selector) => {
+        selector.items.forEach((item) => {
+          if (item.packageId) {
+            visiblePackageIds.add(item.packageId.toString());
+          }
+        });
+      });
+      __privateGet(this, _logger15).debug(`Found ${visiblePackageIds.size} unique package IDs in selectors`);
+      campaignData.packages.forEach((pkg) => {
+        const refIdStr = pkg.ref_id?.toString();
+        const externalIdStr = pkg.external_id?.toString();
+        if (visiblePackageIds.has(refIdStr) || visiblePackageIds.has(externalIdStr)) {
+          visiblePackages.push(pkg);
+        }
+      });
+      if (visiblePackages.length > 0) {
+        __privateGet(this, _logger15).info(`Triggering view_item_list for ${visiblePackages.length} visible packages`);
+        const filteredCampaignData = {
+          ...campaignData,
+          packages: visiblePackages
+        };
+        if (__privateGet(this, _app10).eventManager?.viewItemList) {
+          __privateGet(this, _app10).eventManager.viewItemList(filteredCampaignData);
+          __privateGet(this, _logger15).debug("Used eventManager.viewItemList to fire event");
+        } else if (__privateGet(this, _app10).events?.viewItemList) {
+          __privateGet(this, _app10).events.viewItemList(filteredCampaignData);
+          __privateGet(this, _logger15).debug("Used events.viewItemList to fire event");
+        } else {
+          __privateGet(this, _logger15).warn("No suitable method found to trigger view_item_list");
+        }
+      } else {
+        __privateGet(this, _logger15).warn("No matching packages found between selectors and campaign data");
+      }
+    }
   };
   _app10 = new WeakMap();
   _logger15 = new WeakMap();
@@ -6132,6 +6167,7 @@ var TwentyNineNext = (() => {
     setTimeout(() => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this), 0);
     __privateGet(this, _app10).state?.subscribe("cart", () => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this));
     this.initUnitPricing();
+    setTimeout(() => this.triggerViewItemList(), 100);
   };
   _initSelector = new WeakSet();
   initSelector_fn = function(selectorElement) {
@@ -8253,9 +8289,9 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/EventManager.js
-  var _app17, _logger22, _isInitialized, _platforms, _debugMode4, _processedOrderIds, _loadProcessedOrderIds, loadProcessedOrderIds_fn, _saveProcessedOrderIds, saveProcessedOrderIds_fn, _detectPlatforms, detectPlatforms_fn, _setupEventListeners5, setupEventListeners_fn5, _getUserDataForTracking, getUserDataForTracking_fn, _hashString, hashString_fn, _fireEvent, fireEvent_fn;
+  var _app17, _logger22, _isInitialized, _platforms, _debugMode4, _processedOrderIds, _viewItemListFired2, _loadProcessedOrderIds, loadProcessedOrderIds_fn, _saveProcessedOrderIds, saveProcessedOrderIds_fn, _detectPlatforms, detectPlatforms_fn, _setupEventListeners5, setupEventListeners_fn5, _getUserDataForTracking, getUserDataForTracking_fn, _hashString, hashString_fn, _fireEvent, fireEvent_fn;
   var EventManager = class {
-    // Track processed order IDs to prevent duplicates
+    // Track if view_item_list has been fired
     constructor(app) {
       /**
        * Load processed order IDs from sessionStorage
@@ -8301,6 +8337,8 @@ var TwentyNineNext = (() => {
       });
       __privateAdd(this, _debugMode4, false);
       __privateAdd(this, _processedOrderIds, /* @__PURE__ */ new Set());
+      // Track processed order IDs to prevent duplicates
+      __privateAdd(this, _viewItemListFired2, false);
       __privateSet(this, _app17, app);
       __privateSet(this, _logger22, app.logger.createModuleLogger("EVENT"));
       __privateSet(this, _debugMode4, app.options?.debug || false);
@@ -8328,13 +8366,16 @@ var TwentyNineNext = (() => {
         return;
       }
       __privateGet(this, _logger22).debug(`Found ${campaignData.packages.length} packages in campaign data`);
-      const items = campaignData.packages.map((pkg) => ({
-        item_id: pkg.external_id || pkg.ref_id,
-        item_name: pkg.name,
-        price: parseFloat(pkg.price) || 0,
-        currency: campaignData.currency || "USD",
-        quantity: 1
-      }));
+      const items = campaignData.packages.map((pkg) => {
+        const price = typeof pkg.price === "string" ? parseFloat(pkg.price) : pkg.price || 0;
+        return {
+          item_id: pkg.external_id || pkg.ref_id,
+          item_name: pkg.name,
+          price,
+          currency: campaignData.currency || "USD",
+          quantity: pkg.qty || 1
+        };
+      });
       const eventData = {
         event: "view_item_list",
         ecommerce: {
@@ -8561,6 +8602,7 @@ var TwentyNineNext = (() => {
   _platforms = new WeakMap();
   _debugMode4 = new WeakMap();
   _processedOrderIds = new WeakMap();
+  _viewItemListFired2 = new WeakMap();
   _loadProcessedOrderIds = new WeakSet();
   loadProcessedOrderIds_fn = function() {
     try {
@@ -8613,12 +8655,8 @@ var TwentyNineNext = (() => {
   _setupEventListeners5 = new WeakSet();
   setupEventListeners_fn5 = function() {
     __privateGet(this, _app17).on("campaign.loaded", (data) => {
-      __privateGet(this, _logger22).debug("Campaign loaded event received, firing view_item_list");
-      if (data && data.campaign) {
-        this.viewItemList(data.campaign);
-      } else {
-        __privateGet(this, _logger22).warn("Campaign loaded event received but no campaign data found");
-      }
+      __privateGet(this, _logger22).debug("Campaign loaded event received, triggering viewVisibleItemList");
+      this.viewVisibleItemList();
     });
     __privateGet(this, _app17).on("cart.updated", (data) => {
       if (data.cart && data.cart.items && data.cart.items.length > 0) {
@@ -10865,7 +10903,6 @@ var TwentyNineNext = (() => {
   };
   _finalizeInitialization = new WeakSet();
   finalizeInitialization_fn = async function() {
-    this.events.viewItemList(__privateGet(this, _campaignData));
     await new Promise((resolve) => setTimeout(resolve, 800));
     __privateMethod(this, _hidePreloader, hidePreloader_fn).call(this);
   };

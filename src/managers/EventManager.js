@@ -17,6 +17,7 @@ export class EventManager {
   };
   #debugMode = false;
   #processedOrderIds = new Set(); // Track processed order IDs to prevent duplicates
+  #viewItemListFired = false; // Track if view_item_list has been fired
 
   constructor(app) {
     this.#app = app;
@@ -115,12 +116,8 @@ export class EventManager {
   #setupEventListeners() {
     // Listen for campaign loaded event
     this.#app.on('campaign.loaded', (data) => {
-      this.#logger.debug('Campaign loaded event received, firing view_item_list');
-      if (data && data.campaign) {
-        this.viewItemList(data.campaign);
-      } else {
-        this.#logger.warn('Campaign loaded event received but no campaign data found');
-      }
+      this.#logger.debug('Campaign loaded event received, triggering viewVisibleItemList');
+      this.viewVisibleItemList();
     });
 
     // Listen for cart updated event
@@ -165,13 +162,18 @@ export class EventManager {
 
     this.#logger.debug(`Found ${campaignData.packages.length} packages in campaign data`);
     
-    const items = campaignData.packages.map(pkg => ({
-      item_id: pkg.external_id || pkg.ref_id,
-      item_name: pkg.name,
-      price: parseFloat(pkg.price) || 0,
-      currency: campaignData.currency || 'USD',
-      quantity: 1
-    }));
+    const items = campaignData.packages.map(pkg => {
+      // Ensure price is a number
+      const price = typeof pkg.price === 'string' ? parseFloat(pkg.price) : (pkg.price || 0);
+      
+      return {
+        item_id: pkg.external_id || pkg.ref_id,
+        item_name: pkg.name,
+        price: price,
+        currency: campaignData.currency || 'USD',
+        quantity: pkg.qty || 1
+      };
+    });
 
     const eventData = {
       event: 'view_item_list',
@@ -569,4 +571,5 @@ export class EventManager {
   get isInitialized() {
     return this.#isInitialized;
   }
+
 } 

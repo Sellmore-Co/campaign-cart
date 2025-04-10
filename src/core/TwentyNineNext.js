@@ -276,7 +276,8 @@ export class TwentyNineNext {
   }
 
   async #finalizeInitialization() {
-    this.events.viewItemList(this.#campaignData);
+    // Let SelectorManager handle view_item_list event
+    // The #triggerViewItemList method in SelectorManager is now responsible for this
     await new Promise((resolve) => setTimeout(resolve, 800)); // Single delay for rendering
     this.#hidePreloader();
   }

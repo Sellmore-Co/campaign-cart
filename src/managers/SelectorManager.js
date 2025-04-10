@@ -29,6 +29,9 @@ export class SelectorManager {
     
     // Initialize unit pricing for all selectors
     this.initUnitPricing();
+    
+    // Trigger view_item_list event for visible packages after initialization
+    setTimeout(() => this.triggerViewItemList(), 100);
   }
 
   #initSelector(selectorElement) {
@@ -470,5 +473,69 @@ export class SelectorManager {
    */
   refreshUnitPricing() {
     this.initUnitPricing();
+  }
+
+  /**
+   * Trigger view_item_list event for all visible packages on the page
+   * This method is public so it can be called from EventManager if needed
+   */
+  triggerViewItemList() {
+    const campaignData = this.#app.getCampaignData();
+    if (!campaignData || !campaignData.packages || campaignData.packages.length === 0) {
+      this.#logger.warn('Cannot trigger view_item_list: No packages in campaign data');
+      return;
+    }
+    
+    // Collect all package IDs present on the page
+    const visiblePackageIds = new Set();
+    const visiblePackages = [];
+    
+    // Iterate through all selectors to find visible packages
+    Object.values(this.#selectors).forEach(selector => {
+      selector.items.forEach(item => {
+        if (item.packageId) {
+          visiblePackageIds.add(item.packageId.toString());
+        }
+      });
+    });
+    
+    // For debugging, log the found packages
+    this.#logger.debug(`Found ${visiblePackageIds.size} unique package IDs in selectors`);
+    
+    // Find matching packages in campaign data
+    campaignData.packages.forEach(pkg => {
+      const refIdStr = pkg.ref_id?.toString();
+      const externalIdStr = pkg.external_id?.toString();
+      
+      if (visiblePackageIds.has(refIdStr) || visiblePackageIds.has(externalIdStr)) {
+        visiblePackages.push(pkg);
+      }
+    });
+    
+    // If we found matching packages, trigger the event
+    if (visiblePackages.length > 0) {
+      this.#logger.info(`Triggering view_item_list for ${visiblePackages.length} visible packages`);
+      
+      // Create a filtered version of campaign data
+      const filteredCampaignData = {
+        ...campaignData,
+        packages: visiblePackages
+      };
+      
+      // Check which method to use based on what's available
+      if (this.#app.eventManager?.viewItemList) {
+        // Use EventManager's viewItemList if available
+        this.#app.eventManager.viewItemList(filteredCampaignData);
+        this.#logger.debug('Used eventManager.viewItemList to fire event');
+      } else if (this.#app.events?.viewItemList) {
+        // Fall back to events system
+        this.#app.events.viewItemList(filteredCampaignData);
+        this.#logger.debug('Used events.viewItemList to fire event');
+      } else {
+        this.#logger.warn('No suitable method found to trigger view_item_list');
+      }
+    } else {
+      this.#logger.warn('No matching packages found between selectors and campaign data');
+    }
   }
 }
