@@ -96,13 +96,35 @@ export class TwentyNineNext {
 
   #loadConfig() {
     const config = { apiKey: null, campaignId: null, debug: this.options.debug };
-    const apiKeyMeta = document.querySelector('meta[name="os-api-key"]');
-    config.apiKey = apiKeyMeta?.getAttribute('content') ?? null;
-    this.coreLogger.info(`API key: ${config.apiKey ? '✓ Set' : '✗ Not set'}`);
-
-    const campaignIdMeta = document.querySelector('meta[name="os-campaign-id"]');
-    config.campaignId = campaignIdMeta?.getAttribute('content') ?? null;
-    this.coreLogger.info(`Campaign ID: ${config.campaignId ? '✓ Set' : '✗ Not set'}`);
+    
+    // Check URL parameters for campaignId and store in sessionStorage if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlCampaignId = urlParams.get('campaignId');
+    if (urlCampaignId) {
+      this.coreLogger.info(`Found campaignId in URL: ${urlCampaignId}`);
+      sessionStorage.setItem('os-campaign-id', urlCampaignId);
+      config.apiKey = urlCampaignId;
+      config.campaignId = urlCampaignId;
+      this.coreLogger.info('Saved campaignId to session storage and using as API key');
+    } else {
+      // Check sessionStorage for stored campaignId to use as API key
+      const storedCampaignId = sessionStorage.getItem('os-campaign-id');
+      if (storedCampaignId) {
+        this.coreLogger.info(`Using campaign ID from session storage as API key: ${storedCampaignId}`);
+        config.apiKey = storedCampaignId;
+        config.campaignId = storedCampaignId;
+      } else {
+        // Fall back to meta tag for API key
+        const apiKeyMeta = document.querySelector('meta[name="os-api-key"]');
+        config.apiKey = apiKeyMeta?.getAttribute('content') ?? null;
+        this.coreLogger.info(`API key from meta: ${config.apiKey ? '✓ Set' : '✗ Not set'}`);
+        
+        // Also check for campaign ID meta tag for reference
+        const campaignIdMeta = document.querySelector('meta[name="os-campaign-id"]');
+        config.campaignId = campaignIdMeta?.getAttribute('content') ?? null;
+        this.coreLogger.info(`Campaign ID from meta: ${config.campaignId ? '✓ Set' : '✗ Not set'}`);
+      }
+    }
 
     const debugMeta = document.querySelector('meta[name="os-debug"]');
     if (debugMeta?.getAttribute('content') === 'true') {

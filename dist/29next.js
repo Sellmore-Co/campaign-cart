@@ -516,9 +516,18 @@ var TwentyNineNext = (() => {
   });
 
   // src/api/ApiClient.js
-  var _app, _apiKey, _baseUrl, _logger, _buildUrl, buildUrl_fn, _request, request_fn, _getAttributionData, getAttributionData_fn;
+  var _app, _apiKey, _campaignId, _baseUrl, _logger, _checkForCampaignIdInUrl, checkForCampaignIdInUrl_fn, _getCampaignId, getCampaignId_fn, _buildUrl, buildUrl_fn, _request, request_fn, _getAttributionData, getAttributionData_fn;
   var ApiClient = class {
     constructor(app) {
+      /**
+       * Check if campaignId exists in URL parameters and save to local storage if it does
+       */
+      __privateAdd(this, _checkForCampaignIdInUrl);
+      /**
+       * Get campaign ID from session storage or meta tag
+       * @returns {string|null} Campaign ID
+       */
+      __privateAdd(this, _getCampaignId);
       __privateAdd(this, _buildUrl);
       __privateAdd(this, _request);
       /**
@@ -528,6 +537,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _getAttributionData);
       __privateAdd(this, _app, void 0);
       __privateAdd(this, _apiKey, void 0);
+      __privateAdd(this, _campaignId, void 0);
       __privateAdd(this, _baseUrl, "https://campaigns.apps.29next.com/api/v1");
       __privateAdd(this, _logger, void 0);
       __privateSet(this, _app, app);
@@ -535,9 +545,11 @@ var TwentyNineNext = (() => {
     }
     init() {
       __privateGet(this, _logger).info("Initializing ApiClient");
-      __privateSet(this, _apiKey, __privateGet(this, _app).config.apiKey);
-      if (__privateGet(this, _apiKey)) {
-        __privateGet(this, _logger).info("API key is set");
+      __privateMethod(this, _checkForCampaignIdInUrl, checkForCampaignIdInUrl_fn).call(this);
+      __privateSet(this, _campaignId, __privateMethod(this, _getCampaignId, getCampaignId_fn).call(this));
+      if (__privateGet(this, _campaignId)) {
+        __privateSet(this, _apiKey, __privateGet(this, _campaignId));
+        __privateGet(this, _logger).info(`Using campaign ID as API key: ${__privateGet(this, _apiKey)}`);
       } else {
         const apiKeyMeta = document.querySelector('meta[name="os-api-key"]');
         __privateSet(this, _apiKey, apiKeyMeta?.getAttribute("content"));
@@ -569,6 +581,13 @@ var TwentyNineNext = (() => {
           formatPrice: (price) => `$${Number.parseFloat(price).toFixed(2)}`
         };
       }
+    }
+    /**
+     * Get the current campaign ID
+     * @returns {string|null} The current campaign ID
+     */
+    getCampaignId() {
+      return __privateGet(this, _campaignId);
     }
     /**
      * Create a cart via the API
@@ -736,8 +755,35 @@ var TwentyNineNext = (() => {
   };
   _app = new WeakMap();
   _apiKey = new WeakMap();
+  _campaignId = new WeakMap();
   _baseUrl = new WeakMap();
   _logger = new WeakMap();
+  _checkForCampaignIdInUrl = new WeakSet();
+  checkForCampaignIdInUrl_fn = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const campaignId = urlParams.get("campaignId");
+    if (campaignId) {
+      __privateGet(this, _logger).info(`Found campaignId in URL: ${campaignId}`);
+      sessionStorage.setItem("os-campaign-id", campaignId);
+      __privateGet(this, _logger).info("Saved campaignId to session storage");
+    }
+  };
+  _getCampaignId = new WeakSet();
+  getCampaignId_fn = function() {
+    const storedCampaignId = sessionStorage.getItem("os-campaign-id");
+    if (storedCampaignId) {
+      __privateGet(this, _logger).info(`Using campaign ID from session storage: ${storedCampaignId}`);
+      return storedCampaignId;
+    }
+    const campaignIdMeta = document.querySelector('meta[name="os-campaign-id"]');
+    const metaCampaignId = campaignIdMeta?.getAttribute("content") ?? null;
+    if (metaCampaignId) {
+      __privateGet(this, _logger).info(`Using campaign ID from meta tag: ${metaCampaignId}`);
+      return metaCampaignId;
+    }
+    __privateGet(this, _logger).warn("No campaign ID found in session storage or meta tag");
+    return null;
+  };
   _buildUrl = new WeakSet();
   buildUrl_fn = function(endpoint) {
     const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
@@ -10909,12 +10955,29 @@ var TwentyNineNext = (() => {
   _loadConfig2 = new WeakSet();
   loadConfig_fn2 = function() {
     const config = { apiKey: null, campaignId: null, debug: this.options.debug };
-    const apiKeyMeta = document.querySelector('meta[name="os-api-key"]');
-    config.apiKey = apiKeyMeta?.getAttribute("content") ?? null;
-    this.coreLogger.info(`API key: ${config.apiKey ? "✓ Set" : "✗ Not set"}`);
-    const campaignIdMeta = document.querySelector('meta[name="os-campaign-id"]');
-    config.campaignId = campaignIdMeta?.getAttribute("content") ?? null;
-    this.coreLogger.info(`Campaign ID: ${config.campaignId ? "✓ Set" : "✗ Not set"}`);
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlCampaignId = urlParams.get("campaignId");
+    if (urlCampaignId) {
+      this.coreLogger.info(`Found campaignId in URL: ${urlCampaignId}`);
+      sessionStorage.setItem("os-campaign-id", urlCampaignId);
+      config.apiKey = urlCampaignId;
+      config.campaignId = urlCampaignId;
+      this.coreLogger.info("Saved campaignId to session storage and using as API key");
+    } else {
+      const storedCampaignId = sessionStorage.getItem("os-campaign-id");
+      if (storedCampaignId) {
+        this.coreLogger.info(`Using campaign ID from session storage as API key: ${storedCampaignId}`);
+        config.apiKey = storedCampaignId;
+        config.campaignId = storedCampaignId;
+      } else {
+        const apiKeyMeta = document.querySelector('meta[name="os-api-key"]');
+        config.apiKey = apiKeyMeta?.getAttribute("content") ?? null;
+        this.coreLogger.info(`API key from meta: ${config.apiKey ? "✓ Set" : "✗ Not set"}`);
+        const campaignIdMeta = document.querySelector('meta[name="os-campaign-id"]');
+        config.campaignId = campaignIdMeta?.getAttribute("content") ?? null;
+        this.coreLogger.info(`Campaign ID from meta: ${config.campaignId ? "✓ Set" : "✗ Not set"}`);
+      }
+    }
     const debugMeta = document.querySelector('meta[name="os-debug"]');
     if (debugMeta?.getAttribute("content") === "true") {
       config.debug = true;

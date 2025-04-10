@@ -8,6 +8,7 @@
 export class ApiClient {
   #app;
   #apiKey;
+  #campaignId;
   #baseUrl = 'https://campaigns.apps.29next.com/api/v1';
   #logger;
 
@@ -19,11 +20,18 @@ export class ApiClient {
   init() {
     this.#logger.info('Initializing ApiClient');
     
-    this.#apiKey = this.#app.config.apiKey;
+    // Check for campaign ID in URL parameters and save to localStorage if present
+    this.#checkForCampaignIdInUrl();
     
-    if (this.#apiKey) {
-      this.#logger.info('API key is set');
+    // Get campaign ID from local storage or meta tag to use as API key
+    this.#campaignId = this.#getCampaignId();
+    
+    // Use campaign ID as API key if available
+    if (this.#campaignId) {
+      this.#apiKey = this.#campaignId;
+      this.#logger.info(`Using campaign ID as API key: ${this.#apiKey}`);
     } else {
+      // Fall back to meta tag API key
       const apiKeyMeta = document.querySelector('meta[name="os-api-key"]');
       this.#apiKey = apiKeyMeta?.getAttribute('content');
       this.#logger.info(this.#apiKey ? 'API key retrieved from meta tag' : 'API key is not set');
@@ -35,6 +43,46 @@ export class ApiClient {
       this.#baseUrl = proxyUrl;
       this.#logger.info(`Using proxy URL: ${proxyUrl}`);
     }
+  }
+
+  /**
+   * Check if campaignId exists in URL parameters and save to local storage if it does
+   */
+  #checkForCampaignIdInUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const campaignId = urlParams.get('campaignId');
+    
+    if (campaignId) {
+      this.#logger.info(`Found campaignId in URL: ${campaignId}`);
+      sessionStorage.setItem('os-campaign-id', campaignId);
+      this.#logger.info('Saved campaignId to session storage');
+    }
+  }
+
+  /**
+   * Get campaign ID from session storage or meta tag
+   * @returns {string|null} Campaign ID
+   */
+  #getCampaignId() {
+    // First check session storage for campaign ID override
+    const storedCampaignId = sessionStorage.getItem('os-campaign-id');
+    
+    if (storedCampaignId) {
+      this.#logger.info(`Using campaign ID from session storage: ${storedCampaignId}`);
+      return storedCampaignId;
+    }
+    
+    // Fall back to meta tag
+    const campaignIdMeta = document.querySelector('meta[name="os-campaign-id"]');
+    const metaCampaignId = campaignIdMeta?.getAttribute('content') ?? null;
+    
+    if (metaCampaignId) {
+      this.#logger.info(`Using campaign ID from meta tag: ${metaCampaignId}`);
+      return metaCampaignId;
+    }
+    
+    this.#logger.warn('No campaign ID found in session storage or meta tag');
+    return null;
   }
 
   #buildUrl(endpoint) {
@@ -116,6 +164,14 @@ export class ApiClient {
         formatPrice: price => `$${Number.parseFloat(price).toFixed(2)}`
       };
     }
+  }
+  
+  /**
+   * Get the current campaign ID
+   * @returns {string|null} The current campaign ID
+   */
+  getCampaignId() {
+    return this.#campaignId;
   }
 
   /**
