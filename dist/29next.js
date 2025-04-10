@@ -3131,6 +3131,7 @@ var TwentyNineNext = (() => {
   _handleOrderSuccess = new WeakSet();
   handleOrderSuccess_fn = function(orderData) {
     sessionStorage.setItem("order_reference", orderData.ref_id);
+    sessionStorage.setItem(`pending_purchase_event_${orderData.ref_id}`, "true");
     __privateGet(this, _app3)?.triggerEvent?.("order.created", orderData);
     if (orderData.payment_complete_url) {
       __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Redirecting to payment gateway: ${orderData.payment_complete_url}`);
@@ -8406,10 +8407,12 @@ var TwentyNineNext = (() => {
         return;
       }
       const orderId = orderData.number || orderData.ref_id;
+      __privateGet(this, _logger22).debug(`Purchase method called for order ${orderId}, force=${force}, already processed=${__privateGet(this, _processedOrderIds).has(orderId)}`);
       if (!force && orderId && __privateGet(this, _processedOrderIds).has(orderId)) {
         __privateGet(this, _logger22).info(`Purchase event for order ${orderId} already fired, skipping`);
         return;
       }
+      __privateGet(this, _logger22).info(`Preparing to fire purchase event for order ${orderId}`);
       const items = orderData.lines.map((line) => ({
         item_id: line.product_id || line.id,
         item_name: line.product_title || line.name,
@@ -8435,7 +8438,7 @@ var TwentyNineNext = (() => {
       if (orderId) {
         __privateGet(this, _processedOrderIds).add(orderId);
         __privateMethod(this, _saveProcessedOrderIds, saveProcessedOrderIds_fn).call(this);
-        __privateGet(this, _logger22).debug(`Marked order ${orderId} as processed`);
+        __privateGet(this, _logger22).debug(`Marked order ${orderId} as processed, total processed orders: ${__privateGet(this, _processedOrderIds).size}`);
       }
     }
     /**
@@ -8544,6 +8547,13 @@ var TwentyNineNext = (() => {
     getPlatformStatus() {
       return { ...__privateGet(this, _platforms) };
     }
+    /**
+     * Check if the EventManager is fully initialized
+     * @returns {boolean} - Whether the EventManager is initialized
+     */
+    get isInitialized() {
+      return __privateGet(this, _isInitialized);
+    }
   };
   _app17 = new WeakMap();
   _logger22 = new WeakMap();
@@ -8616,9 +8626,12 @@ var TwentyNineNext = (() => {
       }
     });
     __privateGet(this, _app17).on("order.loaded", (data) => {
+      __privateGet(this, _logger22).debug("Received order.loaded event with data:", JSON.stringify(data, null, 2));
       if (data.order) {
         __privateGet(this, _logger22).info("Order loaded on receipt page, checking if purchase event needed");
         this.purchase(data.order);
+      } else {
+        __privateGet(this, _logger22).warn("Order.loaded event received but no order data found", data);
       }
     });
   };
@@ -10566,7 +10579,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/core/TwentyNineNext.js
-  var _isInitialized2, _isCheckoutPage, _campaignData, _loadConfig2, loadConfig_fn2, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn;
+  var _isInitialized2, _isCheckoutPage, _campaignData, _loadConfig2, loadConfig_fn2, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn;
   var TwentyNineNext = class {
     constructor(options = {}) {
       __privateAdd(this, _loadConfig2);
@@ -10585,6 +10598,10 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _initReceiptPage);
       __privateAdd(this, _initUpsellPage);
       __privateAdd(this, _initUIUtilities);
+      /**
+       * Check for pending purchase events for orders with ref_id in URL
+       */
+      __privateAdd(this, _checkForPendingPurchaseEvents);
       __privateAdd(this, _isInitialized2, false);
       __privateAdd(this, _isCheckoutPage, false);
       __privateAdd(this, _campaignData, null);
@@ -10659,6 +10676,7 @@ var TwentyNineNext = (() => {
         __privateMethod(this, _initCheckoutPage, initCheckoutPage_fn).call(this);
       __privateMethod(this, _initializeManagers, initializeManagers_fn).call(this);
       __privateMethod(this, _initUIUtilities, initUIUtilities_fn).call(this);
+      await __privateMethod(this, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn).call(this);
       __privateSet(this, _isInitialized2, true);
       this.triggerEvent("initialized", { client: this });
       await __privateMethod(this, _finalizeInitialization, finalizeInitialization_fn).call(this);
@@ -10666,6 +10684,9 @@ var TwentyNineNext = (() => {
     triggerEvent(eventName, detail = {}) {
       this.coreLogger.debug(`Triggering event: ${eventName}`);
       const eventData = { ...detail, timestamp: Date.now(), client: this };
+      if (eventName === "order.loaded") {
+        this.coreLogger.debug("Event data for order.loaded:", JSON.stringify(eventData, null, 2));
+      }
       const event = new CustomEvent(`os:${eventName}`, { bubbles: true, cancelable: true, detail: eventData });
       document.dispatchEvent(event);
       return event;
@@ -10887,13 +10908,6 @@ var TwentyNineNext = (() => {
       const ReceiptPage2 = module.ReceiptPage;
       this.receipt = new ReceiptPage2(this.api, this.coreLogger, this);
       this.coreLogger.info("Receipt page initialized");
-      const refId = new URLSearchParams(window.location.search).get("ref_id");
-      if (refId) {
-        this.api.getOrder(refId).then((orderData) => {
-          if (orderData)
-            this.triggerEvent("order.loaded", { order: orderData });
-        }).catch((error) => this.coreLogger.error("Failed to load order data:", error));
-      }
     }).catch((error) => this.coreLogger.error("Failed to load ReceiptPage module:", error));
   };
   _initUpsellPage = new WeakSet();
@@ -10927,6 +10941,39 @@ var TwentyNineNext = (() => {
       }
     } catch (error) {
       this.coreLogger.error("Failed to initialize UTM transfer:", error);
+    }
+  };
+  _checkForPendingPurchaseEvents = new WeakSet();
+  checkForPendingPurchaseEvents_fn = async function() {
+    const refId = new URLSearchParams(window.location.search).get("ref_id");
+    if (!refId)
+      return;
+    this.coreLogger.debug(`Checking for pending purchase events for ref_id: ${refId}`);
+    const hasPendingEvent = sessionStorage.getItem(`pending_purchase_event_${refId}`) === "true";
+    if (hasPendingEvent) {
+      this.coreLogger.info(`Found pending purchase event for order ${refId}`);
+      const isEventManagerReady = this.eventManager && this.eventManager.isInitialized;
+      this.coreLogger.debug(`EventManager ready: ${isEventManagerReady}`);
+      if (!isEventManagerReady) {
+        this.coreLogger.warn("EventManager not ready yet, will not trigger order.loaded event");
+        return;
+      }
+      try {
+        const orderData = await this.api.getOrder(refId);
+        if (orderData) {
+          this.coreLogger.info(`Triggering order.loaded event for pending purchase ${refId}`);
+          this.triggerEvent("order.loaded", { order: orderData });
+          this.coreLogger.info(`Triggered order.loaded event for pending purchase ${refId}`);
+          sessionStorage.removeItem(`pending_purchase_event_${refId}`);
+          this.coreLogger.debug(`Removed pending purchase flag for order ${refId}`);
+        } else {
+          this.coreLogger.warn(`Could not fetch order data for pending purchase ${refId}`);
+        }
+      } catch (error) {
+        this.coreLogger.error(`Failed to load order data for pending purchase ${refId}:`, error);
+      }
+    } else {
+      this.coreLogger.debug(`No pending purchase event for order ${refId}`);
     }
   };
 

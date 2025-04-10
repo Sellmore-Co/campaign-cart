@@ -191,12 +191,16 @@ export class TwentyNineNext {
     }
 
     await this.#fetchCampaignData();
+    // Move the pending purchase check to AFTER managers are initialized
     await this.#loadGoogleMapsApi();
     this.#isCheckoutPage = this.#detectCheckoutPage();
     if (this.#isCheckoutPage) this.#initCheckoutPage();
 
     this.#initializeManagers();
     this.#initUIUtilities();
+
+    // Check for pending purchase events AFTER EventManager is initialized
+    await this.#checkForPendingPurchaseEvents();
 
     this.#isInitialized = true;
     this.triggerEvent('initialized', { client: this });
@@ -316,15 +320,9 @@ export class TwentyNineNext {
         const ReceiptPage = module.ReceiptPage;
         this.receipt = new ReceiptPage(this.api, this.coreLogger, this);
         this.coreLogger.info('Receipt page initialized');
-
-        const refId = new URLSearchParams(window.location.search).get('ref_id');
-        if (refId) {
-          this.api.getOrder(refId)
-            .then((orderData) => {
-              if (orderData) this.triggerEvent('order.loaded', { order: orderData });
-            })
-            .catch((error) => this.coreLogger.error('Failed to load order data:', error));
-        }
+        
+        // No need to trigger order.loaded here anymore as it's handled globally
+        // by the checkForPendingPurchaseEvents method
       })
       .catch((error) => this.coreLogger.error('Failed to load ReceiptPage module:', error));
   }
@@ -369,6 +367,12 @@ export class TwentyNineNext {
   triggerEvent(eventName, detail = {}) {
     this.coreLogger.debug(`Triggering event: ${eventName}`);
     const eventData = { ...detail, timestamp: Date.now(), client: this };
+    
+    // Debug log to see exact content of event data
+    if (eventName === 'order.loaded') {
+      this.coreLogger.debug('Event data for order.loaded:', JSON.stringify(eventData, null, 2));
+    }
+    
     const event = new CustomEvent(`os:${eventName}`, { bubbles: true, cancelable: true, detail: eventData });
     document.dispatchEvent(event);
     return event;
@@ -421,5 +425,52 @@ export class TwentyNineNext {
       });
     }
     return this;
+  }
+
+  /**
+   * Check for pending purchase events for orders with ref_id in URL
+   */
+  async #checkForPendingPurchaseEvents() {
+    const refId = new URLSearchParams(window.location.search).get('ref_id');
+    if (!refId) return;
+    
+    this.coreLogger.debug(`Checking for pending purchase events for ref_id: ${refId}`);
+    
+    // Check if this order has a pending purchase event
+    const hasPendingEvent = sessionStorage.getItem(`pending_purchase_event_${refId}`) === 'true';
+    
+    if (hasPendingEvent) {
+      this.coreLogger.info(`Found pending purchase event for order ${refId}`);
+      
+      // Check if EventManager is initialized before proceeding
+      const isEventManagerReady = this.eventManager && this.eventManager.isInitialized;
+      this.coreLogger.debug(`EventManager ready: ${isEventManagerReady}`);
+      
+      if (!isEventManagerReady) {
+        this.coreLogger.warn('EventManager not ready yet, will not trigger order.loaded event');
+        return;
+      }
+      
+      try {
+        const orderData = await this.api.getOrder(refId);
+        if (orderData) {
+          // Fix: Use the proper data structure expected by EventManager
+          // EventManager expects data.order, not data.detail.order
+          this.coreLogger.info(`Triggering order.loaded event for pending purchase ${refId}`);
+          this.triggerEvent('order.loaded', { order: orderData });
+          this.coreLogger.info(`Triggered order.loaded event for pending purchase ${refId}`);
+          
+          // Clear the pending flag
+          sessionStorage.removeItem(`pending_purchase_event_${refId}`);
+          this.coreLogger.debug(`Removed pending purchase flag for order ${refId}`);
+        } else {
+          this.coreLogger.warn(`Could not fetch order data for pending purchase ${refId}`);
+        }
+      } catch (error) {
+        this.coreLogger.error(`Failed to load order data for pending purchase ${refId}:`, error);
+      }
+    } else {
+      this.coreLogger.debug(`No pending purchase event for order ${refId}`);
+    }
   }
 }

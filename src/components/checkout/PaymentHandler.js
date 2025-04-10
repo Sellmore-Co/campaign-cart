@@ -840,6 +840,9 @@ export class PaymentHandler {
   #handleOrderSuccess(orderData) {
     sessionStorage.setItem('order_reference', orderData.ref_id);
     
+    // Set pending purchase event flag
+    sessionStorage.setItem(`pending_purchase_event_${orderData.ref_id}`, 'true');
+    
     // Trigger order.created event for the EventManager
     this.#app?.triggerEvent?.('order.created', orderData);
     

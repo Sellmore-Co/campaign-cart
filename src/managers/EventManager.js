@@ -132,19 +132,24 @@ export class EventManager {
 
     // Listen for order created event
     // commented to trigger only on first page they load.
-    
+
     // this.#app.on('order.created', (data) => {
     //   this.purchase(data);
     // });
     
-    // Listen for order loaded event (for receipt page)
+    // Listen for order loaded event
     this.#app.on('order.loaded', (data) => {
+      this.#logger.debug('Received order.loaded event with data:', JSON.stringify(data, null, 2));
+      
       if (data.order) {
         this.#logger.info('Order loaded on receipt page, checking if purchase event needed');
         this.purchase(data.order);
+      } else {
+        this.#logger.warn('Order.loaded event received but no order data found', data);
       }
     });
   }
+  
 
   /**
    * Fire a view_item_list event
@@ -258,11 +263,15 @@ export class EventManager {
 
     // Check if this order has already been processed
     const orderId = orderData.number || orderData.ref_id;
+    this.#logger.debug(`Purchase method called for order ${orderId}, force=${force}, already processed=${this.#processedOrderIds.has(orderId)}`);
+    
     if (!force && orderId && this.#processedOrderIds.has(orderId)) {
       this.#logger.info(`Purchase event for order ${orderId} already fired, skipping`);
       return;
     }
 
+    this.#logger.info(`Preparing to fire purchase event for order ${orderId}`);
+    
     const items = orderData.lines.map(line => ({
       item_id: line.product_id || line.id,
       item_name: line.product_title || line.name,
@@ -294,7 +303,7 @@ export class EventManager {
     if (orderId) {
       this.#processedOrderIds.add(orderId);
       this.#saveProcessedOrderIds();
-      this.#logger.debug(`Marked order ${orderId} as processed`);
+      this.#logger.debug(`Marked order ${orderId} as processed, total processed orders: ${this.#processedOrderIds.size}`);
     }
   }
 
@@ -551,5 +560,13 @@ export class EventManager {
    */
   getPlatformStatus() {
     return { ...this.#platforms };
+  }
+  
+  /**
+   * Check if the EventManager is fully initialized
+   * @returns {boolean} - Whether the EventManager is initialized
+   */
+  get isInitialized() {
+    return this.#isInitialized;
   }
 } 
