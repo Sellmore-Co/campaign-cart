@@ -11078,9 +11078,37 @@ var TwentyNineNext = (() => {
           if (this.eventManager && typeof this.eventManager.purchase === "function") {
             this.coreLogger.info("Triggering purchase event for upsell", purchaseData);
             this.eventManager.purchase(purchaseData, true);
+            if (typeof this.eventManager.fireCustomEvent === "function") {
+              const customEventData = {
+                transaction_id: purchaseData.number,
+                ref_id: purchaseData.ref_id,
+                product_id: purchaseData.lines[0]?.product_id,
+                product_name: purchaseData.lines[0]?.product_title,
+                price: purchaseData.lines[0]?.price,
+                quantity: purchaseData.lines[0]?.quantity,
+                total: purchaseData.total,
+                currency: purchaseData.currency
+              };
+              this.coreLogger.info("Triggering os_accepted_upsell custom event", customEventData);
+              this.eventManager.fireCustomEvent("os_accepted_upsell", customEventData);
+            }
           } else if (this.events && typeof this.events.purchase === "function") {
             this.coreLogger.info("Triggering purchase event for upsell via events API", purchaseData);
             this.events.purchase(purchaseData, true);
+            if (typeof this.events.fireCustomEvent === "function") {
+              const customEventData = {
+                transaction_id: purchaseData.number,
+                ref_id: purchaseData.ref_id,
+                product_id: purchaseData.lines[0]?.product_id,
+                product_name: purchaseData.lines[0]?.product_title,
+                price: purchaseData.lines[0]?.price,
+                quantity: purchaseData.lines[0]?.quantity,
+                total: purchaseData.total,
+                currency: purchaseData.currency
+              };
+              this.coreLogger.info("Triggering os_accepted_upsell custom event via events API", customEventData);
+              this.events.fireCustomEvent("os_accepted_upsell", customEventData);
+            }
           } else {
             this.coreLogger.warn("No method available to track upsell purchase");
           }

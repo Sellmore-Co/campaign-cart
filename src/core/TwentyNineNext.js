@@ -507,9 +507,45 @@ export class TwentyNineNext {
             this.coreLogger.info('Triggering purchase event for upsell', purchaseData);
             // Force the purchase event to ensure it's tracked even if the main order was already tracked
             this.eventManager.purchase(purchaseData, true);
+            
+            // Also fire a custom os_accepted_upsell event for additional tracking
+            if (typeof this.eventManager.fireCustomEvent === 'function') {
+              // Create the custom event data
+              const customEventData = {
+                transaction_id: purchaseData.number,
+                ref_id: purchaseData.ref_id,
+                product_id: purchaseData.lines[0]?.product_id,
+                product_name: purchaseData.lines[0]?.product_title,
+                price: purchaseData.lines[0]?.price,
+                quantity: purchaseData.lines[0]?.quantity,
+                total: purchaseData.total,
+                currency: purchaseData.currency
+              };
+              
+              this.coreLogger.info('Triggering os_accepted_upsell custom event', customEventData);
+              this.eventManager.fireCustomEvent('os_accepted_upsell', customEventData);
+            }
           } else if (this.events && typeof this.events.purchase === 'function') {
             this.coreLogger.info('Triggering purchase event for upsell via events API', purchaseData);
             this.events.purchase(purchaseData, true);
+            
+            // Also fire a custom os_accepted_upsell event
+            if (typeof this.events.fireCustomEvent === 'function') {
+              // Create the custom event data
+              const customEventData = {
+                transaction_id: purchaseData.number,
+                ref_id: purchaseData.ref_id,
+                product_id: purchaseData.lines[0]?.product_id,
+                product_name: purchaseData.lines[0]?.product_title,
+                price: purchaseData.lines[0]?.price,
+                quantity: purchaseData.lines[0]?.quantity,
+                total: purchaseData.total,
+                currency: purchaseData.currency
+              };
+              
+              this.coreLogger.info('Triggering os_accepted_upsell custom event via events API', customEventData);
+              this.events.fireCustomEvent('os_accepted_upsell', customEventData);
+            }
           } else {
             this.coreLogger.warn('No method available to track upsell purchase');
           }

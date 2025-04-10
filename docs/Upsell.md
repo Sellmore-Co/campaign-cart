@@ -129,6 +129,56 @@ Add a loading state to your page to indicate when an upsell is being processed:
 
 When a user clicks an upsell accept or decline button, all buttons are automatically disabled to prevent multiple clicks. In case of an error during acceptance, the buttons will be re-enabled so the user can try again.
 
+## Analytics Tracking
+
+### Upsell Purchase Events
+
+When a customer accepts an upsell, two events are automatically fired to tracking platforms (Google Tag Manager, Facebook Pixel, etc.) on the next page load:
+
+1. **Standard Purchase Event** - A standard ecommerce purchase event with the upsell product details
+2. **Custom Upsell Event** - A dedicated `os_accepted_upsell` event with detailed information about the accepted upsell
+
+### Custom os_accepted_upsell Event
+
+The `os_accepted_upsell` event includes the following data:
+
+```javascript
+{
+  event: 'os_accepted_upsell',
+  order_id: '12345',          // Order number
+  ref_id: 'abc123def456',     // Order reference ID
+  product_id: '789',          // Upsell product ID
+  product_name: 'Product X',  // Upsell product name
+  price: 29.99,               // Upsell price
+  quantity: 1,                // Quantity purchased
+  total: 29.99,               // Total amount
+  currency: 'USD'             // Currency
+}
+```
+
+### Using the Event in Google Tag Manager
+
+You can create a custom trigger in Google Tag Manager to fire specific tags when an upsell is accepted:
+
+1. Create a new trigger in GTM
+2. Select "Custom Event" as the trigger type
+3. Set the event name to `os_accepted_upsell`
+4. (Optional) Add conditions to filter by product ID or other parameters
+
+### Using the Event in Facebook Pixel
+
+The event is automatically sent to Facebook Pixel as a custom event:
+
+```javascript
+fbq('trackCustom', 'os_accepted_upsell', {
+  order_id: '12345',
+  product_id: '789',
+  // ... other data
+});
+```
+
+This allows you to create custom audiences and conversion events in Facebook Ads Manager based on upsell acceptances.
+
 ## API Reference
 
 ### UpsellManager
