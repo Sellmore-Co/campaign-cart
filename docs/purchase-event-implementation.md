@@ -12,12 +12,13 @@ The application needs to reliably track purchase events with the following requi
 2. If a user leaves before the event is fired, it should fire when they first visit any page with the order's ref_id
 3. Events should not be duplicated within a session or when revisiting pages with ref_id
 4. The implementation should work consistently across both receipt pages and upsell pages
+5. Purchase events should be triggered for each accepted upsell
 
 ## Implementation
 
-The solution uses a "pending purchase event" flag in sessionStorage to track which orders need events fired:
+The solution uses flags in sessionStorage to track which orders and upsells need events fired:
 
-### 1. Set Pending Flag on Order Creation
+### 1. Main Order Purchase Tracking
 
 When an order is successfully created in `PaymentHandler.js`:
 
@@ -70,43 +71,75 @@ async #checkForPendingPurchaseEvents() {
 }
 ```
 
-### 3. Process the Event in EventManager.js
+### 3. Upsell Purchase Tracking
 
-The EventManager listens for the 'order.loaded' event and handles deduplication:
+When an upsell is accepted in `UpsellManager.js`:
 
 ```javascript
-this.#app.on('order.loaded', (data) => {
-  if (data.order) {
-    this.#logger.info('Order loaded on receipt page, checking if purchase event needed');
-    this.purchase(data.order);
+async acceptUpsell(packageId, quantity, nextUrl) {
+  // Call API to add upsell to order
+  const response = await this.#api.createOrderUpsell(this.#orderRef, upsellData);
+  
+  // Store upsell information for tracking
+  this.#storeUpsellPurchaseData(response, packageId, quantity);
+  
+  // Redirect to next page
+  // ...
+}
+
+#storeUpsellPurchaseData(response, packageId, quantity) {
+  // Create purchase data object for the upsell
+  const upsellPurchaseData = {
+    // Upsell order data
+    // ...
+  };
+  
+  // Store data in sessionStorage
+  sessionStorage.setItem('pending_upsell_purchase', 'true');
+  sessionStorage.setItem('upsell_purchase_data', JSON.stringify(upsellPurchaseData));
+}
+```
+
+### 4. Check for Pending Upsell Purchases
+
+On page load in `UpsellManager.js`:
+
+```javascript
+#checkForPendingUpsellPurchase() {
+  const hasPendingUpsell = sessionStorage.getItem('pending_upsell_purchase') === 'true';
+  
+  if (hasPendingUpsell) {
+    // Get stored upsell data
+    const purchaseData = JSON.parse(sessionStorage.getItem('upsell_purchase_data'));
+    
+    // Send the purchase event with force=true to ensure it's tracked
+    this.#app.eventManager.purchase(purchaseData, true);
+    
+    // Clear the flags
+    sessionStorage.removeItem('pending_upsell_purchase');
+    sessionStorage.removeItem('upsell_purchase_data');
   }
-});
+}
 ```
 
 ## Event Flow
 
-1. **Order Creation:**
+1. **Main Order Creation:**
    - Order is created
-   - `pending_purchase_event_{ref_id}` flag is set in sessionStorage
-   - The 'order.created' event is immediately dispatched
-   - EventManager may fire purchase event if it catches this event
+   - Pending flag is set in sessionStorage
+   - First page with ref_id checks for flag and fires purchase event
 
-2. **First Page with ref_id:**
-   - System checks if there's a pending event flag for this ref_id
-   - If found, loads the order data and triggers 'order.loaded'
-   - Clears the pending flag to prevent future triggering
-   - EventManager receives the event and fires purchase event
-
-3. **Subsequent Pages with ref_id:**
-   - No pending flag exists
-   - No purchase event is triggered
+2. **Upsell Acceptance:**
+   - Upsell is added to the order via API
+   - Upsell purchase data is stored in sessionStorage
+   - After redirect, UpsellManager checks for pending upsell and fires a separate purchase event
 
 ## Benefits
 
 1. **Reliability:** Events will be tracked even if a user closes their browser after order creation
-2. **Deduplication:** Built-in mechanisms prevent duplicate events
-3. **Page Type Agnostic:** Works on any page with ref_id (upsell, receipt, etc.)
-4. **Maintains Original Flow:** Uses existing event handlers in EventManager
+2. **Upsell Tracking:** Each upsell is tracked as a separate purchase event
+3. **Deduplication:** Built-in mechanisms prevent duplicate events
+4. **Page Type Agnostic:** Works on any page with ref_id (upsell, receipt, etc.)
 
 ## Limitations
 

@@ -143,6 +143,9 @@ export class UpsellManager {
       const response = await this.#api.createOrderUpsell(this.#orderRef, upsellData);
       this.#logger.info('Upsell successfully added to order', response);
       
+      // Store upsell information in sessionStorage for tracking on the next page
+      this.#storeUpsellPurchaseData(response, packageId, quantity);
+      
       // Redirect to the next page
       this.#redirect(nextUrl);
     } catch (error) {
@@ -154,6 +157,57 @@ export class UpsellManager {
       
       // Display error to user
       this.#displayError('There was an error processing your upsell. Please try again.');
+    }
+  }
+  
+  /**
+   * Store upsell data in sessionStorage to track as a purchase event on next page load
+   * @param {Object} response - API response from createOrderUpsell
+   * @param {string|number} packageId - The package ID added to the order
+   * @param {number} quantity - The quantity added
+   */
+  #storeUpsellPurchaseData(response, packageId, quantity) {
+    try {
+      // Get the campaign data to find the package details
+      const campaignData = this.#app.getCampaignData();
+      if (!campaignData || !campaignData.packages) {
+        this.#logger.warn('Campaign data not available for upsell tracking');
+        return;
+      }
+      
+      // Find the package that was added as an upsell
+      const packageData = campaignData.packages.find(pkg => 
+        pkg.ref_id.toString() === packageId.toString() || 
+        pkg.external_id?.toString() === packageId.toString()
+      );
+      
+      if (!packageData) {
+        this.#logger.warn(`Package data not found for upsell tracking: ${packageId}`);
+        return;
+      }
+      
+      // Store minimal order data needed for the purchase event
+      const upsellPurchaseData = {
+        number: response.number || response.ref_id,
+        ref_id: response.ref_id,
+        total: parseFloat(packageData.price) * quantity,
+        currency: campaignData.currency || 'USD',
+        lines: [{
+          product_id: packageData.external_id || packageData.ref_id,
+          product_title: packageData.name,
+          price: parseFloat(packageData.price),
+          quantity: quantity,
+          is_upsell: true
+        }]
+      };
+      
+      // Store data in sessionStorage with a flag indicating it's an upsell purchase
+      sessionStorage.setItem('pending_upsell_purchase', 'true');
+      sessionStorage.setItem('upsell_purchase_data', JSON.stringify(upsellPurchaseData));
+      
+      this.#logger.info('Stored upsell purchase data for tracking on next page load', upsellPurchaseData);
+    } catch (error) {
+      this.#logger.error('Error storing upsell purchase data:', error);
     }
   }
   

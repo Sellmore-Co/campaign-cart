@@ -10164,7 +10164,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/UpsellManager.js
-  var _app19, _logger24, _stateManager2, _api, _upsellElements, _orderRef, _init9, init_fn9, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _redirect, redirect_fn, _displayError, displayError_fn;
+  var _app19, _logger24, _stateManager2, _api, _upsellElements, _orderRef, _init9, init_fn9, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _redirect, redirect_fn, _displayError, displayError_fn;
   var UpsellManager = class {
     constructor(app) {
       __privateAdd(this, _init9);
@@ -10181,6 +10181,13 @@ var TwentyNineNext = (() => {
        * Bind events to upsell elements
        */
       __privateAdd(this, _bindEvents);
+      /**
+       * Store upsell data in sessionStorage to track as a purchase event on next page load
+       * @param {Object} response - API response from createOrderUpsell
+       * @param {string|number} packageId - The package ID added to the order
+       * @param {number} quantity - The quantity added
+       */
+      __privateAdd(this, _storeUpsellPurchaseData);
       /**
        * Disable all upsell buttons to prevent multiple clicks
        */
@@ -10236,6 +10243,7 @@ var TwentyNineNext = (() => {
         };
         const response = await __privateGet(this, _api).createOrderUpsell(__privateGet(this, _orderRef), upsellData);
         __privateGet(this, _logger24).info("Upsell successfully added to order", response);
+        __privateMethod(this, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn).call(this, response, packageId, quantity);
         __privateMethod(this, _redirect, redirect_fn).call(this, nextUrl);
       } catch (error) {
         __privateGet(this, _logger24).error("Error accepting upsell:", error);
@@ -10319,6 +10327,41 @@ var TwentyNineNext = (() => {
         }
       });
     });
+  };
+  _storeUpsellPurchaseData = new WeakSet();
+  storeUpsellPurchaseData_fn = function(response, packageId, quantity) {
+    try {
+      const campaignData = __privateGet(this, _app19).getCampaignData();
+      if (!campaignData || !campaignData.packages) {
+        __privateGet(this, _logger24).warn("Campaign data not available for upsell tracking");
+        return;
+      }
+      const packageData = campaignData.packages.find(
+        (pkg) => pkg.ref_id.toString() === packageId.toString() || pkg.external_id?.toString() === packageId.toString()
+      );
+      if (!packageData) {
+        __privateGet(this, _logger24).warn(`Package data not found for upsell tracking: ${packageId}`);
+        return;
+      }
+      const upsellPurchaseData = {
+        number: response.number || response.ref_id,
+        ref_id: response.ref_id,
+        total: parseFloat(packageData.price) * quantity,
+        currency: campaignData.currency || "USD",
+        lines: [{
+          product_id: packageData.external_id || packageData.ref_id,
+          product_title: packageData.name,
+          price: parseFloat(packageData.price),
+          quantity,
+          is_upsell: true
+        }]
+      };
+      sessionStorage.setItem("pending_upsell_purchase", "true");
+      sessionStorage.setItem("upsell_purchase_data", JSON.stringify(upsellPurchaseData));
+      __privateGet(this, _logger24).info("Stored upsell purchase data for tracking on next page load", upsellPurchaseData);
+    } catch (error) {
+      __privateGet(this, _logger24).error("Error storing upsell purchase data:", error);
+    }
   };
   _disableUpsellButtons = new WeakSet();
   disableUpsellButtons_fn = function() {
@@ -10617,7 +10660,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/core/TwentyNineNext.js
-  var _isInitialized2, _isCheckoutPage, _campaignData, _loadConfig2, loadConfig_fn2, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn;
+  var _isInitialized2, _isCheckoutPage, _campaignData, _loadConfig2, loadConfig_fn2, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn;
   var TwentyNineNext = class {
     constructor(options = {}) {
       __privateAdd(this, _loadConfig2);
@@ -10640,6 +10683,11 @@ var TwentyNineNext = (() => {
        * Check for pending purchase events for orders with ref_id in URL
        */
       __privateAdd(this, _checkForPendingPurchaseEvents);
+      /**
+       * Check for pending upsell purchases and track them
+       * This runs on EVERY page load regardless of page type
+       */
+      __privateAdd(this, _checkForPendingUpsellPurchase);
       __privateAdd(this, _isInitialized2, false);
       __privateAdd(this, _isCheckoutPage, false);
       __privateAdd(this, _campaignData, null);
@@ -10709,10 +10757,11 @@ var TwentyNineNext = (() => {
       }
       await __privateMethod(this, _fetchCampaignData, fetchCampaignData_fn).call(this);
       await __privateMethod(this, _loadGoogleMapsApi, loadGoogleMapsApi_fn).call(this);
+      __privateMethod(this, _initializeManagers, initializeManagers_fn).call(this);
+      await __privateMethod(this, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn).call(this);
       __privateSet(this, _isCheckoutPage, __privateMethod(this, _detectCheckoutPage, detectCheckoutPage_fn).call(this));
       if (__privateGet(this, _isCheckoutPage))
         __privateMethod(this, _initCheckoutPage, initCheckoutPage_fn).call(this);
-      __privateMethod(this, _initializeManagers, initializeManagers_fn).call(this);
       __privateMethod(this, _initUIUtilities, initUIUtilities_fn).call(this);
       await __privateMethod(this, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn).call(this);
       __privateSet(this, _isInitialized2, true);
@@ -10957,6 +11006,10 @@ var TwentyNineNext = (() => {
     this.triggerEvent("upsell.pageview", {
       ref_id: new URLSearchParams(window.location.search).get("ref_id") || sessionStorage.getItem("order_ref_id")
     });
+    const hasPendingUpsell = sessionStorage.getItem("pending_upsell_purchase") === "true";
+    if (hasPendingUpsell) {
+      this.coreLogger.info("Found pending upsell purchase, will be tracked by UpsellManager");
+    }
   };
   _initUIUtilities = new WeakSet();
   initUIUtilities_fn = function() {
@@ -11011,6 +11064,33 @@ var TwentyNineNext = (() => {
       }
     } else {
       this.coreLogger.debug(`No pending purchase event for order ${refId}`);
+    }
+  };
+  _checkForPendingUpsellPurchase = new WeakSet();
+  checkForPendingUpsellPurchase_fn = async function() {
+    try {
+      const hasPendingUpsell = sessionStorage.getItem("pending_upsell_purchase") === "true";
+      if (hasPendingUpsell) {
+        this.coreLogger.info("Found pending upsell purchase, processing tracking event");
+        const upsellPurchaseData = sessionStorage.getItem("upsell_purchase_data");
+        if (upsellPurchaseData) {
+          const purchaseData = JSON.parse(upsellPurchaseData);
+          if (this.eventManager && typeof this.eventManager.purchase === "function") {
+            this.coreLogger.info("Triggering purchase event for upsell", purchaseData);
+            this.eventManager.purchase(purchaseData, true);
+          } else if (this.events && typeof this.events.purchase === "function") {
+            this.coreLogger.info("Triggering purchase event for upsell via events API", purchaseData);
+            this.events.purchase(purchaseData, true);
+          } else {
+            this.coreLogger.warn("No method available to track upsell purchase");
+          }
+        }
+        sessionStorage.removeItem("pending_upsell_purchase");
+        sessionStorage.removeItem("upsell_purchase_data");
+        this.coreLogger.debug("Cleared pending upsell purchase data");
+      }
+    } catch (error) {
+      this.coreLogger.error("Error checking for pending upsell purchase:", error);
     }
   };
 

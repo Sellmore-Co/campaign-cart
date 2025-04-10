@@ -191,14 +191,19 @@ export class TwentyNineNext {
     }
 
     await this.#fetchCampaignData();
-    // Move the pending purchase check to AFTER managers are initialized
     await this.#loadGoogleMapsApi();
+    
+    // Initialize managers early
+    this.#initializeManagers();
+    
+    // Check for pending upsell purchases - needs to happen after EventManager is initialized
+    await this.#checkForPendingUpsellPurchase();
+    
     this.#isCheckoutPage = this.#detectCheckoutPage();
     if (this.#isCheckoutPage) this.#initCheckoutPage();
 
-    this.#initializeManagers();
     this.#initUIUtilities();
-
+    
     // Check for pending purchase events AFTER EventManager is initialized
     await this.#checkForPendingPurchaseEvents();
 
@@ -341,6 +346,12 @@ export class TwentyNineNext {
     this.triggerEvent('upsell.pageview', {
       ref_id: new URLSearchParams(window.location.search).get('ref_id') || sessionStorage.getItem('order_ref_id')
     });
+    
+    // Check if we have a pending upsell purchase from previous page
+    const hasPendingUpsell = sessionStorage.getItem('pending_upsell_purchase') === 'true';
+    if (hasPendingUpsell) {
+      this.coreLogger.info('Found pending upsell purchase, will be tracked by UpsellManager');
+    }
   }
 
   #initUIUtilities() {
@@ -472,6 +483,45 @@ export class TwentyNineNext {
       }
     } else {
       this.coreLogger.debug(`No pending purchase event for order ${refId}`);
+    }
+  }
+
+  /**
+   * Check for pending upsell purchases and track them
+   * This runs on EVERY page load regardless of page type
+   */
+  async #checkForPendingUpsellPurchase() {
+    try {
+      const hasPendingUpsell = sessionStorage.getItem('pending_upsell_purchase') === 'true';
+      
+      if (hasPendingUpsell) {
+        this.coreLogger.info('Found pending upsell purchase, processing tracking event');
+        
+        const upsellPurchaseData = sessionStorage.getItem('upsell_purchase_data');
+        if (upsellPurchaseData) {
+          // Parse the stored upsell purchase data
+          const purchaseData = JSON.parse(upsellPurchaseData);
+          
+          // Send the purchase event through EventManager
+          if (this.eventManager && typeof this.eventManager.purchase === 'function') {
+            this.coreLogger.info('Triggering purchase event for upsell', purchaseData);
+            // Force the purchase event to ensure it's tracked even if the main order was already tracked
+            this.eventManager.purchase(purchaseData, true);
+          } else if (this.events && typeof this.events.purchase === 'function') {
+            this.coreLogger.info('Triggering purchase event for upsell via events API', purchaseData);
+            this.events.purchase(purchaseData, true);
+          } else {
+            this.coreLogger.warn('No method available to track upsell purchase');
+          }
+        }
+        
+        // Clear the pending upsell purchase flag regardless of tracking success
+        sessionStorage.removeItem('pending_upsell_purchase');
+        sessionStorage.removeItem('upsell_purchase_data');
+        this.coreLogger.debug('Cleared pending upsell purchase data');
+      }
+    } catch (error) {
+      this.coreLogger.error('Error checking for pending upsell purchase:', error);
     }
   }
 }
