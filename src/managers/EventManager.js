@@ -17,6 +17,7 @@ export class EventManager {
   };
   #debugMode = false;
   #processedOrderIds = new Set(); // Track processed order IDs to prevent duplicates
+  #viewItemListFired = false; // Track if view_item_list has been fired
 
   constructor(app) {
     this.#app = app;
@@ -113,36 +114,64 @@ export class EventManager {
    * Setup event listeners for app events
    */
   #setupEventListeners() {
+    // Keep track of previous cart state to detect changes
+    let previousCartItems = [];
+    
     // Listen for campaign loaded event
     this.#app.on('campaign.loaded', (data) => {
-      this.#logger.debug('Campaign loaded event received, firing view_item_list');
-      if (data && data.campaign) {
-        this.viewItemList(data.campaign);
-      } else {
-        this.#logger.warn('Campaign loaded event received but no campaign data found');
-      }
+      this.#logger.debug('Campaign loaded event received, triggering viewVisibleItemList');
+      this.viewVisibleItemList();
     });
 
     // Listen for cart updated event
     this.#app.on('cart.updated', (data) => {
       if (data.cart && data.cart.items && data.cart.items.length > 0) {
-        this.addToCart(data.cart);
+        // Check if this is an actual item change or just other cart updates
+        const currentCartItemsJSON = JSON.stringify(data.cart.items.map(item => ({ 
+          id: item.id, 
+          quantity: item.quantity 
+        })));
+        const previousCartItemsJSON = JSON.stringify(previousCartItems);
+        
+        // Only fire add_to_cart if items have changed
+        if (currentCartItemsJSON !== previousCartItemsJSON) {
+          this.#logger.debug('Cart items changed, firing add_to_cart event');
+          this.addToCart(data.cart);
+          
+          // Update previous cart items for next comparison
+          previousCartItems = data.cart.items.map(item => ({ 
+            id: item.id, 
+            quantity: item.quantity 
+          }));
+        } else {
+          this.#logger.debug('Cart updated but items unchanged, not firing add_to_cart');
+        }
+      } else {
+        // Reset previous cart items if cart is empty
+        previousCartItems = [];
       }
     });
 
     // Listen for order created event
-    this.#app.on('order.created', (data) => {
-      this.purchase(data);
-    });
+    // commented to trigger only on first page they load.
+
+    // this.#app.on('order.created', (data) => {
+    //   this.purchase(data);
+    // });
     
-    // Listen for order loaded event (for receipt page)
+    // Listen for order loaded event
     this.#app.on('order.loaded', (data) => {
+      this.#logger.debug('Received order.loaded event with data:', JSON.stringify(data, null, 2));
+      
       if (data.order) {
         this.#logger.info('Order loaded on receipt page, checking if purchase event needed');
         this.purchase(data.order);
+      } else {
+        this.#logger.warn('Order.loaded event received but no order data found', data);
       }
     });
   }
+  
 
   /**
    * Fire a view_item_list event
@@ -158,13 +187,18 @@ export class EventManager {
 
     this.#logger.debug(`Found ${campaignData.packages.length} packages in campaign data`);
     
-    const items = campaignData.packages.map(pkg => ({
-      item_id: pkg.external_id || pkg.ref_id,
-      item_name: pkg.name,
-      price: parseFloat(pkg.price) || 0,
-      currency: campaignData.currency || 'USD',
-      quantity: 1
-    }));
+    const items = campaignData.packages.map(pkg => {
+      // Ensure price is a number
+      const price = typeof pkg.price === 'string' ? parseFloat(pkg.price) : (pkg.price || 0);
+      
+      return {
+        item_id: pkg.external_id || pkg.ref_id,
+        item_name: pkg.name,
+        price: price,
+        currency: campaignData.currency || 'USD',
+        quantity: pkg.qty || 1
+      };
+    });
 
     const eventData = {
       event: 'view_item_list',
@@ -256,11 +290,15 @@ export class EventManager {
 
     // Check if this order has already been processed
     const orderId = orderData.number || orderData.ref_id;
+    this.#logger.debug(`Purchase method called for order ${orderId}, force=${force}, already processed=${this.#processedOrderIds.has(orderId)}`);
+    
     if (!force && orderId && this.#processedOrderIds.has(orderId)) {
       this.#logger.info(`Purchase event for order ${orderId} already fired, skipping`);
       return;
     }
 
+    this.#logger.info(`Preparing to fire purchase event for order ${orderId}`);
+    
     const items = orderData.lines.map(line => ({
       item_id: line.product_id || line.id,
       item_name: line.product_title || line.name,
@@ -292,7 +330,7 @@ export class EventManager {
     if (orderId) {
       this.#processedOrderIds.add(orderId);
       this.#saveProcessedOrderIds();
-      this.#logger.debug(`Marked order ${orderId} as processed`);
+      this.#logger.debug(`Marked order ${orderId} as processed, total processed orders: ${this.#processedOrderIds.size}`);
     }
   }
 
@@ -550,4 +588,13 @@ export class EventManager {
   getPlatformStatus() {
     return { ...this.#platforms };
   }
+  
+  /**
+   * Check if the EventManager is fully initialized
+   * @returns {boolean} - Whether the EventManager is initialized
+   */
+  get isInitialized() {
+    return this.#isInitialized;
+  }
+
 } 

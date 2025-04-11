@@ -29,6 +29,9 @@ export class SelectorManager {
     
     // Initialize unit pricing for all selectors
     this.initUnitPricing();
+    
+    // Trigger view_item_list event for visible packages after initialization
+    setTimeout(() => this.triggerViewItemList(), 100);
   }
 
   #initSelector(selectorElement) {
@@ -281,10 +284,43 @@ export class SelectorManager {
     
     // Calculate unit metrics
     const totalUnits = packageData.qty || 1;
-    const totalPrice = Number.parseFloat(packageData.price_total) || Number.parseFloat(packageData.price) * totalUnits;
+    let totalPrice = Number.parseFloat(packageData.price_total) || Number.parseFloat(packageData.price) * totalUnits;
     const totalRetailPrice = Number.parseFloat(packageData.price_retail_total) || 
                              (Number.parseFloat(packageData.price_retail) * totalUnits) || 
                              totalPrice;
+    
+    // Check if there's an active coupon that affects this package
+    const couponDetails = this.#app.cart?.getCouponDetails?.();
+    let discountedTotalPrice = totalPrice;
+    
+    if (couponDetails) {
+      this.#logger.debug(`Active coupon found for unit pricing calculations:`, couponDetails);
+      
+      // If it's a percentage coupon, apply the discount to the package price
+      if (couponDetails.type === 'percentage' && couponDetails.value > 0) {
+        const discountPercentage = couponDetails.value / 100;
+        discountedTotalPrice = totalPrice * (1 - discountPercentage);
+        this.#logger.debug(`Applied ${couponDetails.value}% discount to package price: ${totalPrice} -> ${discountedTotalPrice}`);
+      } 
+      // If it's a fixed amount coupon, distribute it proportionally across all items
+      else if (couponDetails.type === 'fixed' && couponDetails.value > 0) {
+        // Get cart total before discount to calculate proportional discount
+        const cart = this.#app.state?.getState('cart');
+        if (cart && cart.totals && cart.totals.original_subtotal > 0) {
+          const cartSubtotal = cart.totals.original_subtotal;
+          const packageProportion = totalPrice / cartSubtotal;
+          const packageDiscount = couponDetails.value * packageProportion;
+          
+          // Don't let discount exceed the package price
+          discountedTotalPrice = Math.max(0, totalPrice - packageDiscount);
+          this.#logger.debug(`Applied proportional fixed discount (${packageDiscount.toFixed(2)}) to package price: ${totalPrice} -> ${discountedTotalPrice}`);
+        }
+      }
+      // Free shipping doesn't affect product prices
+    }
+    
+    // Use the discounted price for calculations
+    totalPrice = discountedTotalPrice;
     
     // Calculate unit prices
     const unitPrice = totalPrice / totalUnits;
@@ -470,5 +506,69 @@ export class SelectorManager {
    */
   refreshUnitPricing() {
     this.initUnitPricing();
+  }
+
+  /**
+   * Trigger view_item_list event for all visible packages on the page
+   * This method is public so it can be called from EventManager if needed
+   */
+  triggerViewItemList() {
+    const campaignData = this.#app.getCampaignData();
+    if (!campaignData || !campaignData.packages || campaignData.packages.length === 0) {
+      this.#logger.warn('Cannot trigger view_item_list: No packages in campaign data');
+      return;
+    }
+    
+    // Collect all package IDs present on the page
+    const visiblePackageIds = new Set();
+    const visiblePackages = [];
+    
+    // Iterate through all selectors to find visible packages
+    Object.values(this.#selectors).forEach(selector => {
+      selector.items.forEach(item => {
+        if (item.packageId) {
+          visiblePackageIds.add(item.packageId.toString());
+        }
+      });
+    });
+    
+    // For debugging, log the found packages
+    this.#logger.debug(`Found ${visiblePackageIds.size} unique package IDs in selectors`);
+    
+    // Find matching packages in campaign data
+    campaignData.packages.forEach(pkg => {
+      const refIdStr = pkg.ref_id?.toString();
+      const externalIdStr = pkg.external_id?.toString();
+      
+      if (visiblePackageIds.has(refIdStr) || visiblePackageIds.has(externalIdStr)) {
+        visiblePackages.push(pkg);
+      }
+    });
+    
+    // If we found matching packages, trigger the event
+    if (visiblePackages.length > 0) {
+      this.#logger.info(`Triggering view_item_list for ${visiblePackages.length} visible packages`);
+      
+      // Create a filtered version of campaign data
+      const filteredCampaignData = {
+        ...campaignData,
+        packages: visiblePackages
+      };
+      
+      // Check which method to use based on what's available
+      if (this.#app.eventManager?.viewItemList) {
+        // Use EventManager's viewItemList if available
+        this.#app.eventManager.viewItemList(filteredCampaignData);
+        this.#logger.debug('Used eventManager.viewItemList to fire event');
+      } else if (this.#app.events?.viewItemList) {
+        // Fall back to events system
+        this.#app.events.viewItemList(filteredCampaignData);
+        this.#logger.debug('Used events.viewItemList to fire event');
+      } else {
+        this.#logger.warn('No suitable method found to trigger view_item_list');
+      }
+    } else {
+      this.#logger.warn('No matching packages found between selectors and campaign data');
+    }
   }
 }

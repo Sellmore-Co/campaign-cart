@@ -17,21 +17,6 @@ export class CampaignHelper {
 
   getCampaignData() {
     const campaignData = this.#app.campaignData;
-    
-    // If we have campaign data and the view_item_list event hasn't been fired yet,
-    // trigger it now (but only if we have the EventManager initialized)
-    if (campaignData && !this.#viewItemListFired && this.#app.events?.viewItemList) {
-      this.#logger.debug('Triggering view_item_list event from getCampaignData');
-      console.log('🔍 Triggering view_item_list from getCampaignData', campaignData);
-      
-      // Add a small delay to ensure everything is initialized
-      setTimeout(() => {
-        this.#app.events.viewItemList(campaignData);
-        this.#viewItemListFired = true;
-        console.log('✅ view_item_list triggered from getCampaignData');
-      }, 500);
-    }
-    
     return campaignData;
   }
 
@@ -45,21 +30,6 @@ export class CampaignHelper {
 
   getProducts() {
     const products = this.#app.campaignData?.products ?? [];
-    
-    // If we have products and the view_item_list event hasn't been fired yet,
-    // trigger it now (but only if we have the EventManager initialized)
-    if (products.length > 0 && !this.#viewItemListFired && this.#app.events?.viewItemList) {
-      this.#logger.debug('Triggering view_item_list event from getProducts');
-      console.log('🔍 Triggering view_item_list from getProducts', this.#app.campaignData);
-      
-      // Add a small delay to ensure everything is initialized
-      setTimeout(() => {
-        this.#app.events.viewItemList(this.#app.campaignData);
-        this.#viewItemListFired = true;
-        console.log('✅ view_item_list triggered from getProducts');
-      }, 500);
-    }
-    
     return products;
   }
 
@@ -98,13 +68,22 @@ export class CampaignHelper {
       return;
     }
     
-    if (!this.#app.events?.viewItemList) {
-      this.#logger.warn('Cannot trigger view_item_list: EventManager not initialized');
+    if (!this.#app.eventManager) {
+      this.#logger.warn('Cannot trigger view_item_list: EventManager not found');
       return;
     }
     
-    this.#logger.debug('Manually triggering view_item_list event');
-    this.#app.events.viewItemList(this.#app.campaignData);
+    // Use the new viewVisibleItemList method if available, otherwise fall back to the old method
+    if (typeof this.#app.eventManager.viewVisibleItemList === 'function') {
+      this.#logger.debug('Manually triggering viewVisibleItemList event');
+      this.#app.eventManager.viewVisibleItemList();
+    } else if (this.#app.events?.viewItemList) {
+      this.#logger.debug('Falling back to events.viewItemList method');
+      this.#app.events.viewItemList(this.#app.campaignData);
+    } else {
+      this.#logger.warn('No suitable method found to trigger view_item_list event');
+    }
+    
     this.#viewItemListFired = true;
   }
 }

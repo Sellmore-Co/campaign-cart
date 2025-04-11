@@ -9,6 +9,7 @@ This document explains the various ways to initialize and configure the Campaign
 - [Events System](./Events.md) - Documentation on events and their usage
 - [Checkout System](./checkout/) - Checkout page documentation
 - [Upsell System](./Upsell.md) - Documentation on implementing upsells
+- [Voucher System](./Vouchers.md) - Documentation on using the voucher/discount system
 
 ## Auto-Initialization
 

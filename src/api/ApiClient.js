@@ -8,6 +8,7 @@
 export class ApiClient {
   #app;
   #apiKey;
+  #campaignId;
   #baseUrl = 'https://campaigns.apps.29next.com/api/v1';
   #logger;
 
@@ -19,11 +20,18 @@ export class ApiClient {
   init() {
     this.#logger.info('Initializing ApiClient');
     
-    this.#apiKey = this.#app.config.apiKey;
+    // Check for campaign ID in URL parameters and save to localStorage if present
+    this.#checkForCampaignIdInUrl();
     
-    if (this.#apiKey) {
-      this.#logger.info('API key is set');
+    // Get campaign ID from local storage or meta tag to use as API key
+    this.#campaignId = this.#getCampaignId();
+    
+    // Use campaign ID as API key if available
+    if (this.#campaignId) {
+      this.#apiKey = this.#campaignId;
+      this.#logger.info(`Using campaign ID as API key: ${this.#apiKey}`);
     } else {
+      // Fall back to meta tag API key
       const apiKeyMeta = document.querySelector('meta[name="os-api-key"]');
       this.#apiKey = apiKeyMeta?.getAttribute('content');
       this.#logger.info(this.#apiKey ? 'API key retrieved from meta tag' : 'API key is not set');
@@ -35,6 +43,46 @@ export class ApiClient {
       this.#baseUrl = proxyUrl;
       this.#logger.info(`Using proxy URL: ${proxyUrl}`);
     }
+  }
+
+  /**
+   * Check if campaignId exists in URL parameters and save to local storage if it does
+   */
+  #checkForCampaignIdInUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const campaignId = urlParams.get('campaignId');
+    
+    if (campaignId) {
+      this.#logger.info(`Found campaignId in URL: ${campaignId}`);
+      sessionStorage.setItem('os-campaign-id', campaignId);
+      this.#logger.info('Saved campaignId to session storage');
+    }
+  }
+
+  /**
+   * Get campaign ID from session storage or meta tag
+   * @returns {string|null} Campaign ID
+   */
+  #getCampaignId() {
+    // First check session storage for campaign ID override
+    const storedCampaignId = sessionStorage.getItem('os-campaign-id');
+    
+    if (storedCampaignId) {
+      this.#logger.info(`Using campaign ID from session storage: ${storedCampaignId}`);
+      return storedCampaignId;
+    }
+    
+    // Fall back to meta tag
+    const campaignIdMeta = document.querySelector('meta[name="os-campaign-id"]');
+    const metaCampaignId = campaignIdMeta?.getAttribute('content') ?? null;
+    
+    if (metaCampaignId) {
+      this.#logger.info(`Using campaign ID from meta tag: ${metaCampaignId}`);
+      return metaCampaignId;
+    }
+    
+    this.#logger.warn('No campaign ID found in session storage or meta tag');
+    return null;
   }
 
   #buildUrl(endpoint) {
@@ -117,6 +165,14 @@ export class ApiClient {
       };
     }
   }
+  
+  /**
+   * Get the current campaign ID
+   * @returns {string|null} The current campaign ID
+   */
+  getCampaignId() {
+    return this.#campaignId;
+  }
 
   /**
    * Get attribution data from the app instance
@@ -186,6 +242,44 @@ export class ApiClient {
       this.#logger.debug('Added attribution data to order:', orderData.attribution);
     } else {
       this.#logger.debug('Order already has attribution data:', orderData.attribution);
+    }
+    
+    // Ensure vouchers are properly formatted
+    if (orderData.vouchers) {
+      // First, check if vouchers is an array of objects with 'code', 'type', and 'value'
+      if (Array.isArray(orderData.vouchers) && orderData.vouchers.length > 0) {
+        // Check first voucher to determine format
+        const firstVoucher = orderData.vouchers[0];
+        
+        if (typeof firstVoucher === 'object' && firstVoucher !== null) {
+          // Convert object vouchers to string codes - API expects simple strings
+          orderData.vouchers = orderData.vouchers.map(voucher => {
+            if (typeof voucher === 'string') {
+              return voucher;
+            } else if (voucher && voucher.code) {
+              return voucher.code;
+            } else {
+              return String(voucher);
+            }
+          });
+          this.#logger.debug('Converted voucher objects to string codes for API:', orderData.vouchers);
+        }
+      }
+      
+      // Ensure it's still an array
+      if (!Array.isArray(orderData.vouchers)) {
+        if (typeof orderData.vouchers === 'string') {
+          orderData.vouchers = [orderData.vouchers];
+        } else {
+          // If it's not a string or array, log warning and remove it
+          this.#logger.warn('Invalid vouchers format, removing:', orderData.vouchers);
+          delete orderData.vouchers;
+        }
+      }
+      
+      if (orderData.vouchers) {
+        this.#logger.debug('Final vouchers format for API:', orderData.vouchers);
+      }
     }
     
     // Check if this is a test order with test_card token
