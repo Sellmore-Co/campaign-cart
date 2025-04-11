@@ -34,11 +34,14 @@ export class StateManager {
           tax: 0,
           total: 0,
           recurring_total: 0,
+          discount: 0,
+          coupon_savings: 0,
           currency: 'USD',
           currency_symbol: '$'
         },
         shippingMethod: null,
         couponCode: null,
+        couponDetails: null,
         attribution: {
           utm_source: '',
           utm_medium: '',
@@ -241,6 +244,7 @@ export class StateManager {
   clearCart() {
     this.setState('cart.items', []);
     this.setState('cart.couponCode', null);
+    this.setState('cart.couponDetails', null);
     this.setState('cart.shippingMethod', null);
     this.#logger.info('Cart cleared');
     this.#app.triggerEvent('cart.updated', { cart: this.getState('cart') });
@@ -254,44 +258,74 @@ export class StateManager {
     return this.getState('cart');
   }
 
-  applyCoupon(couponCode) {
+  applyCoupon(couponCode, discountType = 'percentage', discountValue = 0) {
     this.setState('cart.couponCode', couponCode);
-    this.#logger.info(`Coupon applied: ${couponCode}`);
+    this.setState('cart.couponDetails', {
+      code: couponCode,
+      type: discountType,
+      value: parseFloat(discountValue)
+    });
+    this.#logger.info(`Coupon applied: ${couponCode} (${discountType}: ${discountValue})`);
+    this.#recalculateCart(true);
     this.#app.triggerEvent('cart.updated', { cart: this.getState('cart') });
     return this.getState('cart');
   }
 
   removeCoupon() {
     this.setState('cart.couponCode', null);
+    this.setState('cart.couponDetails', null);
     this.#logger.info('Coupon removed');
+    this.#recalculateCart(true);
     this.#app.triggerEvent('cart.updated', { cart: this.getState('cart') });
     return this.getState('cart');
   }
 
   #calculateCartTotals() {
-    const { items, shippingMethod } = this.#state.cart;
+    const { items, shippingMethod, couponDetails } = this.#state.cart;
     
     // Use price_total if available, otherwise calculate from price * quantity
     const subtotal = items.reduce((acc, item) => 
       acc + (item.price_total ?? (item.price * (item.quantity || 1))), 0);
     
+    // Calculate discount if coupon is set
+    let discountAmount = 0;
+    if (couponDetails && this.#app.discount) {
+      discountAmount = this.#app.discount.calculateDiscount(couponDetails, subtotal);
+    }
+    
+    // Apply the discount to get the final subtotal
+    const discountedSubtotal = subtotal - discountAmount;
+    
     // Use retail_price_total if available, otherwise calculate from retail_price * quantity
     const retailSubtotal = items.reduce((acc, item) => 
       acc + (item.retail_price_total ?? ((item.retail_price ?? item.price) * (item.quantity || 1))), 0);
-      
-    const savings = retailSubtotal - subtotal;
+    
+    // Calculate savings (including discount)
+    const savings = retailSubtotal - discountedSubtotal;
     const savingsPercentage = retailSubtotal > 0 ? (savings / retailSubtotal) * 100 : 0;
+    
+    // Calculate recurring total
     const recurringTotal = items.reduce((acc, item) => 
       acc + (item.is_recurring && item.price_recurring ? item.price_recurring * (item.quantity || 1) : 0), 0);
-    const shipping = shippingMethod?.price ? Number.parseFloat(shippingMethod.price) : 0;
-    const tax = 0; // Placeholder for real tax logic
-    const total = subtotal + shipping + tax;
+    
+    // Calculate shipping (adjust for free shipping coupon)
+    let shipping = shippingMethod?.price ? Number.parseFloat(shippingMethod.price) : 0;
+    if (couponDetails && couponDetails.type === 'free_shipping') {
+      shipping = 0;
+    }
+    
+    // Placeholder for real tax logic - would typically be calculated on the discounted subtotal
+    const tax = 0;
+    
+    // Calculate the new total including discount
+    const total = discountedSubtotal + shipping + tax;
 
     const currency = this.#app.campaignData?.currency ?? 'USD';
     const currencySymbol = { USD: '$', EUR: '€', GBP: '£' }[currency] ?? '$';
 
     return {
-      subtotal,
+      subtotal: discountedSubtotal, // This is now the discounted subtotal
+      original_subtotal: subtotal, // Keep the original subtotal for reference
       retail_subtotal: retailSubtotal,
       savings,
       savings_percentage: savingsPercentage,
@@ -299,6 +333,8 @@ export class StateManager {
       tax,
       total,
       recurring_total: recurringTotal,
+      discount: discountAmount,
+      coupon_savings: discountAmount,
       currency,
       currency_symbol: currencySymbol
     };
@@ -320,12 +356,30 @@ export class StateManager {
   }
 
   getCartForApi() {
-    const { items, shippingMethod, couponCode, attribution } = this.getState('cart');
+    const { items, shippingMethod, couponCode, couponDetails, attribution } = this.getState('cart');
     const { email, firstName, lastName, phone } = this.getState('user');
+    
+    // Create properly formatted vouchers array if coupon is applied
+    let vouchers = [];
+    if (couponCode) {
+      if (couponDetails && couponDetails.type && couponDetails.value !== undefined) {
+        // Enhanced format with coupon details
+        vouchers.push({
+          code: couponCode,
+          type: couponDetails.type,
+          value: couponDetails.value
+        });
+      } else {
+        // Simple string format for backward compatibility
+        vouchers.push(couponCode);
+      }
+    }
+    
     return {
       lines: items.map(item => ({ product_id: item.id, quantity: item.quantity || 1, price: item.price })),
       shipping_method: shippingMethod?.code ?? null,
       coupon_code: couponCode,
+      vouchers: vouchers,
       user: { email, first_name: firstName, last_name: lastName, phone },
       attribution: attribution || {}
     };

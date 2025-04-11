@@ -550,7 +550,7 @@ export class PaymentHandler {
         return null;
       }
 
-      return {
+      const orderData = {
         user: {
           email: state.user?.email || '',
           first_name: state.user?.firstName || shippingAddress.first_name,
@@ -562,6 +562,30 @@ export class PaymentHandler {
         attribution: state.cart.attribution || {},
         lines: this.#getCartLines(state.cart.items)
       };
+
+      // Include vouchers if available - API expects array of strings
+      if (state.cart.vouchers && state.cart.vouchers.length > 0) {
+        // Convert any object vouchers to string codes
+        orderData.vouchers = state.cart.vouchers.map(voucher => {
+          if (typeof voucher === 'string') {
+            return voucher;
+          } else if (voucher && voucher.code) {
+            return voucher.code;
+          }
+          return String(voucher);
+        });
+        this.#safeLog('debug', `Using vouchers from cart: ${JSON.stringify(orderData.vouchers)}`);
+      } else if (state.cart.couponDetails && state.cart.couponCode) {
+        // Just use the coupon code as a string
+        orderData.vouchers = [state.cart.couponCode];
+        this.#safeLog('debug', `Using coupon code: ${state.cart.couponCode}`);
+      } else if (state.cart.couponCode) {
+        // Backward compatibility for coupon code only
+        orderData.vouchers = [state.cart.couponCode];
+        this.#safeLog('debug', `Using legacy coupon code: ${state.cart.couponCode}`);
+      }
+
+      return orderData;
     } catch (error) {
       this.#safeLog('error', 'Error getting order data:', error);
       this.#handlePaymentError('Error preparing order');
@@ -629,6 +653,19 @@ export class PaymentHandler {
 
     this.#enforceFormPrevention();
     const formattedOrderData = this.#formatOrderData(orderData);
+    
+    // Debug vouchers
+    if (orderData.vouchers) {
+      this.#safeLog('debug', `Original vouchers in orderData:`, orderData.vouchers);
+    } else {
+      this.#safeLog('warn', `No vouchers found in original orderData`);
+    }
+    
+    if (formattedOrderData.vouchers) {
+      this.#safeLog('debug', `Formatted vouchers in formattedOrderData:`, formattedOrderData.vouchers);
+    } else {
+      this.#safeLog('warn', `No vouchers found in formattedOrderData - they may have been lost during formatting`);
+    }
 
     this.#apiClient.createOrder(formattedOrderData)
       .then(response => this.#handleOrderSuccess(response))
@@ -665,7 +702,8 @@ export class PaymentHandler {
     }
     
     if (orderData.payment_token) {
-      formatted.payment_detail = { card_token: orderData.payment_token };
+      formatted.payment_detail = formatted.payment_detail || {};
+      formatted.payment_detail.card_token = orderData.payment_token;
       delete formatted.payment_token;
     }
     if (orderData.payment_method) {
@@ -679,6 +717,39 @@ export class PaymentHandler {
     }
     formatted.shipping_method = parseInt(formatted.shipping_method, 10) || 1;
     formatted.billing_address = formatted.billing_address || formatted.shipping_address;
+    
+    // Make sure vouchers are preserved from the original order data
+    if (!formatted.vouchers && orderData.vouchers) {
+      formatted.vouchers = [...orderData.vouchers];
+      this.#safeLog('debug', 'Restored vouchers from original order data', formatted.vouchers);
+    }
+    
+    // If we still don't have vouchers, check cart state directly as a fallback
+    if (!formatted.vouchers && this.#app?.state) {
+      const cart = this.#app.state.getState('cart');
+      if (cart.couponDetails && cart.couponCode) {
+        // Just use the coupon code as a string - API only expects strings
+        formatted.vouchers = [cart.couponCode];
+        this.#safeLog('debug', 'Added coupon code from cart state as fallback', formatted.vouchers);
+      } else if (cart.couponCode) {
+        formatted.vouchers = [cart.couponCode];
+        this.#safeLog('debug', 'Added coupon code from cart state as fallback', formatted.vouchers);
+      }
+    }
+    
+    // Make sure all vouchers are strings (not objects)
+    if (formatted.vouchers && Array.isArray(formatted.vouchers)) {
+      formatted.vouchers = formatted.vouchers.map(voucher => {
+        if (typeof voucher === 'string') {
+          return voucher;
+        } else if (voucher && voucher.code) {
+          return voucher.code;
+        }
+        return String(voucher);
+      });
+      this.#safeLog('debug', 'Ensured all vouchers are strings', formatted.vouchers);
+    }
+    
     return formatted;
   }
 
@@ -1053,7 +1124,24 @@ export class PaymentHandler {
 
       // Add vouchers if available
       if (cart.vouchers && cart.vouchers.length > 0) {
-        orderData.vouchers = cart.vouchers.map(voucher => voucher.code || voucher);
+        // Convert any object vouchers to string codes
+        orderData.vouchers = cart.vouchers.map(voucher => {
+          if (typeof voucher === 'string') {
+            return voucher;
+          } else if (voucher && voucher.code) {
+            return voucher.code;
+          }
+          return String(voucher);
+        });
+        this.#safeLog('debug', `Using vouchers from cart for express checkout: ${JSON.stringify(orderData.vouchers)}`);
+      } else if (cart.couponDetails && cart.couponCode) {
+        // Just use the coupon code as a string
+        orderData.vouchers = [cart.couponCode];
+        this.#safeLog('debug', `Using coupon code for express checkout: ${cart.couponCode}`);
+      } else if (cart.couponCode) {
+        // Backward compatibility for coupon code only
+        orderData.vouchers = [cart.couponCode];
+        this.#safeLog('debug', `Using legacy coupon code for express checkout: ${cart.couponCode}`);
       }
 
       this.#safeLog('debug', 'Express checkout order data:', orderData);

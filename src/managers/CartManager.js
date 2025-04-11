@@ -74,6 +74,22 @@ export class CartManager {
     updateElement('[data-os-cart-recurring-total]', cart.totals.recurring_total, true);
     updateElement('[data-os-cart-subtotal]', cart.totals.subtotal);
     updateElement('[data-os-cart-shipping]', cart.totals.shipping);
+    updateElement('[data-os-cart-original-subtotal]', cart.totals.original_subtotal);
+    updateElement('[data-os-cart-discount]', cart.totals.discount);
+    updateElement('[data-os-cart-coupon-savings]', cart.totals.coupon_savings);
+    
+    // Update coupon display
+    const couponElement = document.querySelector('[data-os-cart-coupon]');
+    const couponContainer = document.querySelector('[data-os-cart-coupon-container]');
+    
+    if (couponElement && couponContainer) {
+      if (cart.couponDetails && cart.couponCode) {
+        couponElement.textContent = this.#app.discount?.getCouponDisplayText(cart.couponDetails) || cart.couponCode;
+        couponContainer.classList.remove('hidden');
+      } else {
+        couponContainer.classList.add('hidden');
+      }
+    }
 
     if (this.#cartElements.cartItems) {
       this.#cartElements.cartItems.innerHTML = '';
@@ -202,9 +218,16 @@ export class CartManager {
     }
   }
 
-  applyCoupon(couponCode) {
+  applyCoupon(couponCode, discountType = 'percentage', discountValue = 0) {
     try {
-      return this.#stateManager.applyCoupon(couponCode);
+      const result = this.#stateManager.applyCoupon(couponCode, discountType, discountValue);
+      
+      // Refresh unit pricing calculations if SelectorManager is available
+      if (this.#app.selector && typeof this.#app.selector.refreshUnitPricing === 'function') {
+        setTimeout(() => this.#app.selector.refreshUnitPricing(), 10);
+      }
+      
+      return result;
     } catch (error) {
       this.#logger.error('Error applying coupon:', error);
       // this.#showMessage('Error applying coupon', 'error');
@@ -214,12 +237,24 @@ export class CartManager {
 
   removeCoupon() {
     try {
-      return this.#stateManager.removeCoupon();
+      const result = this.#stateManager.removeCoupon();
+      
+      // Refresh unit pricing calculations if SelectorManager is available
+      if (this.#app.selector && typeof this.#app.selector.refreshUnitPricing === 'function') {
+        setTimeout(() => this.#app.selector.refreshUnitPricing(), 10);
+      }
+      
+      return result;
     } catch (error) {
       this.#logger.error('Error removing coupon:', error);
       // this.#showMessage('Error removing coupon', 'error');
       throw error;
     }
+  }
+
+  getCouponDetails() {
+    const cart = this.#stateManager.getState('cart');
+    return cart.couponDetails;
   }
 
   async syncCartWithApi() {

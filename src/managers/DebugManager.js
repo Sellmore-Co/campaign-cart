@@ -307,12 +307,60 @@ export class DebugManager {
       html += '<div>';
       html += '<div style="font-weight: 600; margin-bottom: 10px;">Totals:</div>';
       html += '<ul style="list-style: none; padding: 0; margin: 0;">';
+      
+      // Check if there's original subtotal (before discount)
+      if (cart.totals.original_subtotal && cart.totals.original_subtotal > cart.totals.subtotal) {
+        html += `
+          <li style="display: flex; justify-content: space-between; padding: 3px 0;">
+            <div>Original Subtotal:</div>
+            <div>${formatPrice(cart.totals.original_subtotal)}</div>
+          </li>
+        `;
+      }
+      
       html += `
         <li style="display: flex; justify-content: space-between; padding: 3px 0;">
           <div>Subtotal:</div>
           <div>${formatPrice(cart.totals.subtotal)}</div>
         </li>
       `;
+      
+      // Display voucher information if available
+      if (cart.couponCode) {
+        const voucherType = cart.couponDetails?.type || 'unknown';
+        const voucherValue = cart.couponDetails?.value;
+        
+        let voucherInfo = cart.couponCode;
+        
+        // Add type and value info if available
+        if (voucherType && voucherValue !== undefined) {
+          if (voucherType === 'percentage') {
+            voucherInfo += ` (${voucherValue}% off)`;
+          } else if (voucherType === 'fixed') {
+            voucherInfo += ` ($${voucherValue} off)`;
+          } else if (voucherType === 'free_shipping') {
+            voucherInfo += ` (Free shipping)`;
+          }
+        }
+        
+        html += `
+          <li style="display: flex; justify-content: space-between; padding: 3px 0; color: #4CAF50;">
+            <div>Voucher:</div>
+            <div>${voucherInfo}</div>
+          </li>
+        `;
+        
+        // Show discount amount if available
+        if (cart.totals.discount > 0) {
+          html += `
+            <li style="display: flex; justify-content: space-between; padding: 3px 0; color: #4CAF50;">
+              <div>Discount:</div>
+              <div>-${formatPrice(cart.totals.discount)}</div>
+            </li>
+          `;
+        }
+      }
+      
       if (cart.totals.retail_subtotal > cart.totals.subtotal) {
         html += `
           <li style="display: flex; justify-content: space-between; padding: 3px 0;">
@@ -334,6 +382,14 @@ export class DebugManager {
           <li style="display: flex; justify-content: space-between; padding: 3px 0;">
             <div>Shipping:</div>
             <div>${formatPrice(cart.totals.shipping)}</div>
+          </li>
+        `;
+      } else if (cart.totals.shipping === 0 && cart.couponDetails?.type === 'free_shipping') {
+        // Clearly indicate when free shipping is applied via voucher
+        html += `
+          <li style="display: flex; justify-content: space-between; padding: 3px 0; color: #4CAF50;">
+            <div>Shipping:</div>
+            <div>FREE</div>
           </li>
         `;
       }

@@ -284,10 +284,43 @@ export class SelectorManager {
     
     // Calculate unit metrics
     const totalUnits = packageData.qty || 1;
-    const totalPrice = Number.parseFloat(packageData.price_total) || Number.parseFloat(packageData.price) * totalUnits;
+    let totalPrice = Number.parseFloat(packageData.price_total) || Number.parseFloat(packageData.price) * totalUnits;
     const totalRetailPrice = Number.parseFloat(packageData.price_retail_total) || 
                              (Number.parseFloat(packageData.price_retail) * totalUnits) || 
                              totalPrice;
+    
+    // Check if there's an active coupon that affects this package
+    const couponDetails = this.#app.cart?.getCouponDetails?.();
+    let discountedTotalPrice = totalPrice;
+    
+    if (couponDetails) {
+      this.#logger.debug(`Active coupon found for unit pricing calculations:`, couponDetails);
+      
+      // If it's a percentage coupon, apply the discount to the package price
+      if (couponDetails.type === 'percentage' && couponDetails.value > 0) {
+        const discountPercentage = couponDetails.value / 100;
+        discountedTotalPrice = totalPrice * (1 - discountPercentage);
+        this.#logger.debug(`Applied ${couponDetails.value}% discount to package price: ${totalPrice} -> ${discountedTotalPrice}`);
+      } 
+      // If it's a fixed amount coupon, distribute it proportionally across all items
+      else if (couponDetails.type === 'fixed' && couponDetails.value > 0) {
+        // Get cart total before discount to calculate proportional discount
+        const cart = this.#app.state?.getState('cart');
+        if (cart && cart.totals && cart.totals.original_subtotal > 0) {
+          const cartSubtotal = cart.totals.original_subtotal;
+          const packageProportion = totalPrice / cartSubtotal;
+          const packageDiscount = couponDetails.value * packageProportion;
+          
+          // Don't let discount exceed the package price
+          discountedTotalPrice = Math.max(0, totalPrice - packageDiscount);
+          this.#logger.debug(`Applied proportional fixed discount (${packageDiscount.toFixed(2)}) to package price: ${totalPrice} -> ${discountedTotalPrice}`);
+        }
+      }
+      // Free shipping doesn't affect product prices
+    }
+    
+    // Use the discounted price for calculations
+    totalPrice = discountedTotalPrice;
     
     // Calculate unit prices
     const unitPrice = totalPrice / totalUnits;

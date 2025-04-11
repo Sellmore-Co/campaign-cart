@@ -114,6 +114,9 @@ export class EventManager {
    * Setup event listeners for app events
    */
   #setupEventListeners() {
+    // Keep track of previous cart state to detect changes
+    let previousCartItems = [];
+    
     // Listen for campaign loaded event
     this.#app.on('campaign.loaded', (data) => {
       this.#logger.debug('Campaign loaded event received, triggering viewVisibleItemList');
@@ -123,7 +126,29 @@ export class EventManager {
     // Listen for cart updated event
     this.#app.on('cart.updated', (data) => {
       if (data.cart && data.cart.items && data.cart.items.length > 0) {
-        this.addToCart(data.cart);
+        // Check if this is an actual item change or just other cart updates
+        const currentCartItemsJSON = JSON.stringify(data.cart.items.map(item => ({ 
+          id: item.id, 
+          quantity: item.quantity 
+        })));
+        const previousCartItemsJSON = JSON.stringify(previousCartItems);
+        
+        // Only fire add_to_cart if items have changed
+        if (currentCartItemsJSON !== previousCartItemsJSON) {
+          this.#logger.debug('Cart items changed, firing add_to_cart event');
+          this.addToCart(data.cart);
+          
+          // Update previous cart items for next comparison
+          previousCartItems = data.cart.items.map(item => ({ 
+            id: item.id, 
+            quantity: item.quantity 
+          }));
+        } else {
+          this.#logger.debug('Cart updated but items unchanged, not firing add_to_cart');
+        }
+      } else {
+        // Reset previous cart items if cart is empty
+        previousCartItems = [];
       }
     });
 

@@ -379,8 +379,42 @@ export class CartDisplayManager {
       this.#logger.debugWithTime(`Updated subtotal to: ${this.#formatPrice(totals.subtotal)}`);
     }
     
-    // Update other summary elements if needed
-    // This would depend on your specific HTML structure
+    // Update coupon discount elements if coupon is applied
+    if (totals.discount > 0) {
+      const discountElements = document.querySelectorAll('[data-os-cart-summary="discount-amount"]');
+      const discountRows = document.querySelectorAll('[data-os-cart-summary="discount-row"]');
+      
+      // Update discount amount elements
+      discountElements.forEach(element => {
+        element.textContent = `-${this.#formatPrice(totals.discount)}`;
+      });
+      
+      // Show discount rows
+      discountRows.forEach(row => {
+        row.classList.remove('hide');
+      });
+      
+      this.#logger.debugWithTime(`Updated discount amount to: -${this.#formatPrice(totals.discount)}`);
+      
+      // Also update any original subtotal elements to show the pre-discount amount
+      const originalSubtotalElements = document.querySelectorAll('[data-os-cart-summary="original-subtotal"]');
+      originalSubtotalElements.forEach(element => {
+        element.textContent = this.#formatPrice(totals.original_subtotal || totals.subtotal + totals.discount);
+        element.classList.remove('hide');
+      });
+    } else {
+      // Hide discount rows if no discount
+      const discountRows = document.querySelectorAll('[data-os-cart-summary="discount-row"]');
+      discountRows.forEach(row => {
+        row.classList.add('hide');
+      });
+      
+      // Hide original subtotal elements
+      const originalSubtotalElements = document.querySelectorAll('[data-os-cart-summary="original-subtotal"]');
+      originalSubtotalElements.forEach(element => {
+        element.classList.add('hide');
+      });
+    }
   }
 
   /**
@@ -532,38 +566,103 @@ export class CartDisplayManager {
     this.#logger.debugWithTime('Updating compare-total elements');
     this.#logger.debugWithTime(`Cart totals: ${JSON.stringify(totals)}`);
     
+    // Add debug attribute to body to help inspect the totals in browser
+    document.body.setAttribute('data-debug-cart-totals', JSON.stringify({
+      total: totals.total,
+      subtotal: totals.subtotal,
+      original_subtotal: totals.original_subtotal,
+      retail_subtotal: totals.retail_subtotal,
+      discount: totals.discount
+    }));
+    
     this.#elements.compareTotalElements.forEach(element => {
       // Get the data attribute that specifies which total to use
       const totalType = element.dataset.totalType || 'retail';
       let compareValue = null;
       
-      // Determine which value to use based on the totalType
-      switch (totalType) {
-        case 'retail':
-          compareValue = totals.retail_subtotal;
-          break;
-        case 'recurring':
-          compareValue = totals.recurring_total;
-          break;
-        // Keep these as fallbacks in case they're added in the future
-        case 'subtotal_compare':
-        case 'original':
-        case 'msrp':
-          compareValue = totals[totalType] || null;
-          break;
-        default:
-          compareValue = totals.retail_subtotal;
+      // Priority order for compare value:
+      // 1. If retail_subtotal exists and is higher than subtotal, use that (hardcoded product discount)
+      // 2. If a coupon is applied, use original_subtotal (coupon discount)
+      // 3. Fall back to specified totalType
+      
+      // Check for retail pricing first (highest priority)
+      if (totals.retail_subtotal && totals.retail_subtotal > totals.subtotal) {
+        compareValue = totals.retail_subtotal;
+        this.#logger.debugWithTime(`Using retail_subtotal (${compareValue}) as compare value - product has built-in discount`);
+      }
+      // Then check for coupon discount
+      else if (totals.discount > 0) {
+        // If we have original_subtotal, use it, otherwise calculate it
+        compareValue = totals.original_subtotal || (totals.subtotal + totals.discount);
+        this.#logger.debugWithTime(`Using original_subtotal (${compareValue}) as compare value because a coupon is applied`);
+      }
+      // Finally fall back to the specified type
+      else {
+        switch (totalType) {
+          case 'retail':
+            compareValue = totals.retail_subtotal;
+            break;
+          case 'recurring':
+            compareValue = totals.recurring_total;
+            break;
+          case 'subtotal_compare':
+          case 'original':
+          case 'msrp':
+            compareValue = totals[totalType] || null;
+            break;
+          default:
+            compareValue = totals.retail_subtotal;
+        }
       }
       
-      // If we have a valid compare value and it's different from the current total
-      if (compareValue && compareValue > totals.total) {
-        element.textContent = this.#formatPrice(compareValue);
-        element.classList.remove('hide');
-        this.#logger.debugWithTime(`Updated compare-total (${totalType}) to: ${this.#formatPrice(compareValue)}`);
+      // Special case: If retail_subtotal exists AND coupon is applied, show the higher of the two
+      if (totals.retail_subtotal && totals.discount > 0) {
+        const couponCompareValue = totals.original_subtotal || (totals.subtotal + totals.discount);
+        if (totals.retail_subtotal > couponCompareValue) {
+          compareValue = totals.retail_subtotal;
+          this.#logger.debugWithTime(`Using retail_subtotal (${compareValue}) as it's higher than original_subtotal with coupon`);
+        } else {
+          compareValue = couponCompareValue;
+          this.#logger.debugWithTime(`Using original_subtotal (${compareValue}) as it's higher than retail_subtotal`);
+        }
+      }
+      
+      // Special handling for diagonal-line style elements
+      const hasStyleAttr = element.hasAttribute('data-style');
+      const style = element.getAttribute('data-style');
+      const isDiagonalLine = style === 'diagonal-line';
+      
+      // Log details about the element for debugging
+      this.#logger.debugWithTime(`Element ${element.outerHTML} has style? ${hasStyleAttr}, style=${style}, isDiagonal=${isDiagonalLine}`);
+      this.#logger.debugWithTime(`Compare value: ${compareValue}, Total: ${totals.total}, Should show? ${compareValue && compareValue > totals.total}`);
+      
+      // Set a data attribute with the compare value for debugging
+      element.setAttribute('data-compare-value', compareValue || 'none');
+      
+      // Different handling based on styling of the element
+      if (isDiagonalLine) {
+        if (compareValue && compareValue > totals.total) {
+          // For diagonal-line style, add the "diagonal-strike" class instead of hiding
+          element.classList.add('diagonal-strike');
+          element.textContent = this.#formatPrice(compareValue);
+          element.classList.remove('hide');
+          this.#logger.debugWithTime(`Updated diagonal-line compare-total to: ${this.#formatPrice(compareValue)}`);
+        } else {
+          // Hide if no valid compare value
+          element.classList.remove('diagonal-strike');
+          element.classList.add('hide');
+        }
       } else {
-        // Hide the element if there's no compare value or it's not greater than the current total
-        element.classList.add('hide');
-        this.#logger.debugWithTime(`Hiding compare-total element (${totalType}): compareValue=${compareValue}, total=${totals.total}`);
+        // Standard handling for other elements
+        if (compareValue && compareValue > totals.total) {
+          element.textContent = this.#formatPrice(compareValue);
+          element.classList.remove('hide');
+          this.#logger.debugWithTime(`Updated compare-total to: ${this.#formatPrice(compareValue)}`);
+        } else {
+          // Hide the element if there's no compare value or it's not greater than the current total
+          element.classList.add('hide');
+          this.#logger.debugWithTime(`Hiding compare-total element: compareValue=${compareValue}, total=${totals.total}`);
+        }
       }
     });
   }
