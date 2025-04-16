@@ -68,13 +68,13 @@ export class ReceiptPage {
     this.#initialized = true;
     
     // Check for debug mode from meta tag or URL parameter
-    if (hasDebugParameter()) {
-      this.#debugMode = true;
-      this.#safeLog('debug', 'Debug mode enabled via URL parameter');
-    }
+    // if (hasDebugParameter()) {
+    //   this.#debugMode = true;
+    //   this.#safeLog('debug', 'Debug mode enabled via URL parameter');
+    // }
     
     // Initialize navigation prevention
-    initNavigationPrevention();
+    // initNavigationPrevention();
     
     // Get ref_id from URL parameters
     const urlParams = new URLSearchParams(window.location.search);

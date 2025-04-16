@@ -77,5 +77,5 @@ export function initNavigationPrevention() {
 }
 
 // For backward compatibility if this file is loaded via script tag
-setTimeout(preventBack, 0);
-window.onunload = function () {};
+// setTimeout(preventBack, 0);
+// window.onunload = function () {};

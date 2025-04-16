@@ -27,7 +27,7 @@ export class UpsellManager {
 
   #init() {
     // Initialize navigation prevention
-    initNavigationPrevention();
+    // initNavigationPrevention();
     
     // Check for order reference in URL or sessionStorage
     this.#orderRef = this.#getOrderReferenceId();
@@ -152,8 +152,8 @@ export class UpsellManager {
       this.#storeUpsellPurchaseData(response, packageId, quantity);
       
       // Save accepted upsell info for back navigation prevention
-      const processedNextUrl = createNextUrlWithDebug(nextUrl);
-      saveAcceptedUpsell(packageId, processedNextUrl);
+      //const processedNextUrl = createNextUrlWithDebug(nextUrl);
+      // saveAcceptedUpsell(packageId, processedNextUrl);
       
       // Redirect to the next page
       this.#redirect(nextUrl);

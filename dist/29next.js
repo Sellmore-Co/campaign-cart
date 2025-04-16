@@ -52,67 +52,9 @@ var TwentyNineNext = (() => {
   };
 
   // src/utils/NavigationPrevention.js
-  function preventBack() {
-    window.history.forward();
-  }
-  function saveAcceptedUpsell(packageId, nextUrl) {
-    try {
-      sessionStorage.setItem("upsell_accepted", "true");
-      sessionStorage.setItem("upsell_package_id", packageId.toString());
-      sessionStorage.setItem("upsell_next_url", nextUrl);
-      sessionStorage.setItem("upsell_accepted_time", Date.now().toString());
-    } catch (error) {
-      console.error("Error saving upsell data to sessionStorage:", error);
-    }
-  }
-  function handleBackNavigation() {
-    if (sessionStorage.getItem("upsell_accepted") === "true") {
-      window.addEventListener("popstate", function(event) {
-        const nextUrl = sessionStorage.getItem("upsell_next_url");
-        if (nextUrl) {
-          const currentUrlParams = new URLSearchParams(window.location.search);
-          const hasDebug = currentUrlParams.has("debug") && currentUrlParams.get("debug") === "true";
-          let redirectUrl = nextUrl;
-          if (hasDebug) {
-            if (redirectUrl.includes("?")) {
-              redirectUrl += "&debug=true";
-            } else {
-              redirectUrl += "?debug=true";
-            }
-          }
-          window.location.href = redirectUrl;
-        }
-      });
-    }
-  }
-  function hasDebugParameter() {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.has("debug") && urlParams.get("debug") === "true";
-  }
-  function createNextUrlWithDebug(nextUrl) {
-    if (!nextUrl)
-      return nextUrl;
-    if (hasDebugParameter()) {
-      if (nextUrl.includes("?")) {
-        return `${nextUrl}&debug=true`;
-      } else {
-        return `${nextUrl}?debug=true`;
-      }
-    }
-    return nextUrl;
-  }
-  function initNavigationPrevention() {
-    setTimeout(preventBack, 0);
-    window.onunload = function() {
-    };
-    handleBackNavigation();
-  }
   var init_NavigationPrevention = __esm({
     "src/utils/NavigationPrevention.js"() {
       "use strict";
-      setTimeout(preventBack, 0);
-      window.onunload = function() {
-      };
     }
   });
 
@@ -229,11 +171,6 @@ var TwentyNineNext = (() => {
           }
           __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "info", "Initializing Receipt Page");
           __privateSet(this, _initialized4, true);
-          if (hasDebugParameter()) {
-            __privateSet(this, _debugMode5, true);
-            __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "debug", "Debug mode enabled via URL parameter");
-          }
-          initNavigationPrevention();
           const urlParams = new URLSearchParams(window.location.search);
           const refId = urlParams.get("ref_id");
           if (!refId) {
@@ -10669,8 +10606,6 @@ var TwentyNineNext = (() => {
         const response = await __privateGet(this, _api).createOrderUpsell(__privateGet(this, _orderRef), upsellData);
         __privateGet(this, _logger24).info("Upsell successfully added to order", response);
         __privateMethod(this, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn).call(this, response, packageId, quantity);
-        const processedNextUrl = createNextUrlWithDebug(nextUrl);
-        saveAcceptedUpsell(packageId, processedNextUrl);
         __privateMethod(this, _redirect, redirect_fn).call(this, nextUrl);
       } catch (error) {
         __privateGet(this, _logger24).error("Error accepting upsell:", error);
@@ -10697,7 +10632,6 @@ var TwentyNineNext = (() => {
   _orderRef = new WeakMap();
   _init9 = new WeakSet();
   init_fn9 = function() {
-    initNavigationPrevention();
     __privateSet(this, _orderRef, __privateMethod(this, _getOrderReferenceId, getOrderReferenceId_fn).call(this));
     if (__privateGet(this, _orderRef)) {
       __privateGet(this, _logger24).info(`Order reference ID found: ${__privateGet(this, _orderRef)}`);
@@ -11685,3 +11619,4 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
+//# sourceMappingURL=29next.js.map
