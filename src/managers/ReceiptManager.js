@@ -7,7 +7,6 @@
  * - Handling any receipt-specific interactions
  */
 
-import { initNavigationPrevention, hasDebugParameter } from '../utils/NavigationPrevention.js';
 
 export class ReceiptPage {
   #apiClient;
@@ -67,14 +66,8 @@ export class ReceiptPage {
     this.#safeLog('info', 'Initializing Receipt Page');
     this.#initialized = true;
     
-    // Check for debug mode from meta tag or URL parameter
-    // if (hasDebugParameter()) {
-    //   this.#debugMode = true;
-    //   this.#safeLog('debug', 'Debug mode enabled via URL parameter');
-    // }
-    
+
     // Initialize navigation prevention
-    // initNavigationPrevention();
     
     // Get ref_id from URL parameters
     const urlParams = new URLSearchParams(window.location.search);

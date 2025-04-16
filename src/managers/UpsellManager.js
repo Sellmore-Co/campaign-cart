@@ -5,7 +5,9 @@
  * allowing customers to add additional products to their order.
  */
 
-import { initNavigationPrevention, saveAcceptedUpsell, createNextUrlWithDebug } from '../utils/NavigationPrevention.js';
+import { buildFunnelRedirectUrl } from '../utils/urlHelper.js'; // Import the helper
+
+const ACCEPTED_PACKAGES_KEY = 'os_accepted_upsell_packages';
 
 export class UpsellManager {
   #app;
@@ -26,8 +28,6 @@ export class UpsellManager {
   }
 
   #init() {
-    // Initialize navigation prevention
-    // initNavigationPrevention();
     
     // Check for order reference in URL or sessionStorage
     this.#orderRef = this.#getOrderReferenceId();
@@ -128,6 +128,16 @@ export class UpsellManager {
     
     this.#logger.info(`Accepting upsell: Package ${packageId}, Quantity ${quantity}`);
     
+    // --- Check if already accepted ---
+    if (this.#isPackageAccepted(packageId)) {
+        this.#logger.warn(`Package ${packageId} was already accepted. Skipping API call and redirecting.`);
+        // Build the final URL using the helper
+        const finalRedirectUrl = buildFunnelRedirectUrl(nextUrl, this.#orderRef, true);
+        window.location.href = finalRedirectUrl;
+        return;
+    }
+    // --- End Check ---
+    
     // Disable all upsell buttons to prevent multiple clicks
     this.#disableUpsellButtons();
     
@@ -148,15 +158,15 @@ export class UpsellManager {
       const response = await this.#api.createOrderUpsell(this.#orderRef, upsellData);
       this.#logger.info('Upsell successfully added to order', response);
       
+      // Add package to accepted list
+      this.#addAcceptedPackage(packageId);
+      
       // Store upsell information in sessionStorage for tracking on the next page
       this.#storeUpsellPurchaseData(response, packageId, quantity);
       
-      // Save accepted upsell info for back navigation prevention
-      //const processedNextUrl = createNextUrlWithDebug(nextUrl);
-      // saveAcceptedUpsell(packageId, processedNextUrl);
-      
-      // Redirect to the next page
-      this.#redirect(nextUrl);
+      // Build the final URL using the helper
+      const finalRedirectUrl = buildFunnelRedirectUrl(nextUrl, this.#orderRef, true);
+      window.location.href = finalRedirectUrl;
     } catch (error) {
       this.#logger.error('Error accepting upsell:', error);
       document.body.classList.remove('os-loading');
@@ -230,7 +240,9 @@ export class UpsellManager {
     // Disable all upsell buttons to prevent multiple clicks
     this.#disableUpsellButtons();
     
-    this.#redirect(nextUrl);
+    // Build the final URL using the helper
+    const finalRedirectUrl = buildFunnelRedirectUrl(nextUrl, this.#orderRef, true);
+    window.location.href = finalRedirectUrl;
   }
   
   /**
@@ -272,34 +284,6 @@ export class UpsellManager {
   }
   
   /**
-   * Redirect to a URL, appending the order reference ID if needed
-   * @param {string} url - The URL to redirect to
-   */
-  #redirect(url) {
-    if (!url) {
-      this.#logger.warn('No URL provided for redirect');
-      return;
-    }
-    
-    const redirectUrl = new URL(url, window.location.origin);
-    
-    // Append the order reference ID if not already in the URL
-    if (this.#orderRef && !redirectUrl.searchParams.has('ref_id')) {
-      redirectUrl.searchParams.append('ref_id', this.#orderRef);
-    }
-    
-    // Preserve debug parameter if present
-    const currentUrlParams = new URLSearchParams(window.location.search);
-    if (currentUrlParams.has('debug') && currentUrlParams.get('debug') === 'true' && 
-        !redirectUrl.searchParams.has('debug')) {
-      redirectUrl.searchParams.append('debug', 'true');
-    }
-    
-    this.#logger.info(`Redirecting to ${redirectUrl.href}`);
-    window.location.href = redirectUrl.href;
-  }
-  
-  /**
    * Display an error message to the user
    * @param {string} message - The error message to display
    */
@@ -312,4 +296,30 @@ export class UpsellManager {
       alert(message);
     }
   }
+
+  // --- Helper methods for accepted packages ---
+  #getAcceptedPackages() {
+    try {
+      return JSON.parse(sessionStorage.getItem(ACCEPTED_PACKAGES_KEY) || '[]');
+    } catch (e) {
+      this.#logger.error('Failed to parse accepted packages from sessionStorage', e);
+      return [];
+    }
+  }
+
+  #isPackageAccepted(packageId) {
+    // Ensure comparison is done with strings if needed
+    return this.#getAcceptedPackages().includes(String(packageId));
+  }
+
+  #addAcceptedPackage(packageId) {
+    const accepted = this.#getAcceptedPackages();
+    const packageIdStr = String(packageId);
+    if (!accepted.includes(packageIdStr)) {
+      accepted.push(packageIdStr);
+      sessionStorage.setItem(ACCEPTED_PACKAGES_KEY, JSON.stringify(accepted));
+      this.#logger.info(`Added package ID to accepted list: ${packageIdStr}`);
+    }
+  }
+  // --- End Helper methods ---
 } 

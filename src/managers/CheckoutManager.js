@@ -14,6 +14,7 @@ import { AddressAutocomplete } from '../components/checkout/AddressAutocomplete.
 import { PhoneInputHandler } from '../components/checkout/PhoneInputHandler.js';
 import { ProspectCartHandler } from '../components/checkout/ProspectCartHandler.js';
 import { KonamiCodeHandler } from '../utils/KonamiCodeHandler.js';
+import { buildFunnelRedirectUrl } from '../utils/urlHelper.js';
 
 export class CheckoutPage {
   #apiClient;
@@ -32,6 +33,33 @@ export class CheckoutPage {
       this.#logger.warn('No checkout form found with [os-checkout="form"] selector or form#combo_form');
       return;
     }
+    
+    // === Add Redirect Check ===
+    if (sessionStorage.getItem('order_reference')) {
+      this.#logger.warn('Order reference found in session storage on checkout page load. Redirecting forward.');
+      
+      // Get the target path from the meta tag
+      const nextPageMeta = document.querySelector('meta[name="os-next-page"]');
+      let targetPath = nextPageMeta?.getAttribute('content');
+      
+      if (!targetPath) {
+        this.#logger.error('Cannot redirect: <meta name="os-next-page"> not found or has no content. Falling back to home.');
+        targetPath = '/'; // Fallback to home if meta tag is missing
+      } else {
+        this.#logger.info(`Found next page URL from meta tag: ${targetPath}`);
+      }
+
+      const orderRef = sessionStorage.getItem('order_reference');
+      
+      // Build the final URL using the helper
+      // Pass true for the third argument to check for debug parameter
+      const redirectUrl = buildFunnelRedirectUrl(targetPath, orderRef, true);
+
+      this.#logger.info(`Redirecting to: ${redirectUrl}`);
+      window.location.href = redirectUrl;
+      return; // Stop further initialization of checkout page
+    }
+    // === End Redirect Check ===
     
     // CRITICAL: Remove any action and set method to post to prevent URL serialization
     this.#form.removeAttribute('action');

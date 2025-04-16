@@ -51,13 +51,6 @@ var TwentyNineNext = (() => {
     return method;
   };
 
-  // src/utils/NavigationPrevention.js
-  var init_NavigationPrevention = __esm({
-    "src/utils/NavigationPrevention.js"() {
-      "use strict";
-    }
-  });
-
   // src/managers/ReceiptManager.js
   var ReceiptManager_exports = {};
   __export(ReceiptManager_exports, {
@@ -67,7 +60,6 @@ var TwentyNineNext = (() => {
   var init_ReceiptManager = __esm({
     "src/managers/ReceiptManager.js"() {
       "use strict";
-      init_NavigationPrevention();
       ReceiptPage = class {
         /**
          * Initialize the ReceiptPage
@@ -4877,6 +4869,47 @@ var TwentyNineNext = (() => {
     });
   };
 
+  // src/utils/urlHelper.js
+  function buildFunnelRedirectUrl(targetPath, orderRef, includeDebug) {
+    let finalUrl = targetPath;
+    const logger = window.os?.logger?.createModuleLogger("URL_HELPER") || {
+      debug: console.debug,
+      error: console.error,
+      info: console.info
+    };
+    try {
+      const url = new URL(targetPath, window.location.origin);
+      if (orderRef && !url.searchParams.has("ref_id")) {
+        url.searchParams.append("ref_id", orderRef);
+        logger.debug(`Appended ref_id=${orderRef}`);
+      }
+      if (includeDebug && !url.searchParams.has("debug")) {
+        const currentUrlParams = new URLSearchParams(window.location.search);
+        if (currentUrlParams.get("debug") === "true") {
+          url.searchParams.append("debug", "true");
+          logger.debug("Appended debug=true parameter.");
+        }
+      }
+      finalUrl = url.href;
+    } catch (error) {
+      logger.error("Error constructing URL object, falling back to basic append:", error);
+      let constructedUrl = targetPath;
+      const hasQuery = targetPath.includes("?");
+      if (orderRef && !targetPath.includes("ref_id=")) {
+        constructedUrl += (hasQuery ? "&" : "?") + `ref_id=${orderRef}`;
+      }
+      if (includeDebug && !targetPath.includes("debug=true")) {
+        const currentUrlParams = new URLSearchParams(window.location.search);
+        if (currentUrlParams.get("debug") === "true") {
+          constructedUrl += (constructedUrl.includes("?") ? "&" : "?") + "debug=true";
+        }
+      }
+      finalUrl = constructedUrl;
+    }
+    logger.info(`Built redirect URL: ${finalUrl}`);
+    return finalUrl;
+  }
+
   // src/managers/CheckoutManager.js
   var _apiClient2, _logger11, _form4, _app6, _konamiCodeHandler, _initializeComponents, initializeComponents_fn, _initKonamiCodeHandler, initKonamiCodeHandler_fn, _triggerKonamiCodeEasterEgg, triggerKonamiCodeEasterEgg_fn, _initAddressHandler, initAddressHandler_fn, _initBillingAddressHandler, initBillingAddressHandler_fn, _initPaymentSelector, initPaymentSelector_fn, _initFormValidator, initFormValidator_fn, _initPaymentHandler, initPaymentHandler_fn, _initAddressAutocomplete, initAddressAutocomplete_fn, _initPhoneInputHandler, initPhoneInputHandler_fn, _initProspectCartHandler, initProspectCartHandler_fn, _injectBillingFormFields, injectBillingFormFields_fn, _setupEventListeners3, setupEventListeners_fn3, _handleSubmit2, handleSubmit_fn2, _disableSubmitButtons, disableSubmitButtons_fn;
   var CheckoutPage = class {
@@ -4921,6 +4954,22 @@ var TwentyNineNext = (() => {
       __privateSet(this, _form4, document.querySelector('form[os-checkout="form"]') || document.querySelector("form#combo_form"));
       if (!__privateGet(this, _form4)) {
         __privateGet(this, _logger11).warn('No checkout form found with [os-checkout="form"] selector or form#combo_form');
+        return;
+      }
+      if (sessionStorage.getItem("order_reference")) {
+        __privateGet(this, _logger11).warn("Order reference found in session storage on checkout page load. Redirecting forward.");
+        const nextPageMeta = document.querySelector('meta[name="os-next-page"]');
+        let targetPath = nextPageMeta?.getAttribute("content");
+        if (!targetPath) {
+          __privateGet(this, _logger11).error('Cannot redirect: <meta name="os-next-page"> not found or has no content. Falling back to home.');
+          targetPath = "/";
+        } else {
+          __privateGet(this, _logger11).info(`Found next page URL from meta tag: ${targetPath}`);
+        }
+        const orderRef = sessionStorage.getItem("order_reference");
+        const redirectUrl = buildFunnelRedirectUrl(targetPath, orderRef, true);
+        __privateGet(this, _logger11).info(`Redirecting to: ${redirectUrl}`);
+        window.location.href = redirectUrl;
         return;
       }
       __privateGet(this, _form4).removeAttribute("action");
@@ -10525,8 +10574,8 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/UpsellManager.js
-  init_NavigationPrevention();
-  var _app19, _logger24, _stateManager2, _api, _upsellElements, _orderRef, _init9, init_fn9, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _redirect, redirect_fn, _displayError, displayError_fn;
+  var ACCEPTED_PACKAGES_KEY = "os_accepted_upsell_packages";
+  var _app19, _logger24, _stateManager2, _api, _upsellElements, _orderRef, _init9, init_fn9, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _displayError, displayError_fn, _getAcceptedPackages, getAcceptedPackages_fn, _isPackageAccepted, isPackageAccepted_fn, _addAcceptedPackage, addAcceptedPackage_fn;
   var UpsellManager = class {
     constructor(app) {
       __privateAdd(this, _init9);
@@ -10559,15 +10608,14 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _enableUpsellButtons);
       /**
-       * Redirect to a URL, appending the order reference ID if needed
-       * @param {string} url - The URL to redirect to
-       */
-      __privateAdd(this, _redirect);
-      /**
        * Display an error message to the user
        * @param {string} message - The error message to display
        */
       __privateAdd(this, _displayError);
+      // --- Helper methods for accepted packages ---
+      __privateAdd(this, _getAcceptedPackages);
+      __privateAdd(this, _isPackageAccepted);
+      __privateAdd(this, _addAcceptedPackage);
       __privateAdd(this, _app19, void 0);
       __privateAdd(this, _logger24, void 0);
       __privateAdd(this, _stateManager2, void 0);
@@ -10593,6 +10641,12 @@ var TwentyNineNext = (() => {
         return;
       }
       __privateGet(this, _logger24).info(`Accepting upsell: Package ${packageId}, Quantity ${quantity}`);
+      if (__privateMethod(this, _isPackageAccepted, isPackageAccepted_fn).call(this, packageId)) {
+        __privateGet(this, _logger24).warn(`Package ${packageId} was already accepted. Skipping API call and redirecting.`);
+        const finalRedirectUrl = buildFunnelRedirectUrl(nextUrl, __privateGet(this, _orderRef), true);
+        window.location.href = finalRedirectUrl;
+        return;
+      }
       __privateMethod(this, _disableUpsellButtons, disableUpsellButtons_fn).call(this);
       try {
         document.body.classList.add("os-loading");
@@ -10605,8 +10659,10 @@ var TwentyNineNext = (() => {
         };
         const response = await __privateGet(this, _api).createOrderUpsell(__privateGet(this, _orderRef), upsellData);
         __privateGet(this, _logger24).info("Upsell successfully added to order", response);
+        __privateMethod(this, _addAcceptedPackage, addAcceptedPackage_fn).call(this, packageId);
         __privateMethod(this, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn).call(this, response, packageId, quantity);
-        __privateMethod(this, _redirect, redirect_fn).call(this, nextUrl);
+        const finalRedirectUrl = buildFunnelRedirectUrl(nextUrl, __privateGet(this, _orderRef), true);
+        window.location.href = finalRedirectUrl;
       } catch (error) {
         __privateGet(this, _logger24).error("Error accepting upsell:", error);
         document.body.classList.remove("os-loading");
@@ -10621,8 +10677,10 @@ var TwentyNineNext = (() => {
     declineUpsell(nextUrl) {
       __privateGet(this, _logger24).info("Declining upsell offer");
       __privateMethod(this, _disableUpsellButtons, disableUpsellButtons_fn).call(this);
-      __privateMethod(this, _redirect, redirect_fn).call(this, nextUrl);
+      const finalRedirectUrl = buildFunnelRedirectUrl(nextUrl, __privateGet(this, _orderRef), true);
+      window.location.href = finalRedirectUrl;
     }
+    // --- End Helper methods ---
   };
   _app19 = new WeakMap();
   _logger24 = new WeakMap();
@@ -10749,23 +10807,6 @@ var TwentyNineNext = (() => {
       button.classList.remove("os-button-disabled");
     });
   };
-  _redirect = new WeakSet();
-  redirect_fn = function(url) {
-    if (!url) {
-      __privateGet(this, _logger24).warn("No URL provided for redirect");
-      return;
-    }
-    const redirectUrl = new URL(url, window.location.origin);
-    if (__privateGet(this, _orderRef) && !redirectUrl.searchParams.has("ref_id")) {
-      redirectUrl.searchParams.append("ref_id", __privateGet(this, _orderRef));
-    }
-    const currentUrlParams = new URLSearchParams(window.location.search);
-    if (currentUrlParams.has("debug") && currentUrlParams.get("debug") === "true" && !redirectUrl.searchParams.has("debug")) {
-      redirectUrl.searchParams.append("debug", "true");
-    }
-    __privateGet(this, _logger24).info(`Redirecting to ${redirectUrl.href}`);
-    window.location.href = redirectUrl.href;
-  };
   _displayError = new WeakSet();
   displayError_fn = function(message) {
     const errorContainer = document.querySelector("[data-os-error-container]");
@@ -10774,6 +10815,29 @@ var TwentyNineNext = (() => {
       errorContainer.style.display = "block";
     } else {
       alert(message);
+    }
+  };
+  _getAcceptedPackages = new WeakSet();
+  getAcceptedPackages_fn = function() {
+    try {
+      return JSON.parse(sessionStorage.getItem(ACCEPTED_PACKAGES_KEY) || "[]");
+    } catch (e) {
+      __privateGet(this, _logger24).error("Failed to parse accepted packages from sessionStorage", e);
+      return [];
+    }
+  };
+  _isPackageAccepted = new WeakSet();
+  isPackageAccepted_fn = function(packageId) {
+    return __privateMethod(this, _getAcceptedPackages, getAcceptedPackages_fn).call(this).includes(String(packageId));
+  };
+  _addAcceptedPackage = new WeakSet();
+  addAcceptedPackage_fn = function(packageId) {
+    const accepted = __privateMethod(this, _getAcceptedPackages, getAcceptedPackages_fn).call(this);
+    const packageIdStr = String(packageId);
+    if (!accepted.includes(packageIdStr)) {
+      accepted.push(packageIdStr);
+      sessionStorage.setItem(ACCEPTED_PACKAGES_KEY, JSON.stringify(accepted));
+      __privateGet(this, _logger24).info(`Added package ID to accepted list: ${packageIdStr}`);
     }
   };
 
@@ -11619,4 +11683,3 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
-//# sourceMappingURL=29next.js.map
