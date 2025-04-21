@@ -5726,9 +5726,22 @@ var TwentyNineNext = (() => {
     removeFromCart(itemId) {
       return __privateMethod(this, _removeFromCart, removeFromCart_fn).call(this, itemId);
     }
-    setShippingMethod(shippingMethod) {
+    setShippingMethod(shippingMethodId) {
       try {
-        return __privateGet(this, _stateManager).setShippingMethod(shippingMethod);
+        const campaignData = __privateGet(this, _app9).campaignData;
+        if (!campaignData || !Array.isArray(campaignData.shipping_methods)) {
+          __privateGet(this, _logger14).error("Campaign data or shipping methods not available.");
+          throw new Error("Shipping methods not loaded.");
+        }
+        const selectedMethod = campaignData.shipping_methods.find(
+          (method) => method.ref_id?.toString() === shippingMethodId?.toString()
+        );
+        if (!selectedMethod) {
+          __privateGet(this, _logger14).error(`Shipping method with ID ${shippingMethodId} not found.`);
+          throw new Error(`Shipping method ID ${shippingMethodId} not found.`);
+        }
+        __privateGet(this, _logger14).info(`Setting shipping method to:`, selectedMethod);
+        return __privateGet(this, _stateManager).setShippingMethod(selectedMethod);
       } catch (error) {
         __privateGet(this, _logger14).error("Error setting shipping method:", error);
         throw error;
@@ -11619,4 +11632,3 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
-//# sourceMappingURL=29next.js.map
