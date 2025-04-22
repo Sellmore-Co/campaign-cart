@@ -64,6 +64,8 @@ export class SelectorManager {
       return;
     }
 
+    const shippingId = cardElement.getAttribute('data-os-shipping-id');
+
     const priceElement = cardElement.querySelector('.pb-quantity__price.pb--current');
     const priceText = priceElement?.textContent.trim() ?? '$0.00 USD';
     const price = Number.parseFloat(priceText.match(/\$(\d+\.\d+)/)?.[1] ?? '0');
@@ -80,7 +82,8 @@ export class SelectorManager {
       quantity,
       price,
       name,
-      isPreSelected
+      isPreSelected,
+      shippingId
     };
 
     this.#selectors[selectorId].items.push(item);
@@ -90,7 +93,8 @@ export class SelectorManager {
       DebugUtils.addDebugOverlay(cardElement, packageId, 'card', {
         'Price': `$${price}`,
         'Qty': quantity,
-        'PreSel': isPreSelected ? 'Yes' : 'No'
+        'PreSel': isPreSelected ? 'Yes' : 'No',
+        'ShipID': shippingId || 'None'
       });
     }
   }
@@ -99,6 +103,15 @@ export class SelectorManager {
     const previous = this.#selectedItems[selectorId];
     this.#selectItem(selectorId, item);
     this.#updateCart(selectorId, previous);
+
+    if (item.shippingId !== null && item.shippingId !== undefined) {
+      this.#logger.info(`Setting shipping method to ${item.shippingId} based on selected card ${item.packageId}`);
+      try {
+        this.#app.cart.setShippingMethod(item.shippingId);
+      } catch (error) {
+        this.#logger.error(`Failed to set shipping method ${item.shippingId}:`, error);
+      }
+    }
   }
 
   #selectItem(selectorId, item) {
@@ -132,6 +145,19 @@ export class SelectorManager {
 
     if (!this.#app.cart.isItemInCart(selected.packageId)) {
       this.#addItemToCart(selected);
+    }
+
+    const currentSelectedItem = this.#selectedItems[selectorId];
+    if (currentSelectedItem && currentSelectedItem.shippingId !== null && currentSelectedItem.shippingId !== undefined) {
+      const currentCartShippingMethod = this.#app.state?.getState('cart')?.shippingMethod?.ref_id;
+      if (currentCartShippingMethod?.toString() !== currentSelectedItem.shippingId.toString()) {
+        this.#logger.info(`Syncing shipping method to ${currentSelectedItem.shippingId} for selected item ${currentSelectedItem.packageId}`);
+        try {
+          this.#app.cart.setShippingMethod(currentSelectedItem.shippingId);
+        } catch (error) {
+          this.#logger.error(`Failed to sync shipping method ${currentSelectedItem.shippingId}:`, error);
+        }
+      }
     }
   }
 
@@ -212,6 +238,19 @@ export class SelectorManager {
         item.element.classList.toggle('os--active', isInCart);
         item.element.setAttribute('data-os-active', isInCart.toString());
       });
+      
+      const currentSelectedItem = this.#selectedItems[selectorId];
+      if (currentSelectedItem && currentSelectedItem.shippingId !== null && currentSelectedItem.shippingId !== undefined) {
+        const currentCartShippingMethod = this.#app.state?.getState('cart')?.shippingMethod?.ref_id;
+        if (currentCartShippingMethod?.toString() !== currentSelectedItem.shippingId.toString()) {
+          this.#logger.info(`Syncing shipping method to ${currentSelectedItem.shippingId} for selected item ${currentSelectedItem.packageId}`);
+          try {
+            this.#app.cart.setShippingMethod(currentSelectedItem.shippingId);
+          } catch (error) {
+            this.#logger.error(`Failed to sync shipping method ${currentSelectedItem.shippingId}:`, error);
+          }
+        }
+      }
     });
   }
 

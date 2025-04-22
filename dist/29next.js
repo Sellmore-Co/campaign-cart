@@ -6421,6 +6421,7 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger15).warn("Card missing data-os-package", cardElement);
       return;
     }
+    const shippingId = cardElement.getAttribute("data-os-shipping-id");
     const priceElement = cardElement.querySelector(".pb-quantity__price.pb--current");
     const priceText = priceElement?.textContent.trim() ?? "$0.00 USD";
     const price = Number.parseFloat(priceText.match(/\$(\d+\.\d+)/)?.[1] ?? "0");
@@ -6434,7 +6435,8 @@ var TwentyNineNext = (() => {
       quantity,
       price,
       name,
-      isPreSelected
+      isPreSelected,
+      shippingId
     };
     __privateGet(this, _selectors2)[selectorId].items.push(item);
     cardElement.addEventListener("click", () => __privateMethod(this, _handleClick, handleClick_fn).call(this, selectorId, item));
@@ -6442,7 +6444,8 @@ var TwentyNineNext = (() => {
       DebugUtils.addDebugOverlay(cardElement, packageId, "card", {
         "Price": `$${price}`,
         "Qty": quantity,
-        "PreSel": isPreSelected ? "Yes" : "No"
+        "PreSel": isPreSelected ? "Yes" : "No",
+        "ShipID": shippingId || "None"
       });
     }
   };
@@ -6451,6 +6454,14 @@ var TwentyNineNext = (() => {
     const previous = __privateGet(this, _selectedItems)[selectorId];
     __privateMethod(this, _selectItem, selectItem_fn).call(this, selectorId, item);
     __privateMethod(this, _updateCart, updateCart_fn).call(this, selectorId, previous);
+    if (item.shippingId !== null && item.shippingId !== void 0) {
+      __privateGet(this, _logger15).info(`Setting shipping method to ${item.shippingId} based on selected card ${item.packageId}`);
+      try {
+        __privateGet(this, _app10).cart.setShippingMethod(item.shippingId);
+      } catch (error) {
+        __privateGet(this, _logger15).error(`Failed to set shipping method ${item.shippingId}:`, error);
+      }
+    }
   };
   _selectItem = new WeakSet();
   selectItem_fn = function(selectorId, item) {
@@ -6481,6 +6492,18 @@ var TwentyNineNext = (() => {
     }
     if (!__privateGet(this, _app10).cart.isItemInCart(selected.packageId)) {
       __privateMethod(this, _addItemToCart, addItemToCart_fn).call(this, selected);
+    }
+    const currentSelectedItem = __privateGet(this, _selectedItems)[selectorId];
+    if (currentSelectedItem && currentSelectedItem.shippingId !== null && currentSelectedItem.shippingId !== void 0) {
+      const currentCartShippingMethod = __privateGet(this, _app10).state?.getState("cart")?.shippingMethod?.ref_id;
+      if (currentCartShippingMethod?.toString() !== currentSelectedItem.shippingId.toString()) {
+        __privateGet(this, _logger15).info(`Syncing shipping method to ${currentSelectedItem.shippingId} for selected item ${currentSelectedItem.packageId}`);
+        try {
+          __privateGet(this, _app10).cart.setShippingMethod(currentSelectedItem.shippingId);
+        } catch (error) {
+          __privateGet(this, _logger15).error(`Failed to sync shipping method ${currentSelectedItem.shippingId}:`, error);
+        }
+      }
     }
   };
   _addItemToCart = new WeakSet();
@@ -6553,6 +6576,18 @@ var TwentyNineNext = (() => {
         item.element.classList.toggle("os--active", isInCart);
         item.element.setAttribute("data-os-active", isInCart.toString());
       });
+      const currentSelectedItem = __privateGet(this, _selectedItems)[selectorId];
+      if (currentSelectedItem && currentSelectedItem.shippingId !== null && currentSelectedItem.shippingId !== void 0) {
+        const currentCartShippingMethod = __privateGet(this, _app10).state?.getState("cart")?.shippingMethod?.ref_id;
+        if (currentCartShippingMethod?.toString() !== currentSelectedItem.shippingId.toString()) {
+          __privateGet(this, _logger15).info(`Syncing shipping method to ${currentSelectedItem.shippingId} for selected item ${currentSelectedItem.packageId}`);
+          try {
+            __privateGet(this, _app10).cart.setShippingMethod(currentSelectedItem.shippingId);
+          } catch (error) {
+            __privateGet(this, _logger15).error(`Failed to sync shipping method ${currentSelectedItem.shippingId}:`, error);
+          }
+        }
+      }
     });
   };
   _initUnitPricingForSelector = new WeakSet();

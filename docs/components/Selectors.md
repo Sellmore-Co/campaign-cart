@@ -41,6 +41,7 @@ Add a selector component to your HTML with the required attributes:
    - `data-os-package="id"` - The package ID of the product
    - `data-os-quantity="1"` - The quantity to add to cart (optional, defaults to 1)
    - `data-os-selected="true"` - Set to pre-select this item (optional)
+   - `data-os-shipping-id="id"` - The ID of the shipping method to apply when this card is selected (optional). If present, selecting this card will call `cart.setShippingMethod()` with this ID.
 
 ## CSS Classes
 
