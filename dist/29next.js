@@ -1072,12 +1072,13 @@ var TwentyNineNext = (() => {
     if (__privateGet(this, _states)[countryCode])
       return __privateGet(this, _states)[countryCode];
     try {
-      const states = (await (await fetch(`https://api.countrystatecity.in/v1/countries/${countryCode}/states`, {
+      let states = (await (await fetch(`https://api.countrystatecity.in/v1/countries/${countryCode}/states`, {
         headers: { "X-CSCAPI-KEY": "c2R3MzNhYmpvYUJPdmhkUlE5TUJWYUtJUGs2TTlNU3cyRmxmVW9wVQ==" }
       })).json()).filter((s) => !__privateGet(this, _addressConfig).dontShowStates.includes(s.iso2));
+      states.sort((a, b) => a.name.localeCompare(b.name));
       __privateGet(this, _states)[countryCode] = states;
       __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_states_cache", { states: __privateGet(this, _states) });
-      __privateGet(this, _logger2).debug(`Loaded ${states.length} states for ${countryCode}`);
+      __privateGet(this, _logger2).debug(`Loaded and sorted ${states.length} states for ${countryCode}`);
       return states;
     } catch (error) {
       __privateGet(this, _logger2).error(`Failed to load states for ${countryCode}:`, error);
