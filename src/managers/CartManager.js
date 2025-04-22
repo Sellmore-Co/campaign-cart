@@ -208,9 +208,28 @@ export class CartManager {
     return this.#removeFromCart(itemId);
   }
 
-  setShippingMethod(shippingMethod) {
+  setShippingMethod(shippingMethodId) {
     try {
-      return this.#stateManager.setShippingMethod(shippingMethod);
+      // Ensure campaignData and shipping_methods are available
+      const campaignData = this.#app.campaignData;
+      if (!campaignData || !Array.isArray(campaignData.shipping_methods)) {
+        this.#logger.error('Campaign data or shipping methods not available.');
+        throw new Error('Shipping methods not loaded.');
+      }
+      
+      // Find the shipping method object by its ref_id
+      const selectedMethod = campaignData.shipping_methods.find(
+        method => method.ref_id?.toString() === shippingMethodId?.toString()
+      );
+      
+      if (!selectedMethod) {
+        this.#logger.error(`Shipping method with ID ${shippingMethodId} not found.`);
+        throw new Error(`Shipping method ID ${shippingMethodId} not found.`);
+      }
+      
+      // Pass the found object to the state manager
+      this.#logger.info(`Setting shipping method to:`, selectedMethod);
+      return this.#stateManager.setShippingMethod(selectedMethod);
     } catch (error) {
       this.#logger.error('Error setting shipping method:', error);
       // this.#showMessage('Error setting shipping method', 'error');

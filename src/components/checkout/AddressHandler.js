@@ -117,12 +117,15 @@ export class AddressHandler {
   async #loadStates(countryCode) {
     if (this.#states[countryCode]) return this.#states[countryCode];
     try {
-      const states = (await (await fetch(`https://api.countrystatecity.in/v1/countries/${countryCode}/states`, { 
+      let states = (await (await fetch(`https://api.countrystatecity.in/v1/countries/${countryCode}/states`, { 
         headers: { 'X-CSCAPI-KEY': 'c2R3MzNhYmpvYUJPdmhkUlE5TUJWYUtJUGs2TTlNU3cyRmxmVW9wVQ==' } 
       })).json()).filter(s => !this.#addressConfig.dontShowStates.includes(s.iso2));
+      
+      states.sort((a, b) => a.name.localeCompare(b.name));
+      
       this.#states[countryCode] = states;
       this.#saveCache('os_states_cache', { states: this.#states });
-      this.#logger.debug(`Loaded ${states.length} states for ${countryCode}`);
+      this.#logger.debug(`Loaded and sorted ${states.length} states for ${countryCode}`);
       return states;
     } catch (error) {
       this.#logger.error(`Failed to load states for ${countryCode}:`, error);

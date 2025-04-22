@@ -1072,12 +1072,13 @@ var TwentyNineNext = (() => {
     if (__privateGet(this, _states)[countryCode])
       return __privateGet(this, _states)[countryCode];
     try {
-      const states = (await (await fetch(`https://api.countrystatecity.in/v1/countries/${countryCode}/states`, {
+      let states = (await (await fetch(`https://api.countrystatecity.in/v1/countries/${countryCode}/states`, {
         headers: { "X-CSCAPI-KEY": "c2R3MzNhYmpvYUJPdmhkUlE5TUJWYUtJUGs2TTlNU3cyRmxmVW9wVQ==" }
       })).json()).filter((s) => !__privateGet(this, _addressConfig).dontShowStates.includes(s.iso2));
+      states.sort((a, b) => a.name.localeCompare(b.name));
       __privateGet(this, _states)[countryCode] = states;
       __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_states_cache", { states: __privateGet(this, _states) });
-      __privateGet(this, _logger2).debug(`Loaded ${states.length} states for ${countryCode}`);
+      __privateGet(this, _logger2).debug(`Loaded and sorted ${states.length} states for ${countryCode}`);
       return states;
     } catch (error) {
       __privateGet(this, _logger2).error(`Failed to load states for ${countryCode}:`, error);
@@ -5726,9 +5727,22 @@ var TwentyNineNext = (() => {
     removeFromCart(itemId) {
       return __privateMethod(this, _removeFromCart, removeFromCart_fn).call(this, itemId);
     }
-    setShippingMethod(shippingMethod) {
+    setShippingMethod(shippingMethodId) {
       try {
-        return __privateGet(this, _stateManager).setShippingMethod(shippingMethod);
+        const campaignData = __privateGet(this, _app9).campaignData;
+        if (!campaignData || !Array.isArray(campaignData.shipping_methods)) {
+          __privateGet(this, _logger14).error("Campaign data or shipping methods not available.");
+          throw new Error("Shipping methods not loaded.");
+        }
+        const selectedMethod = campaignData.shipping_methods.find(
+          (method) => method.ref_id?.toString() === shippingMethodId?.toString()
+        );
+        if (!selectedMethod) {
+          __privateGet(this, _logger14).error(`Shipping method with ID ${shippingMethodId} not found.`);
+          throw new Error(`Shipping method ID ${shippingMethodId} not found.`);
+        }
+        __privateGet(this, _logger14).info(`Setting shipping method to:`, selectedMethod);
+        return __privateGet(this, _stateManager).setShippingMethod(selectedMethod);
       } catch (error) {
         __privateGet(this, _logger14).error("Error setting shipping method:", error);
         throw error;
@@ -6408,6 +6422,7 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger15).warn("Card missing data-os-package", cardElement);
       return;
     }
+    const shippingId = cardElement.getAttribute("data-os-shipping-id");
     const priceElement = cardElement.querySelector(".pb-quantity__price.pb--current");
     const priceText = priceElement?.textContent.trim() ?? "$0.00 USD";
     const price = Number.parseFloat(priceText.match(/\$(\d+\.\d+)/)?.[1] ?? "0");
@@ -6421,7 +6436,8 @@ var TwentyNineNext = (() => {
       quantity,
       price,
       name,
-      isPreSelected
+      isPreSelected,
+      shippingId
     };
     __privateGet(this, _selectors2)[selectorId].items.push(item);
     cardElement.addEventListener("click", () => __privateMethod(this, _handleClick, handleClick_fn).call(this, selectorId, item));
@@ -6429,7 +6445,8 @@ var TwentyNineNext = (() => {
       DebugUtils.addDebugOverlay(cardElement, packageId, "card", {
         "Price": `$${price}`,
         "Qty": quantity,
-        "PreSel": isPreSelected ? "Yes" : "No"
+        "PreSel": isPreSelected ? "Yes" : "No",
+        "ShipID": shippingId || "None"
       });
     }
   };
@@ -6438,6 +6455,14 @@ var TwentyNineNext = (() => {
     const previous = __privateGet(this, _selectedItems)[selectorId];
     __privateMethod(this, _selectItem, selectItem_fn).call(this, selectorId, item);
     __privateMethod(this, _updateCart, updateCart_fn).call(this, selectorId, previous);
+    if (item.shippingId !== null && item.shippingId !== void 0) {
+      __privateGet(this, _logger15).info(`Setting shipping method to ${item.shippingId} based on selected card ${item.packageId}`);
+      try {
+        __privateGet(this, _app10).cart.setShippingMethod(item.shippingId);
+      } catch (error) {
+        __privateGet(this, _logger15).error(`Failed to set shipping method ${item.shippingId}:`, error);
+      }
+    }
   };
   _selectItem = new WeakSet();
   selectItem_fn = function(selectorId, item) {
@@ -6468,6 +6493,18 @@ var TwentyNineNext = (() => {
     }
     if (!__privateGet(this, _app10).cart.isItemInCart(selected.packageId)) {
       __privateMethod(this, _addItemToCart, addItemToCart_fn).call(this, selected);
+    }
+    const currentSelectedItem = __privateGet(this, _selectedItems)[selectorId];
+    if (currentSelectedItem && currentSelectedItem.shippingId !== null && currentSelectedItem.shippingId !== void 0) {
+      const currentCartShippingMethod = __privateGet(this, _app10).state?.getState("cart")?.shippingMethod?.ref_id;
+      if (currentCartShippingMethod?.toString() !== currentSelectedItem.shippingId.toString()) {
+        __privateGet(this, _logger15).info(`Syncing shipping method to ${currentSelectedItem.shippingId} for selected item ${currentSelectedItem.packageId}`);
+        try {
+          __privateGet(this, _app10).cart.setShippingMethod(currentSelectedItem.shippingId);
+        } catch (error) {
+          __privateGet(this, _logger15).error(`Failed to sync shipping method ${currentSelectedItem.shippingId}:`, error);
+        }
+      }
     }
   };
   _addItemToCart = new WeakSet();
@@ -6540,6 +6577,18 @@ var TwentyNineNext = (() => {
         item.element.classList.toggle("os--active", isInCart);
         item.element.setAttribute("data-os-active", isInCart.toString());
       });
+      const currentSelectedItem = __privateGet(this, _selectedItems)[selectorId];
+      if (currentSelectedItem && currentSelectedItem.shippingId !== null && currentSelectedItem.shippingId !== void 0) {
+        const currentCartShippingMethod = __privateGet(this, _app10).state?.getState("cart")?.shippingMethod?.ref_id;
+        if (currentCartShippingMethod?.toString() !== currentSelectedItem.shippingId.toString()) {
+          __privateGet(this, _logger15).info(`Syncing shipping method to ${currentSelectedItem.shippingId} for selected item ${currentSelectedItem.packageId}`);
+          try {
+            __privateGet(this, _app10).cart.setShippingMethod(currentSelectedItem.shippingId);
+          } catch (error) {
+            __privateGet(this, _logger15).error(`Failed to sync shipping method ${currentSelectedItem.shippingId}:`, error);
+          }
+        }
+      }
     });
   };
   _initUnitPricingForSelector = new WeakSet();
@@ -11619,4 +11668,3 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
-//# sourceMappingURL=29next.js.map
