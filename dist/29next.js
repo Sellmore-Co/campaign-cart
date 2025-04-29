@@ -1009,7 +1009,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/AddressHandler.js
-  var _form, _logger2, _app2, _elements, _uiElements, _merchantConfig, _readMerchantConfig, readMerchantConfig_fn, _handleLocationStateUpdate, handleLocationStateUpdate_fn, _initializeAddressFields, initializeAddressFields_fn, _populateCountrySelect, populateCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _handleCountryChange, handleCountryChange_fn, _updateStateSelect, updateStateSelect_fn, _updateUiLabels, updateUiLabels_fn;
+  var _form, _logger2, _app2, _elements, _uiElements, _merchantConfig, _forcedCountry, _readMerchantConfig, readMerchantConfig_fn, _readForcedCountryParam, readForcedCountryParam_fn, _handleLocationStateUpdate, handleLocationStateUpdate_fn, _initializeAddressFields, initializeAddressFields_fn, _updateStateDropdownsWithLoadingState, updateStateDropdownsWithLoadingState_fn, _updateAddressFields, updateAddressFields_fn, _populateCountrySelect, populateCountrySelect_fn, _setCountryWithDelay, setCountryWithDelay_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _handleCountryChange, handleCountryChange_fn, _updateStateSelect, updateStateSelect_fn, _updatePostcodeField, updatePostcodeField_fn, _removeInputRestrictions, removeInputRestrictions_fn, _setupPostcodeMutationObserver, setupPostcodeMutationObserver_fn, _isAlphanumericPostcode, isAlphanumericPostcode_fn, _updateUiLabels, updateUiLabels_fn;
   var AddressHandler = class {
     // Track initialization state
     constructor(form, logger, app) {
@@ -1017,6 +1017,11 @@ var TwentyNineNext = (() => {
        * Read merchant-specific address configuration from window.osConfig or meta tags.
        */
       __privateAdd(this, _readMerchantConfig);
+      /**
+       * Read the forceCountry URL parameter if present
+       * @returns {string|null} The forced country code or null
+       */
+      __privateAdd(this, _readForcedCountryParam);
       /**
        * Handle updates to the location state data.
        * This function is called initially and whenever location state changes.
@@ -1028,12 +1033,26 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _initializeAddressFields);
       /**
+       * Helper method to update both state dropdowns with loading state
+       */
+      __privateAdd(this, _updateStateDropdownsWithLoadingState);
+      /**
+       * Helper method to update both shipping and billing address fields
+       */
+      __privateAdd(this, _updateAddressFields);
+      /**
        * Populates a country select dropdown with the provided (filtered) list.
        * @param {HTMLSelectElement} countrySelect - The dropdown element.
        * @param {Array} countriesToShow - Filtered array of country objects.
        * @param {string|null} selectedValue - The country code to pre-select.
        */
       __privateAdd(this, _populateCountrySelect);
+      /**
+       * Set the country with a small delay to ensure DOM is ready
+       * @param {HTMLSelectElement} selectEl - The country select element
+       * @param {string} countryCode - The country code to select
+       */
+      __privateAdd(this, _setCountryWithDelay);
       __privateAdd(this, _setupCountryChangeListeners);
       /**
        * Handle the change event when a country is selected.
@@ -1052,6 +1071,30 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _updateStateSelect);
       /**
+       * Updates the postcode/ZIP field with country-specific settings
+       * @param {HTMLInputElement} postcodeField - The postcode input field
+       * @param {Object} config - The country configuration object
+       */
+      __privateAdd(this, _updatePostcodeField);
+      /**
+       * Remove any input restrictions that might prevent typing letters
+       * @param {HTMLInputElement} inputField - The input field to update
+       */
+      __privateAdd(this, _removeInputRestrictions);
+      /**
+       * Setup a mutation observer to ensure our input settings persist
+       * @param {HTMLInputElement} postcodeField - The postcode input field
+       * @param {boolean} hasLetters - Whether this is an alphanumeric postcode
+       * @param {Object} config - The country config object
+       */
+      __privateAdd(this, _setupPostcodeMutationObserver);
+      /**
+       * Determines if a country uses alphanumeric postcodes (containing letters)
+       * @param {Object} config - The country configuration
+       * @returns {boolean} True if the postcode format includes letters
+       */
+      __privateAdd(this, _isAlphanumericPostcode);
+      /**
        * Updates UI labels based on country configuration.
        * @param {Object} config - The countryConfig object.
        * @param {string} addressType - 'shipping' or 'billing'.
@@ -1066,22 +1109,27 @@ var TwentyNineNext = (() => {
       // For labels etc.
       __privateAdd(this, _merchantConfig, void 0);
       // Added: To store merchant-specific config
+      __privateAdd(this, _forcedCountry, null);
+      // Added: To store forced country from URL parameter
       __publicField(this, "initialized", false);
       __privateSet(this, _form, form);
       __privateSet(this, _logger2, logger);
       __privateSet(this, _app2, app);
       __privateSet(this, _merchantConfig, __privateMethod(this, _readMerchantConfig, readMerchantConfig_fn).call(this));
+      __privateSet(this, _forcedCountry, __privateMethod(this, _readForcedCountryParam, readForcedCountryParam_fn).call(this));
       __privateSet(this, _elements, {
         shippingCountry: document.querySelector('[os-checkout-field="country"]'),
         shippingState: document.querySelector('[os-checkout-field="province"]'),
+        shippingPostcode: document.querySelector('[os-checkout-field="postal"]'),
         billingCountry: document.querySelector('[os-checkout-field="billing-country"]'),
-        billingState: document.querySelector('[os-checkout-field="billing-province"]')
+        billingState: document.querySelector('[os-checkout-field="billing-province"]'),
+        billingPostcode: document.querySelector('[os-checkout-field="billing-postal"]')
       });
       __privateSet(this, _uiElements, {
         shippingStateLabel: document.querySelector('label[for="' + __privateGet(this, _elements).shippingState?.id + '"]'),
-        shippingPostcodeLabel: document.querySelector('label[for="' + document.querySelector('[os-checkout-field="postal"]')?.id + '"]'),
+        shippingPostcodeLabel: document.querySelector('label[for="' + __privateGet(this, _elements).shippingPostcode?.id + '"]'),
         billingStateLabel: document.querySelector('label[for="' + __privateGet(this, _elements).billingState?.id + '"]'),
-        billingPostcodeLabel: document.querySelector('label[for="' + document.querySelector('[os-checkout-field="billing-postal"]')?.id + '"]')
+        billingPostcodeLabel: document.querySelector('label[for="' + __privateGet(this, _elements).billingPostcode?.id + '"]')
       });
       if (__privateGet(this, _elements).shippingCountry || __privateGet(this, _elements).billingCountry) {
         __privateGet(this, _logger2).info("AddressHandler initializing...");
@@ -1098,16 +1146,25 @@ var TwentyNineNext = (() => {
   _elements = new WeakMap();
   _uiElements = new WeakMap();
   _merchantConfig = new WeakMap();
+  _forcedCountry = new WeakMap();
   _readMerchantConfig = new WeakSet();
   readMerchantConfig_fn = function() {
     const config = {
       defaultCountry: window.osConfig?.addressConfig?.defaultCountry ?? document.querySelector('meta[name="os-address-default-country"]')?.content ?? null,
       showCountries: window.osConfig?.addressConfig?.showCountries ?? document.querySelector('meta[name="os-address-show-countries"]')?.content?.split(",").map((c) => c.trim().toUpperCase()) ?? []
-      // dontShowStates is likely superseded by worker config, but we could read it as a fallback?
-      // dontShowStates: window.osConfig?.addressConfig?.dontShowStates ?? document.querySelector('meta[name="os-address-dont-show-states"]')?.content?.split(',').map(s => s.trim().toUpperCase()) ?? [],
     };
     __privateGet(this, _logger2).info("Read merchant address config:", config);
     return config;
+  };
+  _readForcedCountryParam = new WeakSet();
+  readForcedCountryParam_fn = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceCountry = urlParams.get("forceCountry");
+    if (forceCountry) {
+      __privateGet(this, _logger2).info(`Found forceCountry parameter: ${forceCountry}`);
+      return forceCountry.toUpperCase();
+    }
+    return null;
   };
   _handleLocationStateUpdate = new WeakSet();
   handleLocationStateUpdate_fn = function(locationState) {
@@ -1127,38 +1184,88 @@ var TwentyNineNext = (() => {
     const detectedCountryCode = locationState.detectedCountryCode;
     const merchantDefaultCountry = __privateGet(this, _merchantConfig).defaultCountry;
     const allowedCountriesList = __privateGet(this, _merchantConfig).showCountries;
-    const filteredCountries = allowedCountriesList && allowedCountriesList.length > 0 ? allCountries.filter((c) => allowedCountriesList.includes(c.code.toUpperCase())) : allCountries;
-    __privateGet(this, _logger2).debug(`Initializing with ${filteredCountries.length} allowed countries. Detected: ${detectedCountryCode}. Merchant Default: ${merchantDefaultCountry}`);
+    const forcedCountryExists = __privateGet(this, _forcedCountry) && allCountries.some((c) => c.code.toUpperCase() === __privateGet(this, _forcedCountry));
+    if (__privateGet(this, _forcedCountry)) {
+      if (forcedCountryExists) {
+        __privateGet(this, _logger2).info(`Using forced country from URL parameter: ${__privateGet(this, _forcedCountry)}`);
+      } else {
+        __privateGet(this, _logger2).warn(`Forced country ${__privateGet(this, _forcedCountry)} from URL parameter not found in available countries.`);
+      }
+    }
+    const shouldFilterCountries = !(__privateGet(this, _forcedCountry) && forcedCountryExists);
+    let filteredCountries = allCountries;
+    if (shouldFilterCountries && allowedCountriesList && allowedCountriesList.length > 0) {
+      filteredCountries = allCountries.filter((c) => allowedCountriesList.includes(c.code.toUpperCase()));
+    }
+    __privateGet(this, _logger2).debug(`Initializing with ${filteredCountries.length} allowed countries. Detected: ${detectedCountryCode}. Merchant Default: ${merchantDefaultCountry}. Forced: ${__privateGet(this, _forcedCountry) || "none"}`);
     let initialSelectedCountryCode = null;
-    const detectedCountryAllowed = detectedCountryCode && filteredCountries.some((c) => c.code === detectedCountryCode);
-    const merchantDefaultAllowed = merchantDefaultCountry && filteredCountries.some((c) => c.code === merchantDefaultCountry);
-    if (detectedCountryAllowed) {
-      initialSelectedCountryCode = detectedCountryCode;
-      __privateGet(this, _logger2).debug(`Using detected country (${detectedCountryCode}) as initial selection.`);
-    } else if (merchantDefaultAllowed) {
-      initialSelectedCountryCode = merchantDefaultCountry;
-      __privateGet(this, _logger2).debug(`Detected country not allowed or not found. Using merchant default (${merchantDefaultCountry}) as initial selection.`);
-    } else if (filteredCountries.length > 0) {
-      initialSelectedCountryCode = filteredCountries[0].code;
-      __privateGet(this, _logger2).debug(`Neither detected nor merchant default allowed/available. Falling back to first allowed country: ${initialSelectedCountryCode}`);
+    if (forcedCountryExists) {
+      initialSelectedCountryCode = __privateGet(this, _forcedCountry);
+      __privateGet(this, _logger2).debug(`Using forced country (${__privateGet(this, _forcedCountry)}) from URL parameter as initial selection.`);
+    } else {
+      const detectedCountryAllowed = detectedCountryCode && filteredCountries.some((c) => c.code === detectedCountryCode);
+      const merchantDefaultAllowed = merchantDefaultCountry && filteredCountries.some((c) => c.code === merchantDefaultCountry);
+      if (detectedCountryAllowed) {
+        initialSelectedCountryCode = detectedCountryCode;
+        __privateGet(this, _logger2).debug(`Using detected country (${detectedCountryCode}) as initial selection.`);
+      } else if (merchantDefaultAllowed) {
+        initialSelectedCountryCode = merchantDefaultCountry;
+        __privateGet(this, _logger2).debug(`Detected country not allowed or not found. Using merchant default (${merchantDefaultCountry}) as initial selection.`);
+      } else if (filteredCountries.length > 0) {
+        initialSelectedCountryCode = filteredCountries[0].code;
+        __privateGet(this, _logger2).debug(`Neither detected nor merchant default allowed/available. Falling back to first allowed country: ${initialSelectedCountryCode}`);
+      }
     }
     __privateGet(this, _app2).state.setState("location.initialSelectedCountryCode", initialSelectedCountryCode, false);
-    const allowedCodesLowercase = filteredCountries.map((c) => c.code.toLowerCase());
+    const allowedCodesLowercase = shouldFilterCountries ? filteredCountries.map((c) => c.code.toLowerCase()) : allCountries.map((c) => c.code.toLowerCase());
     __privateGet(this, _app2).state.setState("location.allowedCountryCodes", allowedCodesLowercase, false);
-    __privateGet(this, _logger2).debug("Stored initialSelectedCountryCode and allowedCountryCodes in state", { initial: initialSelectedCountryCode, allowed: allowedCodesLowercase });
+    __privateGet(this, _logger2).debug("Stored initialSelectedCountryCode and allowedCountryCodes in state", {
+      initial: initialSelectedCountryCode,
+      allowed: allowedCodesLowercase,
+      allowedCount: allowedCodesLowercase.length,
+      forcedCountry: __privateGet(this, _forcedCountry) || "none"
+    });
     __privateMethod(this, _populateCountrySelect, populateCountrySelect_fn).call(this, __privateGet(this, _elements).shippingCountry, filteredCountries, initialSelectedCountryCode);
     __privateMethod(this, _populateCountrySelect, populateCountrySelect_fn).call(this, __privateGet(this, _elements).billingCountry, filteredCountries, initialSelectedCountryCode);
     if (initialSelectedCountryCode) {
       const initialStates = locationState.statesByCountry?.[initialSelectedCountryCode] || [];
       const initialConfig = locationState.configsByCountry?.[initialSelectedCountryCode] || {};
       __privateGet(this, _logger2).debug(`Populating initial states for selected country ${initialSelectedCountryCode}:`, { states: initialStates, config: initialConfig });
-      __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, __privateGet(this, _elements).shippingState, initialSelectedCountryCode, initialStates, initialConfig);
-      __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, __privateGet(this, _elements).billingState, initialSelectedCountryCode, initialStates, initialConfig);
-      __privateMethod(this, _updateUiLabels, updateUiLabels_fn).call(this, initialConfig, "shipping");
-      __privateMethod(this, _updateUiLabels, updateUiLabels_fn).call(this, initialConfig, "billing");
+      if (__privateGet(this, _forcedCountry) && __privateGet(this, _forcedCountry).toUpperCase() === initialSelectedCountryCode.toUpperCase() && (!initialStates || initialStates.length === 0)) {
+        __privateGet(this, _logger2).info(`Forced country ${__privateGet(this, _forcedCountry)} selected but no states loaded. Fetching states data...`);
+        __privateMethod(this, _updateStateDropdownsWithLoadingState, updateStateDropdownsWithLoadingState_fn).call(this);
+        __privateGet(this, _app2).api.getCountryStatesAndConfig(initialSelectedCountryCode).then((data) => {
+          __privateGet(this, _app2).state.setCountryStatesAndConfig(initialSelectedCountryCode, data);
+          const states = data.states || [];
+          const config = data.countryConfig || {};
+          __privateGet(this, _logger2).debug(`Fetched ${states.length} states for forced country ${initialSelectedCountryCode}`, config);
+          __privateMethod(this, _updateAddressFields, updateAddressFields_fn).call(this, initialSelectedCountryCode, states, config);
+        }).catch((error) => {
+          __privateGet(this, _logger2).error(`Failed to fetch states for forced country ${initialSelectedCountryCode}:`, error);
+          __privateMethod(this, _updateAddressFields, updateAddressFields_fn).call(this, initialSelectedCountryCode, [], {});
+        });
+      } else {
+        __privateMethod(this, _updateAddressFields, updateAddressFields_fn).call(this, initialSelectedCountryCode, initialStates, initialConfig);
+      }
     }
     __privateMethod(this, _setupCountryChangeListeners, setupCountryChangeListeners_fn).call(this);
     __privateGet(this, _logger2).info("AddressHandler fields initialized with merchant config applied.");
+  };
+  _updateStateDropdownsWithLoadingState = new WeakSet();
+  updateStateDropdownsWithLoadingState_fn = function() {
+    if (__privateGet(this, _elements).shippingState) {
+      __privateGet(this, _elements).shippingState.innerHTML = '<option value="">Loading States...</option>';
+    }
+    if (__privateGet(this, _elements).billingState) {
+      __privateGet(this, _elements).billingState.innerHTML = '<option value="">Loading States...</option>';
+    }
+  };
+  _updateAddressFields = new WeakSet();
+  updateAddressFields_fn = function(countryCode, states, config) {
+    __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, __privateGet(this, _elements).shippingState, countryCode, states, config);
+    __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, __privateGet(this, _elements).billingState, countryCode, states, config);
+    __privateMethod(this, _updateUiLabels, updateUiLabels_fn).call(this, config, "shipping");
+    __privateMethod(this, _updateUiLabels, updateUiLabels_fn).call(this, config, "billing");
   };
   _populateCountrySelect = new WeakSet();
   populateCountrySelect_fn = function(countrySelect, countriesToShow, selectedValue) {
@@ -1166,6 +1273,12 @@ var TwentyNineNext = (() => {
       return;
     const currentVal = countrySelect.value;
     countrySelect.innerHTML = '<option value="">Select Country...</option>';
+    const allCountries = __privateGet(this, _app2).state.getState("location.countries") || [];
+    const forcedCountryObj = __privateGet(this, _forcedCountry) && !countriesToShow.some((c) => c.code.toUpperCase() === __privateGet(this, _forcedCountry)) && allCountries.find((c) => c.code.toUpperCase() === __privateGet(this, _forcedCountry));
+    if (forcedCountryObj && __privateGet(this, _forcedCountry)) {
+      __privateGet(this, _logger2).debug(`Adding forced country ${__privateGet(this, _forcedCountry)} to dropdown options`);
+      countriesToShow = [...countriesToShow, forcedCountryObj];
+    }
     countriesToShow.forEach((country) => {
       const option = document.createElement("option");
       option.value = country.code;
@@ -1174,14 +1287,55 @@ var TwentyNineNext = (() => {
         option.dataset.phonecode = country.phonecode;
       countrySelect.appendChild(option);
     });
-    if (selectedValue && countriesToShow.some((c) => c.code === selectedValue)) {
-      countrySelect.value = selectedValue;
-      __privateGet(this, _logger2).debug(`Set initial country ${selectedValue} in dropdown:`, countrySelect.name || countrySelect.id);
+    let countryToSelect = null;
+    if (__privateGet(this, _forcedCountry) && countriesToShow.some((c) => c.code.toUpperCase() === __privateGet(this, _forcedCountry).toUpperCase() || c.code.toLowerCase() === __privateGet(this, _forcedCountry).toLowerCase())) {
+      countryToSelect = __privateGet(this, _forcedCountry);
+      __privateGet(this, _logger2).debug(`Attempting to set forced country ${__privateGet(this, _forcedCountry)} in dropdown:`, countrySelect.name || countrySelect.id);
+    } else if (selectedValue && countriesToShow.some((c) => c.code === selectedValue)) {
+      countryToSelect = selectedValue;
+      __privateGet(this, _logger2).debug(`Attempting to set initial country ${selectedValue} in dropdown:`, countrySelect.name || countrySelect.id);
     } else if (currentVal && countriesToShow.some((c) => c.code === currentVal)) {
-      countrySelect.value = currentVal;
-      __privateGet(this, _logger2).debug(`Restored previous country ${currentVal} in dropdown:`, countrySelect.name || countrySelect.id);
+      countryToSelect = currentVal;
+      __privateGet(this, _logger2).debug(`Attempting to restore previous country ${currentVal} in dropdown:`, countrySelect.name || countrySelect.id);
+    }
+    if (countryToSelect) {
+      __privateMethod(this, _setCountryWithDelay, setCountryWithDelay_fn).call(this, countrySelect, countryToSelect);
     } else {
       countrySelect.value = "";
+    }
+  };
+  _setCountryWithDelay = new WeakSet();
+  setCountryWithDelay_fn = function(selectEl, countryCode) {
+    const normalizedCode = countryCode.toLowerCase();
+    selectEl.value = normalizedCode;
+    if (selectEl.value !== normalizedCode) {
+      selectEl.value = countryCode.toUpperCase();
+    }
+    if (selectEl.value !== normalizedCode && selectEl.value !== countryCode.toUpperCase()) {
+      setTimeout(() => {
+        selectEl.value = normalizedCode;
+        if (selectEl.value !== normalizedCode) {
+          selectEl.value = countryCode.toUpperCase();
+        }
+        if (selectEl.value !== normalizedCode && selectEl.value !== countryCode.toUpperCase()) {
+          const option = Array.from(selectEl.options).find(
+            (opt) => opt.value.toLowerCase() === normalizedCode || opt.value.toUpperCase() === countryCode.toUpperCase()
+          );
+          if (option) {
+            option.selected = true;
+            selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+            __privateGet(this, _logger2).debug(`Force selected country ${countryCode} using direct option selection`);
+          } else {
+            __privateGet(this, _logger2).warn(`Failed to select country ${countryCode}. Option not found in dropdown.`);
+          }
+        } else {
+          selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+          __privateGet(this, _logger2).debug(`Force selected country ${countryCode} after delay`);
+        }
+      }, 100);
+    } else {
+      selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+      __privateGet(this, _logger2).debug(`Selected country ${countryCode} immediately`);
     }
   };
   _setupCountryChangeListeners = new WeakSet();
@@ -1238,10 +1392,19 @@ var TwentyNineNext = (() => {
       return;
     const currentValue = stateSelect.value || stateSelect.getAttribute("data-pending-state") || "";
     __privateGet(this, _logger2).debug(`Updating state select for ${countryCode}`, { numStates: states.length, config });
-    if (!states || states.length === 0) {
+    const formGroup = stateSelect.closest(".form-group");
+    const stateContainer = stateSelect.closest(".select-form-wrapper") || stateSelect.parentElement;
+    const stateRequired = config.stateRequired ?? true;
+    if (!states || states.length === 0 || !stateRequired) {
       stateSelect.innerHTML = '<option value="">N/A</option>';
       stateSelect.disabled = true;
-      stateSelect.parentElement.style.display = "none";
+      if (formGroup) {
+        formGroup.style.display = "none";
+        __privateGet(this, _logger2).debug(`Hiding state field form-group for country ${countryCode} - stateRequired: ${stateRequired}, states: ${states?.length || 0}`);
+      } else if (stateContainer) {
+        stateContainer.style.display = "none";
+        __privateGet(this, _logger2).debug(`Hiding state container for country ${countryCode} - stateRequired: ${stateRequired}, states: ${states?.length || 0}`);
+      }
     } else {
       stateSelect.innerHTML = `<option value="">Select ${config.stateLabel || "State/Province"}...</option>`;
       states.forEach((state) => {
@@ -1255,9 +1418,104 @@ var TwentyNineNext = (() => {
       } else {
         stateSelect.value = "";
       }
-      stateSelect.disabled = !(config.stateRequired ?? false);
-      stateSelect.parentElement.style.display = "";
+      stateSelect.disabled = false;
+      if (formGroup) {
+        formGroup.style.display = "";
+        __privateGet(this, _logger2).debug(`Showing state field form-group for country ${countryCode} with ${states.length} states`);
+      } else if (stateContainer) {
+        stateContainer.style.display = "";
+        __privateGet(this, _logger2).debug(`Showing state container for country ${countryCode} with ${states.length} states`);
+      }
     }
+    const isShippingState = stateSelect.getAttribute("os-checkout-field") === "province";
+    const postcodeField = isShippingState ? __privateGet(this, _elements).shippingPostcode : __privateGet(this, _elements).billingPostcode;
+    __privateMethod(this, _updatePostcodeField, updatePostcodeField_fn).call(this, postcodeField, config);
+  };
+  _updatePostcodeField = new WeakSet();
+  updatePostcodeField_fn = function(postcodeField, config) {
+    if (!postcodeField)
+      return;
+    const postcodeLabel = config.postcodeLabel || "Postal / ZIP Code";
+    postcodeField.placeholder = `${postcodeLabel}${postcodeField.hasAttribute("required") || postcodeField.getAttribute("os-checkout-validate") === "required" ? "*" : ""}`;
+    const hasLetters = __privateMethod(this, _isAlphanumericPostcode, isAlphanumericPostcode_fn).call(this, config);
+    if (hasLetters) {
+      postcodeField.inputMode = "text";
+      postcodeField.type = "text";
+      postcodeField.removeAttribute("data-numeric-only");
+      postcodeField.removeAttribute("data-numbers-only");
+      if (config.postcodeRegex) {
+        postcodeField.pattern = config.postcodeRegex;
+        __privateGet(this, _logger2).debug(`Set alphanumeric postcode pattern: ${config.postcodeRegex}`);
+      }
+      __privateMethod(this, _removeInputRestrictions, removeInputRestrictions_fn).call(this, postcodeField);
+      __privateGet(this, _logger2).debug(`Configured alphanumeric postcode field for ${postcodeLabel}`);
+      __privateMethod(this, _setupPostcodeMutationObserver, setupPostcodeMutationObserver_fn).call(this, postcodeField, hasLetters, config);
+    } else {
+      postcodeField.inputMode = "numeric";
+      if (config.postcodeRegex) {
+        postcodeField.pattern = config.postcodeRegex;
+      } else {
+        postcodeField.pattern = "(^\\d{5}$)|(^\\d{5}-\\d{4}$)";
+      }
+      __privateGet(this, _logger2).debug(`Configured numeric-only postcode field for ${postcodeLabel}`);
+    }
+    if (config.postcodeMaxLength) {
+      postcodeField.maxLength = config.postcodeMaxLength;
+    }
+    if (config.postcodeExample) {
+      postcodeField.placeholder = `${postcodeLabel}* (e.g. ${config.postcodeExample})`;
+    }
+    __privateGet(this, _logger2).debug(`Updated postcode field: ${postcodeLabel}, pattern: ${postcodeField.pattern || "none"}, inputmode: ${postcodeField.inputMode}`);
+  };
+  _removeInputRestrictions = new WeakSet();
+  removeInputRestrictions_fn = function(inputField) {
+    const newInput = inputField.cloneNode(true);
+    if (inputField.parentNode) {
+      inputField.parentNode.replaceChild(newInput, inputField);
+      newInput.addEventListener("keypress", (e) => {
+        __privateGet(this, _logger2).debug(`Keypress in postcode field: ${e.key}, code: ${e.code}, prevented: ${e.defaultPrevented}`);
+      });
+      if (__privateGet(this, _elements).shippingPostcode === inputField) {
+        __privateGet(this, _elements).shippingPostcode = newInput;
+      } else if (__privateGet(this, _elements).billingPostcode === inputField) {
+        __privateGet(this, _elements).billingPostcode = newInput;
+      }
+    }
+  };
+  _setupPostcodeMutationObserver = new WeakSet();
+  setupPostcodeMutationObserver_fn = function(postcodeField, hasLetters, config) {
+    if (postcodeField.dataset.postcodeObserved === "true")
+      return;
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === "attributes") {
+          if (mutation.attributeName === "inputmode" && postcodeField.inputMode !== "text") {
+            postcodeField.inputMode = "text";
+            __privateGet(this, _logger2).debug("Restored text inputmode on postcode field after external change");
+          }
+          if (mutation.attributeName === "type" && postcodeField.type !== "text") {
+            postcodeField.type = "text";
+            __privateGet(this, _logger2).debug("Restored text type on postcode field after external change");
+          }
+          if (mutation.attributeName === "pattern" && config.postcodeRegex && postcodeField.pattern !== config.postcodeRegex) {
+            postcodeField.pattern = config.postcodeRegex;
+            __privateGet(this, _logger2).debug("Restored correct pattern on postcode field after external change");
+          }
+        }
+      });
+    });
+    observer.observe(postcodeField, { attributes: true });
+    postcodeField.dataset.postcodeObserved = "true";
+  };
+  _isAlphanumericPostcode = new WeakSet();
+  isAlphanumericPostcode_fn = function(config) {
+    if (config.postcodeExample && /[A-Za-z]/.test(config.postcodeExample)) {
+      return true;
+    }
+    if (config.postcodeRegex && (config.postcodeRegex.includes("[A-Z]") || config.postcodeRegex.includes("[a-z]") || config.postcodeRegex.includes("A-Z") || config.postcodeRegex.includes("a-z"))) {
+      return true;
+    }
+    return false;
   };
   _updateUiLabels = new WeakSet();
   updateUiLabels_fn = function(config, addressType) {
@@ -1266,16 +1524,22 @@ var TwentyNineNext = (() => {
     const postcodeLabelElement = addressType === "shipping" ? __privateGet(this, _uiElements).shippingPostcodeLabel : __privateGet(this, _uiElements).billingPostcodeLabel;
     if (stateLabelElement) {
       stateLabelElement.textContent = config.stateLabel || "State / Province";
-      if (config.stateRequired) {
+      const requiredSpan = stateLabelElement.querySelector("span.required");
+      if (config.stateRequired && !requiredSpan) {
         stateLabelElement.innerHTML += ' <span class="required">*</span>';
-      } else {
-        const requiredSpan = stateLabelElement.querySelector("span.required");
-        if (requiredSpan)
-          requiredSpan.remove();
+      } else if (!config.stateRequired && requiredSpan) {
+        requiredSpan.remove();
       }
     }
     if (postcodeLabelElement) {
       postcodeLabelElement.textContent = config.postcodeLabel || "Postal / ZIP Code";
+      if (!postcodeLabelElement.querySelector("span.required")) {
+        postcodeLabelElement.innerHTML += ' <span class="required">*</span>';
+      }
+    }
+    const postcodeField = addressType === "shipping" ? __privateGet(this, _elements).shippingPostcode : __privateGet(this, _elements).billingPostcode;
+    if (postcodeField) {
+      __privateMethod(this, _updatePostcodeField, updatePostcodeField_fn).call(this, postcodeField, config);
     }
   };
 
