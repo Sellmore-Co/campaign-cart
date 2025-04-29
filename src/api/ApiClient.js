@@ -10,6 +10,7 @@ export class ApiClient {
   #apiKey;
   #campaignId;
   #baseUrl = 'https://campaigns.apps.29next.com/api/v1';
+  #locationWorkerUrl = 'https://cdn-countries.muddy-wind-c7ca.workers.dev';
   #logger;
 
   constructor(app) {
@@ -453,5 +454,74 @@ export class ApiClient {
     // If somehow no order_status_url exists (should not happen), log a warning
     this.#logger.warn('No order_status_url found in API response - using fallback URL');
     return `${window.location.origin}/checkout/confirmation/?ref_id=${refId || ''}`;
+  }
+
+  /**
+   * Fetch initial location data from the Cloudflare Worker
+   * Includes all countries, detected user country, states for detected country, and config for detected country.
+   * @returns {Promise<Object>} Location data object
+   */
+  async getLocationData() {
+    const url = `${this.#locationWorkerUrl}/location`;
+    this.#logger.info(`Fetching initial location data from worker: ${url}`);
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        headers: { 'Accept': 'application/json' }
+      });
+      this.#logger.debug(`Received response from ${url} with status ${response.status}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.#logger.error(`Worker API error from ${url}: ${response.status}`, errorText);
+        throw new Error(`Worker API error: ${response.status} ${errorText}`);
+      }
+      const data = await response.json();
+      this.#logger.info('Successfully fetched initial location data');
+      this.#logger.debug('Location data received:', data);
+      return data;
+    } catch (error) {
+      this.#logger.error(`Worker API request failed: ${url}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch states and configuration for a specific country from the Cloudflare Worker
+   * @param {string} countryCode - The ISO 3166-1 alpha-2 country code
+   * @returns {Promise<Object>} Object containing states and countryConfig
+   */
+  async getCountryStatesAndConfig(countryCode) {
+    if (!countryCode) {
+      this.#logger.warn('getCountryStatesAndConfig called without countryCode');
+      return { states: [], countryConfig: {} }; // Return empty structure
+    }
+    const url = `${this.#locationWorkerUrl}/countries/${countryCode}/states`;
+    this.#logger.info(`Fetching states and config for ${countryCode} from worker: ${url}`);
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        headers: { 'Accept': 'application/json' }
+      });
+      this.#logger.debug(`Received response from ${url} with status ${response.status}`);
+      if (!response.ok) {
+        // Handle 404 specifically - country might genuinely have no states/config defined
+        if (response.status === 404) {
+            this.#logger.warn(`No states/config found for country ${countryCode} (404). Returning empty data.`);
+            return { states: [], countryConfig: {} }; // Return empty structure as per spec
+        }
+        const errorText = await response.text();
+        this.#logger.error(`Worker API error from ${url}: ${response.status}`, errorText);
+        throw new Error(`Worker API error: ${response.status} ${errorText}`);
+      }
+      const data = await response.json();
+      this.#logger.info(`Successfully fetched states and config for ${countryCode}`);
+      this.#logger.debug(`States/Config data received for ${countryCode}:`, data);
+      return data;
+    } catch (error) {
+      this.#logger.error(`Worker API request failed: ${url}`, error);
+      throw error;
+    }
   }
 }

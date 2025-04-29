@@ -1,9 +1,11 @@
 export class PhoneInputHandler {
   #logger;
+  #app;
   #intlTelInputAvailable = !!window.intlTelInput;
 
-  constructor(logger) {
+  constructor(logger, app) {
     this.#logger = logger;
+    this.#app = app;
 
     if (!this.#intlTelInputAvailable) {
       this.#logger.warn('intlTelInput not found, loading dynamically');
@@ -42,11 +44,17 @@ export class PhoneInputHandler {
 
   #initializePhoneInput(input, index) {
     try {
-      const iti = window.intlTelInput(input, {
+      const allowedCountryCodes = this.#app?.state?.getState('location.allowedCountryCodes') || [];
+      const initialCountryCode = this.#app?.state?.getState('location.initialSelectedCountryCode')?.toLowerCase();
+      
+      this.#logger.debug(`Initializing phone input ${index} with allowed countries:`, allowedCountryCodes);
+      this.#logger.debug(`Initializing phone input ${index} with initial country: ${initialCountryCode}`);
+
+      const intlOptions = {
         utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js',
         separateDialCode: true,
-        onlyCountries: ['us'],
-        initialCountry: 'us',
+        onlyCountries: allowedCountryCodes.length > 0 ? allowedCountryCodes : undefined,
+        initialCountry: initialCountryCode || 'auto',
         allowDropdown: false,
         dropdownContainer: document.body,
         useFullscreenPopup: true,
@@ -55,7 +63,11 @@ export class PhoneInputHandler {
         customContainer: 'iti-tel-input',
         autoFormat: true,
         nationalMode: true
-      });
+      };
+      
+      this.#logger.debug(`intlTelInput options for input ${index}:`, intlOptions);
+
+      const iti = window.intlTelInput(input, intlOptions);
 
       input.iti = iti;
       this.#logger.debug(`Phone input ${index} (${input.getAttribute('os-checkout-field') ?? 'unknown'}) initialized`);
@@ -244,12 +256,20 @@ export class PhoneInputHandler {
       return;
     }
 
-    // Set country select to US if it exists
-    if (countrySelect.value !== 'US') {
-      countrySelect.value = 'US';
-      countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
-      this.#logger.debug('Country select updated to US');
-    }
+    // Instead, listen for country changes and update the phone input
+    const updatePhoneCountry = () => {
+        const countryCode = countrySelect.value;
+        if (countryCode && typeof iti.setCountry === 'function') {
+            iti.setCountry(countryCode.toLowerCase());
+            this.#logger.debug(`Updated phone input country to: ${countryCode}`);
+        }
+    };
+
+    // Update initially
+    updatePhoneCountry();
+    
+    // Update when country changes
+    countrySelect.addEventListener('change', updatePhoneCountry);
   }
 
   #setupPhoneValidation(input, iti) {

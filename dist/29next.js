@@ -4,6 +4,7 @@ var TwentyNineNext = (() => {
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
   var __getOwnPropNames = Object.getOwnPropertyNames;
   var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
   var __esm = (fn, res) => function __init() {
     return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
   };
@@ -20,6 +21,10 @@ var TwentyNineNext = (() => {
     return to;
   };
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+  var __publicField = (obj, key, value) => {
+    __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+    return value;
+  };
   var __accessCheck = (obj, member, msg) => {
     if (!member.has(obj))
       throw TypeError("Cannot " + msg);
@@ -63,7 +68,7 @@ var TwentyNineNext = (() => {
   __export(ReceiptManager_exports, {
     ReceiptPage: () => ReceiptPage
   });
-  var _apiClient3, _logger26, _app21, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError3, showError_fn3, ReceiptPage;
+  var _apiClient3, _logger26, _app24, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError3, showError_fn3, ReceiptPage;
   var init_ReceiptManager = __esm({
     "src/managers/ReceiptManager.js"() {
       "use strict";
@@ -146,7 +151,7 @@ var TwentyNineNext = (() => {
           __privateAdd(this, _showError3);
           __privateAdd(this, _apiClient3, void 0);
           __privateAdd(this, _logger26, void 0);
-          __privateAdd(this, _app21, void 0);
+          __privateAdd(this, _app24, void 0);
           __privateAdd(this, _orderData, null);
           __privateAdd(this, _orderFetched, false);
           // Flag to prevent duplicate API calls
@@ -155,7 +160,7 @@ var TwentyNineNext = (() => {
           __privateAdd(this, _debugMode5, false);
           __privateSet(this, _apiClient3, apiClient);
           __privateSet(this, _logger26, logger);
-          __privateSet(this, _app21, app);
+          __privateSet(this, _app24, app);
           const debugMeta = document.querySelector('meta[name="os-debug"]');
           __privateSet(this, _debugMode5, debugMeta?.getAttribute("content") === "true");
           __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "info", "ReceiptPage component created");
@@ -190,7 +195,7 @@ var TwentyNineNext = (() => {
       };
       _apiClient3 = new WeakMap();
       _logger26 = new WeakMap();
-      _app21 = new WeakMap();
+      _app24 = new WeakMap();
       _orderData = new WeakMap();
       _orderFetched = new WeakMap();
       _initialized4 = new WeakMap();
@@ -453,7 +458,7 @@ var TwentyNineNext = (() => {
   });
 
   // src/api/ApiClient.js
-  var _app, _apiKey, _campaignId, _baseUrl, _logger, _checkForCampaignIdInUrl, checkForCampaignIdInUrl_fn, _getCampaignId, getCampaignId_fn, _buildUrl, buildUrl_fn, _request, request_fn, _getAttributionData, getAttributionData_fn;
+  var _app, _apiKey, _campaignId, _baseUrl, _locationWorkerUrl, _logger, _checkForCampaignIdInUrl, checkForCampaignIdInUrl_fn, _getCampaignId, getCampaignId_fn, _buildUrl, buildUrl_fn, _request, request_fn, _getAttributionData, getAttributionData_fn;
   var ApiClient = class {
     constructor(app) {
       /**
@@ -476,6 +481,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _apiKey, void 0);
       __privateAdd(this, _campaignId, void 0);
       __privateAdd(this, _baseUrl, "https://campaigns.apps.29next.com/api/v1");
+      __privateAdd(this, _locationWorkerUrl, "https://cdn-countries.muddy-wind-c7ca.workers.dev");
       __privateAdd(this, _logger, void 0);
       __privateSet(this, _app, app);
       __privateSet(this, _logger, app.logger.createModuleLogger("API"));
@@ -717,11 +723,78 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger).warn("No order_status_url found in API response - using fallback URL");
       return `${window.location.origin}/checkout/confirmation/?ref_id=${refId || ""}`;
     }
+    /**
+     * Fetch initial location data from the Cloudflare Worker
+     * Includes all countries, detected user country, states for detected country, and config for detected country.
+     * @returns {Promise<Object>} Location data object
+     */
+    async getLocationData() {
+      const url = `${__privateGet(this, _locationWorkerUrl)}/location`;
+      __privateGet(this, _logger).info(`Fetching initial location data from worker: ${url}`);
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          mode: "cors",
+          headers: { "Accept": "application/json" }
+        });
+        __privateGet(this, _logger).debug(`Received response from ${url} with status ${response.status}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          __privateGet(this, _logger).error(`Worker API error from ${url}: ${response.status}`, errorText);
+          throw new Error(`Worker API error: ${response.status} ${errorText}`);
+        }
+        const data = await response.json();
+        __privateGet(this, _logger).info("Successfully fetched initial location data");
+        __privateGet(this, _logger).debug("Location data received:", data);
+        return data;
+      } catch (error) {
+        __privateGet(this, _logger).error(`Worker API request failed: ${url}`, error);
+        throw error;
+      }
+    }
+    /**
+     * Fetch states and configuration for a specific country from the Cloudflare Worker
+     * @param {string} countryCode - The ISO 3166-1 alpha-2 country code
+     * @returns {Promise<Object>} Object containing states and countryConfig
+     */
+    async getCountryStatesAndConfig(countryCode) {
+      if (!countryCode) {
+        __privateGet(this, _logger).warn("getCountryStatesAndConfig called without countryCode");
+        return { states: [], countryConfig: {} };
+      }
+      const url = `${__privateGet(this, _locationWorkerUrl)}/countries/${countryCode}/states`;
+      __privateGet(this, _logger).info(`Fetching states and config for ${countryCode} from worker: ${url}`);
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          mode: "cors",
+          headers: { "Accept": "application/json" }
+        });
+        __privateGet(this, _logger).debug(`Received response from ${url} with status ${response.status}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            __privateGet(this, _logger).warn(`No states/config found for country ${countryCode} (404). Returning empty data.`);
+            return { states: [], countryConfig: {} };
+          }
+          const errorText = await response.text();
+          __privateGet(this, _logger).error(`Worker API error from ${url}: ${response.status}`, errorText);
+          throw new Error(`Worker API error: ${response.status} ${errorText}`);
+        }
+        const data = await response.json();
+        __privateGet(this, _logger).info(`Successfully fetched states and config for ${countryCode}`);
+        __privateGet(this, _logger).debug(`States/Config data received for ${countryCode}:`, data);
+        return data;
+      } catch (error) {
+        __privateGet(this, _logger).error(`Worker API request failed: ${url}`, error);
+        throw error;
+      }
+    }
   };
   _app = new WeakMap();
   _apiKey = new WeakMap();
   _campaignId = new WeakMap();
   _baseUrl = new WeakMap();
+  _locationWorkerUrl = new WeakMap();
   _logger = new WeakMap();
   _checkForCampaignIdInUrl = new WeakSet();
   checkForCampaignIdInUrl_fn = function() {
@@ -936,197 +1009,278 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/AddressHandler.js
-  var _form, _logger2, _addressConfig, _countries, _states, _elements, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStates, loadCountriesAndStates_fn, _loadStates, loadStates_fn, _detectUserCountry, detectUserCountry_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn;
+  var _form, _logger2, _app2, _elements, _uiElements, _merchantConfig, _readMerchantConfig, readMerchantConfig_fn, _handleLocationStateUpdate, handleLocationStateUpdate_fn, _initializeAddressFields, initializeAddressFields_fn, _populateCountrySelect, populateCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _handleCountryChange, handleCountryChange_fn, _updateStateSelect, updateStateSelect_fn, _updateUiLabels, updateUiLabels_fn;
   var AddressHandler = class {
-    constructor(form, logger) {
-      __privateAdd(this, _init);
-      __privateAdd(this, _getAddressConfig);
-      __privateAdd(this, _initCountrySelect);
+    // Track initialization state
+    constructor(form, logger, app) {
+      /**
+       * Read merchant-specific address configuration from window.osConfig or meta tags.
+       */
+      __privateAdd(this, _readMerchantConfig);
+      /**
+       * Handle updates to the location state data.
+       * This function is called initially and whenever location state changes.
+       */
+      __privateAdd(this, _handleLocationStateUpdate);
+      /**
+       * Perform the initial population of address fields based on fetched location data
+       * and merchant configuration.
+       */
+      __privateAdd(this, _initializeAddressFields);
+      /**
+       * Populates a country select dropdown with the provided (filtered) list.
+       * @param {HTMLSelectElement} countrySelect - The dropdown element.
+       * @param {Array} countriesToShow - Filtered array of country objects.
+       * @param {string|null} selectedValue - The country code to pre-select.
+       */
+      __privateAdd(this, _populateCountrySelect);
       __privateAdd(this, _setupCountryChangeListeners);
+      /**
+       * Handle the change event when a country is selected.
+       * Fetches states/config if not already in state.
+       * @param {string} selectedCountryCode - The newly selected country code.
+       * @param {HTMLSelectElement} stateSelect - The corresponding state dropdown element.
+       * @param {string} addressType - 'shipping' or 'billing'
+       */
+      __privateAdd(this, _handleCountryChange);
+      /**
+       * Updates the state dropdown and its associated UI based on fetched/cached data.
+       * @param {HTMLSelectElement} stateSelect - The state dropdown element.
+       * @param {string} countryCode - The selected country code.
+       * @param {Array} states - Array of state objects { code, name }.
+       * @param {Object} config - The countryConfig object.
+       */
       __privateAdd(this, _updateStateSelect);
-      __privateAdd(this, _populateStateSelect);
-      __privateAdd(this, _loadCachedData);
-      __privateAdd(this, _saveCache);
-      __privateAdd(this, _loadCountriesAndStates);
-      __privateAdd(this, _loadStates);
-      __privateAdd(this, _detectUserCountry);
-      __privateAdd(this, _setupAutocompleteDetection);
-      __privateAdd(this, _preloadCommonStates);
+      /**
+       * Updates UI labels based on country configuration.
+       * @param {Object} config - The countryConfig object.
+       * @param {string} addressType - 'shipping' or 'billing'.
+       */
+      __privateAdd(this, _updateUiLabels);
       __privateAdd(this, _form, void 0);
       __privateAdd(this, _logger2, void 0);
-      __privateAdd(this, _addressConfig, void 0);
-      __privateAdd(this, _countries, []);
-      __privateAdd(this, _states, {});
+      __privateAdd(this, _app2, void 0);
+      // Added reference to the main app instance
       __privateAdd(this, _elements, void 0);
+      __privateAdd(this, _uiElements, void 0);
+      // For labels etc.
+      __privateAdd(this, _merchantConfig, void 0);
+      // Added: To store merchant-specific config
+      __publicField(this, "initialized", false);
       __privateSet(this, _form, form);
       __privateSet(this, _logger2, logger);
-      __privateSet(this, _addressConfig, __privateMethod(this, _getAddressConfig, getAddressConfig_fn).call(this));
+      __privateSet(this, _app2, app);
+      __privateSet(this, _merchantConfig, __privateMethod(this, _readMerchantConfig, readMerchantConfig_fn).call(this));
       __privateSet(this, _elements, {
         shippingCountry: document.querySelector('[os-checkout-field="country"]'),
         shippingState: document.querySelector('[os-checkout-field="province"]'),
         billingCountry: document.querySelector('[os-checkout-field="billing-country"]'),
         billingState: document.querySelector('[os-checkout-field="billing-province"]')
       });
-      __privateMethod(this, _loadCachedData, loadCachedData_fn).call(this);
+      __privateSet(this, _uiElements, {
+        shippingStateLabel: document.querySelector('label[for="' + __privateGet(this, _elements).shippingState?.id + '"]'),
+        shippingPostcodeLabel: document.querySelector('label[for="' + document.querySelector('[os-checkout-field="postal"]')?.id + '"]'),
+        billingStateLabel: document.querySelector('label[for="' + __privateGet(this, _elements).billingState?.id + '"]'),
+        billingPostcodeLabel: document.querySelector('label[for="' + document.querySelector('[os-checkout-field="billing-postal"]')?.id + '"]')
+      });
       if (__privateGet(this, _elements).shippingCountry || __privateGet(this, _elements).billingCountry) {
-        __privateGet(this, _logger2).info("AddressHandler initialized");
-        __privateMethod(this, _init, init_fn).call(this);
+        __privateGet(this, _logger2).info("AddressHandler initializing...");
+        __privateGet(this, _app2).state.subscribe("location", __privateMethod(this, _handleLocationStateUpdate, handleLocationStateUpdate_fn).bind(this));
+        __privateMethod(this, _handleLocationStateUpdate, handleLocationStateUpdate_fn).call(this, __privateGet(this, _app2).state.getState("location"));
       } else {
-        __privateGet(this, _logger2).warn("No country selects found");
+        __privateGet(this, _logger2).warn("No country select elements found, AddressHandler inactive.");
       }
     }
   };
   _form = new WeakMap();
   _logger2 = new WeakMap();
-  _addressConfig = new WeakMap();
-  _countries = new WeakMap();
-  _states = new WeakMap();
+  _app2 = new WeakMap();
   _elements = new WeakMap();
-  _init = new WeakSet();
-  init_fn = async function() {
-    await __privateMethod(this, _loadCountriesAndStates, loadCountriesAndStates_fn).call(this);
-    await Promise.all([
-      __privateGet(this, _elements).shippingCountry && __privateMethod(this, _initCountrySelect, initCountrySelect_fn).call(this, __privateGet(this, _elements).shippingCountry, __privateGet(this, _elements).shippingState),
-      __privateGet(this, _elements).billingCountry && __privateMethod(this, _initCountrySelect, initCountrySelect_fn).call(this, __privateGet(this, _elements).billingCountry, __privateGet(this, _elements).billingState)
-    ]);
-    __privateMethod(this, _setupCountryChangeListeners, setupCountryChangeListeners_fn).call(this);
-    __privateMethod(this, _detectUserCountry, detectUserCountry_fn).call(this);
-    __privateMethod(this, _setupAutocompleteDetection, setupAutocompleteDetection_fn).call(this);
-  };
-  _getAddressConfig = new WeakSet();
-  getAddressConfig_fn = function() {
-    return {
-      defaultCountry: window.osConfig?.addressConfig?.defaultCountry ?? document.querySelector('meta[name="os-address-default-country"]')?.content ?? "US",
-      showCountries: window.osConfig?.addressConfig?.showCountries ?? document.querySelector('meta[name="os-address-show-countries"]')?.content?.split(",").map((c) => c.trim()) ?? [],
-      dontShowStates: window.osConfig?.addressConfig?.dontShowStates ?? document.querySelector('meta[name="os-address-dont-show-states"]')?.content?.split(",").map((s) => s.trim()) ?? [],
-      countries: window.osConfig?.addressConfig?.countries ?? []
+  _uiElements = new WeakMap();
+  _merchantConfig = new WeakMap();
+  _readMerchantConfig = new WeakSet();
+  readMerchantConfig_fn = function() {
+    const config = {
+      defaultCountry: window.osConfig?.addressConfig?.defaultCountry ?? document.querySelector('meta[name="os-address-default-country"]')?.content ?? null,
+      showCountries: window.osConfig?.addressConfig?.showCountries ?? document.querySelector('meta[name="os-address-show-countries"]')?.content?.split(",").map((c) => c.trim().toUpperCase()) ?? []
+      // dontShowStates is likely superseded by worker config, but we could read it as a fallback?
+      // dontShowStates: window.osConfig?.addressConfig?.dontShowStates ?? document.querySelector('meta[name="os-address-dont-show-states"]')?.content?.split(',').map(s => s.trim().toUpperCase()) ?? [],
     };
+    __privateGet(this, _logger2).info("Read merchant address config:", config);
+    return config;
   };
-  _initCountrySelect = new WeakSet();
-  initCountrySelect_fn = async function(countrySelect, stateSelect) {
-    countrySelect.innerHTML = '<option value="">Select Country</option>' + __privateGet(this, _countries).map((c) => `<option value="${c.iso2}">${c.name}</option>`).join("");
-    countrySelect.value = __privateGet(this, _addressConfig).defaultCountry;
-    if (stateSelect && countrySelect.value)
-      await __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, stateSelect, countrySelect.value);
-    __privateGet(this, _logger2).debug(`Country select initialized with default ${__privateGet(this, _addressConfig).defaultCountry}`);
+  _handleLocationStateUpdate = new WeakSet();
+  handleLocationStateUpdate_fn = function(locationState) {
+    if (!locationState || !locationState.countries || locationState.countries.length === 0) {
+      __privateGet(this, _logger2).warn("Location state update received, but country data is missing or empty. Cannot initialize.");
+      return;
+    }
+    __privateGet(this, _logger2).info("Received location state update, initializing/updating address fields.");
+    if (!this.initialized) {
+      __privateMethod(this, _initializeAddressFields, initializeAddressFields_fn).call(this, locationState);
+      this.initialized = true;
+    }
+  };
+  _initializeAddressFields = new WeakSet();
+  initializeAddressFields_fn = function(locationState) {
+    const allCountries = locationState.countries || [];
+    const detectedCountryCode = locationState.detectedCountryCode;
+    const merchantDefaultCountry = __privateGet(this, _merchantConfig).defaultCountry;
+    const allowedCountriesList = __privateGet(this, _merchantConfig).showCountries;
+    const filteredCountries = allowedCountriesList && allowedCountriesList.length > 0 ? allCountries.filter((c) => allowedCountriesList.includes(c.code.toUpperCase())) : allCountries;
+    __privateGet(this, _logger2).debug(`Initializing with ${filteredCountries.length} allowed countries. Detected: ${detectedCountryCode}. Merchant Default: ${merchantDefaultCountry}`);
+    let initialSelectedCountryCode = null;
+    const detectedCountryAllowed = detectedCountryCode && filteredCountries.some((c) => c.code === detectedCountryCode);
+    const merchantDefaultAllowed = merchantDefaultCountry && filteredCountries.some((c) => c.code === merchantDefaultCountry);
+    if (detectedCountryAllowed) {
+      initialSelectedCountryCode = detectedCountryCode;
+      __privateGet(this, _logger2).debug(`Using detected country (${detectedCountryCode}) as initial selection.`);
+    } else if (merchantDefaultAllowed) {
+      initialSelectedCountryCode = merchantDefaultCountry;
+      __privateGet(this, _logger2).debug(`Detected country not allowed or not found. Using merchant default (${merchantDefaultCountry}) as initial selection.`);
+    } else if (filteredCountries.length > 0) {
+      initialSelectedCountryCode = filteredCountries[0].code;
+      __privateGet(this, _logger2).debug(`Neither detected nor merchant default allowed/available. Falling back to first allowed country: ${initialSelectedCountryCode}`);
+    }
+    __privateGet(this, _app2).state.setState("location.initialSelectedCountryCode", initialSelectedCountryCode, false);
+    const allowedCodesLowercase = filteredCountries.map((c) => c.code.toLowerCase());
+    __privateGet(this, _app2).state.setState("location.allowedCountryCodes", allowedCodesLowercase, false);
+    __privateGet(this, _logger2).debug("Stored initialSelectedCountryCode and allowedCountryCodes in state", { initial: initialSelectedCountryCode, allowed: allowedCodesLowercase });
+    __privateMethod(this, _populateCountrySelect, populateCountrySelect_fn).call(this, __privateGet(this, _elements).shippingCountry, filteredCountries, initialSelectedCountryCode);
+    __privateMethod(this, _populateCountrySelect, populateCountrySelect_fn).call(this, __privateGet(this, _elements).billingCountry, filteredCountries, initialSelectedCountryCode);
+    if (initialSelectedCountryCode) {
+      const initialStates = locationState.statesByCountry?.[initialSelectedCountryCode] || [];
+      const initialConfig = locationState.configsByCountry?.[initialSelectedCountryCode] || {};
+      __privateGet(this, _logger2).debug(`Populating initial states for selected country ${initialSelectedCountryCode}:`, { states: initialStates, config: initialConfig });
+      __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, __privateGet(this, _elements).shippingState, initialSelectedCountryCode, initialStates, initialConfig);
+      __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, __privateGet(this, _elements).billingState, initialSelectedCountryCode, initialStates, initialConfig);
+      __privateMethod(this, _updateUiLabels, updateUiLabels_fn).call(this, initialConfig, "shipping");
+      __privateMethod(this, _updateUiLabels, updateUiLabels_fn).call(this, initialConfig, "billing");
+    }
+    __privateMethod(this, _setupCountryChangeListeners, setupCountryChangeListeners_fn).call(this);
+    __privateGet(this, _logger2).info("AddressHandler fields initialized with merchant config applied.");
+  };
+  _populateCountrySelect = new WeakSet();
+  populateCountrySelect_fn = function(countrySelect, countriesToShow, selectedValue) {
+    if (!countrySelect)
+      return;
+    const currentVal = countrySelect.value;
+    countrySelect.innerHTML = '<option value="">Select Country...</option>';
+    countriesToShow.forEach((country) => {
+      const option = document.createElement("option");
+      option.value = country.code;
+      option.textContent = country.name;
+      if (country.phonecode)
+        option.dataset.phonecode = country.phonecode;
+      countrySelect.appendChild(option);
+    });
+    if (selectedValue && countriesToShow.some((c) => c.code === selectedValue)) {
+      countrySelect.value = selectedValue;
+      __privateGet(this, _logger2).debug(`Set initial country ${selectedValue} in dropdown:`, countrySelect.name || countrySelect.id);
+    } else if (currentVal && countriesToShow.some((c) => c.code === currentVal)) {
+      countrySelect.value = currentVal;
+      __privateGet(this, _logger2).debug(`Restored previous country ${currentVal} in dropdown:`, countrySelect.name || countrySelect.id);
+    } else {
+      countrySelect.value = "";
+    }
   };
   _setupCountryChangeListeners = new WeakSet();
   setupCountryChangeListeners_fn = function() {
     const pairs = [
-      [__privateGet(this, _elements).shippingCountry, __privateGet(this, _elements).shippingState],
-      [__privateGet(this, _elements).billingCountry, __privateGet(this, _elements).billingState]
+      { country: __privateGet(this, _elements).shippingCountry, state: __privateGet(this, _elements).shippingState, type: "shipping" },
+      { country: __privateGet(this, _elements).billingCountry, state: __privateGet(this, _elements).billingState, type: "billing" }
     ];
-    pairs.forEach(([country, state]) => {
-      country?.addEventListener("change", () => state && __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, state, country.value));
-    });
-  };
-  _updateStateSelect = new WeakSet();
-  updateStateSelect_fn = async function(stateSelect, countryCode, isPriority = false) {
-    if (!countryCode)
-      return stateSelect.innerHTML = '<option value="">Select State/Province</option>';
-    const states = __privateGet(this, _states)[countryCode] || await __privateMethod(this, _loadStates, loadStates_fn).call(this, countryCode);
-    if (isPriority)
-      await states;
-    __privateMethod(this, _populateStateSelect, populateStateSelect_fn).call(this, stateSelect, states);
-    __privateGet(this, _logger2).debug(`State select updated for ${countryCode}`);
-  };
-  _populateStateSelect = new WeakSet();
-  populateStateSelect_fn = function(stateSelect, states) {
-    const currentValue = stateSelect.value || stateSelect.getAttribute("data-pending-state") || "";
-    stateSelect.innerHTML = '<option value="">Select State/Province</option>' + states.map((s) => `<option value="${s.iso2}">${s.name}</option>`).join("");
-    stateSelect.parentElement.style.display = states.length ? "" : "none";
-    if (currentValue && Array.from(stateSelect.options).some((o) => o.value === currentValue))
-      stateSelect.value = currentValue;
-  };
-  _loadCachedData = new WeakSet();
-  loadCachedData_fn = function() {
-    const loadCache = (key) => {
-      const data = JSON.parse(localStorage.getItem(key) ?? "{}");
-      return Date.now() - (data.timestamp ?? 0) < 24 * 60 * 60 * 1e3 ? data : {};
-    };
-    __privateSet(this, _countries, loadCache("os_countries_cache").countries ?? []);
-    if (__privateGet(this, _countries).length && __privateGet(this, _addressConfig).showCountries.length) {
-      __privateSet(this, _countries, __privateGet(this, _countries).filter((c) => __privateGet(this, _addressConfig).showCountries.includes(c.iso2)));
-      __privateGet(this, _logger2).debug(`Filtered cached countries to: ${__privateGet(this, _addressConfig).showCountries.join(", ")}`);
-    }
-    __privateSet(this, _states, loadCache("os_states_cache").states ?? {});
-    __privateGet(this, _logger2).debug(`Loaded cached data: ${__privateGet(this, _countries).length} countries, ${Object.keys(__privateGet(this, _states)).length} state sets`);
-  };
-  _saveCache = new WeakSet();
-  saveCache_fn = function(key, data) {
-    localStorage.setItem(key, JSON.stringify({ ...data, timestamp: Date.now() }));
-  };
-  _loadCountriesAndStates = new WeakSet();
-  loadCountriesAndStates_fn = async function() {
-    if (__privateGet(this, _countries).length)
-      return;
-    __privateSet(this, _countries, __privateGet(this, _addressConfig).countries.length ? __privateGet(this, _addressConfig).countries.map((c) => ({ iso2: c.iso2 || c.code, name: c.name })) : (await (await fetch("https://api.countrystatecity.in/v1/countries", {
-      headers: { "X-CSCAPI-KEY": "c2R3MzNhYmpvYUJPdmhkUlE5TUJWYUtJUGs2TTlNU3cyRmxmVW9wVQ==" }
-    })).json()).filter((c) => !__privateGet(this, _addressConfig).showCountries.length || __privateGet(this, _addressConfig).showCountries.includes(c.iso2)));
-    __privateGet(this, _countries).sort((a, b) => a.name.localeCompare(b.name));
-    __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_countries_cache", { countries: __privateGet(this, _countries) });
-    __privateGet(this, _logger2).info(`Loaded ${__privateGet(this, _countries).length} countries`);
-  };
-  _loadStates = new WeakSet();
-  loadStates_fn = async function(countryCode) {
-    if (__privateGet(this, _states)[countryCode])
-      return __privateGet(this, _states)[countryCode];
-    try {
-      let states = (await (await fetch(`https://api.countrystatecity.in/v1/countries/${countryCode}/states`, {
-        headers: { "X-CSCAPI-KEY": "c2R3MzNhYmpvYUJPdmhkUlE5TUJWYUtJUGs2TTlNU3cyRmxmVW9wVQ==" }
-      })).json()).filter((s) => !__privateGet(this, _addressConfig).dontShowStates.includes(s.iso2));
-      states.sort((a, b) => a.name.localeCompare(b.name));
-      __privateGet(this, _states)[countryCode] = states;
-      __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_states_cache", { states: __privateGet(this, _states) });
-      __privateGet(this, _logger2).debug(`Loaded and sorted ${states.length} states for ${countryCode}`);
-      return states;
-    } catch (error) {
-      __privateGet(this, _logger2).error(`Failed to load states for ${countryCode}:`, error);
-      __privateGet(this, _states)[countryCode] = countryCode === "US" ? (
-        /* US states list */
-        []
-      ) : [];
-      return __privateGet(this, _states)[countryCode];
-    }
-  };
-  _detectUserCountry = new WeakSet();
-  detectUserCountry_fn = async function() {
-    if (__privateGet(this, _elements).shippingCountry?.value || __privateGet(this, _elements).billingCountry?.value)
-      return;
-    const countryCode = __privateGet(this, _addressConfig).defaultCountry || (await Promise.any(["https://ipapi.co/json/", "https://ipinfo.io/json"].map((u) => fetch(u).then((r) => r.json()))))?.country_code;
-    [__privateGet(this, _elements).shippingCountry, __privateGet(this, _elements).billingCountry].forEach((c) => {
-      if (c) {
-        c.value = countryCode;
-        c.dispatchEvent(new Event("change"));
+    pairs.forEach(({ country, state, type }) => {
+      if (country) {
+        country.addEventListener("change", (event) => {
+          __privateMethod(this, _handleCountryChange, handleCountryChange_fn).call(this, event.target.value, state, type);
+        });
       }
     });
-    __privateGet(this, _logger2).debug(`User country detected/set to ${countryCode}`);
+    __privateGet(this, _logger2).debug("Country change listeners set up.");
   };
-  _setupAutocompleteDetection = new WeakSet();
-  setupAutocompleteDetection_fn = function() {
-    const fields = Object.values(__privateGet(this, _elements)).filter(Boolean);
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((m) => {
-        if (m.attributeName === "value" && m.target.value) {
-          const state = m.target === __privateGet(this, _elements).shippingCountry ? __privateGet(this, _elements).shippingState : __privateGet(this, _elements).billingState;
-          state && __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, state, m.target.value, true);
-          __privateGet(this, _logger2).debug(`Autocomplete detected on ${m.target.getAttribute("os-checkout-field")}`);
-        }
+  _handleCountryChange = new WeakSet();
+  handleCountryChange_fn = async function(selectedCountryCode, stateSelect, addressType) {
+    if (!stateSelect)
+      return;
+    __privateGet(this, _logger2).info(`Country changed to: ${selectedCountryCode} for ${addressType} address.`);
+    if (!selectedCountryCode) {
+      __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, stateSelect, selectedCountryCode, [], {});
+      __privateMethod(this, _updateUiLabels, updateUiLabels_fn).call(this, {}, addressType);
+      return;
+    }
+    let states = __privateGet(this, _app2).state.getState(`location.statesByCountry.${selectedCountryCode}`);
+    let config = __privateGet(this, _app2).state.getState(`location.configsByCountry.${selectedCountryCode}`);
+    if (states && config) {
+      __privateGet(this, _logger2).debug(`Using cached states and config for ${selectedCountryCode} from state.`);
+      __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, stateSelect, selectedCountryCode, states, config);
+      __privateMethod(this, _updateUiLabels, updateUiLabels_fn).call(this, config, addressType);
+    } else {
+      __privateGet(this, _logger2).debug(`No cached data for ${selectedCountryCode}, fetching from worker...`);
+      stateSelect.innerHTML = '<option value="">Loading States...</option>';
+      stateSelect.disabled = true;
+      try {
+        const data = await __privateGet(this, _app2).api.getCountryStatesAndConfig(selectedCountryCode);
+        __privateGet(this, _app2).state.setCountryStatesAndConfig(selectedCountryCode, data);
+        __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, stateSelect, selectedCountryCode, data.states || [], data.countryConfig || {});
+        __privateMethod(this, _updateUiLabels, updateUiLabels_fn).call(this, data.countryConfig || {}, addressType);
+      } catch (error) {
+        __privateGet(this, _logger2).error(`Failed to fetch states/config for ${selectedCountryCode}:`, error);
+        stateSelect.innerHTML = '<option value="">Error loading</option>';
+        stateSelect.disabled = true;
+        __privateMethod(this, _updateUiLabels, updateUiLabels_fn).call(this, {}, addressType);
+      }
+    }
+  };
+  _updateStateSelect = new WeakSet();
+  updateStateSelect_fn = function(stateSelect, countryCode, states, config) {
+    if (!stateSelect)
+      return;
+    const currentValue = stateSelect.value || stateSelect.getAttribute("data-pending-state") || "";
+    __privateGet(this, _logger2).debug(`Updating state select for ${countryCode}`, { numStates: states.length, config });
+    if (!states || states.length === 0) {
+      stateSelect.innerHTML = '<option value="">N/A</option>';
+      stateSelect.disabled = true;
+      stateSelect.parentElement.style.display = "none";
+    } else {
+      stateSelect.innerHTML = `<option value="">Select ${config.stateLabel || "State/Province"}...</option>`;
+      states.forEach((state) => {
+        const option = document.createElement("option");
+        option.value = state.code;
+        option.textContent = state.name;
+        stateSelect.appendChild(option);
       });
-    });
-    fields.forEach((f) => observer.observe(f, { attributes: true, attributeFilter: ["value"] }));
-    __privateMethod(this, _preloadCommonStates, preloadCommonStates_fn).call(this);
-    __privateGet(this, _logger2).debug("Autocomplete detection set up");
+      if (currentValue && states.some((s) => s.code === currentValue)) {
+        stateSelect.value = currentValue;
+      } else {
+        stateSelect.value = "";
+      }
+      stateSelect.disabled = !(config.stateRequired ?? false);
+      stateSelect.parentElement.style.display = "";
+    }
   };
-  _preloadCommonStates = new WeakSet();
-  preloadCommonStates_fn = function() {
-    const countries = __privateGet(this, _addressConfig).showCountries.length ? __privateGet(this, _addressConfig).showCountries : ["US", "CA", "GB", "AU"];
-    countries.forEach((c) => !__privateGet(this, _states)[c] && __privateMethod(this, _loadStates, loadStates_fn).call(this, c));
-    __privateGet(this, _logger2).debug(`Preloading states for ${countries.join(", ")}`);
+  _updateUiLabels = new WeakSet();
+  updateUiLabels_fn = function(config, addressType) {
+    __privateGet(this, _logger2).debug(`Updating UI labels for ${addressType} address with config:`, config);
+    const stateLabelElement = addressType === "shipping" ? __privateGet(this, _uiElements).shippingStateLabel : __privateGet(this, _uiElements).billingStateLabel;
+    const postcodeLabelElement = addressType === "shipping" ? __privateGet(this, _uiElements).shippingPostcodeLabel : __privateGet(this, _uiElements).billingPostcodeLabel;
+    if (stateLabelElement) {
+      stateLabelElement.textContent = config.stateLabel || "State / Province";
+      if (config.stateRequired) {
+        stateLabelElement.innerHTML += ' <span class="required">*</span>';
+      } else {
+        const requiredSpan = stateLabelElement.querySelector("span.required");
+        if (requiredSpan)
+          requiredSpan.remove();
+      }
+    }
+    if (postcodeLabelElement) {
+      postcodeLabelElement.textContent = config.postcodeLabel || "Postal / ZIP Code";
+    }
   };
 
   // src/components/checkout/FormValidator.js
-  var _logger3, _form2, _validationErrors, _debugMode, _spreedlyEnabled, _spreedlyFieldsValid, _spreedlyReady, _getFormElement, getFormElement_fn, _safeLog, safeLog_fn, _setupListeners, setupListeners_fn, _setupSpreedlyListeners, setupSpreedlyListeners_fn, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn, _handleSpreedlyError, handleSpreedlyError_fn, _handleSubmit, handleSubmit_fn, _logValidationStart, logValidationStart_fn, _validateFields, validateFields_fn, _shouldSkipField, shouldSkipField_fn, _validateCreditCardExpiryFields, validateCreditCardExpiryFields_fn, _getExpiryFields, getExpiryFields_fn, _validateExpiryField, validateExpiryField_fn, _clearSpreedlyErrors, clearSpreedlyErrors_fn, _validateField, validateField_fn, _getReadableFieldLabel, getReadableFieldLabel_fn, _getFieldValidation, getFieldValidation_fn, _validateCity, validateCity_fn, _validateZipCode, validateZipCode_fn, _showError, showError_fn, _getOrCreateErrorElement, getOrCreateErrorElement_fn, _scrollToError, scrollToError_fn, _isValidEmail, isValidEmail_fn, _validatePhoneFields, validatePhoneFields_fn, _setupZipCodeFormatting, setupZipCodeFormatting_fn, _formatZipCode, formatZipCode_fn;
+  var _logger3, _form2, _app3, _validationErrors, _debugMode, _spreedlyEnabled, _spreedlyFieldsValid, _spreedlyReady, _getFormElement, getFormElement_fn, _safeLog, safeLog_fn, _setupListeners, setupListeners_fn, _setupSpreedlyListeners, setupSpreedlyListeners_fn, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn, _handleSpreedlyError, handleSpreedlyError_fn, _handleSubmit, handleSubmit_fn, _logValidationStart, logValidationStart_fn, _validateFields, validateFields_fn, _shouldSkipField, shouldSkipField_fn, _validateCreditCardExpiryFields, validateCreditCardExpiryFields_fn, _getExpiryFields, getExpiryFields_fn, _validateExpiryField, validateExpiryField_fn, _clearSpreedlyErrors, clearSpreedlyErrors_fn, _validateField, validateField_fn, _getReadableFieldLabel, getReadableFieldLabel_fn, _getFieldValidation, getFieldValidation_fn, _validateCity, validateCity_fn, _validateZipCode, validateZipCode_fn, _showError, showError_fn, _getOrCreateErrorElement, getOrCreateErrorElement_fn, _scrollToError, scrollToError_fn, _isValidEmail, isValidEmail_fn, _validatePhoneFields, validatePhoneFields_fn, _setupZipCodeFormatting, setupZipCodeFormatting_fn, _formatZipCode, formatZipCode_fn;
   var FormValidator = class {
     constructor(options = {}) {
       __privateAdd(this, _getFormElement);
@@ -1148,10 +1302,11 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _getFieldValidation);
       __privateAdd(this, _validateCity);
       /**
-       * Validate a US ZIP code (5 digits or ZIP+4 format)
-       * @param {string} value - ZIP code to validate
-       * @param {string} fieldName - Name of the field for error message
-       * @returns {Object} Validation result with isValid and errorMessage
+       * Validate a ZIP/Postal code based on the selected country's configuration.
+       * @param {string} value - ZIP/Postal code to validate.
+       * @param {string} countryCode - The selected country code (e.g., 'US', 'CA').
+       * @param {string} label - The field label for error messages.
+       * @returns {Object} Validation result { isValid: boolean, errorMessage: string }.
        */
       __privateAdd(this, _validateZipCode);
       __privateAdd(this, _showError);
@@ -1172,6 +1327,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _formatZipCode);
       __privateAdd(this, _logger3, void 0);
       __privateAdd(this, _form2, void 0);
+      __privateAdd(this, _app3, void 0);
       __privateAdd(this, _validationErrors, {});
       __privateAdd(this, _debugMode, false);
       __privateAdd(this, _spreedlyEnabled, false);
@@ -1179,6 +1335,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _spreedlyReady, false);
       __privateSet(this, _debugMode, options.debugMode || false);
       __privateSet(this, _logger3, options.logger || console);
+      __privateSet(this, _app3, options.app);
       __privateSet(this, _form2, __privateMethod(this, _getFormElement, getFormElement_fn).call(this));
       __privateSet(this, _spreedlyEnabled, typeof Spreedly !== "undefined");
       if (!__privateGet(this, _form2))
@@ -1294,6 +1451,7 @@ var TwentyNineNext = (() => {
   };
   _logger3 = new WeakMap();
   _form2 = new WeakMap();
+  _app3 = new WeakMap();
   _validationErrors = new WeakMap();
   _debugMode = new WeakMap();
   _spreedlyEnabled = new WeakMap();
@@ -1512,6 +1670,20 @@ var TwentyNineNext = (() => {
   getFieldValidation_fn = function(field, value, label) {
     const tag = field.tagName.toLowerCase();
     const fieldName = field.getAttribute("os-checkout-field") || field.name;
+    const isBillingField = fieldName?.startsWith("billing-");
+    if (fieldName === "province" || fieldName === "billing-province") {
+      const countryField = isBillingField ? __privateGet(this, _form2).querySelector('[os-checkout-field="billing-country"]') : __privateGet(this, _form2).querySelector('[os-checkout-field="country"]');
+      const countryCode = countryField?.value;
+      if (!countryCode) {
+        return { isValid: true, errorMessage: "" };
+      }
+      const config = __privateGet(this, _app3)?.state?.getState(`location.configsByCountry.${countryCode}`);
+      __privateGet(this, _logger3).debug(`Validating state/province for ${countryCode}. Required: ${config?.stateRequired}`);
+      if (config?.stateRequired && !value) {
+        return { isValid: false, errorMessage: `Please select your ${config.stateLabel || "State/Province"}` };
+      }
+      return { isValid: true, errorMessage: "" };
+    }
     if (tag === "select")
       return {
         isValid: !!value,
@@ -1533,7 +1705,10 @@ var TwentyNineNext = (() => {
       return __privateMethod(this, _validateCity, validateCity_fn).call(this, value, label);
     }
     if (fieldName && (fieldName.includes("zip") || fieldName.includes("postal") || fieldName.endsWith("-zip"))) {
-      return __privateMethod(this, _validateZipCode, validateZipCode_fn).call(this, value, fieldName);
+      const isBillingZip = fieldName.startsWith("billing-");
+      const countryField = isBillingZip ? __privateGet(this, _form2).querySelector('[os-checkout-field="billing-country"]') : __privateGet(this, _form2).querySelector('[os-checkout-field="country"]');
+      const countryCode = countryField?.value;
+      return __privateMethod(this, _validateZipCode, validateZipCode_fn).call(this, value, countryCode, label);
     }
     if (field.type === "email")
       return {
@@ -1551,12 +1726,47 @@ var TwentyNineNext = (() => {
     };
   };
   _validateZipCode = new WeakSet();
-  validateZipCode_fn = function(value, fieldName = "Zip") {
-    const zipPattern = /(^\d{5}$)|(^\d{5}-\d{4}$)/;
-    const isValid = zipPattern.test(value);
+  validateZipCode_fn = function(value, countryCode, label = "ZIP/Postal Code") {
+    if (!countryCode) {
+      __privateGet(this, _logger3).debug("No country selected, skipping ZIP/Postal format validation.");
+      if (!value) {
+        return { isValid: false, errorMessage: `Please enter your ${label}` };
+      }
+      return { isValid: true, errorMessage: "" };
+    }
+    const config = __privateGet(this, _app3)?.state?.getState(`location.configsByCountry.${countryCode}`);
+    if (!config || !config.postcodeRegex) {
+      __privateGet(this, _logger3).warn(`No postcode validation regex found for country ${countryCode}. Performing basic check.`);
+      if (!value) {
+        return { isValid: false, errorMessage: `Please enter your ${label}` };
+      }
+      return { isValid: value.trim().length > 0, errorMessage: `Please enter your ${label}` };
+    }
+    __privateGet(this, _logger3).debug(`Validating ZIP/Postal for ${countryCode} using regex: ${config.postcodeRegex}`);
+    let isValid = false;
+    let errorMessage = `Please enter a valid ${config.postcodeLabel || label}`;
+    try {
+      const regex = new RegExp(config.postcodeRegex);
+      isValid = regex.test(value);
+      if (config.postcodeExample && !isValid) {
+        errorMessage += ` (e.g., ${config.postcodeExample})`;
+      }
+    } catch (e) {
+      __privateGet(this, _logger3).error(`Invalid postcode regex for country ${countryCode}: ${config.postcodeRegex}`, e);
+      isValid = value.trim().length > 0;
+      errorMessage = `Please enter your ${label}`;
+    }
+    if (isValid && config.postcodeMinLength && value.length < config.postcodeMinLength) {
+      isValid = false;
+      errorMessage = `${config.postcodeLabel || label} must be at least ${config.postcodeMinLength} characters.`;
+    }
+    if (isValid && config.postcodeMaxLength && value.length > config.postcodeMaxLength) {
+      isValid = false;
+      errorMessage = `${config.postcodeLabel || label} must be no more than ${config.postcodeMaxLength} characters.`;
+    }
     return {
       isValid,
-      errorMessage: isValid ? "" : `Field must be a valid US Zip code.`
+      errorMessage: isValid ? "" : errorMessage
     };
   };
   _showError = new WeakSet();
@@ -1678,7 +1888,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/SpreedlyManager.js
-  var _environmentKey, _debugMode2, _isReady, _onReadyCallback, _onErrorCallback, _onPaymentMethodCallback, _onValidationCallback, _config, _app2, _loadConfig, loadConfig_fn, _initialize, initialize_fn, _loadScript, loadScript_fn, _setupSpreedly, setupSpreedly_fn, _applySpreedlyConfig, applySpreedlyConfig_fn, _prepareHtmlStructure, prepareHtmlStructure_fn, _setupEventListeners, setupEventListeners_fn, _showErrors, showErrors_fn, _clearFieldError, clearFieldError_fn, _log, log_fn;
+  var _environmentKey, _debugMode2, _isReady, _onReadyCallback, _onErrorCallback, _onPaymentMethodCallback, _onValidationCallback, _config, _app4, _loadConfig, loadConfig_fn, _initialize, initialize_fn, _loadScript, loadScript_fn, _setupSpreedly, setupSpreedly_fn, _applySpreedlyConfig, applySpreedlyConfig_fn, _prepareHtmlStructure, prepareHtmlStructure_fn, _setupEventListeners, setupEventListeners_fn, _showErrors, showErrors_fn, _clearFieldError, clearFieldError_fn, _log, log_fn;
   var SpreedlyManager = class {
     /**
      * Create a new SpreedlyManager
@@ -1744,10 +1954,10 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _onPaymentMethodCallback, null);
       __privateAdd(this, _onValidationCallback, null);
       __privateAdd(this, _config, null);
-      __privateAdd(this, _app2, null);
+      __privateAdd(this, _app4, null);
       __privateSet(this, _environmentKey, environmentKey);
       __privateSet(this, _debugMode2, options.debug || false);
-      __privateSet(this, _app2, options.app || null);
+      __privateSet(this, _app4, options.app || null);
       __privateMethod(this, _loadConfig, loadConfig_fn).call(this);
       if (!environmentKey) {
         __privateMethod(this, _log, log_fn).call(this, "error", "No environment key provided to SpreedlyManager");
@@ -1866,7 +2076,7 @@ var TwentyNineNext = (() => {
   _onPaymentMethodCallback = new WeakMap();
   _onValidationCallback = new WeakMap();
   _config = new WeakMap();
-  _app2 = new WeakMap();
+  _app4 = new WeakMap();
   _loadConfig = new WeakSet();
   loadConfig_fn = function() {
     __privateSet(this, _config, {
@@ -2344,7 +2554,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/PaymentHandler.js
-  var _apiClient, _logger5, _app3, _form3, _spreedlyManager, _formValidator, _paymentMethod, _isProcessing, _debugMode3, _testCards, _expressCheckoutButtons, _deviceSupport, _getCheckoutForm, getCheckoutForm_fn, _setupFormPrevention, setupFormPrevention_fn, _preventFormSubmission, preventFormSubmission_fn, _convertSubmitButtons, convertSubmitButtons_fn, _setupCheckoutButton, setupCheckoutButton_fn, _safeLog2, safeLog_fn2, _initPaymentMethods, initPaymentMethods_fn, _setupPaymentMethodListeners, setupPaymentMethodListeners_fn, _initSpreedly, initSpreedly_fn, _setupSpreedlyCallbacks, setupSpreedlyCallbacks_fn, _formatSpreedlyErrors, formatSpreedlyErrors_fn, _initializeExpirationFields, initializeExpirationFields_fn, _getExpirationElements, getExpirationElements_fn, _populateExpirationOptions, populateExpirationOptions_fn, _isTestMode, isTestMode_fn, _enforceFormPrevention, enforceFormPrevention_fn, _showProcessingState, showProcessingState_fn, _hideProcessingState, hideProcessingState_fn, _processCreditCard, processCreditCard_fn, _getCreditCardFields, getCreditCardFields_fn, _isDebugTestCardMode, isDebugTestCardMode_fn, _processTestCard, processTestCard_fn, _processPaypal, processPaypal_fn, _getPackageIdFromUrl, getPackageIdFromUrl_fn, _getOrderData, getOrderData_fn, _getAddressData, getAddressData_fn, _formatAddress, formatAddress_fn, _getShippingMethod, getShippingMethod_fn, _getCartLines, getCartLines_fn, _createOrder, createOrder_fn, _formatOrderData, formatOrderData_fn, _formatErrorMessage, formatErrorMessage_fn, _formatPaymentErrorMessage, formatPaymentErrorMessage_fn, _handlePaymentError, handlePaymentError_fn, _displayCreditCardError, displayCreditCardError_fn, _clearPaymentErrors, clearPaymentErrors_fn, _handleOrderSuccess, handleOrderSuccess_fn, _getRedirectUrl, getRedirectUrl_fn, _initExpressCheckout, initExpressCheckout_fn, _detectDeviceSupport, detectDeviceSupport_fn, _hasActiveExpressButtons, hasActiveExpressButtons_fn, _setExpressButtonProcessing, setExpressButtonProcessing_fn, _handleExpressCheckoutError, handleExpressCheckoutError_fn, _checkForPaymentFailedParameters, checkForPaymentFailedParameters_fn, _displayTopBannerError, displayTopBannerError_fn;
+  var _apiClient, _logger5, _app5, _form3, _spreedlyManager, _formValidator, _paymentMethod, _isProcessing, _debugMode3, _testCards, _expressCheckoutButtons, _deviceSupport, _getCheckoutForm, getCheckoutForm_fn, _setupFormPrevention, setupFormPrevention_fn, _preventFormSubmission, preventFormSubmission_fn, _convertSubmitButtons, convertSubmitButtons_fn, _setupCheckoutButton, setupCheckoutButton_fn, _safeLog2, safeLog_fn2, _initPaymentMethods, initPaymentMethods_fn, _setupPaymentMethodListeners, setupPaymentMethodListeners_fn, _initSpreedly, initSpreedly_fn, _setupSpreedlyCallbacks, setupSpreedlyCallbacks_fn, _formatSpreedlyErrors, formatSpreedlyErrors_fn, _initializeExpirationFields, initializeExpirationFields_fn, _getExpirationElements, getExpirationElements_fn, _populateExpirationOptions, populateExpirationOptions_fn, _isTestMode, isTestMode_fn, _enforceFormPrevention, enforceFormPrevention_fn, _showProcessingState, showProcessingState_fn, _hideProcessingState, hideProcessingState_fn, _processCreditCard, processCreditCard_fn, _getCreditCardFields, getCreditCardFields_fn, _isDebugTestCardMode, isDebugTestCardMode_fn, _processTestCard, processTestCard_fn, _processPaypal, processPaypal_fn, _getPackageIdFromUrl, getPackageIdFromUrl_fn, _getOrderData, getOrderData_fn, _getAddressData, getAddressData_fn, _formatAddress, formatAddress_fn, _getShippingMethod, getShippingMethod_fn, _getCartLines, getCartLines_fn, _createOrder, createOrder_fn, _formatOrderData, formatOrderData_fn, _formatErrorMessage, formatErrorMessage_fn, _formatPaymentErrorMessage, formatPaymentErrorMessage_fn, _handlePaymentError, handlePaymentError_fn, _displayCreditCardError, displayCreditCardError_fn, _clearPaymentErrors, clearPaymentErrors_fn, _handleOrderSuccess, handleOrderSuccess_fn, _getRedirectUrl, getRedirectUrl_fn, _initExpressCheckout, initExpressCheckout_fn, _detectDeviceSupport, detectDeviceSupport_fn, _hasActiveExpressButtons, hasActiveExpressButtons_fn, _setExpressButtonProcessing, setExpressButtonProcessing_fn, _handleExpressCheckoutError, handleExpressCheckoutError_fn, _checkForPaymentFailedParameters, checkForPaymentFailedParameters_fn, _displayTopBannerError, displayTopBannerError_fn;
   var PaymentHandler = class {
     constructor(apiClient, logger, app) {
       __privateAdd(this, _getCheckoutForm);
@@ -2422,7 +2632,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _displayTopBannerError);
       __privateAdd(this, _apiClient, void 0);
       __privateAdd(this, _logger5, void 0);
-      __privateAdd(this, _app3, void 0);
+      __privateAdd(this, _app5, void 0);
       __privateAdd(this, _form3, void 0);
       __privateAdd(this, _spreedlyManager, null);
       __privateAdd(this, _formValidator, null);
@@ -2446,7 +2656,7 @@ var TwentyNineNext = (() => {
       });
       __privateSet(this, _apiClient, apiClient);
       __privateSet(this, _logger5, logger);
-      __privateSet(this, _app3, app);
+      __privateSet(this, _app5, app);
       __privateSet(this, _form3, __privateMethod(this, _getCheckoutForm, getCheckoutForm_fn).call(this));
       if (!__privateGet(this, _form3))
         return;
@@ -2454,7 +2664,8 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _setupCheckoutButton, setupCheckoutButton_fn).call(this);
       __privateSet(this, _formValidator, new FormValidator({
         debugMode: __privateGet(this, _debugMode3),
-        logger: __privateGet(this, _logger5)
+        logger: __privateGet(this, _logger5),
+        app: __privateGet(this, _app5)
       }));
       __privateGet(this, _form3).__formValidator = __privateGet(this, _formValidator);
       __privateMethod(this, _initPaymentMethods, initPaymentMethods_fn).call(this);
@@ -2489,7 +2700,7 @@ var TwentyNineNext = (() => {
         if (isKonamiMode) {
           __privateMethod(this, _showProcessingState, showProcessingState_fn).call(this);
           const orderData2 = KonamiCodeHandler.getTestOrderData(
-            __privateGet(this, _app3)?.state?.getState(),
+            __privateGet(this, _app5)?.state?.getState(),
             __privateMethod(this, _getPackageIdFromUrl, getPackageIdFromUrl_fn).bind(this),
             __privateMethod(this, _getCartLines, getCartLines_fn).bind(this)
           );
@@ -2568,7 +2779,7 @@ var TwentyNineNext = (() => {
       }
       __privateMethod(this, _setExpressButtonProcessing, setExpressButtonProcessing_fn).call(this, button, true);
       try {
-        const cart = __privateGet(this, _app3).state.getState("cart");
+        const cart = __privateGet(this, _app5).state.getState("cart");
         if (!cart || !cart.items || cart.items.length === 0) {
           __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "error", `Cannot process ${method} checkout: cart is empty`);
           __privateMethod(this, _handleExpressCheckoutError, handleExpressCheckoutError_fn).call(this, "Your cart is empty. Please add items to your cart before checking out.", button);
@@ -2583,7 +2794,7 @@ var TwentyNineNext = (() => {
           payment_detail: {
             payment_method: method
           },
-          attribution: __privateGet(this, _app3).attribution?.getAttributionData() || cart.attribution || {},
+          attribution: __privateGet(this, _app5).attribution?.getAttributionData() || cart.attribution || {},
           shipping_method: (cart.shippingMethod?.id || 1).toString()
         };
         if (__privateGet(this, _apiClient)) {
@@ -2621,7 +2832,7 @@ var TwentyNineNext = (() => {
         __privateGet(this, _apiClient).createOrder(orderData).then((response) => {
           __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `${method} express checkout order created:`, response);
           if (response.payment_complete_url) {
-            __privateGet(this, _app3).triggerEvent("express.checkout.started", {
+            __privateGet(this, _app5).triggerEvent("express.checkout.started", {
               method,
               order: response
             });
@@ -2649,7 +2860,7 @@ var TwentyNineNext = (() => {
   };
   _apiClient = new WeakMap();
   _logger5 = new WeakMap();
-  _app3 = new WeakMap();
+  _app5 = new WeakMap();
   _form3 = new WeakMap();
   _spreedlyManager = new WeakMap();
   _formValidator = new WeakMap();
@@ -2778,7 +2989,7 @@ var TwentyNineNext = (() => {
       }
       __privateSet(this, _spreedlyManager, new SpreedlyManager(environmentKey, {
         debug: __privateGet(this, _debugMode3),
-        app: __privateGet(this, _app3)
+        app: __privateGet(this, _app5)
       }));
       __privateMethod(this, _setupSpreedlyCallbacks, setupSpreedlyCallbacks_fn).call(this);
       __privateMethod(this, _initializeExpirationFields, initializeExpirationFields_fn).call(this);
@@ -2982,11 +3193,11 @@ var TwentyNineNext = (() => {
       const billingData = __privateGet(this, _formValidator).isSameAsShipping() ? null : __privateMethod(this, _getAddressData, getAddressData_fn).call(this, ["billing-fname", "billing-lname", "billing-address1", "billing-address2", "billing-city", "billing-province", "billing-postal", "billing-country", "billing-phone"]);
       const shippingAddress = __privateMethod(this, _formatAddress, formatAddress_fn).call(this, shippingData);
       const billingAddress = billingData ? __privateMethod(this, _formatAddress, formatAddress_fn).call(this, billingData) : { ...shippingAddress };
-      if (!__privateGet(this, _app3)?.state) {
+      if (!__privateGet(this, _app5)?.state) {
         __privateMethod(this, _handlePaymentError, handlePaymentError_fn).call(this, "Cart data missing");
         return null;
       }
-      const state = __privateGet(this, _app3).state.getState();
+      const state = __privateGet(this, _app5).state.getState();
       if (!state.cart?.items?.length) {
         __privateMethod(this, _handlePaymentError, handlePaymentError_fn).call(this, "Cart is empty");
         return null;
@@ -3135,8 +3346,8 @@ var TwentyNineNext = (() => {
       formatted.vouchers = [...orderData.vouchers];
       __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "Restored vouchers from original order data", formatted.vouchers);
     }
-    if (!formatted.vouchers && __privateGet(this, _app3)?.state) {
-      const cart = __privateGet(this, _app3).state.getState("cart");
+    if (!formatted.vouchers && __privateGet(this, _app5)?.state) {
+      const cart = __privateGet(this, _app5).state.getState("cart");
       if (cart.couponDetails && cart.couponCode) {
         formatted.vouchers = [cart.couponCode];
         __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "Added coupon code from cart state as fallback", formatted.vouchers);
@@ -3283,7 +3494,7 @@ var TwentyNineNext = (() => {
   handleOrderSuccess_fn = function(orderData) {
     sessionStorage.setItem("order_reference", orderData.ref_id);
     sessionStorage.setItem(`pending_purchase_event_${orderData.ref_id}`, "true");
-    __privateGet(this, _app3)?.triggerEvent?.("order.created", orderData);
+    __privateGet(this, _app5)?.triggerEvent?.("order.created", orderData);
     if (orderData.payment_complete_url) {
       __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Redirecting to payment gateway: ${orderData.payment_complete_url}`);
       window.location.href = orderData.payment_complete_url;
@@ -3413,7 +3624,7 @@ var TwentyNineNext = (() => {
     setTimeout(() => {
       errorContainer.style.display = "none";
     }, 5e3);
-    __privateGet(this, _app3).triggerEvent("express.checkout.error", { message });
+    __privateGet(this, _app5).triggerEvent("express.checkout.error", { message });
   };
   _checkForPaymentFailedParameters = new WeakSet();
   checkForPaymentFailedParameters_fn = function() {
@@ -3513,10 +3724,10 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/BillingAddressHandler.js
-  var _app4, _logger6, _sameAsShippingCheckbox, _billingFormContainer, _shippingFields, _billingFields, _fieldMap, _isTransitioning, _lastState, _billingLocationComponent, _billingAddress1Field, _init2, init_fn2, _logDebug, logDebug_fn, _logInfo, logInfo_fn, _logWarn, logWarn_fn, _logError, logError_fn, _setupBillingLocationVisibility, setupBillingLocationVisibility_fn, _cacheFieldElements, cacheFieldElements_fn, _setupEventListeners2, setupEventListeners_fn2, _setupBillingAddressAutocompleteDetection, setupBillingAddressAutocompleteDetection_fn, _showBillingLocationComponent, showBillingLocationComponent_fn, _toggleBillingForm, toggleBillingForm_fn, _updateBillingFormVisibility, updateBillingFormVisibility_fn;
+  var _app6, _logger6, _sameAsShippingCheckbox, _billingFormContainer, _shippingFields, _billingFields, _fieldMap, _isTransitioning, _lastState, _billingLocationComponent, _billingAddress1Field, _init, init_fn, _logDebug, logDebug_fn, _logInfo, logInfo_fn, _logWarn, logWarn_fn, _logError, logError_fn, _setupBillingLocationVisibility, setupBillingLocationVisibility_fn, _cacheFieldElements, cacheFieldElements_fn, _setupEventListeners2, setupEventListeners_fn2, _setupBillingAddressAutocompleteDetection, setupBillingAddressAutocompleteDetection_fn, _showBillingLocationComponent, showBillingLocationComponent_fn, _toggleBillingForm, toggleBillingForm_fn, _updateBillingFormVisibility, updateBillingFormVisibility_fn;
   var BillingAddressHandler = class {
     constructor(app) {
-      __privateAdd(this, _init2);
+      __privateAdd(this, _init);
       // Safe logging methods that check if the method exists before calling
       __privateAdd(this, _logDebug);
       __privateAdd(this, _logInfo);
@@ -3530,7 +3741,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _toggleBillingForm);
       // Deprecated method - use #toggleBillingForm instead
       __privateAdd(this, _updateBillingFormVisibility);
-      __privateAdd(this, _app4, void 0);
+      __privateAdd(this, _app6, void 0);
       __privateAdd(this, _logger6, void 0);
       __privateAdd(this, _sameAsShippingCheckbox, void 0);
       __privateAdd(this, _billingFormContainer, void 0);
@@ -3551,7 +3762,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _lastState, null);
       __privateAdd(this, _billingLocationComponent, null);
       __privateAdd(this, _billingAddress1Field, null);
-      __privateSet(this, _app4, app);
+      __privateSet(this, _app6, app);
       if (app?.logger) {
         if (typeof app.logger.debug === "function" && typeof app.logger.info === "function" && typeof app.logger.warn === "function" && typeof app.logger.error === "function") {
           __privateSet(this, _logger6, app.logger);
@@ -3561,7 +3772,7 @@ var TwentyNineNext = (() => {
       } else {
         __privateSet(this, _logger6, console);
       }
-      __privateMethod(this, _init2, init_fn2).call(this);
+      __privateMethod(this, _init, init_fn).call(this);
     }
     /**
      * Copy shipping address values to billing address fields
@@ -3610,7 +3821,7 @@ var TwentyNineNext = (() => {
       return isSame;
     }
   };
-  _app4 = new WeakMap();
+  _app6 = new WeakMap();
   _logger6 = new WeakMap();
   _sameAsShippingCheckbox = new WeakMap();
   _billingFormContainer = new WeakMap();
@@ -3621,8 +3832,8 @@ var TwentyNineNext = (() => {
   _lastState = new WeakMap();
   _billingLocationComponent = new WeakMap();
   _billingAddress1Field = new WeakMap();
-  _init2 = new WeakSet();
-  init_fn2 = function() {
+  _init = new WeakSet();
+  init_fn = function() {
     try {
       __privateSet(this, _sameAsShippingCheckbox, document.querySelector('[os-checkout-field="same-as-shipping"]') || document.querySelector('[name="use_shipping_address"]') || document.querySelector("#use_shipping_address"));
       __privateSet(this, _billingFormContainer, document.querySelector('[os-checkout-element="different-billing-address"]'));
@@ -3858,10 +4069,10 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/PaymentSelector.js
-  var _logger7, _container, _radioInputs, _forms, _activeTransitions, _currentMode, _init3, init_fn3, _setPaymentMode, setPaymentMode_fn;
+  var _logger7, _container, _radioInputs, _forms, _activeTransitions, _currentMode, _init2, init_fn2, _setPaymentMode, setPaymentMode_fn;
   var PaymentSelector = class {
     constructor(logger) {
-      __privateAdd(this, _init3);
+      __privateAdd(this, _init2);
       __privateAdd(this, _setPaymentMode);
       __privateAdd(this, _logger7, void 0);
       __privateAdd(this, _container, void 0);
@@ -3875,7 +4086,7 @@ var TwentyNineNext = (() => {
       __privateSet(this, _forms, document.querySelectorAll('[os-checkout-element$="-form"]'));
       if (__privateGet(this, _container) && __privateGet(this, _radioInputs).length > 0) {
         __privateGet(this, _logger7).debug("PaymentSelector initialized with elements found");
-        __privateMethod(this, _init3, init_fn3).call(this);
+        __privateMethod(this, _init2, init_fn2).call(this);
       } else {
         __privateGet(this, _logger7).warn("PaymentSelector elements not found");
       }
@@ -3887,8 +4098,8 @@ var TwentyNineNext = (() => {
   _forms = new WeakMap();
   _activeTransitions = new WeakMap();
   _currentMode = new WeakMap();
-  _init3 = new WeakSet();
-  init_fn3 = function() {
+  _init2 = new WeakSet();
+  init_fn2 = function() {
     const checkedRadio = document.querySelector('input[name="combo_mode"]:checked');
     if (checkedRadio && __privateGet(this, _container)) {
       __privateMethod(this, _setPaymentMode, setPaymentMode_fn).call(this, checkedRadio.value, false);
@@ -3955,10 +4166,10 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/AddressAutocomplete.js
-  var _logger8, _fieldsShown, _elements2, _enableAutocomplete, _init4, init_fn4, _hideLocationFields, hideLocationFields_fn, _showLocationFields, showLocationFields_fn, _isGoogleMapsAvailable, isGoogleMapsAvailable_fn, _initAutocompleteWithRetry, initAutocompleteWithRetry_fn, _initializeAutocomplete, initializeAutocomplete_fn, _setupAutocomplete, setupAutocomplete_fn, _setStateWithRetry, setStateWithRetry_fn, _setupBasicFieldListeners, setupBasicFieldListeners_fn, _setupAutofillDetection, setupAutofillDetection_fn;
+  var _logger8, _fieldsShown, _elements2, _enableAutocomplete, _init3, init_fn3, _hideLocationFields, hideLocationFields_fn, _showLocationFields, showLocationFields_fn, _isGoogleMapsAvailable, isGoogleMapsAvailable_fn, _initAutocompleteWithRetry, initAutocompleteWithRetry_fn, _initializeAutocomplete, initializeAutocomplete_fn, _setupAutocomplete, setupAutocomplete_fn, _setStateWithRetry, setStateWithRetry_fn, _setupBasicFieldListeners, setupBasicFieldListeners_fn, _setupAutofillDetection, setupAutofillDetection_fn;
   var AddressAutocomplete = class {
     constructor(logger, options = {}) {
-      __privateAdd(this, _init4);
+      __privateAdd(this, _init3);
       __privateAdd(this, _hideLocationFields);
       __privateAdd(this, _showLocationFields);
       __privateAdd(this, _isGoogleMapsAvailable);
@@ -3993,15 +4204,15 @@ var TwentyNineNext = (() => {
       });
       __privateGet(this, _logger8).info(`AddressAutocomplete initialized (autocomplete ${__privateGet(this, _enableAutocomplete) ? "enabled" : "disabled"})`);
       __privateMethod(this, _hideLocationFields, hideLocationFields_fn).call(this);
-      __privateMethod(this, _init4, init_fn4).call(this);
+      __privateMethod(this, _init3, init_fn3).call(this);
     }
   };
   _logger8 = new WeakMap();
   _fieldsShown = new WeakMap();
   _elements2 = new WeakMap();
   _enableAutocomplete = new WeakMap();
-  _init4 = new WeakSet();
-  init_fn4 = async function() {
+  _init3 = new WeakSet();
+  init_fn3 = async function() {
     __privateMethod(this, _setupAutofillDetection, setupAutofillDetection_fn).call(this);
     if (!__privateGet(this, _enableAutocomplete)) {
       __privateGet(this, _logger8).debug("Google Maps autocomplete disabled, using basic field listeners");
@@ -4140,9 +4351,9 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/PhoneInputHandler.js
-  var _logger9, _intlTelInputAvailable, _loadIntlTelInput, loadIntlTelInput_fn, _initPhoneInputs, initPhoneInputs_fn, _initializePhoneInput, initializePhoneInput_fn, _showError2, showError_fn2, _clearError, clearError_fn, _getNumberTypeName, getNumberTypeName_fn, _setupPhoneInputSync, setupPhoneInputSync_fn, _setupPhoneValidation, setupPhoneValidation_fn;
+  var _logger9, _app7, _intlTelInputAvailable, _loadIntlTelInput, loadIntlTelInput_fn, _initPhoneInputs, initPhoneInputs_fn, _initializePhoneInput, initializePhoneInput_fn, _showError2, showError_fn2, _clearError, clearError_fn, _getNumberTypeName, getNumberTypeName_fn, _setupPhoneInputSync, setupPhoneInputSync_fn, _setupPhoneValidation, setupPhoneValidation_fn;
   var PhoneInputHandler = class {
-    constructor(logger) {
+    constructor(logger, app) {
       __privateAdd(this, _loadIntlTelInput);
       __privateAdd(this, _initPhoneInputs);
       __privateAdd(this, _initializePhoneInput);
@@ -4153,8 +4364,10 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _setupPhoneInputSync);
       __privateAdd(this, _setupPhoneValidation);
       __privateAdd(this, _logger9, void 0);
+      __privateAdd(this, _app7, void 0);
       __privateAdd(this, _intlTelInputAvailable, !!window.intlTelInput);
       __privateSet(this, _logger9, logger);
+      __privateSet(this, _app7, app);
       if (!__privateGet(this, _intlTelInputAvailable)) {
         __privateGet(this, _logger9).warn("intlTelInput not found, loading dynamically");
         __privateMethod(this, _loadIntlTelInput, loadIntlTelInput_fn).call(this).then(() => __privateMethod(this, _initPhoneInputs, initPhoneInputs_fn).call(this));
@@ -4165,6 +4378,7 @@ var TwentyNineNext = (() => {
     }
   };
   _logger9 = new WeakMap();
+  _app7 = new WeakMap();
   _intlTelInputAvailable = new WeakMap();
   _loadIntlTelInput = new WeakSet();
   loadIntlTelInput_fn = async function() {
@@ -4193,11 +4407,15 @@ var TwentyNineNext = (() => {
   _initializePhoneInput = new WeakSet();
   initializePhoneInput_fn = function(input, index) {
     try {
-      const iti = window.intlTelInput(input, {
+      const allowedCountryCodes = __privateGet(this, _app7)?.state?.getState("location.allowedCountryCodes") || [];
+      const initialCountryCode = __privateGet(this, _app7)?.state?.getState("location.initialSelectedCountryCode")?.toLowerCase();
+      __privateGet(this, _logger9).debug(`Initializing phone input ${index} with allowed countries:`, allowedCountryCodes);
+      __privateGet(this, _logger9).debug(`Initializing phone input ${index} with initial country: ${initialCountryCode}`);
+      const intlOptions = {
         utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js",
         separateDialCode: true,
-        onlyCountries: ["us"],
-        initialCountry: "us",
+        onlyCountries: allowedCountryCodes.length > 0 ? allowedCountryCodes : void 0,
+        initialCountry: initialCountryCode || "auto",
         allowDropdown: false,
         dropdownContainer: document.body,
         useFullscreenPopup: true,
@@ -4206,7 +4424,9 @@ var TwentyNineNext = (() => {
         customContainer: "iti-tel-input",
         autoFormat: true,
         nationalMode: true
-      });
+      };
+      __privateGet(this, _logger9).debug(`intlTelInput options for input ${index}:`, intlOptions);
+      const iti = window.intlTelInput(input, intlOptions);
       input.iti = iti;
       __privateGet(this, _logger9).debug(`Phone input ${index} (${input.getAttribute("os-checkout-field") ?? "unknown"}) initialized`);
       __privateMethod(this, _setupPhoneInputSync, setupPhoneInputSync_fn).call(this, input, iti);
@@ -4351,11 +4571,15 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger9).warn(`Country select not found for ${fieldAttr}`);
       return;
     }
-    if (countrySelect.value !== "US") {
-      countrySelect.value = "US";
-      countrySelect.dispatchEvent(new Event("change", { bubbles: true }));
-      __privateGet(this, _logger9).debug("Country select updated to US");
-    }
+    const updatePhoneCountry = () => {
+      const countryCode = countrySelect.value;
+      if (countryCode && typeof iti.setCountry === "function") {
+        iti.setCountry(countryCode.toLowerCase());
+        __privateGet(this, _logger9).debug(`Updated phone input country to: ${countryCode}`);
+      }
+    };
+    updatePhoneCountry();
+    countrySelect.addEventListener("change", updatePhoneCountry);
   };
   _setupPhoneValidation = new WeakSet();
   setupPhoneValidation_fn = function(input, iti) {
@@ -4371,7 +4595,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/ProspectCartHandler.js
-  var _app5, _logger10, _initialized, _cartCreated, _cartAttempted, _beginCheckoutFired, _debounceTimeout, _debounceDelay, _lastFormData, _selectors, _fields, _emailRegex, _init5, init_fn5, _findFormFields, findFormFields_fn, _attachEventListeners, attachEventListeners_fn, _handleFieldChange, handleFieldChange_fn, _checkAndFireBeginCheckout, checkAndFireBeginCheckout_fn, _checkAndCreateCart, checkAndCreateCart_fn, _hasMinimumRequiredFields, hasMinimumRequiredFields_fn, _getFormData, getFormData_fn, _isSameFormData, isSameFormData_fn, _createProspectCart, createProspectCart_fn, _updateUserState, updateUserState_fn, _isAddressValid, isAddressValid_fn, _getValidAddressData, getValidAddressData_fn, _isValidPostalCode, isValidPostalCode_fn, _getPhoneNumber, getPhoneNumber_fn, _createCartViaApi, createCartViaApi_fn;
+  var _app8, _logger10, _initialized, _cartCreated, _cartAttempted, _beginCheckoutFired, _debounceTimeout, _debounceDelay, _lastFormData, _selectors, _fields, _emailRegex, _init4, init_fn4, _findFormFields, findFormFields_fn, _attachEventListeners, attachEventListeners_fn, _handleFieldChange, handleFieldChange_fn, _checkAndFireBeginCheckout, checkAndFireBeginCheckout_fn, _checkAndCreateCart, checkAndCreateCart_fn, _hasMinimumRequiredFields, hasMinimumRequiredFields_fn, _getFormData, getFormData_fn, _isSameFormData, isSameFormData_fn, _createProspectCart, createProspectCart_fn, _updateUserState, updateUserState_fn, _isAddressValid, isAddressValid_fn, _getValidAddressData, getValidAddressData_fn, _isValidPostalCode, isValidPostalCode_fn, _getPhoneNumber, getPhoneNumber_fn, _createCartViaApi, createCartViaApi_fn;
   var ProspectCartHandler = class {
     /**
      * Initialize the ProspectCartHandler
@@ -4381,7 +4605,7 @@ var TwentyNineNext = (() => {
       /**
        * Initialize the component
        */
-      __privateAdd(this, _init5);
+      __privateAdd(this, _init4);
       /**
        * Find form fields in the DOM
        */
@@ -4445,10 +4669,10 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _getValidAddressData);
       /**
-       * Check if a postal code is valid for a country
+       * Check if a postal code is valid for a country (using dynamic config)
        * @param {string} postalCode - The postal code to validate
        * @param {string} country - The country code
-       * @returns {boolean} Whether the postal code is valid
+       * @returns {boolean} Whether the postal code is valid according to config
        */
       __privateAdd(this, _isValidPostalCode);
       /**
@@ -4461,7 +4685,7 @@ var TwentyNineNext = (() => {
        * @param {Object} cartData - The cart data
        */
       __privateAdd(this, _createCartViaApi);
-      __privateAdd(this, _app5, void 0);
+      __privateAdd(this, _app8, void 0);
       __privateAdd(this, _logger10, void 0);
       __privateAdd(this, _initialized, false);
       __privateAdd(this, _cartCreated, false);
@@ -4501,9 +4725,9 @@ var TwentyNineNext = (() => {
       });
       // Email validation regex
       __privateAdd(this, _emailRegex, /^[^\s@]+@[^\s@]+\.[^\s@]+$/);
-      __privateSet(this, _app5, app);
-      if (__privateGet(this, _app5) && __privateGet(this, _app5).logger) {
-        __privateSet(this, _logger10, __privateGet(this, _app5).logger.createModuleLogger("PROSPECT"));
+      __privateSet(this, _app8, app);
+      if (__privateGet(this, _app8) && __privateGet(this, _app8).logger) {
+        __privateSet(this, _logger10, __privateGet(this, _app8).logger.createModuleLogger("PROSPECT"));
       } else {
         __privateSet(this, _logger10, {
           debug: (message, data) => /* @__PURE__ */ console.log(`[PROSPECT DEBUG] ${message}`, data !== void 0 ? data : ""),
@@ -4512,17 +4736,17 @@ var TwentyNineNext = (() => {
           error: (message, data) => console.error(`[PROSPECT ERROR] ${message}`, data !== void 0 ? data : "")
         });
       }
-      __privateMethod(this, _init5, init_fn5).call(this);
+      __privateMethod(this, _init4, init_fn4).call(this);
     }
     /**
      * Manually trigger the beginCheckout event
      * This can be called from outside the class if needed
      */
     triggerBeginCheckout() {
-      if (__privateGet(this, _app5) && __privateGet(this, _app5).events) {
+      if (__privateGet(this, _app8) && __privateGet(this, _app8).events) {
         if (!__privateGet(this, _beginCheckoutFired)) {
           __privateGet(this, _logger10).info("Manually triggering beginCheckout event");
-          __privateGet(this, _app5).events.beginCheckout();
+          __privateGet(this, _app8).events.beginCheckout();
           __privateSet(this, _beginCheckoutFired, true);
           return true;
         } else {
@@ -4544,7 +4768,7 @@ var TwentyNineNext = (() => {
       return true;
     }
   };
-  _app5 = new WeakMap();
+  _app8 = new WeakMap();
   _logger10 = new WeakMap();
   _initialized = new WeakMap();
   _cartCreated = new WeakMap();
@@ -4556,8 +4780,8 @@ var TwentyNineNext = (() => {
   _selectors = new WeakMap();
   _fields = new WeakMap();
   _emailRegex = new WeakMap();
-  _init5 = new WeakSet();
-  init_fn5 = function() {
+  _init4 = new WeakSet();
+  init_fn4 = function() {
     __privateGet(this, _logger10).info("Initializing ProspectCartHandler");
     __privateMethod(this, _findFormFields, findFormFields_fn).call(this);
     if (__privateGet(this, _fields).email && (__privateGet(this, _fields).firstName || __privateGet(this, _fields).lastName)) {
@@ -4627,8 +4851,8 @@ var TwentyNineNext = (() => {
     const hasName = __privateGet(this, _fields).firstName && __privateGet(this, _fields).firstName.value && __privateGet(this, _fields).firstName.value.trim().length > 0 || __privateGet(this, _fields).lastName && __privateGet(this, _fields).lastName.value && __privateGet(this, _fields).lastName.value.trim().length > 0;
     if (hasEmail || hasName) {
       __privateGet(this, _logger10).debug("User has started entering checkout information, firing beginCheckout event");
-      if (__privateGet(this, _app5).events) {
-        __privateGet(this, _app5).events.beginCheckout();
+      if (__privateGet(this, _app8).events) {
+        __privateGet(this, _app8).events.beginCheckout();
         __privateSet(this, _beginCheckoutFired, true);
         __privateGet(this, _logger10).info("beginCheckout event fired");
       }
@@ -4686,7 +4910,7 @@ var TwentyNineNext = (() => {
   _createProspectCart = new WeakSet();
   createProspectCart_fn = function() {
     __privateGet(this, _logger10).info("Creating prospect cart");
-    const cartData = __privateGet(this, _app5).state.getState("cart");
+    const cartData = __privateGet(this, _app8).state.getState("cart");
     if (!cartData || !cartData.items || cartData.items.length === 0) {
       __privateGet(this, _logger10).warn("No cart items available, skipping cart creation");
       __privateSet(this, _cartAttempted, false);
@@ -4741,12 +4965,12 @@ var TwentyNineNext = (() => {
   };
   _updateUserState = new WeakSet();
   updateUserState_fn = function(email, firstName, lastName, phone) {
-    if (!__privateGet(this, _app5).state) {
+    if (!__privateGet(this, _app8).state) {
       __privateGet(this, _logger10).warn("State manager not available, cannot update user state");
       return;
     }
     try {
-      const currentUser = __privateGet(this, _app5).state.getState("user") || {};
+      const currentUser = __privateGet(this, _app8).state.getState("user") || {};
       const updatedUser = {
         ...currentUser,
         email: email || currentUser.email,
@@ -4754,7 +4978,7 @@ var TwentyNineNext = (() => {
         lastName: lastName || currentUser.lastName,
         phone: phone || currentUser.phone
       };
-      __privateGet(this, _app5).state.setState("user", updatedUser);
+      __privateGet(this, _app8).state.setState("user", updatedUser);
       __privateGet(this, _logger10).debug("Updated user state with user information", updatedUser);
     } catch (error) {
       __privateGet(this, _logger10).error("Error updating user state:", error);
@@ -4802,7 +5026,7 @@ var TwentyNineNext = (() => {
     if (country) {
       address.country = country;
     }
-    if (postalCode && (!country || __privateMethod(this, _isValidPostalCode, isValidPostalCode_fn).call(this, postalCode, country))) {
+    if (postalCode) {
       address.postcode = postalCode;
     }
     return address;
@@ -4812,24 +5036,29 @@ var TwentyNineNext = (() => {
     if (!postalCode || !country) {
       return true;
     }
-    switch (country.toUpperCase()) {
-      case "US":
-        return /^\d{5}(-\d{4})?$/.test(postalCode);
-      case "CA":
-        return /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(postalCode);
-      case "GB":
-      case "UK":
-        return /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i.test(postalCode);
-      case "AU":
-        return /^\d{4}$/.test(postalCode);
-      case "NZ":
-        return /^\d{4}$/.test(postalCode);
-      case "DE":
-        return /^\d{5}$/.test(postalCode);
-      case "FR":
-        return /^\d{5}$/.test(postalCode);
-      default:
-        return postalCode.trim().length > 0;
+    const config = __privateGet(this, _app8)?.state?.getState(`location.configsByCountry.${country}`);
+    if (!config || !config.postcodeRegex) {
+      __privateGet(this, _logger10).warn(`No postcode regex found for country ${country}. Performing basic length check.`);
+      return postalCode.trim().length > 0;
+    }
+    try {
+      const regex = new RegExp(config.postcodeRegex);
+      const isValid = regex.test(postalCode);
+      if (!isValid) {
+        __privateGet(this, _logger10).debug(`Postal code ${postalCode} failed regex test for ${country}: ${config.postcodeRegex}`);
+      }
+      if (isValid && config.postcodeMinLength && postalCode.length < config.postcodeMinLength) {
+        __privateGet(this, _logger10).debug(`Postal code ${postalCode} for ${country} is shorter than minLength ${config.postcodeMinLength}`);
+        return false;
+      }
+      if (isValid && config.postcodeMaxLength && postalCode.length > config.postcodeMaxLength) {
+        __privateGet(this, _logger10).debug(`Postal code ${postalCode} for ${country} is longer than maxLength ${config.postcodeMaxLength}`);
+        return false;
+      }
+      return isValid;
+    } catch (e) {
+      __privateGet(this, _logger10).error(`Invalid postcode regex in config for ${country}: ${config.postcodeRegex}`, e);
+      return postalCode.trim().length > 0;
     }
   };
   _getPhoneNumber = new WeakSet();
@@ -4851,22 +5080,22 @@ var TwentyNineNext = (() => {
   };
   _createCartViaApi = new WeakSet();
   createCartViaApi_fn = function(cartData) {
-    if (!__privateGet(this, _app5).api || typeof __privateGet(this, _app5).api.createCart !== "function") {
+    if (!__privateGet(this, _app8).api || typeof __privateGet(this, _app8).api.createCart !== "function") {
       __privateGet(this, _logger10).error("API client not available");
       __privateSet(this, _cartAttempted, false);
       return;
     }
     __privateGet(this, _logger10).debug("Sending cart data to API", cartData);
-    __privateGet(this, _app5).api.createCart(cartData).then((response) => {
+    __privateGet(this, _app8).api.createCart(cartData).then((response) => {
       __privateGet(this, _logger10).info("Prospect cart created successfully", response);
       __privateSet(this, _cartCreated, true);
-      if (__privateGet(this, _app5).events) {
-        __privateGet(this, _app5).events.trigger("prospect.cartCreated", {
+      if (__privateGet(this, _app8).events) {
+        __privateGet(this, _app8).events.trigger("prospect.cartCreated", {
           cart: response
         });
         if (!__privateGet(this, _beginCheckoutFired)) {
           __privateGet(this, _logger10).info("Triggering beginCheckout event for analytics");
-          __privateGet(this, _app5).events.beginCheckout();
+          __privateGet(this, _app8).events.beginCheckout();
           __privateSet(this, _beginCheckoutFired, true);
         } else {
           __privateGet(this, _logger10).debug("beginCheckout event already fired, skipping");
@@ -4879,7 +5108,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CheckoutManager.js
-  var _apiClient2, _logger11, _form4, _app6, _konamiCodeHandler, _initializeComponents, initializeComponents_fn, _initKonamiCodeHandler, initKonamiCodeHandler_fn, _triggerKonamiCodeEasterEgg, triggerKonamiCodeEasterEgg_fn, _initAddressHandler, initAddressHandler_fn, _initBillingAddressHandler, initBillingAddressHandler_fn, _initPaymentSelector, initPaymentSelector_fn, _initFormValidator, initFormValidator_fn, _initPaymentHandler, initPaymentHandler_fn, _initAddressAutocomplete, initAddressAutocomplete_fn, _initPhoneInputHandler, initPhoneInputHandler_fn, _initProspectCartHandler, initProspectCartHandler_fn, _injectBillingFormFields, injectBillingFormFields_fn, _setupEventListeners3, setupEventListeners_fn3, _handleSubmit2, handleSubmit_fn2, _disableSubmitButtons, disableSubmitButtons_fn;
+  var _apiClient2, _logger11, _form4, _app9, _konamiCodeHandler, _paymentHandler, _addressHandler, _addressAutocomplete, _phoneInputHandler, _initializeComponents, initializeComponents_fn, _initKonamiCodeHandler, initKonamiCodeHandler_fn, _triggerKonamiCodeEasterEgg, triggerKonamiCodeEasterEgg_fn, _initAddressHandler, initAddressHandler_fn, _initBillingAddressHandler, initBillingAddressHandler_fn, _initPaymentSelector, initPaymentSelector_fn, _initFormValidator, initFormValidator_fn, _initPaymentHandler, initPaymentHandler_fn, _initAddressAutocomplete, initAddressAutocomplete_fn, _initPhoneInputHandler, initPhoneInputHandler_fn, _initProspectCartHandler, initProspectCartHandler_fn, _injectBillingFormFields, injectBillingFormFields_fn, _setupEventListeners3, setupEventListeners_fn3, _handleSubmit2, handleSubmit_fn2, _disableSubmitButtons, disableSubmitButtons_fn;
   var CheckoutPage = class {
     constructor(apiClient, logger, app) {
       __privateAdd(this, _initializeComponents);
@@ -4914,11 +5143,15 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _apiClient2, void 0);
       __privateAdd(this, _logger11, void 0);
       __privateAdd(this, _form4, void 0);
-      __privateAdd(this, _app6, void 0);
+      __privateAdd(this, _app9, void 0);
       __privateAdd(this, _konamiCodeHandler, void 0);
+      __privateAdd(this, _paymentHandler, void 0);
+      __privateAdd(this, _addressHandler, void 0);
+      __privateAdd(this, _addressAutocomplete, void 0);
+      __privateAdd(this, _phoneInputHandler, void 0);
       __privateSet(this, _apiClient2, apiClient);
       __privateSet(this, _logger11, logger);
-      __privateSet(this, _app6, app);
+      __privateSet(this, _app9, app);
       __privateSet(this, _form4, document.querySelector('form[os-checkout="form"]') || document.querySelector("form#combo_form"));
       if (!__privateGet(this, _form4)) {
         __privateGet(this, _logger11).warn('No checkout form found with [os-checkout="form"] selector or form#combo_form');
@@ -4962,8 +5195,12 @@ var TwentyNineNext = (() => {
   _apiClient2 = new WeakMap();
   _logger11 = new WeakMap();
   _form4 = new WeakMap();
-  _app6 = new WeakMap();
+  _app9 = new WeakMap();
   _konamiCodeHandler = new WeakMap();
+  _paymentHandler = new WeakMap();
+  _addressHandler = new WeakMap();
+  _addressAutocomplete = new WeakMap();
+  _phoneInputHandler = new WeakMap();
   _initializeComponents = new WeakSet();
   initializeComponents_fn = function() {
     try {
@@ -5020,7 +5257,7 @@ var TwentyNineNext = (() => {
   _initAddressHandler = new WeakSet();
   initAddressHandler_fn = function() {
     try {
-      this.addressHandler = new AddressHandler(__privateGet(this, _form4), __privateGet(this, _logger11));
+      __privateSet(this, _addressHandler, new AddressHandler(__privateGet(this, _form4), __privateGet(this, _logger11), __privateGet(this, _app9)));
     } catch (error) {
       __privateGet(this, _logger11).error("Error initializing AddressHandler", error);
     }
@@ -5028,7 +5265,7 @@ var TwentyNineNext = (() => {
   _initBillingAddressHandler = new WeakSet();
   initBillingAddressHandler_fn = function() {
     try {
-      this.billingAddressHandler = new BillingAddressHandler(__privateGet(this, _app6));
+      this.billingAddressHandler = new BillingAddressHandler(__privateGet(this, _app9));
       if (__privateGet(this, _form4) && this.billingAddressHandler) {
         __privateGet(this, _form4).__billingAddressHandler = this.billingAddressHandler;
         __privateGet(this, _logger11).debug("BillingAddressHandler initialized and attached to form");
@@ -5050,7 +5287,8 @@ var TwentyNineNext = (() => {
     try {
       this.formValidator = new FormValidator({
         debugMode: window.location.search.includes("debug=true"),
-        logger: __privateGet(this, _logger11)
+        logger: __privateGet(this, _logger11),
+        app: __privateGet(this, _app9)
       });
       if (__privateGet(this, _form4) && this.formValidator) {
         __privateGet(this, _form4).__formValidator = this.formValidator;
@@ -5063,7 +5301,7 @@ var TwentyNineNext = (() => {
   _initPaymentHandler = new WeakSet();
   initPaymentHandler_fn = function() {
     try {
-      this.paymentHandler = new PaymentHandler(__privateGet(this, _apiClient2), __privateGet(this, _logger11), __privateGet(this, _app6));
+      __privateSet(this, _paymentHandler, new PaymentHandler(__privateGet(this, _apiClient2), __privateGet(this, _logger11), __privateGet(this, _app9)));
     } catch (error) {
       __privateGet(this, _logger11).error("Error initializing PaymentHandler", error);
     }
@@ -5072,9 +5310,9 @@ var TwentyNineNext = (() => {
   initAddressAutocomplete_fn = function() {
     try {
       const googleMapsOptions = {
-        enableGoogleMapsAutocomplete: __privateGet(this, _app6).options.enableGoogleMapsAutocomplete
+        enableGoogleMapsAutocomplete: __privateGet(this, _app9).options.enableGoogleMapsAutocomplete
       };
-      this.addressAutocomplete = new AddressAutocomplete(__privateGet(this, _logger11), googleMapsOptions);
+      __privateSet(this, _addressAutocomplete, new AddressAutocomplete(__privateGet(this, _logger11), __privateGet(this, _app9).options));
     } catch (error) {
       __privateGet(this, _logger11).error("Error initializing AddressAutocomplete", error);
     }
@@ -5082,7 +5320,7 @@ var TwentyNineNext = (() => {
   _initPhoneInputHandler = new WeakSet();
   initPhoneInputHandler_fn = function() {
     try {
-      this.phoneInputHandler = new PhoneInputHandler(__privateGet(this, _logger11));
+      __privateSet(this, _phoneInputHandler, new PhoneInputHandler(__privateGet(this, _logger11), __privateGet(this, _app9)));
     } catch (error) {
       __privateGet(this, _logger11).error("Error initializing PhoneInputHandler", error);
     }
@@ -5090,8 +5328,8 @@ var TwentyNineNext = (() => {
   _initProspectCartHandler = new WeakSet();
   initProspectCartHandler_fn = function() {
     try {
-      if (__privateGet(this, _app6)) {
-        this.prospectCartHandler = new ProspectCartHandler(__privateGet(this, _app6));
+      if (__privateGet(this, _app9)) {
+        this.prospectCartHandler = new ProspectCartHandler(__privateGet(this, _app9));
         __privateGet(this, _logger11).info("ProspectCartHandler initialized");
       } else {
         __privateGet(this, _logger11).warn("App instance not provided, ProspectCartHandler not initialized");
@@ -5170,13 +5408,13 @@ var TwentyNineNext = (() => {
         __privateGet(this, _form4).addEventListener("submit", (e) => __privateMethod(this, _handleSubmit2, handleSubmit_fn2).call(this, e));
         __privateGet(this, _logger11).debug("Form submit event listener attached");
       }
-      if (__privateGet(this, _app6) && __privateGet(this, _app6).events && this.prospectCartHandler) {
-        __privateGet(this, _app6).events.on("prospect.cartCreated", (data) => {
+      if (__privateGet(this, _app9) && __privateGet(this, _app9).events && this.prospectCartHandler) {
+        __privateGet(this, _app9).events.on("prospect.cartCreated", (data) => {
           __privateGet(this, _logger11).info("Prospect cart created successfully", data);
         });
       }
-      if (__privateGet(this, _app6) && __privateGet(this, _app6).events) {
-        __privateGet(this, _app6).events.on("order.created", (data) => {
+      if (__privateGet(this, _app9) && __privateGet(this, _app9).events) {
+        __privateGet(this, _app9).events.on("order.created", (data) => {
           __privateGet(this, _logger11).info("Order created successfully", data);
         });
       }
@@ -5217,9 +5455,9 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger11).warn("Form validation failed, stopping submission");
       return false;
     }
-    if (this.paymentHandler) {
+    if (__privateGet(this, _paymentHandler)) {
       __privateGet(this, _logger11).debug("Delegating to paymentHandler.processPayment()");
-      this.paymentHandler.processPayment();
+      __privateGet(this, _paymentHandler).processPayment();
     } else {
       __privateGet(this, _logger11).error("Payment handler not initialized");
     }
@@ -5238,8 +5476,8 @@ var TwentyNineNext = (() => {
           button.addEventListener("click", (e) => {
             e.preventDefault();
             __privateGet(this, _logger11).debug(`Submit button ${index + 1} clicked, delegating to payment handler`);
-            if (this.paymentHandler) {
-              this.paymentHandler.processPayment();
+            if (__privateGet(this, _paymentHandler)) {
+              __privateGet(this, _paymentHandler).processPayment();
             } else {
               __privateGet(this, _logger11).error("Payment handler not initialized");
             }
@@ -5255,37 +5493,37 @@ var TwentyNineNext = (() => {
   };
 
   // src/helpers/CampaignHelper.js
-  var _app7, _logger12, _viewItemListFired;
+  var _app10, _logger12, _viewItemListFired;
   var CampaignHelper = class {
     constructor(app) {
-      __privateAdd(this, _app7, void 0);
+      __privateAdd(this, _app10, void 0);
       __privateAdd(this, _logger12, void 0);
       __privateAdd(this, _viewItemListFired, false);
-      __privateSet(this, _app7, app);
+      __privateSet(this, _app10, app);
       __privateSet(this, _logger12, app.logger.createModuleLogger("CAMPAIGN"));
     }
     getCampaignData() {
-      const campaignData = __privateGet(this, _app7).campaignData;
+      const campaignData = __privateGet(this, _app10).campaignData;
       return campaignData;
     }
     getCampaignName() {
-      return __privateGet(this, _app7).campaignData?.name ?? "";
+      return __privateGet(this, _app10).campaignData?.name ?? "";
     }
     getCampaignId() {
-      return __privateGet(this, _app7).campaignData?.id ?? "";
+      return __privateGet(this, _app10).campaignData?.id ?? "";
     }
     getProducts() {
-      const products = __privateGet(this, _app7).campaignData?.products ?? [];
+      const products = __privateGet(this, _app10).campaignData?.products ?? [];
       return products;
     }
     getProductById(productId) {
       return this.getProducts().find((product) => product.id === productId);
     }
     getCurrency() {
-      return __privateGet(this, _app7).campaignData?.currency ?? "USD";
+      return __privateGet(this, _app10).campaignData?.currency ?? "USD";
     }
     getLocale() {
-      return __privateGet(this, _app7).campaignData?.locale ?? "en-US";
+      return __privateGet(this, _app10).campaignData?.locale ?? "en-US";
     }
     formatPrice(price) {
       if (typeof price !== "number")
@@ -5304,32 +5542,32 @@ var TwentyNineNext = (() => {
      * Manually trigger the view_item_list event
      */
     triggerViewItemList() {
-      if (!__privateGet(this, _app7).campaignData) {
+      if (!__privateGet(this, _app10).campaignData) {
         __privateGet(this, _logger12).warn("Cannot trigger view_item_list: No campaign data available");
         return;
       }
-      if (!__privateGet(this, _app7).eventManager) {
+      if (!__privateGet(this, _app10).eventManager) {
         __privateGet(this, _logger12).warn("Cannot trigger view_item_list: EventManager not found");
         return;
       }
-      if (typeof __privateGet(this, _app7).eventManager.viewVisibleItemList === "function") {
+      if (typeof __privateGet(this, _app10).eventManager.viewVisibleItemList === "function") {
         __privateGet(this, _logger12).debug("Manually triggering viewVisibleItemList event");
-        __privateGet(this, _app7).eventManager.viewVisibleItemList();
-      } else if (__privateGet(this, _app7).events?.viewItemList) {
+        __privateGet(this, _app10).eventManager.viewVisibleItemList();
+      } else if (__privateGet(this, _app10).events?.viewItemList) {
         __privateGet(this, _logger12).debug("Falling back to events.viewItemList method");
-        __privateGet(this, _app7).events.viewItemList(__privateGet(this, _app7).campaignData);
+        __privateGet(this, _app10).events.viewItemList(__privateGet(this, _app10).campaignData);
       } else {
         __privateGet(this, _logger12).warn("No suitable method found to trigger view_item_list event");
       }
       __privateSet(this, _viewItemListFired, true);
     }
   };
-  _app7 = new WeakMap();
+  _app10 = new WeakMap();
   _logger12 = new WeakMap();
   _viewItemListFired = new WeakMap();
 
   // src/managers/StateManager.js
-  var _app8, _logger13, _state, _subscribers, _initDefaultState, initDefaultState_fn, _loadState, loadState_fn, _saveState, saveState_fn, _notifySubscribers, notifySubscribers_fn, _updateExistingItem, updateExistingItem_fn, _calculateCartTotals, calculateCartTotals_fn, _recalculateCart, recalculateCart_fn;
+  var _app11, _logger13, _state, _subscribers, _listeners, _initDefaultState, initDefaultState_fn, _loadState, loadState_fn, _saveState, saveState_fn, _notifySubscribers, notifySubscribers_fn, _updateExistingItem, updateExistingItem_fn, _calculateCartTotals, calculateCartTotals_fn, _recalculateCart, recalculateCart_fn;
   var StateManager = class {
     constructor(app) {
       __privateAdd(this, _initDefaultState);
@@ -5339,11 +5577,12 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _updateExistingItem);
       __privateAdd(this, _calculateCartTotals);
       __privateAdd(this, _recalculateCart);
-      __privateAdd(this, _app8, void 0);
+      __privateAdd(this, _app11, void 0);
       __privateAdd(this, _logger13, void 0);
       __privateAdd(this, _state, void 0);
       __privateAdd(this, _subscribers, {});
-      __privateSet(this, _app8, app);
+      __privateAdd(this, _listeners, {});
+      __privateSet(this, _app11, app);
       __privateSet(this, _logger13, app.logger.createModuleLogger("STATE"));
       __privateSet(this, _state, __privateMethod(this, _initDefaultState, initDefaultState_fn).call(this));
       __privateMethod(this, _loadState, loadState_fn).call(this);
@@ -5403,7 +5642,7 @@ var TwentyNineNext = (() => {
         throw new Error("Invalid item. Must have id, name, and price.");
       }
       const cart = this.getState("cart");
-      const packageData = __privateGet(this, _app8).campaignData?.packages?.find(
+      const packageData = __privateGet(this, _app11).campaignData?.packages?.find(
         (pkg) => pkg.ref_id.toString() === item.id.toString() || pkg.external_id?.toString() === item.id.toString()
       );
       const enhancedItem = {
@@ -5428,7 +5667,7 @@ var TwentyNineNext = (() => {
       const updatedItems = existingItemIndex >= 0 ? __privateMethod(this, _updateExistingItem, updateExistingItem_fn).call(this, cart.items, existingItemIndex, enhancedItem) : [...cart.items, enhancedItem];
       this.setState("cart.items", updatedItems);
       __privateGet(this, _logger13).info(`Item added to cart: ${enhancedItem.name}`);
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app11).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     updateCartItem(itemId, updates) {
@@ -5444,14 +5683,14 @@ var TwentyNineNext = (() => {
         updatedItems.splice(itemIndex, 1);
       this.setState("cart.items", updatedItems);
       __privateGet(this, _logger13).info(`Cart item updated: ${itemId}`);
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app11).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     removeFromCart(itemId) {
       const updatedItems = this.getState("cart").items.filter((item) => item.id !== itemId);
       this.setState("cart.items", updatedItems);
       __privateGet(this, _logger13).info(`Item removed from cart: ${itemId}`);
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app11).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     clearCart() {
@@ -5460,13 +5699,13 @@ var TwentyNineNext = (() => {
       this.setState("cart.couponDetails", null);
       this.setState("cart.shippingMethod", null);
       __privateGet(this, _logger13).info("Cart cleared");
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app11).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     setShippingMethod(shippingMethod) {
       this.setState("cart.shippingMethod", shippingMethod);
       __privateGet(this, _logger13).info(`Shipping method set: ${shippingMethod.code}`);
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app11).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     applyCoupon(couponCode, discountType = "percentage", discountValue = 0) {
@@ -5478,7 +5717,7 @@ var TwentyNineNext = (() => {
       });
       __privateGet(this, _logger13).info(`Coupon applied: ${couponCode} (${discountType}: ${discountValue})`);
       __privateMethod(this, _recalculateCart, recalculateCart_fn).call(this, true);
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app11).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     removeCoupon() {
@@ -5486,7 +5725,7 @@ var TwentyNineNext = (() => {
       this.setState("cart.couponDetails", null);
       __privateGet(this, _logger13).info("Coupon removed");
       __privateMethod(this, _recalculateCart, recalculateCart_fn).call(this, true);
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app11).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     isItemInCart(itemId) {
@@ -5520,9 +5759,9 @@ var TwentyNineNext = (() => {
       try {
         this.setState("ui.loading", true);
         const apiCart = this.getCartForApi();
-        const response = await __privateGet(this, _app8).api.createCart(apiCart);
+        const response = await __privateGet(this, _app11).api.createCart(apiCart);
         __privateGet(this, _logger13).info("Cart synced with API");
-        __privateGet(this, _app8).triggerEvent("cart.synced", { cart: response });
+        __privateGet(this, _app11).triggerEvent("cart.synced", { cart: response });
         return response;
       } catch (error) {
         __privateGet(this, _logger13).error("Error syncing cart with API:", error);
@@ -5532,11 +5771,67 @@ var TwentyNineNext = (() => {
         this.setState("ui.loading", false);
       }
     }
+    /**
+     * Set the initial location data fetched from the worker.
+     * @param {object} data - The data object from the /location endpoint.
+     */
+    setInitialLocationData(data) {
+      if (!data || typeof data !== "object") {
+        __privateGet(this, _logger13).error("setInitialLocationData received invalid data", data);
+        return;
+      }
+      __privateGet(this, _logger13).info("Setting initial location data into state");
+      __privateGet(this, _logger13).debug("Initial location data details:", data);
+      const newState = { ...__privateGet(this, _state) };
+      newState.location = {
+        countries: data.countries || [],
+        statesByCountry: {},
+        configsByCountry: {},
+        detectedCountryCode: data.detectedCountryCode || null,
+        allowedCountryCodes: [],
+        initialSelectedCountryCode: null
+      };
+      if (data.detectedCountryCode) {
+        if (data.detectedStates) {
+          newState.location.statesByCountry[data.detectedCountryCode] = data.detectedStates;
+          __privateGet(this, _logger13).debug(`Stored initial states for detected country: ${data.detectedCountryCode}`);
+        }
+        if (data.detectedCountryConfig) {
+          newState.location.configsByCountry[data.detectedCountryCode] = data.detectedCountryConfig;
+          __privateGet(this, _logger13).debug(`Stored initial config for detected country: ${data.detectedCountryCode}`);
+        }
+      }
+      __privateSet(this, _state, newState);
+      __privateGet(this, _logger13).info("Initial location base data stored in state (countries, detected code)");
+    }
+    /**
+     * Set the states and config for a specific country, fetched dynamically.
+     * @param {string} countryCode - The ISO country code.
+     * @param {object} data - The data object from the /countries/{code}/states endpoint.
+     */
+    setCountryStatesAndConfig(countryCode, data) {
+      if (!countryCode || !data || typeof data !== "object") {
+        __privateGet(this, _logger13).error("setCountryStatesAndConfig received invalid parameters", { countryCode, data });
+        return;
+      }
+      __privateGet(this, _logger13).info(`Storing states and config for country: ${countryCode}`);
+      __privateGet(this, _logger13).debug(`States/Config data for ${countryCode}:`, data);
+      const newState = { ...__privateGet(this, _state) };
+      newState.location = newState.location || {};
+      newState.location.statesByCountry = newState.location.statesByCountry || {};
+      newState.location.configsByCountry = newState.location.configsByCountry || {};
+      newState.location.statesByCountry[countryCode] = data.states || [];
+      newState.location.configsByCountry[countryCode] = data.countryConfig || {};
+      __privateSet(this, _state, newState);
+      __privateMethod(this, _notifySubscribers, notifySubscribers_fn).call(this, "location", __privateGet(this, _state).location);
+      __privateGet(this, _logger13).info(`Stored states and config for ${countryCode} successfully`);
+    }
   };
-  _app8 = new WeakMap();
+  _app11 = new WeakMap();
   _logger13 = new WeakMap();
   _state = new WeakMap();
   _subscribers = new WeakMap();
+  _listeners = new WeakMap();
   _initDefaultState = new WeakSet();
   initDefaultState_fn = function() {
     return {
@@ -5581,7 +5876,15 @@ var TwentyNineNext = (() => {
         }
       },
       user: { email: null, firstName: null, lastName: null, phone: null },
-      ui: { loading: false, currentStep: "cart", errors: {} }
+      ui: { loading: false, currentStep: "cart", errors: {} },
+      location: {
+        countries: [],
+        statesByCountry: {},
+        configsByCountry: {},
+        detectedCountryCode: null,
+        allowedCountryCodes: [],
+        initialSelectedCountryCode: null
+      }
     };
   };
   _loadState = new WeakSet();
@@ -5647,8 +5950,8 @@ var TwentyNineNext = (() => {
     const { items, shippingMethod, couponDetails } = __privateGet(this, _state).cart;
     const subtotal = items.reduce((acc, item) => acc + (item.price_total ?? item.price * (item.quantity || 1)), 0);
     let discountAmount = 0;
-    if (couponDetails && __privateGet(this, _app8).discount) {
-      discountAmount = __privateGet(this, _app8).discount.calculateDiscount(couponDetails, subtotal);
+    if (couponDetails && __privateGet(this, _app11).discount) {
+      discountAmount = __privateGet(this, _app11).discount.calculateDiscount(couponDetails, subtotal);
     }
     const discountedSubtotal = subtotal - discountAmount;
     const retailSubtotal = items.reduce((acc, item) => acc + (item.retail_price_total ?? (item.retail_price ?? item.price) * (item.quantity || 1)), 0);
@@ -5661,7 +5964,7 @@ var TwentyNineNext = (() => {
     }
     const tax = 0;
     const total = discountedSubtotal + shipping + tax;
-    const currency = __privateGet(this, _app8).campaignData?.currency ?? "USD";
+    const currency = __privateGet(this, _app11).campaignData?.currency ?? "USD";
     const currencySymbol = { USD: "$", EUR: "€", GBP: "£" }[currency] ?? "$";
     return {
       subtotal: discountedSubtotal,
@@ -5694,7 +5997,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CartManager.js
-  var _app9, _stateManager, _logger14, _cartElements, _initCartUI, initCartUI_fn, _updateCartUI, updateCartUI_fn, _createCartItemElement, createCartItemElement_fn, _addToCart, addToCart_fn, _updateCartItemQuantity, updateCartItemQuantity_fn, _removeFromCart, removeFromCart_fn;
+  var _app12, _stateManager, _logger14, _cartElements, _initCartUI, initCartUI_fn, _updateCartUI, updateCartUI_fn, _createCartItemElement, createCartItemElement_fn, _addToCart, addToCart_fn, _updateCartItemQuantity, updateCartItemQuantity_fn, _removeFromCart, removeFromCart_fn;
   var CartManager = class {
     constructor(app) {
       __privateAdd(this, _initCartUI);
@@ -5703,11 +6006,11 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _addToCart);
       __privateAdd(this, _updateCartItemQuantity);
       __privateAdd(this, _removeFromCart);
-      __privateAdd(this, _app9, void 0);
+      __privateAdd(this, _app12, void 0);
       __privateAdd(this, _stateManager, void 0);
       __privateAdd(this, _logger14, void 0);
       __privateAdd(this, _cartElements, void 0);
-      __privateSet(this, _app9, app);
+      __privateSet(this, _app12, app);
       __privateSet(this, _stateManager, app.state);
       __privateSet(this, _logger14, app.logger.createModuleLogger("CART"));
       __privateMethod(this, _initCartUI, initCartUI_fn).call(this);
@@ -5729,7 +6032,7 @@ var TwentyNineNext = (() => {
     }
     setShippingMethod(shippingMethodId) {
       try {
-        const campaignData = __privateGet(this, _app9).campaignData;
+        const campaignData = __privateGet(this, _app12).campaignData;
         if (!campaignData || !Array.isArray(campaignData.shipping_methods)) {
           __privateGet(this, _logger14).error("Campaign data or shipping methods not available.");
           throw new Error("Shipping methods not loaded.");
@@ -5751,8 +6054,8 @@ var TwentyNineNext = (() => {
     applyCoupon(couponCode, discountType = "percentage", discountValue = 0) {
       try {
         const result = __privateGet(this, _stateManager).applyCoupon(couponCode, discountType, discountValue);
-        if (__privateGet(this, _app9).selector && typeof __privateGet(this, _app9).selector.refreshUnitPricing === "function") {
-          setTimeout(() => __privateGet(this, _app9).selector.refreshUnitPricing(), 10);
+        if (__privateGet(this, _app12).selector && typeof __privateGet(this, _app12).selector.refreshUnitPricing === "function") {
+          setTimeout(() => __privateGet(this, _app12).selector.refreshUnitPricing(), 10);
         }
         return result;
       } catch (error) {
@@ -5763,8 +6066,8 @@ var TwentyNineNext = (() => {
     removeCoupon() {
       try {
         const result = __privateGet(this, _stateManager).removeCoupon();
-        if (__privateGet(this, _app9).selector && typeof __privateGet(this, _app9).selector.refreshUnitPricing === "function") {
-          setTimeout(() => __privateGet(this, _app9).selector.refreshUnitPricing(), 10);
+        if (__privateGet(this, _app12).selector && typeof __privateGet(this, _app12).selector.refreshUnitPricing === "function") {
+          setTimeout(() => __privateGet(this, _app12).selector.refreshUnitPricing(), 10);
         }
         return result;
       } catch (error) {
@@ -5798,7 +6101,7 @@ var TwentyNineNext = (() => {
     //   }, 3000);
     // }
   };
-  _app9 = new WeakMap();
+  _app12 = new WeakMap();
   _stateManager = new WeakMap();
   _logger14 = new WeakMap();
   _cartElements = new WeakMap();
@@ -5838,7 +6141,7 @@ var TwentyNineNext = (() => {
       element.textContent = itemCount.toString();
       element.classList.toggle("hidden", itemCount === 0);
     });
-    const formatPrice = (price) => __privateGet(this, _app9).campaign?.formatPrice(price) ?? price.toFixed(2);
+    const formatPrice = (price) => __privateGet(this, _app12).campaign?.formatPrice(price) ?? price.toFixed(2);
     __privateGet(this, _cartElements).cartTotal.forEach((element) => element.textContent = formatPrice(cart.totals.total));
     const updateElement = (selector, value, hideIfZero = false) => {
       const element = document.querySelector(selector);
@@ -5863,7 +6166,7 @@ var TwentyNineNext = (() => {
     const couponContainer = document.querySelector("[data-os-cart-coupon-container]");
     if (couponElement && couponContainer) {
       if (cart.couponDetails && cart.couponCode) {
-        couponElement.textContent = __privateGet(this, _app9).discount?.getCouponDisplayText(cart.couponDetails) || cart.couponCode;
+        couponElement.textContent = __privateGet(this, _app12).discount?.getCouponDisplayText(cart.couponDetails) || cart.couponCode;
         couponContainer.classList.remove("hidden");
       } else {
         couponContainer.classList.add("hidden");
@@ -5881,7 +6184,7 @@ var TwentyNineNext = (() => {
   };
   _createCartItemElement = new WeakSet();
   createCartItemElement_fn = function(item) {
-    const formatPrice = (price2) => __privateGet(this, _app9).campaign?.formatPrice(price2) ?? price2.toFixed(2);
+    const formatPrice = (price2) => __privateGet(this, _app12).campaign?.formatPrice(price2) ?? price2.toFixed(2);
     const itemElement = document.createElement("div");
     itemElement.className = "os-cart-item";
     itemElement.setAttribute("data-os-cart-item-id", item.id);
@@ -6266,7 +6569,7 @@ var TwentyNineNext = (() => {
   __privateAdd(DebugUtils, _overlays, []);
 
   // src/managers/SelectorManager.js
-  var _app10, _logger15, _selectors2, _selectedItems, _isDebugMode2, _initSelectors, initSelectors_fn, _initSelector, initSelector_fn, _initCard, initCard_fn, _handleClick, handleClick_fn, _selectItem, selectItem_fn, _updateCart, updateCart_fn, _addItemToCart, addItemToCart_fn, _removeItemFromCart, removeItemFromCart_fn, _syncWithCart, syncWithCart_fn, _initUnitPricingForSelector, initUnitPricingForSelector_fn, _updateUnitPricingForCard, updateUnitPricingForCard_fn, _formatPrice, formatPrice_fn, _updatePriceElement, updatePriceElement_fn;
+  var _app13, _logger15, _selectors2, _selectedItems, _isDebugMode2, _initSelectors, initSelectors_fn, _initSelector, initSelector_fn, _initCard, initCard_fn, _handleClick, handleClick_fn, _selectItem, selectItem_fn, _updateCart, updateCart_fn, _addItemToCart, addItemToCart_fn, _removeItemFromCart, removeItemFromCart_fn, _syncWithCart, syncWithCart_fn, _initUnitPricingForSelector, initUnitPricingForSelector_fn, _updateUnitPricingForCard, updateUnitPricingForCard_fn, _formatPrice, formatPrice_fn, _updatePriceElement, updatePriceElement_fn;
   var SelectorManager = class {
     constructor(app) {
       __privateAdd(this, _initSelectors);
@@ -6303,12 +6606,12 @@ var TwentyNineNext = (() => {
        * @param {Set} processedElements - Set of elements that have already been processed
        */
       __privateAdd(this, _updatePriceElement);
-      __privateAdd(this, _app10, void 0);
+      __privateAdd(this, _app13, void 0);
       __privateAdd(this, _logger15, void 0);
       __privateAdd(this, _selectors2, {});
       __privateAdd(this, _selectedItems, {});
       __privateAdd(this, _isDebugMode2, false);
-      __privateSet(this, _app10, app);
+      __privateSet(this, _app13, app);
       __privateSet(this, _logger15, app.logger.createModuleLogger("SELECTOR"));
       __privateSet(this, _isDebugMode2, DebugUtils.initDebugMode());
       __privateMethod(this, _initSelectors, initSelectors_fn).call(this);
@@ -6341,7 +6644,7 @@ var TwentyNineNext = (() => {
      * This method is public so it can be called from EventManager if needed
      */
     triggerViewItemList() {
-      const campaignData = __privateGet(this, _app10).getCampaignData();
+      const campaignData = __privateGet(this, _app13).getCampaignData();
       if (!campaignData || !campaignData.packages || campaignData.packages.length === 0) {
         __privateGet(this, _logger15).warn("Cannot trigger view_item_list: No packages in campaign data");
         return;
@@ -6369,11 +6672,11 @@ var TwentyNineNext = (() => {
           ...campaignData,
           packages: visiblePackages
         };
-        if (__privateGet(this, _app10).eventManager?.viewItemList) {
-          __privateGet(this, _app10).eventManager.viewItemList(filteredCampaignData);
+        if (__privateGet(this, _app13).eventManager?.viewItemList) {
+          __privateGet(this, _app13).eventManager.viewItemList(filteredCampaignData);
           __privateGet(this, _logger15).debug("Used eventManager.viewItemList to fire event");
-        } else if (__privateGet(this, _app10).events?.viewItemList) {
-          __privateGet(this, _app10).events.viewItemList(filteredCampaignData);
+        } else if (__privateGet(this, _app13).events?.viewItemList) {
+          __privateGet(this, _app13).events.viewItemList(filteredCampaignData);
           __privateGet(this, _logger15).debug("Used events.viewItemList to fire event");
         } else {
           __privateGet(this, _logger15).warn("No suitable method found to trigger view_item_list");
@@ -6383,7 +6686,7 @@ var TwentyNineNext = (() => {
       }
     }
   };
-  _app10 = new WeakMap();
+  _app13 = new WeakMap();
   _logger15 = new WeakMap();
   _selectors2 = new WeakMap();
   _selectedItems = new WeakMap();
@@ -6392,7 +6695,7 @@ var TwentyNineNext = (() => {
   initSelectors_fn = function() {
     document.querySelectorAll('[data-os-component="selector"][data-os-selection-mode="swap"]').forEach((selector) => __privateMethod(this, _initSelector, initSelector_fn).call(this, selector));
     setTimeout(() => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this), 0);
-    __privateGet(this, _app10).state?.subscribe("cart", () => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this));
+    __privateGet(this, _app13).state?.subscribe("cart", () => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this));
     this.initUnitPricing();
     setTimeout(() => this.triggerViewItemList(), 100);
   };
@@ -6458,7 +6761,7 @@ var TwentyNineNext = (() => {
     if (item.shippingId !== null && item.shippingId !== void 0) {
       __privateGet(this, _logger15).info(`Setting shipping method to ${item.shippingId} based on selected card ${item.packageId}`);
       try {
-        __privateGet(this, _app10).cart.setShippingMethod(item.shippingId);
+        __privateGet(this, _app13).cart.setShippingMethod(item.shippingId);
       } catch (error) {
         __privateGet(this, _logger15).error(`Failed to set shipping method ${item.shippingId}:`, error);
       }
@@ -6481,7 +6784,7 @@ var TwentyNineNext = (() => {
   };
   _updateCart = new WeakSet();
   updateCart_fn = function(selectorId, previousItem) {
-    if (!__privateGet(this, _app10).cart) {
+    if (!__privateGet(this, _app13).cart) {
       __privateGet(this, _logger15).error("Cart manager not available");
       return;
     }
@@ -6491,16 +6794,16 @@ var TwentyNineNext = (() => {
     if (previousItem && previousItem.packageId !== selected.packageId) {
       __privateMethod(this, _removeItemFromCart, removeItemFromCart_fn).call(this, previousItem);
     }
-    if (!__privateGet(this, _app10).cart.isItemInCart(selected.packageId)) {
+    if (!__privateGet(this, _app13).cart.isItemInCart(selected.packageId)) {
       __privateMethod(this, _addItemToCart, addItemToCart_fn).call(this, selected);
     }
     const currentSelectedItem = __privateGet(this, _selectedItems)[selectorId];
     if (currentSelectedItem && currentSelectedItem.shippingId !== null && currentSelectedItem.shippingId !== void 0) {
-      const currentCartShippingMethod = __privateGet(this, _app10).state?.getState("cart")?.shippingMethod?.ref_id;
+      const currentCartShippingMethod = __privateGet(this, _app13).state?.getState("cart")?.shippingMethod?.ref_id;
       if (currentCartShippingMethod?.toString() !== currentSelectedItem.shippingId.toString()) {
         __privateGet(this, _logger15).info(`Syncing shipping method to ${currentSelectedItem.shippingId} for selected item ${currentSelectedItem.packageId}`);
         try {
-          __privateGet(this, _app10).cart.setShippingMethod(currentSelectedItem.shippingId);
+          __privateGet(this, _app13).cart.setShippingMethod(currentSelectedItem.shippingId);
         } catch (error) {
           __privateGet(this, _logger15).error(`Failed to sync shipping method ${currentSelectedItem.shippingId}:`, error);
         }
@@ -6509,16 +6812,16 @@ var TwentyNineNext = (() => {
   };
   _addItemToCart = new WeakSet();
   addItemToCart_fn = function(item) {
-    if (!__privateGet(this, _app10).cart) {
+    if (!__privateGet(this, _app13).cart) {
       __privateGet(this, _logger15).error("Cart manager not available in addItemToCart");
       return;
     }
-    if (typeof __privateGet(this, _app10).cart.addToCart !== "function") {
-      __privateGet(this, _logger15).error("addToCart is not a function on this.#app.cart:", __privateGet(this, _app10).cart);
+    if (typeof __privateGet(this, _app13).cart.addToCart !== "function") {
+      __privateGet(this, _logger15).error("addToCart is not a function on this.#app.cart:", __privateGet(this, _app13).cart);
       return;
     }
     __privateGet(this, _logger15).info(`Adding item ${item.packageId} to cart`);
-    __privateGet(this, _app10).cart.addToCart({
+    __privateGet(this, _app13).cart.addToCart({
       id: item.packageId,
       name: item.name,
       price: item.price,
@@ -6530,34 +6833,34 @@ var TwentyNineNext = (() => {
   };
   _removeItemFromCart = new WeakSet();
   removeItemFromCart_fn = function(item) {
-    if (!__privateGet(this, _app10).cart) {
+    if (!__privateGet(this, _app13).cart) {
       __privateGet(this, _logger15).error("Cart manager not available in removeItemFromCart");
       return;
     }
-    if (typeof __privateGet(this, _app10).cart.removeFromCart !== "function") {
-      __privateGet(this, _logger15).error("removeFromCart is not a function on this.#app.cart:", __privateGet(this, _app10).cart);
+    if (typeof __privateGet(this, _app13).cart.removeFromCart !== "function") {
+      __privateGet(this, _logger15).error("removeFromCart is not a function on this.#app.cart:", __privateGet(this, _app13).cart);
       return;
     }
     __privateGet(this, _logger15).info(`Removing item ${item.packageId} from cart`);
-    __privateGet(this, _app10).cart.removeFromCart(item.packageId);
+    __privateGet(this, _app13).cart.removeFromCart(item.packageId);
     item.element.classList.remove("os--active");
     item.element.setAttribute("data-os-active", "false");
   };
   _syncWithCart = new WeakSet();
   syncWithCart_fn = function() {
-    if (!__privateGet(this, _app10).cart) {
+    if (!__privateGet(this, _app13).cart) {
       __privateGet(this, _logger15).debug("Cart manager not available for sync");
       return;
     }
-    const cart = __privateGet(this, _app10).state?.getState("cart");
+    const cart = __privateGet(this, _app13).state?.getState("cart");
     if (!cart) {
       __privateGet(this, _logger15).debug("Cart state not available");
       return;
     }
-    __privateGet(this, _logger15).debug("Syncing with cart, this.#app.cart:", __privateGet(this, _app10).cart);
+    __privateGet(this, _logger15).debug("Syncing with cart, this.#app.cart:", __privateGet(this, _app13).cart);
     Object.keys(__privateGet(this, _selectors2)).forEach((selectorId) => {
       const items = __privateGet(this, _selectors2)[selectorId].items;
-      const cartItemsInSelector = items.filter((item) => __privateGet(this, _app10).cart.isItemInCart(item.packageId));
+      const cartItemsInSelector = items.filter((item) => __privateGet(this, _app13).cart.isItemInCart(item.packageId));
       if (cartItemsInSelector.length > 0) {
         const itemInCart = cartItemsInSelector[0];
         __privateMethod(this, _selectItem, selectItem_fn).call(this, selectorId, itemInCart);
@@ -6573,17 +6876,17 @@ var TwentyNineNext = (() => {
         }
       }
       items.forEach((item) => {
-        const isInCart = __privateGet(this, _app10).cart.isItemInCart(item.packageId);
+        const isInCart = __privateGet(this, _app13).cart.isItemInCart(item.packageId);
         item.element.classList.toggle("os--active", isInCart);
         item.element.setAttribute("data-os-active", isInCart.toString());
       });
       const currentSelectedItem = __privateGet(this, _selectedItems)[selectorId];
       if (currentSelectedItem && currentSelectedItem.shippingId !== null && currentSelectedItem.shippingId !== void 0) {
-        const currentCartShippingMethod = __privateGet(this, _app10).state?.getState("cart")?.shippingMethod?.ref_id;
+        const currentCartShippingMethod = __privateGet(this, _app13).state?.getState("cart")?.shippingMethod?.ref_id;
         if (currentCartShippingMethod?.toString() !== currentSelectedItem.shippingId.toString()) {
           __privateGet(this, _logger15).info(`Syncing shipping method to ${currentSelectedItem.shippingId} for selected item ${currentSelectedItem.packageId}`);
           try {
-            __privateGet(this, _app10).cart.setShippingMethod(currentSelectedItem.shippingId);
+            __privateGet(this, _app13).cart.setShippingMethod(currentSelectedItem.shippingId);
           } catch (error) {
             __privateGet(this, _logger15).error(`Failed to sync shipping method ${currentSelectedItem.shippingId}:`, error);
           }
@@ -6598,7 +6901,7 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger15).warn(`Selector ${selectorId} not found for unit pricing`);
       return;
     }
-    const campaignData = __privateGet(this, _app10)?.campaignData;
+    const campaignData = __privateGet(this, _app13)?.campaignData;
     if (!campaignData || !campaignData.packages) {
       __privateGet(this, _logger15).warn("Campaign data not available for unit pricing");
       return;
@@ -6629,7 +6932,7 @@ var TwentyNineNext = (() => {
     const totalUnits = packageData.qty || 1;
     let totalPrice = Number.parseFloat(packageData.price_total) || Number.parseFloat(packageData.price) * totalUnits;
     const totalRetailPrice = Number.parseFloat(packageData.price_retail_total) || Number.parseFloat(packageData.price_retail) * totalUnits || totalPrice;
-    const couponDetails = __privateGet(this, _app10).cart?.getCouponDetails?.();
+    const couponDetails = __privateGet(this, _app13).cart?.getCouponDetails?.();
     let discountedTotalPrice = totalPrice;
     if (couponDetails) {
       __privateGet(this, _logger15).debug(`Active coupon found for unit pricing calculations:`, couponDetails);
@@ -6638,7 +6941,7 @@ var TwentyNineNext = (() => {
         discountedTotalPrice = totalPrice * (1 - discountPercentage);
         __privateGet(this, _logger15).debug(`Applied ${couponDetails.value}% discount to package price: ${totalPrice} -> ${discountedTotalPrice}`);
       } else if (couponDetails.type === "fixed" && couponDetails.value > 0) {
-        const cart = __privateGet(this, _app10).state?.getState("cart");
+        const cart = __privateGet(this, _app13).state?.getState("cart");
         if (cart && cart.totals && cart.totals.original_subtotal > 0) {
           const cartSubtotal = cart.totals.original_subtotal;
           const packageProportion = totalPrice / cartSubtotal;
@@ -6667,8 +6970,8 @@ var TwentyNineNext = (() => {
       unitSavingsPercentage
     });
     const formatPrice = (price) => {
-      if (__privateGet(this, _app10).campaign?.formatPrice) {
-        return __privateGet(this, _app10).campaign.formatPrice(price);
+      if (__privateGet(this, _app13).campaign?.formatPrice) {
+        return __privateGet(this, _app13).campaign.formatPrice(price);
       }
       return `$${price.toFixed(2)}`;
     };
@@ -6745,8 +7048,8 @@ var TwentyNineNext = (() => {
   };
   _formatPrice = new WeakSet();
   formatPrice_fn = function(price) {
-    if (__privateGet(this, _app10).campaign?.formatPrice) {
-      return __privateGet(this, _app10).campaign.formatPrice(price);
+    if (__privateGet(this, _app13).campaign?.formatPrice) {
+      return __privateGet(this, _app13).campaign.formatPrice(price);
     }
     return `$${price.toFixed(2)}`;
   };
@@ -6777,7 +7080,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/ToggleManager.js
-  var _toggleItems, _app11, _logger16, _isDebugMode3, _initToggleItems, initToggleItems_fn, _initToggleItem, initToggleItem_fn, _addDebugOverlay, addDebugOverlay_fn, _toggleItem, toggleItem_fn, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn, _updateToggleItemUI, updateToggleItemUI_fn, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn, _isItemInCart, isItemInCart_fn, _addItemToCart2, addItemToCart_fn2, _removeItemFromCart2, removeItemFromCart_fn2;
+  var _toggleItems, _app14, _logger16, _isDebugMode3, _initToggleItems, initToggleItems_fn, _initToggleItem, initToggleItem_fn, _addDebugOverlay, addDebugOverlay_fn, _toggleItem, toggleItem_fn, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn, _updateToggleItemUI, updateToggleItemUI_fn, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn, _isItemInCart, isItemInCart_fn, _addItemToCart2, addItemToCart_fn2, _removeItemFromCart2, removeItemFromCart_fn2;
   var ToggleManager = class {
     constructor(app) {
       __privateAdd(this, _initToggleItems);
@@ -6791,14 +7094,14 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _addItemToCart2);
       __privateAdd(this, _removeItemFromCart2);
       __privateAdd(this, _toggleItems, {});
-      __privateAdd(this, _app11, void 0);
+      __privateAdd(this, _app14, void 0);
       __privateAdd(this, _logger16, void 0);
       __privateAdd(this, _isDebugMode3, false);
-      __privateSet(this, _app11, app);
+      __privateSet(this, _app14, app);
       __privateSet(this, _logger16, app.logger.createModuleLogger("TOGGLE"));
       __privateSet(this, _isDebugMode3, DebugUtils.initDebugMode());
       __privateMethod(this, _initToggleItems, initToggleItems_fn).call(this);
-      __privateGet(this, _app11).state.subscribe("cart", () => __privateMethod(this, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn).call(this));
+      __privateGet(this, _app14).state.subscribe("cart", () => __privateMethod(this, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn).call(this));
       __privateGet(this, _logger16).info("ToggleManager initialized");
       if (__privateGet(this, _isDebugMode3)) {
         __privateGet(this, _logger16).info("Debug mode enabled for toggle items");
@@ -6806,7 +7109,7 @@ var TwentyNineNext = (() => {
     }
   };
   _toggleItems = new WeakMap();
-  _app11 = new WeakMap();
+  _app14 = new WeakMap();
   _logger16 = new WeakMap();
   _isDebugMode3 = new WeakMap();
   _initToggleItems = new WeakSet();
@@ -6881,15 +7184,15 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger16).info(`Toggled ON item ${packageId}${isUpsell ? " (upsell)" : ""}`);
     }
     __privateMethod(this, _updateToggleItemUI, updateToggleItemUI_fn).call(this, element, packageId);
-    __privateGet(this, _app11).triggerEvent("toggle.changed", { toggleId, packageId, isActive: !isInCart });
+    __privateGet(this, _app14).triggerEvent("toggle.changed", { toggleId, packageId, isActive: !isInCart });
   };
   _getPackageDataFromCampaign = new WeakSet();
   getPackageDataFromCampaign_fn = function(packageId) {
-    if (!__privateGet(this, _app11).campaignData?.packages) {
+    if (!__privateGet(this, _app14).campaignData?.packages) {
       __privateGet(this, _logger16).error("Campaign data not available");
       return null;
     }
-    return __privateGet(this, _app11).campaignData.packages.find((pkg) => pkg.ref_id.toString() === packageId.toString()) ?? null;
+    return __privateGet(this, _app14).campaignData.packages.find((pkg) => pkg.ref_id.toString() === packageId.toString()) ?? null;
   };
   _updateToggleItemUI = new WeakSet();
   updateToggleItemUI_fn = function(element, packageId) {
@@ -6905,30 +7208,30 @@ var TwentyNineNext = (() => {
   };
   _isItemInCart = new WeakSet();
   isItemInCart_fn = function(itemId) {
-    return __privateGet(this, _app11).state.getState("cart").items.some((item) => item.id === itemId);
+    return __privateGet(this, _app14).state.getState("cart").items.some((item) => item.id === itemId);
   };
   _addItemToCart2 = new WeakSet();
   addItemToCart_fn2 = function(item) {
-    if (!__privateGet(this, _app11).cart) {
+    if (!__privateGet(this, _app14).cart) {
       __privateGet(this, _logger16).error("Cart manager not available");
       return;
     }
-    __privateGet(this, _app11).cart.addToCart(item);
+    __privateGet(this, _app14).cart.addToCart(item);
   };
   _removeItemFromCart2 = new WeakSet();
   removeItemFromCart_fn2 = function(itemId) {
-    if (!__privateGet(this, _app11).cart) {
+    if (!__privateGet(this, _app14).cart) {
       __privateGet(this, _logger16).error("Cart manager not available");
       return;
     }
-    __privateGet(this, _app11).cart.removeFromCart(itemId);
+    __privateGet(this, _app14).cart.removeFromCart(itemId);
   };
 
   // src/managers/DebugManager.js
-  var _app12, _logger17, _miniCartVisible, _miniCartElement, _debugBarElement, _isDebugMode4, _init6, init_fn6, _createDebugBar, createDebugBar_fn, _toggleXray, toggleXray_fn, _showMiniCart, showMiniCart_fn, _hideMiniCart, hideMiniCart_fn, _toggleMiniCart, toggleMiniCart_fn, _createMiniCartElement, createMiniCartElement_fn, _updateMiniCart, updateMiniCart_fn;
+  var _app15, _logger17, _miniCartVisible, _miniCartElement, _debugBarElement, _isDebugMode4, _init5, init_fn5, _createDebugBar, createDebugBar_fn, _toggleXray, toggleXray_fn, _showMiniCart, showMiniCart_fn, _hideMiniCart, hideMiniCart_fn, _toggleMiniCart, toggleMiniCart_fn, _createMiniCartElement, createMiniCartElement_fn, _updateMiniCart, updateMiniCart_fn;
   var DebugManager = class {
     constructor(app) {
-      __privateAdd(this, _init6);
+      __privateAdd(this, _init5);
       __privateAdd(this, _createDebugBar);
       __privateAdd(this, _toggleXray);
       __privateAdd(this, _showMiniCart);
@@ -6936,27 +7239,27 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _toggleMiniCart);
       __privateAdd(this, _createMiniCartElement);
       __privateAdd(this, _updateMiniCart);
-      __privateAdd(this, _app12, void 0);
+      __privateAdd(this, _app15, void 0);
       __privateAdd(this, _logger17, void 0);
       __privateAdd(this, _miniCartVisible, false);
       __privateAdd(this, _miniCartElement, null);
       __privateAdd(this, _debugBarElement, null);
       __privateAdd(this, _isDebugMode4, false);
-      __privateSet(this, _app12, app);
+      __privateSet(this, _app15, app);
       __privateSet(this, _logger17, app.logger.createModuleLogger("DEBUG"));
       __privateSet(this, _isDebugMode4, DebugUtils.initDebugMode());
-      __privateMethod(this, _init6, init_fn6).call(this);
+      __privateMethod(this, _init5, init_fn5).call(this);
       __privateGet(this, _logger17).info("DebugManager initialized");
     }
   };
-  _app12 = new WeakMap();
+  _app15 = new WeakMap();
   _logger17 = new WeakMap();
   _miniCartVisible = new WeakMap();
   _miniCartElement = new WeakMap();
   _debugBarElement = new WeakMap();
   _isDebugMode4 = new WeakMap();
-  _init6 = new WeakSet();
-  init_fn6 = function() {
+  _init5 = new WeakSet();
+  init_fn5 = function() {
     window.showMiniCart = () => __privateMethod(this, _showMiniCart, showMiniCart_fn).call(this);
     window.hideMiniCart = () => __privateMethod(this, _hideMiniCart, hideMiniCart_fn).call(this);
     window.toggleMiniCart = () => __privateMethod(this, _toggleMiniCart, toggleMiniCart_fn).call(this);
@@ -6968,7 +7271,7 @@ var TwentyNineNext = (() => {
         __privateMethod(this, _showMiniCart, showMiniCart_fn).call(this);
       }
     }
-    __privateGet(this, _app12).state?.subscribe("cart", () => {
+    __privateGet(this, _app15).state?.subscribe("cart", () => {
       if (__privateGet(this, _miniCartVisible))
         __privateMethod(this, _updateMiniCart, updateMiniCart_fn).call(this);
     });
@@ -7148,13 +7451,13 @@ var TwentyNineNext = (() => {
     const content = __privateGet(this, _miniCartElement).querySelector(".os-debug-mini-cart-content");
     if (!content)
       return;
-    const cart = __privateGet(this, _app12).state?.getState("cart");
+    const cart = __privateGet(this, _app15).state?.getState("cart");
     if (!cart) {
       content.innerHTML = '<div style="color: #999; text-align: center;">Cart data not available</div>';
       return;
     }
     __privateGet(this, _logger17).debug("Updating mini-cart with cart data:", cart);
-    const formatPrice = (price) => __privateGet(this, _app12).campaign?.formatPrice(price) ?? `$${price.toFixed(2)}`;
+    const formatPrice = (price) => __privateGet(this, _app15).campaign?.formatPrice(price) ?? `$${price.toFixed(2)}`;
     let html = "";
     if (!cart.items?.length) {
       html += '<div style="color: #999; text-align: center; margin-bottom: 15px;">Cart is empty</div>';
@@ -7282,7 +7585,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/TimerManager.js
-  var _app13, _logger18, _timers, _storagePrefix, _initTimers, initTimers_fn, _setupTimer, setupTimer_fn, _getTimerConfig, getTimerConfig_fn, _formatTime, formatTime_fn, _triggerTimerEvent, triggerTimerEvent_fn;
+  var _app16, _logger18, _timers, _storagePrefix, _initTimers, initTimers_fn, _setupTimer, setupTimer_fn, _getTimerConfig, getTimerConfig_fn, _formatTime, formatTime_fn, _triggerTimerEvent, triggerTimerEvent_fn;
   var TimerManager = class {
     constructor(app) {
       /**
@@ -7317,11 +7620,11 @@ var TwentyNineNext = (() => {
        * @param {Object} detail - Event details
        */
       __privateAdd(this, _triggerTimerEvent);
-      __privateAdd(this, _app13, void 0);
+      __privateAdd(this, _app16, void 0);
       __privateAdd(this, _logger18, void 0);
       __privateAdd(this, _timers, /* @__PURE__ */ new Map());
       __privateAdd(this, _storagePrefix, "os-timer-");
-      __privateSet(this, _app13, app);
+      __privateSet(this, _app16, app);
       __privateSet(this, _logger18, app.logger.createModuleLogger("TIMER"));
       __privateMethod(this, _initTimers, initTimers_fn).call(this);
       __privateGet(this, _logger18).infoWithTime("TimerManager initialized");
@@ -7349,7 +7652,7 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _timers);
     }
   };
-  _app13 = new WeakMap();
+  _app16 = new WeakMap();
   _logger18 = new WeakMap();
   _timers = new WeakMap();
   _storagePrefix = new WeakMap();
@@ -7513,7 +7816,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/DisplayManager.js
-  var _app14, _logger19, _displayElements, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn;
+  var _app17, _logger19, _displayElements, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn;
   var DisplayManager = class {
     constructor(app) {
       /**
@@ -7534,13 +7837,13 @@ var TwentyNineNext = (() => {
        * @param {Object} detail - Event details
        */
       __privateAdd(this, _triggerDisplayEvent);
-      __privateAdd(this, _app14, void 0);
+      __privateAdd(this, _app17, void 0);
       __privateAdd(this, _logger19, void 0);
       __privateAdd(this, _displayElements, /* @__PURE__ */ new Map());
-      __privateSet(this, _app14, app);
+      __privateSet(this, _app17, app);
       __privateSet(this, _logger19, app.logger.createModuleLogger("DISPLAY"));
       __privateMethod(this, _initDisplayElements, initDisplayElements_fn).call(this);
-      __privateGet(this, _app14).state.subscribe("cart", () => this.refreshDisplayElements());
+      __privateGet(this, _app17).state.subscribe("cart", () => this.refreshDisplayElements());
       __privateGet(this, _logger19).infoWithTime("DisplayManager initialized");
     }
     /**
@@ -7548,7 +7851,7 @@ var TwentyNineNext = (() => {
      */
     refreshDisplayElements() {
       __privateGet(this, _logger19).debugWithTime("Refreshing display elements");
-      const cart = __privateGet(this, _app14).state.getState("cart");
+      const cart = __privateGet(this, _app17).state.getState("cart");
       const cartItemIds = cart.items.map((item) => item.id.toString());
       __privateGet(this, _displayElements).forEach((containerData, container) => {
         __privateMethod(this, _updateContainerDisplay, updateContainerDisplay_fn).call(this, container, containerData, cartItemIds);
@@ -7564,7 +7867,7 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _initDisplayElements, initDisplayElements_fn).call(this);
     }
   };
-  _app14 = new WeakMap();
+  _app17 = new WeakMap();
   _logger19 = new WeakMap();
   _displayElements = new WeakMap();
   _initDisplayElements = new WeakSet();
@@ -7628,7 +7931,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CartDisplayManager.js
-  var _app15, _logger20, _elements3, _config2, _lineItemTemplate, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice2, formatPrice_fn2, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
+  var _app18, _logger20, _elements3, _config2, _lineItemTemplate, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice2, formatPrice_fn2, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
   var CartDisplayManager = class {
     constructor(app) {
       /**
@@ -7700,7 +8003,7 @@ var TwentyNineNext = (() => {
        * @returns {NodeList} - All matching elements
        */
       __privateAdd(this, _findAllSummaryElements);
-      __privateAdd(this, _app15, void 0);
+      __privateAdd(this, _app18, void 0);
       __privateAdd(this, _logger20, void 0);
       __privateAdd(this, _elements3, {
         lineDisplays: [],
@@ -7734,10 +8037,10 @@ var TwentyNineNext = (() => {
         showTaxPendingMessage: true
       });
       __privateAdd(this, _lineItemTemplate, null);
-      __privateSet(this, _app15, app);
+      __privateSet(this, _app18, app);
       __privateSet(this, _logger20, app.logger.createModuleLogger("CART_DISPLAY"));
       __privateMethod(this, _initCartDisplay, initCartDisplay_fn).call(this);
-      __privateGet(this, _app15).state.subscribe("cart", () => this.updateCartDisplay());
+      __privateGet(this, _app18).state.subscribe("cart", () => this.updateCartDisplay());
       __privateGet(this, _logger20).infoWithTime("CartDisplayManager initialized");
     }
     /**
@@ -7745,7 +8048,7 @@ var TwentyNineNext = (() => {
      */
     updateCartDisplay() {
       __privateGet(this, _logger20).debugWithTime("Updating cart display");
-      const cart = __privateGet(this, _app15).state.getState("cart");
+      const cart = __privateGet(this, _app18).state.getState("cart");
       if (!cart) {
         __privateGet(this, _logger20).warnWithTime("Cart data not available");
         return;
@@ -7768,7 +8071,7 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _initCartDisplay, initCartDisplay_fn).call(this);
     }
   };
-  _app15 = new WeakMap();
+  _app18 = new WeakMap();
   _logger20 = new WeakMap();
   _elements3 = new WeakMap();
   _config2 = new WeakMap();
@@ -8077,8 +8380,8 @@ var TwentyNineNext = (() => {
   };
   _formatPrice2 = new WeakSet();
   formatPrice_fn2 = function(price) {
-    if (__privateGet(this, _app15).campaign?.formatPrice) {
-      return __privateGet(this, _app15).campaign.formatPrice(price);
+    if (__privateGet(this, _app18).campaign?.formatPrice) {
+      return __privateGet(this, _app18).campaign.formatPrice(price);
     }
     return `${__privateGet(this, _config2).currencySymbol}${price.toFixed(2)} USD`;
   };
@@ -8179,7 +8482,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/AttributionManager.js
-  var _app16, _logger21, _attributionData, _initialized2, _init7, init_fn7, _collectAttributionData, collectAttributionData_fn, _handleEverflowClickId, handleEverflowClickId_fn, _collectTrackingTags, collectTrackingTags_fn, _storeAttributionData, storeAttributionData_fn, _persistAttributionData, persistAttributionData_fn, _loadPersistedAttributionData, loadPersistedAttributionData_fn, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn, _setupEventListeners4, setupEventListeners_fn4, _getStoredValue, getStoredValue_fn, _getCookie, getCookie_fn, _getDeviceType, getDeviceType_fn, _getFacebookPixelId, getFacebookPixelId_fn;
+  var _app19, _logger21, _attributionData, _initialized2, _init6, init_fn6, _collectAttributionData, collectAttributionData_fn, _handleEverflowClickId, handleEverflowClickId_fn, _collectTrackingTags, collectTrackingTags_fn, _storeAttributionData, storeAttributionData_fn, _persistAttributionData, persistAttributionData_fn, _loadPersistedAttributionData, loadPersistedAttributionData_fn, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn, _setupEventListeners4, setupEventListeners_fn4, _getStoredValue, getStoredValue_fn, _getCookie, getCookie_fn, _getDeviceType, getDeviceType_fn, _getFacebookPixelId, getFacebookPixelId_fn;
   var AttributionManager = class {
     /**
      * Initialize the AttributionManager
@@ -8189,7 +8492,7 @@ var TwentyNineNext = (() => {
       /**
        * Initialize the AttributionManager
        */
-      __privateAdd(this, _init7);
+      __privateAdd(this, _init6);
       /**
        * Collect attribution data from various sources
        */
@@ -8248,13 +8551,13 @@ var TwentyNineNext = (() => {
        * @returns {string} The Facebook Pixel ID or empty string if not found
        */
       __privateAdd(this, _getFacebookPixelId);
-      __privateAdd(this, _app16, void 0);
+      __privateAdd(this, _app19, void 0);
       __privateAdd(this, _logger21, void 0);
       __privateAdd(this, _attributionData, {});
       __privateAdd(this, _initialized2, false);
-      __privateSet(this, _app16, app);
+      __privateSet(this, _app19, app);
       __privateSet(this, _logger21, app.logger.createModuleLogger("ATTRIBUTION"));
-      __privateMethod(this, _init7, init_fn7).call(this);
+      __privateMethod(this, _init6, init_fn6).call(this);
     }
     /**
      * Update attribution data with new values
@@ -8276,8 +8579,8 @@ var TwentyNineNext = (() => {
       });
       __privateMethod(this, _storeAttributionData, storeAttributionData_fn).call(this);
       __privateGet(this, _logger21).debug("Attribution data updated", newData);
-      if (__privateGet(this, _app16).events) {
-        __privateGet(this, _app16).events.trigger("attribution.updated", {
+      if (__privateGet(this, _app19).events) {
+        __privateGet(this, _app19).events.trigger("attribution.updated", {
           attribution: __privateGet(this, _attributionData)
         });
       }
@@ -8325,7 +8628,7 @@ var TwentyNineNext = (() => {
       console.group("AttributionManager Debug Info");
       const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
       const funnelFromTag = funnelMetaTag ? funnelMetaTag.getAttribute("data-tag-value") : "";
-      const campaignName = __privateGet(this, _app16).campaign?.getCampaignName() || __privateGet(this, _app16).campaignData?.name || "";
+      const campaignName = __privateGet(this, _app19).campaign?.getCampaignName() || __privateGet(this, _app19).campaignData?.name || "";
       /* @__PURE__ */ console.log("Key Attribution Values:");
       /* @__PURE__ */ console.log("- Affiliate:", __privateGet(this, _attributionData).affiliate);
       /* @__PURE__ */ console.log("- Funnel:", __privateGet(this, _attributionData).funnel);
@@ -8384,9 +8687,9 @@ var TwentyNineNext = (() => {
       } : {
         exists: false
       });
-      /* @__PURE__ */ console.log("Campaign Name:", __privateGet(this, _app16).campaignData?.name || "Not available");
-      if (__privateGet(this, _app16).state) {
-        /* @__PURE__ */ console.log("API-formatted State Attribution:", __privateGet(this, _app16).state.getState("attribution"));
+      /* @__PURE__ */ console.log("Campaign Name:", __privateGet(this, _app19).campaignData?.name || "Not available");
+      if (__privateGet(this, _app19).state) {
+        /* @__PURE__ */ console.log("API-formatted State Attribution:", __privateGet(this, _app19).state.getState("attribution"));
       }
       console.groupEnd();
       return "Attribution debug info logged to console.";
@@ -8427,12 +8730,12 @@ var TwentyNineNext = (() => {
       return true;
     }
   };
-  _app16 = new WeakMap();
+  _app19 = new WeakMap();
   _logger21 = new WeakMap();
   _attributionData = new WeakMap();
   _initialized2 = new WeakMap();
-  _init7 = new WeakSet();
-  init_fn7 = function() {
+  _init6 = new WeakSet();
+  init_fn6 = function() {
     __privateGet(this, _logger21).info("Initializing AttributionManager");
     __privateMethod(this, _collectAttributionData, collectAttributionData_fn).call(this);
     __privateMethod(this, _storeAttributionData, storeAttributionData_fn).call(this);
@@ -8540,15 +8843,15 @@ var TwentyNineNext = (() => {
   };
   _storeAttributionData = new WeakSet();
   storeAttributionData_fn = function() {
-    if (!__privateGet(this, _app16).state) {
+    if (!__privateGet(this, _app19).state) {
       __privateGet(this, _logger21).warn("State manager not available, attribution data will not be stored");
       return;
     }
-    __privateGet(this, _app16).state.setState("cart.attribution", __privateGet(this, _attributionData));
-    __privateGet(this, _app16).state.setState("attribution", this.getAttributionForApi());
+    __privateGet(this, _app19).state.setState("cart.attribution", __privateGet(this, _attributionData));
+    __privateGet(this, _app19).state.setState("attribution", this.getAttributionForApi());
     __privateMethod(this, _persistAttributionData, persistAttributionData_fn).call(this);
-    if (__privateGet(this, _app16).events) {
-      __privateGet(this, _app16).events.trigger("attribution.updated", {
+    if (__privateGet(this, _app19).events) {
+      __privateGet(this, _app19).events.trigger("attribution.updated", {
         attribution: __privateGet(this, _attributionData)
       });
     }
@@ -8592,15 +8895,15 @@ var TwentyNineNext = (() => {
         metadata
       });
     });
-    if (__privateGet(this, _app16).events) {
-      __privateGet(this, _app16).events.on("campaign.loaded", (data) => {
+    if (__privateGet(this, _app19).events) {
+      __privateGet(this, _app19).events.on("campaign.loaded", (data) => {
         if (data && data.campaign && data.campaign.name && !__privateGet(this, _attributionData).funnel) {
           const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
           const funnelName = funnelMetaTag?.getAttribute("data-tag-value") || data.campaign.name;
           this.setFunnelName(funnelName);
         }
       });
-      __privateGet(this, _app16).events.on("prospect.cartCreated", () => {
+      __privateGet(this, _app19).events.on("prospect.cartCreated", () => {
         const metadata = __privateGet(this, _attributionData).metadata || {};
         metadata.conversion_timestamp = Date.now();
         this.updateAttributionData({
@@ -8682,7 +8985,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/EventManager.js
-  var _app17, _logger22, _isInitialized, _platforms, _debugMode4, _processedOrderIds, _viewItemListFired2, _loadProcessedOrderIds, loadProcessedOrderIds_fn, _saveProcessedOrderIds, saveProcessedOrderIds_fn, _detectPlatforms, detectPlatforms_fn, _setupEventListeners5, setupEventListeners_fn5, _getUserDataForTracking, getUserDataForTracking_fn, _hashString, hashString_fn, _fireEvent, fireEvent_fn;
+  var _app20, _logger22, _isInitialized, _platforms, _debugMode4, _processedOrderIds, _viewItemListFired2, _loadProcessedOrderIds, loadProcessedOrderIds_fn, _saveProcessedOrderIds, saveProcessedOrderIds_fn, _detectPlatforms, detectPlatforms_fn, _setupEventListeners5, setupEventListeners_fn5, _getUserDataForTracking, getUserDataForTracking_fn, _hashString, hashString_fn, _fireEvent, fireEvent_fn;
   var EventManager = class {
     // Track if view_item_list has been fired
     constructor(app) {
@@ -8720,7 +9023,7 @@ var TwentyNineNext = (() => {
        * @param {Object} eventData - The event data
        */
       __privateAdd(this, _fireEvent);
-      __privateAdd(this, _app17, void 0);
+      __privateAdd(this, _app20, void 0);
       __privateAdd(this, _logger22, void 0);
       __privateAdd(this, _isInitialized, false);
       __privateAdd(this, _platforms, {
@@ -8732,7 +9035,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _processedOrderIds, /* @__PURE__ */ new Set());
       // Track processed order IDs to prevent duplicates
       __privateAdd(this, _viewItemListFired2, false);
-      __privateSet(this, _app17, app);
+      __privateSet(this, _app20, app);
       __privateSet(this, _logger22, app.logger.createModuleLogger("EVENT"));
       __privateSet(this, _debugMode4, app.options?.debug || false);
       this.init();
@@ -8799,7 +9102,7 @@ var TwentyNineNext = (() => {
           item_id: pkg.external_id || pkg.ref_id || pkg.id,
           item_name: pkg.name,
           price: parseFloat(pkg.price) || 0,
-          currency: pkg.currency || __privateGet(this, _app17).getCampaignData()?.currency || "USD",
+          currency: pkg.currency || __privateGet(this, _app20).getCampaignData()?.currency || "USD",
           quantity: pkg.quantity || 1
         };
         items = [item];
@@ -8888,7 +9191,7 @@ var TwentyNineNext = (() => {
         item_id: packageData.ref_id || packageData.external_id || packageData.id,
         item_name: packageData.name,
         price: parseFloat(packageData.price) || 0,
-        currency: packageData.currency || __privateGet(this, _app17).getCampaignData()?.currency || "USD",
+        currency: packageData.currency || __privateGet(this, _app20).getCampaignData()?.currency || "USD",
         quantity: 1
       };
       const eventData = {
@@ -8905,7 +9208,7 @@ var TwentyNineNext = (() => {
      * Manually fire a begin_checkout event
      */
     beginCheckout() {
-      const cart = __privateGet(this, _app17).state.getState("cart");
+      const cart = __privateGet(this, _app20).state.getState("cart");
       if (!cart || !cart.items || cart.items.length === 0) {
         __privateGet(this, _logger22).warn("Cannot fire begin_checkout event: No items in cart");
         return;
@@ -8989,7 +9292,7 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _isInitialized);
     }
   };
-  _app17 = new WeakMap();
+  _app20 = new WeakMap();
   _logger22 = new WeakMap();
   _isInitialized = new WeakMap();
   _platforms = new WeakMap();
@@ -9048,11 +9351,11 @@ var TwentyNineNext = (() => {
   _setupEventListeners5 = new WeakSet();
   setupEventListeners_fn5 = function() {
     let previousCartItems = [];
-    __privateGet(this, _app17).on("campaign.loaded", (data) => {
+    __privateGet(this, _app20).on("campaign.loaded", (data) => {
       __privateGet(this, _logger22).debug("Campaign loaded event received, triggering viewVisibleItemList");
       this.viewVisibleItemList();
     });
-    __privateGet(this, _app17).on("cart.updated", (data) => {
+    __privateGet(this, _app20).on("cart.updated", (data) => {
       if (data.cart && data.cart.items && data.cart.items.length > 0) {
         const currentCartItemsJSON = JSON.stringify(data.cart.items.map((item) => ({
           id: item.id,
@@ -9073,7 +9376,7 @@ var TwentyNineNext = (() => {
         previousCartItems = [];
       }
     });
-    __privateGet(this, _app17).on("order.loaded", (data) => {
+    __privateGet(this, _app20).on("order.loaded", (data) => {
       __privateGet(this, _logger22).debug("Received order.loaded event with data:", JSON.stringify(data, null, 2));
       if (data.order) {
         __privateGet(this, _logger22).info("Order loaded on receipt page, checking if purchase event needed");
@@ -10402,13 +10705,13 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/TooltipManager.js
-  var _app18, _logger23, _tooltip, _arrowElement, _textContainer, _currentElement, _showTimeout, _hideTimeout, _initialized3, _init8, init_fn8, _createTooltip, createTooltip_fn, _setupEventListeners6, setupEventListeners_fn6, _showTooltip, showTooltip_fn, _hideTooltip, hideTooltip_fn;
+  var _app21, _logger23, _tooltip, _arrowElement, _textContainer, _currentElement, _showTimeout, _hideTimeout, _initialized3, _init7, init_fn7, _createTooltip, createTooltip_fn, _setupEventListeners6, setupEventListeners_fn6, _showTooltip, showTooltip_fn, _hideTooltip, hideTooltip_fn;
   var TooltipManager = class {
     constructor(app) {
       /**
        * Initialize the tooltip system
        */
-      __privateAdd(this, _init8);
+      __privateAdd(this, _init7);
       /**
        * Create the tooltip element
        */
@@ -10425,7 +10728,7 @@ var TwentyNineNext = (() => {
        * Hide the tooltip
        */
       __privateAdd(this, _hideTooltip);
-      __privateAdd(this, _app18, void 0);
+      __privateAdd(this, _app21, void 0);
       __privateAdd(this, _logger23, void 0);
       __privateAdd(this, _tooltip, void 0);
       __privateAdd(this, _arrowElement, void 0);
@@ -10434,13 +10737,13 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _showTimeout, null);
       __privateAdd(this, _hideTimeout, null);
       __privateAdd(this, _initialized3, false);
-      __privateSet(this, _app18, app);
+      __privateSet(this, _app21, app);
       __privateSet(this, _logger23, app.logger.createModuleLogger("TOOLTIP"));
-      __privateMethod(this, _init8, init_fn8).call(this);
+      __privateMethod(this, _init7, init_fn7).call(this);
       __privateGet(this, _logger23).info("TooltipManager initialized");
     }
   };
-  _app18 = new WeakMap();
+  _app21 = new WeakMap();
   _logger23 = new WeakMap();
   _tooltip = new WeakMap();
   _arrowElement = new WeakMap();
@@ -10449,8 +10752,8 @@ var TwentyNineNext = (() => {
   _showTimeout = new WeakMap();
   _hideTimeout = new WeakMap();
   _initialized3 = new WeakMap();
-  _init8 = new WeakSet();
-  init_fn8 = function() {
+  _init7 = new WeakSet();
+  init_fn7 = function() {
     if (__privateGet(this, _initialized3))
       return;
     __privateSet(this, _tooltip, __privateMethod(this, _createTooltip, createTooltip_fn).call(this));
@@ -10575,10 +10878,10 @@ var TwentyNineNext = (() => {
 
   // src/managers/UpsellManager.js
   init_NavigationPrevention();
-  var _app19, _logger24, _stateManager2, _api, _upsellElements, _orderRef, _init9, init_fn9, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _redirect, redirect_fn, _displayError, displayError_fn;
+  var _app22, _logger24, _stateManager2, _api, _upsellElements, _orderRef, _init8, init_fn8, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _redirect, redirect_fn, _displayError, displayError_fn;
   var UpsellManager = class {
     constructor(app) {
-      __privateAdd(this, _init9);
+      __privateAdd(this, _init8);
       /**
        * Get the order reference ID from URL parameters or sessionStorage
        * @returns {string|null} The order reference ID or null if not found
@@ -10617,17 +10920,17 @@ var TwentyNineNext = (() => {
        * @param {string} message - The error message to display
        */
       __privateAdd(this, _displayError);
-      __privateAdd(this, _app19, void 0);
+      __privateAdd(this, _app22, void 0);
       __privateAdd(this, _logger24, void 0);
       __privateAdd(this, _stateManager2, void 0);
       __privateAdd(this, _api, void 0);
       __privateAdd(this, _upsellElements, {});
       __privateAdd(this, _orderRef, null);
-      __privateSet(this, _app19, app);
+      __privateSet(this, _app22, app);
       __privateSet(this, _logger24, app.logger.createModuleLogger("UPSELL"));
       __privateSet(this, _stateManager2, app.state);
       __privateSet(this, _api, app.api);
-      __privateMethod(this, _init9, init_fn9).call(this);
+      __privateMethod(this, _init8, init_fn8).call(this);
       __privateGet(this, _logger24).info("UpsellManager initialized");
     }
     /**
@@ -10673,14 +10976,14 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _redirect, redirect_fn).call(this, nextUrl);
     }
   };
-  _app19 = new WeakMap();
+  _app22 = new WeakMap();
   _logger24 = new WeakMap();
   _stateManager2 = new WeakMap();
   _api = new WeakMap();
   _upsellElements = new WeakMap();
   _orderRef = new WeakMap();
-  _init9 = new WeakSet();
-  init_fn9 = function() {
+  _init8 = new WeakSet();
+  init_fn8 = function() {
     __privateSet(this, _orderRef, __privateMethod(this, _getOrderReferenceId, getOrderReferenceId_fn).call(this));
     if (__privateGet(this, _orderRef)) {
       __privateGet(this, _logger24).info(`Order reference ID found: ${__privateGet(this, _orderRef)}`);
@@ -10742,7 +11045,7 @@ var TwentyNineNext = (() => {
   _storeUpsellPurchaseData = new WeakSet();
   storeUpsellPurchaseData_fn = function(response, packageId, quantity) {
     try {
-      const campaignData = __privateGet(this, _app19).getCampaignData();
+      const campaignData = __privateGet(this, _app22).getCampaignData();
       if (!campaignData || !campaignData.packages) {
         __privateGet(this, _logger24).warn("Campaign data not available for upsell tracking");
         return;
@@ -10827,12 +11130,12 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/DiscountManager.js
-  var _app20, _logger25;
+  var _app23, _logger25;
   var DiscountManager = class {
     constructor(app) {
-      __privateAdd(this, _app20, void 0);
+      __privateAdd(this, _app23, void 0);
       __privateAdd(this, _logger25, void 0);
-      __privateSet(this, _app20, app);
+      __privateSet(this, _app23, app);
       __privateSet(this, _logger25, app.logger.createModuleLogger("DISCOUNT"));
       __privateGet(this, _logger25).info("DiscountManager initialized");
     }
@@ -10895,7 +11198,7 @@ var TwentyNineNext = (() => {
       }
     }
   };
-  _app20 = new WeakMap();
+  _app23 = new WeakMap();
   _logger25 = new WeakMap();
 
   // src/utils/PBAccordion.js
@@ -11147,7 +11450,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/core/TwentyNineNext.js
-  var _isInitialized2, _isCheckoutPage, _campaignData, _loadConfig2, loadConfig_fn2, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn;
+  var _isInitialized2, _isCheckoutPage, _campaignData, _loadConfig2, loadConfig_fn2, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _fetchInitialLocationData, fetchInitialLocationData_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn;
   var TwentyNineNext = class {
     constructor(options = {}) {
       __privateAdd(this, _loadConfig2);
@@ -11157,6 +11460,10 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _initSpreedlyConfig);
       __privateAdd(this, _loadGoogleMapsApi);
+      /**
+       * Fetch initial location data from the worker and store it in the state.
+       */
+      __privateAdd(this, _fetchInitialLocationData);
       __privateAdd(this, _fetchCampaignData);
       __privateAdd(this, _initializeManagers);
       __privateAdd(this, _finalizeInitialization);
@@ -11246,6 +11553,7 @@ var TwentyNineNext = (() => {
       await __privateMethod(this, _fetchCampaignData, fetchCampaignData_fn).call(this);
       await __privateMethod(this, _loadGoogleMapsApi, loadGoogleMapsApi_fn).call(this);
       __privateMethod(this, _initializeManagers, initializeManagers_fn).call(this);
+      await __privateMethod(this, _fetchInitialLocationData, fetchInitialLocationData_fn).call(this);
       await __privateMethod(this, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn).call(this);
       __privateSet(this, _isCheckoutPage, __privateMethod(this, _detectCheckoutPage, detectCheckoutPage_fn).call(this));
       if (__privateGet(this, _isCheckoutPage))
@@ -11402,6 +11710,21 @@ var TwentyNineNext = (() => {
       };
       document.head.appendChild(script);
     });
+  };
+  _fetchInitialLocationData = new WeakSet();
+  fetchInitialLocationData_fn = async function() {
+    this.coreLogger.info("Fetching initial location data from worker...");
+    try {
+      const locationData = await this.api.getLocationData();
+      if (locationData) {
+        this.state.setInitialLocationData(locationData);
+        this.coreLogger.info("Initial location data fetched and stored successfully.");
+      } else {
+        this.coreLogger.warn("Received no location data from worker.");
+      }
+    } catch (error) {
+      this.coreLogger.error("Failed to fetch or store initial location data:", error);
+    }
   };
   _fetchCampaignData = new WeakSet();
   fetchCampaignData_fn = async function() {
@@ -11668,3 +11991,4 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
+//# sourceMappingURL=29next.js.map

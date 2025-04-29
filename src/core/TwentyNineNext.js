@@ -220,6 +220,9 @@ export class TwentyNineNext {
     // Initialize managers early
     this.#initializeManagers();
     
+    // Fetch initial location data AFTER API and StateManager are initialized
+    await this.#fetchInitialLocationData();
+
     // Check for pending upsell purchases - needs to happen after EventManager is initialized
     await this.#checkForPendingUpsellPurchase();
     
@@ -234,6 +237,26 @@ export class TwentyNineNext {
     this.#isInitialized = true;
     this.triggerEvent('initialized', { client: this });
     await this.#finalizeInitialization();
+  }
+
+  /**
+   * Fetch initial location data from the worker and store it in the state.
+   */
+  async #fetchInitialLocationData() {
+    this.coreLogger.info('Fetching initial location data from worker...');
+    try {
+      const locationData = await this.api.getLocationData();
+      if (locationData) {
+        this.state.setInitialLocationData(locationData);
+        this.coreLogger.info('Initial location data fetched and stored successfully.');
+      } else {
+        this.coreLogger.warn('Received no location data from worker.');
+      }
+    } catch (error) {
+      this.coreLogger.error('Failed to fetch or store initial location data:', error);
+      // Decide if we should proceed or halt initialization based on this error
+      // For now, we log the error and continue initialization
+    }
   }
 
   async #fetchCampaignData() {

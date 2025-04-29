@@ -11,6 +11,7 @@ export class StateManager {
   #logger;
   #state;
   #subscribers = {};
+  #listeners = {};
 
   constructor(app) {
     this.#app = app;
@@ -64,7 +65,15 @@ export class StateManager {
         }
       },
       user: { email: null, firstName: null, lastName: null, phone: null },
-      ui: { loading: false, currentStep: 'cart', errors: {} }
+      ui: { loading: false, currentStep: 'cart', errors: {} },
+      location: {
+        countries: [],
+        statesByCountry: {},
+        configsByCountry: {},
+        detectedCountryCode: null,
+        allowedCountryCodes: [],
+        initialSelectedCountryCode: null,
+      },
     };
   }
 
@@ -400,5 +409,74 @@ export class StateManager {
     } finally {
       this.setState('ui.loading', false);
     }
+  }
+
+  /**
+   * Set the initial location data fetched from the worker.
+   * @param {object} data - The data object from the /location endpoint.
+   */
+  setInitialLocationData(data) {
+    if (!data || typeof data !== 'object') {
+      this.#logger.error('setInitialLocationData received invalid data', data);
+      return;
+    }
+
+    this.#logger.info('Setting initial location data into state');
+    this.#logger.debug('Initial location data details:', data);
+
+    const newState = { ...this.#state };
+
+    newState.location = {
+      countries: data.countries || [],
+      statesByCountry: {},
+      configsByCountry: {},
+      detectedCountryCode: data.detectedCountryCode || null,
+      allowedCountryCodes: [],
+      initialSelectedCountryCode: null,
+    };
+
+    // If detected country data is present, store its states and config
+    if (data.detectedCountryCode) {
+      if (data.detectedStates) {
+        newState.location.statesByCountry[data.detectedCountryCode] = data.detectedStates;
+        this.#logger.debug(`Stored initial states for detected country: ${data.detectedCountryCode}`);
+      }
+      if (data.detectedCountryConfig) {
+        newState.location.configsByCountry[data.detectedCountryCode] = data.detectedCountryConfig;
+        this.#logger.debug(`Stored initial config for detected country: ${data.detectedCountryCode}`);
+      }
+    }
+
+    this.#state = newState;
+    this.#logger.info('Initial location base data stored in state (countries, detected code)');
+  }
+
+  /**
+   * Set the states and config for a specific country, fetched dynamically.
+   * @param {string} countryCode - The ISO country code.
+   * @param {object} data - The data object from the /countries/{code}/states endpoint.
+   */
+  setCountryStatesAndConfig(countryCode, data) {
+    if (!countryCode || !data || typeof data !== 'object') {
+      this.#logger.error('setCountryStatesAndConfig received invalid parameters', { countryCode, data });
+      return;
+    }
+
+    this.#logger.info(`Storing states and config for country: ${countryCode}`);
+    this.#logger.debug(`States/Config data for ${countryCode}:`, data);
+
+    const newState = { ...this.#state };
+
+    // Ensure nested objects exist
+    newState.location = newState.location || {};
+    newState.location.statesByCountry = newState.location.statesByCountry || {};
+    newState.location.configsByCountry = newState.location.configsByCountry || {};
+
+    newState.location.statesByCountry[countryCode] = data.states || [];
+    newState.location.configsByCountry[countryCode] = data.countryConfig || {};
+
+    this.#state = newState;
+    this.#notifySubscribers('location', this.#state.location);
+    this.#logger.info(`Stored states and config for ${countryCode} successfully`);
   }
 }

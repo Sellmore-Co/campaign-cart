@@ -493,7 +493,7 @@ export class ProspectCartHandler {
       address.country = country;
     }
     
-    if (postalCode && (!country || this.#isValidPostalCode(postalCode, country))) {
+    if (postalCode) {
       address.postcode = postalCode;
     }
     
@@ -501,10 +501,10 @@ export class ProspectCartHandler {
   }
   
   /**
-   * Check if a postal code is valid for a country
+   * Check if a postal code is valid for a country (using dynamic config)
    * @param {string} postalCode - The postal code to validate
    * @param {string} country - The country code
-   * @returns {boolean} Whether the postal code is valid
+   * @returns {boolean} Whether the postal code is valid according to config
    */
   #isValidPostalCode(postalCode, country) {
     // Skip validation if no postal code or country
@@ -512,43 +512,35 @@ export class ProspectCartHandler {
       return true;
     }
     
-    // Validate based on country
-    switch (country.toUpperCase()) {
-      case 'US':
-        // US postal codes should be 5 digits or 5+4 digits
-        return /^\d{5}(-\d{4})?$/.test(postalCode);
-        
-      case 'CA':
-        // Canadian postal codes: A1A 1A1
-        return /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(postalCode);
-        
-      case 'GB':
-      case 'UK':
-        // UK postal codes are complex but generally follow this pattern
-        return /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i.test(postalCode);
-        
-      case 'AU':
-        // Australian postal codes are 4 digits
-        return /^\d{4}$/.test(postalCode);
-        
-      case 'NZ':
-        // New Zealand postal codes are 4 digits
-        return /^\d{4}$/.test(postalCode);
-        
-      case 'DE':
-        // German postal codes are 5 digits
-        return /^\d{5}$/.test(postalCode);
-        
-      case 'FR':
-        // French postal codes are 5 digits
-        return /^\d{5}$/.test(postalCode);
-        
-      // Add more countries as needed
-        
-      default:
-        // For other countries, accept any non-empty string
-        // The API will validate if needed
-        return postalCode.trim().length > 0;
+    // Get config for the country
+    const config = this.#app?.state?.getState(`location.configsByCountry.${country}`);
+    
+    if (!config || !config.postcodeRegex) {
+      this.#logger.warn(`No postcode regex found for country ${country}. Performing basic length check.`);
+      return postalCode.trim().length > 0;
+    }
+    
+    // Validate using the regex from config
+    try {
+      const regex = new RegExp(config.postcodeRegex);
+      const isValid = regex.test(postalCode);
+      if (!isValid) {
+          this.#logger.debug(`Postal code ${postalCode} failed regex test for ${country}: ${config.postcodeRegex}`);
+      }
+      // Check lengths as well
+      if (isValid && config.postcodeMinLength && postalCode.length < config.postcodeMinLength) {
+          this.#logger.debug(`Postal code ${postalCode} for ${country} is shorter than minLength ${config.postcodeMinLength}`);
+          return false;
+      }
+      if (isValid && config.postcodeMaxLength && postalCode.length > config.postcodeMaxLength) {
+          this.#logger.debug(`Postal code ${postalCode} for ${country} is longer than maxLength ${config.postcodeMaxLength}`);
+          return false;
+      }
+      return isValid;
+    } catch (e) {
+      this.#logger.error(`Invalid postcode regex in config for ${country}: ${config.postcodeRegex}`, e);
+      // Fallback on error: basic check
+      return postalCode.trim().length > 0;
     }
   }
   

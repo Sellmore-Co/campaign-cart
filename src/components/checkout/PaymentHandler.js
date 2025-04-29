@@ -44,7 +44,8 @@ export class PaymentHandler {
     
     this.#formValidator = new FormValidator({ 
       debugMode: this.#debugMode,
-      logger: this.#logger
+      logger: this.#logger,
+      app: this.#app
     });
     this.#form.__formValidator = this.#formValidator;
 

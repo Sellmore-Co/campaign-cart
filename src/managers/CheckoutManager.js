@@ -21,6 +21,10 @@ export class CheckoutPage {
   #form;
   #app;
   #konamiCodeHandler;
+  #paymentHandler;
+  #addressHandler;
+  #addressAutocomplete;
+  #phoneInputHandler;
 
   constructor(apiClient, logger, app) {
     this.#apiClient = apiClient;
@@ -166,7 +170,7 @@ export class CheckoutPage {
 
   #initAddressHandler() {
     try {
-      this.addressHandler = new AddressHandler(this.#form, this.#logger);
+      this.#addressHandler = new AddressHandler(this.#form, this.#logger, this.#app);
     } catch (error) {
       this.#logger.error('Error initializing AddressHandler', error);
     }
@@ -198,7 +202,8 @@ export class CheckoutPage {
     try {
       this.formValidator = new FormValidator({ 
         debugMode: window.location.search.includes('debug=true'),
-        logger: this.#logger
+        logger: this.#logger,
+        app: this.#app
       });
       
       if (this.#form && this.formValidator) {
@@ -212,7 +217,7 @@ export class CheckoutPage {
 
   #initPaymentHandler() {
     try {
-      this.paymentHandler = new PaymentHandler(this.#apiClient, this.#logger, this.#app);
+      this.#paymentHandler = new PaymentHandler(this.#apiClient, this.#logger, this.#app);
     } catch (error) {
       this.#logger.error('Error initializing PaymentHandler', error);
     }
@@ -225,7 +230,7 @@ export class CheckoutPage {
         enableGoogleMapsAutocomplete: this.#app.options.enableGoogleMapsAutocomplete
       };
       
-      this.addressAutocomplete = new AddressAutocomplete(this.#logger, googleMapsOptions);
+      this.#addressAutocomplete = new AddressAutocomplete(this.#logger, this.#app.options);
     } catch (error) {
       this.#logger.error('Error initializing AddressAutocomplete', error);
     }
@@ -233,7 +238,8 @@ export class CheckoutPage {
 
   #initPhoneInputHandler() {
     try {
-      this.phoneInputHandler = new PhoneInputHandler(this.#logger);
+      // Pass the app instance to PhoneInputHandler
+      this.#phoneInputHandler = new PhoneInputHandler(this.#logger, this.#app);
     } catch (error) {
       this.#logger.error('Error initializing PhoneInputHandler', error);
     }
@@ -418,9 +424,9 @@ export class CheckoutPage {
       return false;
     }
     
-    if (this.paymentHandler) {
+    if (this.#paymentHandler) {
       this.#logger.debug('Delegating to paymentHandler.processPayment()');
-      this.paymentHandler.processPayment();
+      this.#paymentHandler.processPayment();
     } else {
       this.#logger.error('Payment handler not initialized');
     }
@@ -451,8 +457,8 @@ export class CheckoutPage {
             e.preventDefault();
             this.#logger.debug(`Submit button ${index + 1} clicked, delegating to payment handler`);
             
-            if (this.paymentHandler) {
-              this.paymentHandler.processPayment();
+            if (this.#paymentHandler) {
+              this.#paymentHandler.processPayment();
             } else {
               this.#logger.error('Payment handler not initialized');
             }

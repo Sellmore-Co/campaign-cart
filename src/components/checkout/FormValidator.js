@@ -4,6 +4,7 @@
 export class FormValidator {
   #logger;
   #form;
+  #app;
   #validationErrors = {};
   #debugMode = false;
   #spreedlyEnabled = false;
@@ -13,6 +14,7 @@ export class FormValidator {
   constructor(options = {}) {
     this.#debugMode = options.debugMode || false;
     this.#logger = options.logger || console;
+    this.#app = options.app;
     this.#form = this.#getFormElement();
     this.#spreedlyEnabled = typeof Spreedly !== 'undefined';
 
@@ -279,6 +281,29 @@ export class FormValidator {
   #getFieldValidation(field, value, label) {
     const tag = field.tagName.toLowerCase();
     const fieldName = field.getAttribute('os-checkout-field') || field.name;
+    const isBillingField = fieldName?.startsWith('billing-');
+
+    // --- State/Province Validation ---
+    if (fieldName === 'province' || fieldName === 'billing-province') {
+      const countryField = isBillingField ? 
+          this.#form.querySelector('[os-checkout-field="billing-country"]') : 
+          this.#form.querySelector('[os-checkout-field="country"]');
+      const countryCode = countryField?.value;
+      
+      if (!countryCode) { // If no country selected, state isn't required yet
+          return { isValid: true, errorMessage: '' };
+      }
+
+      const config = this.#app?.state?.getState(`location.configsByCountry.${countryCode}`);
+      this.#logger.debug(`Validating state/province for ${countryCode}. Required: ${config?.stateRequired}`);
+
+      if (config?.stateRequired && !value) {
+        return { isValid: false, errorMessage: `Please select your ${config.stateLabel || 'State/Province'}` };
+      }
+      // If state is not required OR if it is required and has a value, it's valid in this context
+      return { isValid: true, errorMessage: '' }; 
+    }
+    // --- End State/Province Validation ---
 
     if (tag === 'select') return {
       isValid: !!value,
@@ -307,9 +332,19 @@ export class FormValidator {
       return this.#validateCity(value, label);
     }
     
+    // --- Zip/Postal Code Validation ---
     if (fieldName && (fieldName.includes('zip') || fieldName.includes('postal') || fieldName.endsWith('-zip'))) {
-      return this.#validateZipCode(value, fieldName);
+      // Determine if it's shipping or billing zip
+      const isBillingZip = fieldName.startsWith('billing-');
+      // Find the corresponding country field
+      const countryField = isBillingZip ? 
+          this.#form.querySelector('[os-checkout-field="billing-country"]') : 
+          this.#form.querySelector('[os-checkout-field="country"]');
+      const countryCode = countryField?.value;
+      
+      return this.#validateZipCode(value, countryCode, label);
     }
+    // --- End Zip/Postal Code Validation ---
     
     if (field.type === 'email') return {
       isValid: this.#isValidEmail(value),
@@ -328,19 +363,69 @@ export class FormValidator {
   }
 
   /**
-   * Validate a US ZIP code (5 digits or ZIP+4 format)
-   * @param {string} value - ZIP code to validate
-   * @param {string} fieldName - Name of the field for error message
-   * @returns {Object} Validation result with isValid and errorMessage
+   * Validate a ZIP/Postal code based on the selected country's configuration.
+   * @param {string} value - ZIP/Postal code to validate.
+   * @param {string} countryCode - The selected country code (e.g., 'US', 'CA').
+   * @param {string} label - The field label for error messages.
+   * @returns {Object} Validation result { isValid: boolean, errorMessage: string }.
    */
-  #validateZipCode(value, fieldName = 'Zip') {
-    // US ZIP code pattern: 5 digits or 5 digits + hyphen + 4 digits
-    const zipPattern = /(^\d{5}$)|(^\d{5}-\d{4}$)/;
-    const isValid = zipPattern.test(value);
+  #validateZipCode(value, countryCode, label = 'ZIP/Postal Code') {
+    // If no country is selected yet, we can't validate the format properly.
+    // Assume valid for now, API will perform final validation.
+    if (!countryCode) {
+      this.#logger.debug('No country selected, skipping ZIP/Postal format validation.');
+      // Basic check: Is it empty when it should be required? (Usually postcode is always required if address is given)
+      if (!value) {
+          return { isValid: false, errorMessage: `Please enter your ${label}` };
+      }
+      return { isValid: true, errorMessage: '' }; 
+    }
     
+    // Get the country's config from the state
+    const config = this.#app?.state?.getState(`location.configsByCountry.${countryCode}`);
+    
+    if (!config || !config.postcodeRegex) {
+        this.#logger.warn(`No postcode validation regex found for country ${countryCode}. Performing basic check.`);
+        // Fallback: Check if it's empty if generally required
+        if (!value) {
+            return { isValid: false, errorMessage: `Please enter your ${label}` };
+        }
+        // If no regex, accept any non-empty value client-side
+        return { isValid: value.trim().length > 0, errorMessage: `Please enter your ${label}` }; 
+    }
+
+    this.#logger.debug(`Validating ZIP/Postal for ${countryCode} using regex: ${config.postcodeRegex}`);
+    
+    // Test the value against the regex from the config
+    let isValid = false;
+    let errorMessage = `Please enter a valid ${config.postcodeLabel || label}`;
+    
+    try {
+        const regex = new RegExp(config.postcodeRegex);
+        isValid = regex.test(value);
+        if (config.postcodeExample && !isValid) {
+           errorMessage += ` (e.g., ${config.postcodeExample})`;
+        }
+    } catch (e) {
+        this.#logger.error(`Invalid postcode regex for country ${countryCode}: ${config.postcodeRegex}`, e);
+        // Fallback validation if regex is broken
+        isValid = value.trim().length > 0;
+        errorMessage = `Please enter your ${label}`; 
+    }
+
+    // Also check min/max length if provided
+    if (isValid && config.postcodeMinLength && value.length < config.postcodeMinLength) {
+        isValid = false;
+        errorMessage = `${config.postcodeLabel || label} must be at least ${config.postcodeMinLength} characters.`;
+    }
+    if (isValid && config.postcodeMaxLength && value.length > config.postcodeMaxLength) {
+        isValid = false;
+        errorMessage = `${config.postcodeLabel || label} must be no more than ${config.postcodeMaxLength} characters.`;
+    }
+
     return {
       isValid,
-      errorMessage: isValid ? '' : `Field must be a valid US Zip code.`
+      errorMessage: isValid ? '' : errorMessage
     };
   }
 
