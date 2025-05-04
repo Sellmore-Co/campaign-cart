@@ -63,7 +63,7 @@ var TwentyNineNext = (() => {
   __export(ReceiptManager_exports, {
     ReceiptPage: () => ReceiptPage
   });
-  var _apiClient3, _logger26, _app21, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError3, showError_fn3, ReceiptPage;
+  var _apiClient3, _logger27, _app22, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError3, showError_fn3, ReceiptPage;
   var init_ReceiptManager = __esm({
     "src/managers/ReceiptManager.js"() {
       "use strict";
@@ -145,8 +145,8 @@ var TwentyNineNext = (() => {
            */
           __privateAdd(this, _showError3);
           __privateAdd(this, _apiClient3, void 0);
-          __privateAdd(this, _logger26, void 0);
-          __privateAdd(this, _app21, void 0);
+          __privateAdd(this, _logger27, void 0);
+          __privateAdd(this, _app22, void 0);
           __privateAdd(this, _orderData, null);
           __privateAdd(this, _orderFetched, false);
           // Flag to prevent duplicate API calls
@@ -154,8 +154,8 @@ var TwentyNineNext = (() => {
           // Flag to prevent duplicate initialization
           __privateAdd(this, _debugMode5, false);
           __privateSet(this, _apiClient3, apiClient);
-          __privateSet(this, _logger26, logger);
-          __privateSet(this, _app21, app);
+          __privateSet(this, _logger27, logger);
+          __privateSet(this, _app22, app);
           const debugMeta = document.querySelector('meta[name="os-debug"]');
           __privateSet(this, _debugMode5, debugMeta?.getAttribute("content") === "true");
           __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "info", "ReceiptPage component created");
@@ -189,8 +189,8 @@ var TwentyNineNext = (() => {
         }
       };
       _apiClient3 = new WeakMap();
-      _logger26 = new WeakMap();
-      _app21 = new WeakMap();
+      _logger27 = new WeakMap();
+      _app22 = new WeakMap();
       _orderData = new WeakMap();
       _orderFetched = new WeakMap();
       _initialized4 = new WeakMap();
@@ -198,8 +198,8 @@ var TwentyNineNext = (() => {
       _safeLog3 = new WeakSet();
       safeLog_fn3 = function(level, message, ...args) {
         try {
-          if (__privateGet(this, _logger26) && typeof __privateGet(this, _logger26)[level] === "function") {
-            __privateGet(this, _logger26)[level](message, ...args);
+          if (__privateGet(this, _logger27) && typeof __privateGet(this, _logger27)[level] === "function") {
+            __privateGet(this, _logger27)[level](message, ...args);
           } else if (console[level]) {
             console[level](message, ...args);
           } else {
@@ -4878,8 +4878,93 @@ var TwentyNineNext = (() => {
     });
   };
 
+  // src/components/checkout/ShippingSelector.js
+  var _app6, _logger11, _container2, _shippingMethods, _findShippingMethods, findShippingMethods_fn, _init6, init_fn6, _handleShippingChange, handleShippingChange_fn, _syncWithCartState, syncWithCartState_fn;
+  var ShippingSelector = class {
+    // Collection of { element, input, id }
+    constructor(app) {
+      __privateAdd(this, _findShippingMethods);
+      __privateAdd(this, _init6);
+      __privateAdd(this, _handleShippingChange);
+      __privateAdd(this, _syncWithCartState);
+      __privateAdd(this, _app6, void 0);
+      __privateAdd(this, _logger11, void 0);
+      __privateAdd(this, _container2, void 0);
+      __privateAdd(this, _shippingMethods, void 0);
+      __privateSet(this, _app6, app);
+      __privateSet(this, _logger11, app.logger.createModuleLogger("SHIPPING_SELECTOR"));
+      __privateSet(this, _container2, document.querySelector('[os-component="shipping-mode"]'));
+      if (!__privateGet(this, _container2)) {
+        __privateGet(this, _logger11).warn('Shipping selector container [os-component="shipping-mode"] not found.');
+        return;
+      }
+      __privateSet(this, _shippingMethods, __privateMethod(this, _findShippingMethods, findShippingMethods_fn).call(this));
+      if (__privateGet(this, _shippingMethods).length > 0) {
+        __privateGet(this, _logger11).debug(`Found ${__privateGet(this, _shippingMethods).length} shipping methods.`);
+        __privateMethod(this, _init6, init_fn6).call(this);
+      } else {
+        __privateGet(this, _logger11).warn("No shipping methods found within the container.");
+      }
+    }
+  };
+  _app6 = new WeakMap();
+  _logger11 = new WeakMap();
+  _container2 = new WeakMap();
+  _shippingMethods = new WeakMap();
+  _findShippingMethods = new WeakSet();
+  findShippingMethods_fn = function() {
+    const methods = [];
+    __privateGet(this, _container2).querySelectorAll(".shipping-method").forEach((methodElement) => {
+      const input = methodElement.querySelector('input[name="shipping_method"][type="radio"]');
+      if (input) {
+        methods.push({
+          element: methodElement,
+          input,
+          id: input.value
+          // Assuming the value attribute holds the shipping method ID
+        });
+      } else {
+        __privateGet(this, _logger11).warn("Shipping method element found without a radio input.", methodElement);
+      }
+    });
+    return methods;
+  };
+  _init6 = new WeakSet();
+  init_fn6 = function() {
+    __privateGet(this, _shippingMethods).forEach((method) => {
+      method.input.addEventListener("change", () => __privateMethod(this, _handleShippingChange, handleShippingChange_fn).call(this, method.id));
+    });
+    __privateMethod(this, _syncWithCartState, syncWithCartState_fn).call(this);
+    __privateGet(this, _app6).state.subscribe("cart.shippingMethod", () => __privateMethod(this, _syncWithCartState, syncWithCartState_fn).call(this));
+    __privateGet(this, _logger11).debug("ShippingSelector initialized and event listeners attached.");
+  };
+  _handleShippingChange = new WeakSet();
+  handleShippingChange_fn = function(shippingMethodId) {
+    __privateGet(this, _logger11).info(`Shipping method selected via UI: ${shippingMethodId}`);
+    try {
+      __privateGet(this, _app6).cart.setShippingMethod(shippingMethodId);
+    } catch (error) {
+      __privateGet(this, _logger11).error(`Failed to set shipping method ${shippingMethodId}:`, error);
+      __privateMethod(this, _syncWithCartState, syncWithCartState_fn).call(this);
+    }
+  };
+  _syncWithCartState = new WeakSet();
+  syncWithCartState_fn = function() {
+    const currentShippingMethod = __privateGet(this, _app6).state.getState("cart.shippingMethod");
+    const currentShippingId = currentShippingMethod?.ref_id?.toString();
+    __privateGet(this, _logger11).debug(`Syncing UI with cart state. Current shipping ID: ${currentShippingId}`);
+    __privateGet(this, _shippingMethods).forEach((method) => {
+      const isSelected = method.id === currentShippingId;
+      method.element.classList.toggle("os--active", isSelected);
+      if (method.input.checked !== isSelected) {
+        method.input.checked = isSelected;
+      }
+      __privateGet(this, _logger11).debug(`Method ID ${method.id}: selected=${isSelected}, input.checked=${method.input.checked}`);
+    });
+  };
+
   // src/managers/CheckoutManager.js
-  var _apiClient2, _logger11, _form4, _app6, _konamiCodeHandler, _initializeComponents, initializeComponents_fn, _initKonamiCodeHandler, initKonamiCodeHandler_fn, _triggerKonamiCodeEasterEgg, triggerKonamiCodeEasterEgg_fn, _initAddressHandler, initAddressHandler_fn, _initBillingAddressHandler, initBillingAddressHandler_fn, _initPaymentSelector, initPaymentSelector_fn, _initFormValidator, initFormValidator_fn, _initPaymentHandler, initPaymentHandler_fn, _initAddressAutocomplete, initAddressAutocomplete_fn, _initPhoneInputHandler, initPhoneInputHandler_fn, _initProspectCartHandler, initProspectCartHandler_fn, _injectBillingFormFields, injectBillingFormFields_fn, _setupEventListeners3, setupEventListeners_fn3, _handleSubmit2, handleSubmit_fn2, _disableSubmitButtons, disableSubmitButtons_fn;
+  var _apiClient2, _logger12, _form4, _app7, _konamiCodeHandler, _initializeComponents, initializeComponents_fn, _initKonamiCodeHandler, initKonamiCodeHandler_fn, _triggerKonamiCodeEasterEgg, triggerKonamiCodeEasterEgg_fn, _initAddressHandler, initAddressHandler_fn, _initBillingAddressHandler, initBillingAddressHandler_fn, _initPaymentSelector, initPaymentSelector_fn, _initFormValidator, initFormValidator_fn, _initPaymentHandler, initPaymentHandler_fn, _initShippingSelector, initShippingSelector_fn, _initAddressAutocomplete, initAddressAutocomplete_fn, _initPhoneInputHandler, initPhoneInputHandler_fn, _initProspectCartHandler, initProspectCartHandler_fn, _injectBillingFormFields, injectBillingFormFields_fn, _setupEventListeners3, setupEventListeners_fn3, _handleSubmit2, handleSubmit_fn2, _disableSubmitButtons, disableSubmitButtons_fn;
   var CheckoutPage = class {
     constructor(apiClient, logger, app) {
       __privateAdd(this, _initializeComponents);
@@ -4896,6 +4981,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _initPaymentSelector);
       __privateAdd(this, _initFormValidator);
       __privateAdd(this, _initPaymentHandler);
+      __privateAdd(this, _initShippingSelector);
       __privateAdd(this, _initAddressAutocomplete);
       __privateAdd(this, _initPhoneInputHandler);
       __privateAdd(this, _initProspectCartHandler);
@@ -4912,16 +4998,16 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _disableSubmitButtons);
       __privateAdd(this, _apiClient2, void 0);
-      __privateAdd(this, _logger11, void 0);
+      __privateAdd(this, _logger12, void 0);
       __privateAdd(this, _form4, void 0);
-      __privateAdd(this, _app6, void 0);
+      __privateAdd(this, _app7, void 0);
       __privateAdd(this, _konamiCodeHandler, void 0);
       __privateSet(this, _apiClient2, apiClient);
-      __privateSet(this, _logger11, logger);
-      __privateSet(this, _app6, app);
+      __privateSet(this, _logger12, logger);
+      __privateSet(this, _app7, app);
       __privateSet(this, _form4, document.querySelector('form[os-checkout="form"]') || document.querySelector("form#combo_form"));
       if (!__privateGet(this, _form4)) {
-        __privateGet(this, _logger11).warn('No checkout form found with [os-checkout="form"] selector or form#combo_form');
+        __privateGet(this, _logger12).warn('No checkout form found with [os-checkout="form"] selector or form#combo_form');
         return;
       }
       __privateGet(this, _form4).removeAttribute("action");
@@ -4948,21 +5034,21 @@ var TwentyNineNext = (() => {
         if (typeof window.stop === "function") {
           window.stop();
         }
-        __privateGet(this, _logger11).debug("Form direct submission prevented");
+        __privateGet(this, _logger12).debug("Form direct submission prevented");
         return false;
       };
       __privateGet(this, _form4).addEventListener("submit", preventSubmit, true);
       __privateGet(this, _form4).onsubmit = preventSubmit;
       __privateMethod(this, _disableSubmitButtons, disableSubmitButtons_fn).call(this);
-      __privateGet(this, _logger11).debug("CheckoutPage initialized with form found");
+      __privateGet(this, _logger12).debug("CheckoutPage initialized with form found");
       __privateMethod(this, _initializeComponents, initializeComponents_fn).call(this);
       __privateMethod(this, _initKonamiCodeHandler, initKonamiCodeHandler_fn).call(this);
     }
   };
   _apiClient2 = new WeakMap();
-  _logger11 = new WeakMap();
+  _logger12 = new WeakMap();
   _form4 = new WeakMap();
-  _app6 = new WeakMap();
+  _app7 = new WeakMap();
   _konamiCodeHandler = new WeakMap();
   _initializeComponents = new WeakSet();
   initializeComponents_fn = function() {
@@ -4973,6 +5059,7 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _initPaymentSelector, initPaymentSelector_fn).call(this);
       __privateMethod(this, _initFormValidator, initFormValidator_fn).call(this);
       __privateMethod(this, _initPaymentHandler, initPaymentHandler_fn).call(this);
+      __privateMethod(this, _initShippingSelector, initShippingSelector_fn).call(this);
       __privateMethod(this, _initAddressAutocomplete, initAddressAutocomplete_fn).call(this);
       __privateMethod(this, _initPhoneInputHandler, initPhoneInputHandler_fn).call(this);
       __privateMethod(this, _initProspectCartHandler, initProspectCartHandler_fn).call(this);
@@ -4980,9 +5067,9 @@ var TwentyNineNext = (() => {
       document.dispatchEvent(new CustomEvent("os:checkout.ready", {
         detail: { checkoutPage: this }
       }));
-      __privateGet(this, _logger11).info("Checkout page components initialized successfully");
+      __privateGet(this, _logger12).info("Checkout page components initialized successfully");
     } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing checkout components", error);
+      __privateGet(this, _logger12).error("Error initializing checkout components", error);
     }
   };
   _initKonamiCodeHandler = new WeakSet();
@@ -4990,59 +5077,59 @@ var TwentyNineNext = (() => {
     try {
       __privateSet(this, _konamiCodeHandler, new KonamiCodeHandler({
         callback: () => __privateMethod(this, _triggerKonamiCodeEasterEgg, triggerKonamiCodeEasterEgg_fn).call(this),
-        logger: __privateGet(this, _logger11)
+        logger: __privateGet(this, _logger12)
       }));
-      __privateGet(this, _logger11).debug("Konami code handler initialized");
+      __privateGet(this, _logger12).debug("Konami code handler initialized");
     } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing Konami code handler:", error);
+      __privateGet(this, _logger12).error("Error initializing Konami code handler:", error);
     }
   };
   _triggerKonamiCodeEasterEgg = new WeakSet();
   triggerKonamiCodeEasterEgg_fn = function() {
     try {
-      __privateGet(this, _logger11).info("🎮 Konami code activated! Creating test order...");
+      __privateGet(this, _logger12).info("🎮 Konami code activated! Creating test order...");
       const messageElement = KonamiCodeHandler.showActivationMessage();
       setTimeout(() => {
         document.body.removeChild(messageElement);
         if (this.paymentHandler) {
           KonamiCodeHandler.setTestMode();
           this.paymentHandler.processPayment();
-          __privateGet(this, _logger11).info("Konami code test order initiated");
+          __privateGet(this, _logger12).info("Konami code test order initiated");
         } else {
-          __privateGet(this, _logger11).error("Payment handler not initialized, cannot create test order");
+          __privateGet(this, _logger12).error("Payment handler not initialized, cannot create test order");
           alert("Could not create test order: Payment handler not initialized");
         }
       }, 2e3);
     } catch (error) {
-      __privateGet(this, _logger11).error("Error triggering Konami code Easter egg:", error);
+      __privateGet(this, _logger12).error("Error triggering Konami code Easter egg:", error);
     }
   };
   _initAddressHandler = new WeakSet();
   initAddressHandler_fn = function() {
     try {
-      this.addressHandler = new AddressHandler(__privateGet(this, _form4), __privateGet(this, _logger11));
+      this.addressHandler = new AddressHandler(__privateGet(this, _form4), __privateGet(this, _logger12));
     } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing AddressHandler", error);
+      __privateGet(this, _logger12).error("Error initializing AddressHandler", error);
     }
   };
   _initBillingAddressHandler = new WeakSet();
   initBillingAddressHandler_fn = function() {
     try {
-      this.billingAddressHandler = new BillingAddressHandler(__privateGet(this, _app6));
+      this.billingAddressHandler = new BillingAddressHandler(__privateGet(this, _app7));
       if (__privateGet(this, _form4) && this.billingAddressHandler) {
         __privateGet(this, _form4).__billingAddressHandler = this.billingAddressHandler;
-        __privateGet(this, _logger11).debug("BillingAddressHandler initialized and attached to form");
+        __privateGet(this, _logger12).debug("BillingAddressHandler initialized and attached to form");
       }
     } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing BillingAddressHandler", error);
+      __privateGet(this, _logger12).error("Error initializing BillingAddressHandler", error);
     }
   };
   _initPaymentSelector = new WeakSet();
   initPaymentSelector_fn = function() {
     try {
-      this.paymentSelector = new PaymentSelector(__privateGet(this, _logger11));
+      this.paymentSelector = new PaymentSelector(__privateGet(this, _logger12));
     } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing PaymentSelector", error);
+      __privateGet(this, _logger12).error("Error initializing PaymentSelector", error);
     }
   };
   _initFormValidator = new WeakSet();
@@ -5050,64 +5137,72 @@ var TwentyNineNext = (() => {
     try {
       this.formValidator = new FormValidator({
         debugMode: window.location.search.includes("debug=true"),
-        logger: __privateGet(this, _logger11)
+        logger: __privateGet(this, _logger12)
       });
       if (__privateGet(this, _form4) && this.formValidator) {
         __privateGet(this, _form4).__formValidator = this.formValidator;
-        __privateGet(this, _logger11).debug("FormValidator initialized and attached to form");
+        __privateGet(this, _logger12).debug("FormValidator initialized and attached to form");
       }
     } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing FormValidator", error);
+      __privateGet(this, _logger12).error("Error initializing FormValidator", error);
     }
   };
   _initPaymentHandler = new WeakSet();
   initPaymentHandler_fn = function() {
     try {
-      this.paymentHandler = new PaymentHandler(__privateGet(this, _apiClient2), __privateGet(this, _logger11), __privateGet(this, _app6));
+      this.paymentHandler = new PaymentHandler(__privateGet(this, _apiClient2), __privateGet(this, _logger12), __privateGet(this, _app7));
     } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing PaymentHandler", error);
+      __privateGet(this, _logger12).error("Error initializing PaymentHandler", error);
+    }
+  };
+  _initShippingSelector = new WeakSet();
+  initShippingSelector_fn = function() {
+    try {
+      this.shippingSelector = new ShippingSelector(__privateGet(this, _app7));
+    } catch (error) {
+      __privateGet(this, _logger12).error("Error initializing ShippingSelector", error);
     }
   };
   _initAddressAutocomplete = new WeakSet();
   initAddressAutocomplete_fn = function() {
     try {
       const googleMapsOptions = {
-        enableGoogleMapsAutocomplete: __privateGet(this, _app6).options.enableGoogleMapsAutocomplete
+        enableGoogleMapsAutocomplete: __privateGet(this, _app7).options.enableGoogleMapsAutocomplete
       };
-      this.addressAutocomplete = new AddressAutocomplete(__privateGet(this, _logger11), googleMapsOptions);
+      this.addressAutocomplete = new AddressAutocomplete(__privateGet(this, _logger12), googleMapsOptions);
     } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing AddressAutocomplete", error);
+      __privateGet(this, _logger12).error("Error initializing AddressAutocomplete", error);
     }
   };
   _initPhoneInputHandler = new WeakSet();
   initPhoneInputHandler_fn = function() {
     try {
-      this.phoneInputHandler = new PhoneInputHandler(__privateGet(this, _logger11));
+      this.phoneInputHandler = new PhoneInputHandler(__privateGet(this, _logger12));
     } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing PhoneInputHandler", error);
+      __privateGet(this, _logger12).error("Error initializing PhoneInputHandler", error);
     }
   };
   _initProspectCartHandler = new WeakSet();
   initProspectCartHandler_fn = function() {
     try {
-      if (__privateGet(this, _app6)) {
-        this.prospectCartHandler = new ProspectCartHandler(__privateGet(this, _app6));
-        __privateGet(this, _logger11).info("ProspectCartHandler initialized");
+      if (__privateGet(this, _app7)) {
+        this.prospectCartHandler = new ProspectCartHandler(__privateGet(this, _app7));
+        __privateGet(this, _logger12).info("ProspectCartHandler initialized");
       } else {
-        __privateGet(this, _logger11).warn("App instance not provided, ProspectCartHandler not initialized");
+        __privateGet(this, _logger12).warn("App instance not provided, ProspectCartHandler not initialized");
       }
     } catch (error) {
-      __privateGet(this, _logger11).error("Error initializing ProspectCartHandler", error);
+      __privateGet(this, _logger12).error("Error initializing ProspectCartHandler", error);
     }
   };
   _injectBillingFormFields = new WeakSet();
   injectBillingFormFields_fn = function() {
     try {
-      __privateGet(this, _logger11).info("Fixing billing form by duplicating shipping form");
+      __privateGet(this, _logger12).info("Fixing billing form by duplicating shipping form");
       const shippingForm = document.querySelector('[os-checkout-component="shipping-form"]');
       const billingContainer = document.querySelector('[os-checkout-component="billing-form"]');
       if (shippingForm && billingContainer) {
-        __privateGet(this, _logger11).info(`Found shipping form and billing container`);
+        __privateGet(this, _logger12).info(`Found shipping form and billing container`);
         const billingForm = shippingForm.cloneNode(true);
         const fieldMap = {
           "fname": "billing-fname",
@@ -5144,44 +5239,44 @@ var TwentyNineNext = (() => {
         }
         billingContainer.innerHTML = "";
         billingContainer.appendChild(billingForm);
-        __privateGet(this, _logger11).info("Billing form successfully created from shipping form");
+        __privateGet(this, _logger12).info("Billing form successfully created from shipping form");
       } else {
-        __privateGet(this, _logger11).warn("Could not fix billing form - shipping form or billing container not found");
-        __privateGet(this, _logger11).warn(`Shipping form found: ${!!shippingForm}, Billing container found: ${!!billingContainer}`);
+        __privateGet(this, _logger12).warn("Could not fix billing form - shipping form or billing container not found");
+        __privateGet(this, _logger12).warn(`Shipping form found: ${!!shippingForm}, Billing container found: ${!!billingContainer}`);
         const allComponents = document.querySelectorAll("[os-checkout-component]");
-        __privateGet(this, _logger11).warn(`Found ${allComponents.length} checkout components:`);
+        __privateGet(this, _logger12).warn(`Found ${allComponents.length} checkout components:`);
         allComponents.forEach((comp) => {
-          __privateGet(this, _logger11).warn(`- ${comp.getAttribute("os-checkout-component")}`);
+          __privateGet(this, _logger12).warn(`- ${comp.getAttribute("os-checkout-component")}`);
         });
       }
     } catch (error) {
-      __privateGet(this, _logger11).error("Error fixing billing form:", error);
+      __privateGet(this, _logger12).error("Error fixing billing form:", error);
     }
   };
   _setupEventListeners3 = new WeakSet();
   setupEventListeners_fn3 = function() {
     try {
       document.addEventListener("payment-method-changed", (e) => {
-        __privateGet(this, _logger11).debug(`Payment method changed to: ${e.detail.mode}`);
+        __privateGet(this, _logger12).debug(`Payment method changed to: ${e.detail.mode}`);
         const container = document.querySelector("[os-payment-mode]");
         container?.setAttribute("os-payment-mode", e.detail.mode);
       });
       if (__privateGet(this, _form4)) {
         __privateGet(this, _form4).addEventListener("submit", (e) => __privateMethod(this, _handleSubmit2, handleSubmit_fn2).call(this, e));
-        __privateGet(this, _logger11).debug("Form submit event listener attached");
+        __privateGet(this, _logger12).debug("Form submit event listener attached");
       }
-      if (__privateGet(this, _app6) && __privateGet(this, _app6).events && this.prospectCartHandler) {
-        __privateGet(this, _app6).events.on("prospect.cartCreated", (data) => {
-          __privateGet(this, _logger11).info("Prospect cart created successfully", data);
+      if (__privateGet(this, _app7) && __privateGet(this, _app7).events && this.prospectCartHandler) {
+        __privateGet(this, _app7).events.on("prospect.cartCreated", (data) => {
+          __privateGet(this, _logger12).info("Prospect cart created successfully", data);
         });
       }
-      if (__privateGet(this, _app6) && __privateGet(this, _app6).events) {
-        __privateGet(this, _app6).events.on("order.created", (data) => {
-          __privateGet(this, _logger11).info("Order created successfully", data);
+      if (__privateGet(this, _app7) && __privateGet(this, _app7).events) {
+        __privateGet(this, _app7).events.on("order.created", (data) => {
+          __privateGet(this, _logger12).info("Order created successfully", data);
         });
       }
     } catch (error) {
-      __privateGet(this, _logger11).error("Error setting up event listeners:", error);
+      __privateGet(this, _logger12).error("Error setting up event listeners:", error);
     }
   };
   _handleSubmit2 = new WeakSet();
@@ -5191,7 +5286,7 @@ var TwentyNineNext = (() => {
       event.stopPropagation();
       event.stopImmediatePropagation();
     }
-    __privateGet(this, _logger11).debug("Form submission intercepted by #handleSubmit");
+    __privateGet(this, _logger12).debug("Form submission intercepted by #handleSubmit");
     if (__privateGet(this, _form4)) {
       __privateGet(this, _form4).removeAttribute("action");
       __privateGet(this, _form4).setAttribute("method", "post");
@@ -5208,20 +5303,20 @@ var TwentyNineNext = (() => {
         if (typeof window.stop === "function") {
           window.stop();
         }
-        __privateGet(this, _logger11).debug("Form direct submission prevented");
+        __privateGet(this, _logger12).debug("Form direct submission prevented");
         return false;
       };
       __privateGet(this, _form4).onsubmit = preventSubmit;
     }
     if (this.formValidator && !this.formValidator.validateAllFields()) {
-      __privateGet(this, _logger11).warn("Form validation failed, stopping submission");
+      __privateGet(this, _logger12).warn("Form validation failed, stopping submission");
       return false;
     }
     if (this.paymentHandler) {
-      __privateGet(this, _logger11).debug("Delegating to paymentHandler.processPayment()");
+      __privateGet(this, _logger12).debug("Delegating to paymentHandler.processPayment()");
       this.paymentHandler.processPayment();
     } else {
-      __privateGet(this, _logger11).error("Payment handler not initialized");
+      __privateGet(this, _logger12).error("Payment handler not initialized");
     }
     return false;
   };
@@ -5232,60 +5327,60 @@ var TwentyNineNext = (() => {
         return;
       const submitButtons = __privateGet(this, _form4).querySelectorAll('button[type="submit"], input[type="submit"]');
       if (submitButtons.length > 0) {
-        __privateGet(this, _logger11).debug(`Found ${submitButtons.length} submit buttons, converting to type="button"`);
+        __privateGet(this, _logger12).debug(`Found ${submitButtons.length} submit buttons, converting to type="button"`);
         submitButtons.forEach((button, index) => {
           button.setAttribute("type", "button");
           button.addEventListener("click", (e) => {
             e.preventDefault();
-            __privateGet(this, _logger11).debug(`Submit button ${index + 1} clicked, delegating to payment handler`);
+            __privateGet(this, _logger12).debug(`Submit button ${index + 1} clicked, delegating to payment handler`);
             if (this.paymentHandler) {
               this.paymentHandler.processPayment();
             } else {
-              __privateGet(this, _logger11).error("Payment handler not initialized");
+              __privateGet(this, _logger12).error("Payment handler not initialized");
             }
           });
-          __privateGet(this, _logger11).debug(`Converted submit button ${index + 1} to type="button"`);
+          __privateGet(this, _logger12).debug(`Converted submit button ${index + 1} to type="button"`);
         });
       } else {
-        __privateGet(this, _logger11).debug("No submit buttons found in the form");
+        __privateGet(this, _logger12).debug("No submit buttons found in the form");
       }
     } catch (error) {
-      __privateGet(this, _logger11).error("Error disabling submit buttons:", error);
+      __privateGet(this, _logger12).error("Error disabling submit buttons:", error);
     }
   };
 
   // src/helpers/CampaignHelper.js
-  var _app7, _logger12, _viewItemListFired;
+  var _app8, _logger13, _viewItemListFired;
   var CampaignHelper = class {
     constructor(app) {
-      __privateAdd(this, _app7, void 0);
-      __privateAdd(this, _logger12, void 0);
+      __privateAdd(this, _app8, void 0);
+      __privateAdd(this, _logger13, void 0);
       __privateAdd(this, _viewItemListFired, false);
-      __privateSet(this, _app7, app);
-      __privateSet(this, _logger12, app.logger.createModuleLogger("CAMPAIGN"));
+      __privateSet(this, _app8, app);
+      __privateSet(this, _logger13, app.logger.createModuleLogger("CAMPAIGN"));
     }
     getCampaignData() {
-      const campaignData = __privateGet(this, _app7).campaignData;
+      const campaignData = __privateGet(this, _app8).campaignData;
       return campaignData;
     }
     getCampaignName() {
-      return __privateGet(this, _app7).campaignData?.name ?? "";
+      return __privateGet(this, _app8).campaignData?.name ?? "";
     }
     getCampaignId() {
-      return __privateGet(this, _app7).campaignData?.id ?? "";
+      return __privateGet(this, _app8).campaignData?.id ?? "";
     }
     getProducts() {
-      const products = __privateGet(this, _app7).campaignData?.products ?? [];
+      const products = __privateGet(this, _app8).campaignData?.products ?? [];
       return products;
     }
     getProductById(productId) {
       return this.getProducts().find((product) => product.id === productId);
     }
     getCurrency() {
-      return __privateGet(this, _app7).campaignData?.currency ?? "USD";
+      return __privateGet(this, _app8).campaignData?.currency ?? "USD";
     }
     getLocale() {
-      return __privateGet(this, _app7).campaignData?.locale ?? "en-US";
+      return __privateGet(this, _app8).campaignData?.locale ?? "en-US";
     }
     formatPrice(price) {
       if (typeof price !== "number")
@@ -5296,7 +5391,7 @@ var TwentyNineNext = (() => {
           currency: this.getCurrency()
         }).format(price);
       } catch (error) {
-        __privateGet(this, _logger12).error("Error formatting price:", error);
+        __privateGet(this, _logger13).error("Error formatting price:", error);
         return price.toString();
       }
     }
@@ -5304,32 +5399,32 @@ var TwentyNineNext = (() => {
      * Manually trigger the view_item_list event
      */
     triggerViewItemList() {
-      if (!__privateGet(this, _app7).campaignData) {
-        __privateGet(this, _logger12).warn("Cannot trigger view_item_list: No campaign data available");
+      if (!__privateGet(this, _app8).campaignData) {
+        __privateGet(this, _logger13).warn("Cannot trigger view_item_list: No campaign data available");
         return;
       }
-      if (!__privateGet(this, _app7).eventManager) {
-        __privateGet(this, _logger12).warn("Cannot trigger view_item_list: EventManager not found");
+      if (!__privateGet(this, _app8).eventManager) {
+        __privateGet(this, _logger13).warn("Cannot trigger view_item_list: EventManager not found");
         return;
       }
-      if (typeof __privateGet(this, _app7).eventManager.viewVisibleItemList === "function") {
-        __privateGet(this, _logger12).debug("Manually triggering viewVisibleItemList event");
-        __privateGet(this, _app7).eventManager.viewVisibleItemList();
-      } else if (__privateGet(this, _app7).events?.viewItemList) {
-        __privateGet(this, _logger12).debug("Falling back to events.viewItemList method");
-        __privateGet(this, _app7).events.viewItemList(__privateGet(this, _app7).campaignData);
+      if (typeof __privateGet(this, _app8).eventManager.viewVisibleItemList === "function") {
+        __privateGet(this, _logger13).debug("Manually triggering viewVisibleItemList event");
+        __privateGet(this, _app8).eventManager.viewVisibleItemList();
+      } else if (__privateGet(this, _app8).events?.viewItemList) {
+        __privateGet(this, _logger13).debug("Falling back to events.viewItemList method");
+        __privateGet(this, _app8).events.viewItemList(__privateGet(this, _app8).campaignData);
       } else {
-        __privateGet(this, _logger12).warn("No suitable method found to trigger view_item_list event");
+        __privateGet(this, _logger13).warn("No suitable method found to trigger view_item_list event");
       }
       __privateSet(this, _viewItemListFired, true);
     }
   };
-  _app7 = new WeakMap();
-  _logger12 = new WeakMap();
+  _app8 = new WeakMap();
+  _logger13 = new WeakMap();
   _viewItemListFired = new WeakMap();
 
   // src/managers/StateManager.js
-  var _app8, _logger13, _state, _subscribers, _initDefaultState, initDefaultState_fn, _loadState, loadState_fn, _saveState, saveState_fn, _notifySubscribers, notifySubscribers_fn, _updateExistingItem, updateExistingItem_fn, _calculateCartTotals, calculateCartTotals_fn, _recalculateCart, recalculateCart_fn;
+  var _app9, _logger14, _state, _subscribers, _initDefaultState, initDefaultState_fn, _loadState, loadState_fn, _saveState, saveState_fn, _notifySubscribers, notifySubscribers_fn, _updateExistingItem, updateExistingItem_fn, _calculateCartTotals, calculateCartTotals_fn, _recalculateCart, recalculateCart_fn;
   var StateManager = class {
     constructor(app) {
       __privateAdd(this, _initDefaultState);
@@ -5339,16 +5434,16 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _updateExistingItem);
       __privateAdd(this, _calculateCartTotals);
       __privateAdd(this, _recalculateCart);
-      __privateAdd(this, _app8, void 0);
-      __privateAdd(this, _logger13, void 0);
+      __privateAdd(this, _app9, void 0);
+      __privateAdd(this, _logger14, void 0);
       __privateAdd(this, _state, void 0);
       __privateAdd(this, _subscribers, {});
-      __privateSet(this, _app8, app);
-      __privateSet(this, _logger13, app.logger.createModuleLogger("STATE"));
+      __privateSet(this, _app9, app);
+      __privateSet(this, _logger14, app.logger.createModuleLogger("STATE"));
       __privateSet(this, _state, __privateMethod(this, _initDefaultState, initDefaultState_fn).call(this));
       __privateMethod(this, _loadState, loadState_fn).call(this);
       __privateMethod(this, _recalculateCart, recalculateCart_fn).call(this, false);
-      __privateGet(this, _logger13).info("StateManager initialized");
+      __privateGet(this, _logger14).info("StateManager initialized");
     }
     getState(path = null) {
       if (!path)
@@ -5387,7 +5482,7 @@ var TwentyNineNext = (() => {
       try {
         callback(this.getState(path), path);
       } catch (error) {
-        __privateGet(this, _logger13).error(`Error in initial subscriber callback for ${path}:`, error);
+        __privateGet(this, _logger14).error(`Error in initial subscriber callback for ${path}:`, error);
       }
       return () => __privateGet(this, _subscribers)[path] = __privateGet(this, _subscribers)[path].filter((cb) => cb !== callback);
     }
@@ -5395,15 +5490,15 @@ var TwentyNineNext = (() => {
       __privateSet(this, _state, __privateMethod(this, _initDefaultState, initDefaultState_fn).call(this));
       sessionStorage.removeItem("os_state");
       __privateMethod(this, _notifySubscribers, notifySubscribers_fn).call(this, "*", __privateGet(this, _state));
-      __privateGet(this, _logger13).info("State cleared");
+      __privateGet(this, _logger14).info("State cleared");
     }
     addToCart(item) {
       if (!item?.id || !item.name || item.price === void 0) {
-        __privateGet(this, _logger13).error("Invalid item:", item);
+        __privateGet(this, _logger14).error("Invalid item:", item);
         throw new Error("Invalid item. Must have id, name, and price.");
       }
       const cart = this.getState("cart");
-      const packageData = __privateGet(this, _app8).campaignData?.packages?.find(
+      const packageData = __privateGet(this, _app9).campaignData?.packages?.find(
         (pkg) => pkg.ref_id.toString() === item.id.toString() || pkg.external_id?.toString() === item.id.toString()
       );
       const enhancedItem = {
@@ -5427,15 +5522,15 @@ var TwentyNineNext = (() => {
       const existingItemIndex = cart.items.findIndex((i) => i.id === item.id);
       const updatedItems = existingItemIndex >= 0 ? __privateMethod(this, _updateExistingItem, updateExistingItem_fn).call(this, cart.items, existingItemIndex, enhancedItem) : [...cart.items, enhancedItem];
       this.setState("cart.items", updatedItems);
-      __privateGet(this, _logger13).info(`Item added to cart: ${enhancedItem.name}`);
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _logger14).info(`Item added to cart: ${enhancedItem.name}`);
+      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     updateCartItem(itemId, updates) {
       const cart = this.getState("cart");
       const itemIndex = cart.items.findIndex((item) => item.id === itemId);
       if (itemIndex === -1) {
-        __privateGet(this, _logger13).error(`Item not found in cart: ${itemId}`);
+        __privateGet(this, _logger14).error(`Item not found in cart: ${itemId}`);
         throw new Error(`Item not found in cart: ${itemId}`);
       }
       const updatedItems = [...cart.items];
@@ -5443,15 +5538,15 @@ var TwentyNineNext = (() => {
       if (updatedItems[itemIndex].quantity === 0)
         updatedItems.splice(itemIndex, 1);
       this.setState("cart.items", updatedItems);
-      __privateGet(this, _logger13).info(`Cart item updated: ${itemId}`);
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _logger14).info(`Cart item updated: ${itemId}`);
+      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     removeFromCart(itemId) {
       const updatedItems = this.getState("cart").items.filter((item) => item.id !== itemId);
       this.setState("cart.items", updatedItems);
-      __privateGet(this, _logger13).info(`Item removed from cart: ${itemId}`);
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _logger14).info(`Item removed from cart: ${itemId}`);
+      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     clearCart() {
@@ -5459,14 +5554,14 @@ var TwentyNineNext = (() => {
       this.setState("cart.couponCode", null);
       this.setState("cart.couponDetails", null);
       this.setState("cart.shippingMethod", null);
-      __privateGet(this, _logger13).info("Cart cleared");
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _logger14).info("Cart cleared");
+      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     setShippingMethod(shippingMethod) {
       this.setState("cart.shippingMethod", shippingMethod);
-      __privateGet(this, _logger13).info(`Shipping method set: ${shippingMethod.code}`);
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _logger14).info(`Shipping method set: ${shippingMethod.code}`);
+      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     applyCoupon(couponCode, discountType = "percentage", discountValue = 0) {
@@ -5476,17 +5571,17 @@ var TwentyNineNext = (() => {
         type: discountType,
         value: parseFloat(discountValue)
       });
-      __privateGet(this, _logger13).info(`Coupon applied: ${couponCode} (${discountType}: ${discountValue})`);
+      __privateGet(this, _logger14).info(`Coupon applied: ${couponCode} (${discountType}: ${discountValue})`);
       __privateMethod(this, _recalculateCart, recalculateCart_fn).call(this, true);
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     removeCoupon() {
       this.setState("cart.couponCode", null);
       this.setState("cart.couponDetails", null);
-      __privateGet(this, _logger13).info("Coupon removed");
+      __privateGet(this, _logger14).info("Coupon removed");
       __privateMethod(this, _recalculateCart, recalculateCart_fn).call(this, true);
-      __privateGet(this, _app8).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     isItemInCart(itemId) {
@@ -5520,12 +5615,12 @@ var TwentyNineNext = (() => {
       try {
         this.setState("ui.loading", true);
         const apiCart = this.getCartForApi();
-        const response = await __privateGet(this, _app8).api.createCart(apiCart);
-        __privateGet(this, _logger13).info("Cart synced with API");
-        __privateGet(this, _app8).triggerEvent("cart.synced", { cart: response });
+        const response = await __privateGet(this, _app9).api.createCart(apiCart);
+        __privateGet(this, _logger14).info("Cart synced with API");
+        __privateGet(this, _app9).triggerEvent("cart.synced", { cart: response });
         return response;
       } catch (error) {
-        __privateGet(this, _logger13).error("Error syncing cart with API:", error);
+        __privateGet(this, _logger14).error("Error syncing cart with API:", error);
         this.setState("ui.errors.cart", error.message);
         throw error;
       } finally {
@@ -5533,8 +5628,8 @@ var TwentyNineNext = (() => {
       }
     }
   };
-  _app8 = new WeakMap();
-  _logger13 = new WeakMap();
+  _app9 = new WeakMap();
+  _logger14 = new WeakMap();
   _state = new WeakMap();
   _subscribers = new WeakMap();
   _initDefaultState = new WeakSet();
@@ -5591,10 +5686,10 @@ var TwentyNineNext = (() => {
       if (savedState) {
         const parsedState = JSON.parse(savedState);
         __privateSet(this, _state, { ...__privateGet(this, _state), ...parsedState, ui: { ...__privateGet(this, _state).ui } });
-        __privateGet(this, _logger13).info("State loaded from sessionStorage");
+        __privateGet(this, _logger14).info("State loaded from sessionStorage");
       }
     } catch (error) {
-      __privateGet(this, _logger13).error("Error loading state from sessionStorage:", error);
+      __privateGet(this, _logger14).error("Error loading state from sessionStorage:", error);
     }
   };
   _saveState = new WeakSet();
@@ -5605,14 +5700,14 @@ var TwentyNineNext = (() => {
         user: __privateGet(this, _state).user
       };
       sessionStorage.setItem("os_state", JSON.stringify(stateToSave));
-      __privateGet(this, _logger13).debug("State saved to sessionStorage");
+      __privateGet(this, _logger14).debug("State saved to sessionStorage");
     } catch (error) {
-      __privateGet(this, _logger13).error("Error saving state to sessionStorage:", error);
+      __privateGet(this, _logger14).error("Error saving state to sessionStorage:", error);
     }
   };
   _notifySubscribers = new WeakSet();
   notifySubscribers_fn = function(path, value) {
-    __privateGet(this, _logger13).debug(`Notifying subscribers for path: ${path}`);
+    __privateGet(this, _logger14).debug(`Notifying subscribers for path: ${path}`);
     for (const [subPath, callbacks] of Object.entries(__privateGet(this, _subscribers))) {
       if (subPath === path || subPath === "*" || path.startsWith(`${subPath}.`)) {
         const subValue = subPath === "*" ? this.getState() : this.getState(subPath);
@@ -5620,7 +5715,7 @@ var TwentyNineNext = (() => {
           try {
             callback(subValue, subPath);
           } catch (error) {
-            __privateGet(this, _logger13).error(`Error in subscriber callback for ${subPath}:`, error);
+            __privateGet(this, _logger14).error(`Error in subscriber callback for ${subPath}:`, error);
           }
         });
       }
@@ -5647,8 +5742,8 @@ var TwentyNineNext = (() => {
     const { items, shippingMethod, couponDetails } = __privateGet(this, _state).cart;
     const subtotal = items.reduce((acc, item) => acc + (item.price_total ?? item.price * (item.quantity || 1)), 0);
     let discountAmount = 0;
-    if (couponDetails && __privateGet(this, _app8).discount) {
-      discountAmount = __privateGet(this, _app8).discount.calculateDiscount(couponDetails, subtotal);
+    if (couponDetails && __privateGet(this, _app9).discount) {
+      discountAmount = __privateGet(this, _app9).discount.calculateDiscount(couponDetails, subtotal);
     }
     const discountedSubtotal = subtotal - discountAmount;
     const retailSubtotal = items.reduce((acc, item) => acc + (item.retail_price_total ?? (item.retail_price ?? item.price) * (item.quantity || 1)), 0);
@@ -5661,7 +5756,7 @@ var TwentyNineNext = (() => {
     }
     const tax = 0;
     const total = discountedSubtotal + shipping + tax;
-    const currency = __privateGet(this, _app8).campaignData?.currency ?? "USD";
+    const currency = __privateGet(this, _app9).campaignData?.currency ?? "USD";
     const currencySymbol = { USD: "$", EUR: "€", GBP: "£" }[currency] ?? "$";
     return {
       subtotal: discountedSubtotal,
@@ -5685,7 +5780,7 @@ var TwentyNineNext = (() => {
   recalculateCart_fn = function(notify = true) {
     const totals = __privateMethod(this, _calculateCartTotals, calculateCartTotals_fn).call(this);
     __privateGet(this, _state).cart.totals = totals;
-    __privateGet(this, _logger13).debug("Cart totals recalculated");
+    __privateGet(this, _logger14).debug("Cart totals recalculated");
     if (notify) {
       __privateMethod(this, _notifySubscribers, notifySubscribers_fn).call(this, "cart.totals", totals);
       __privateMethod(this, _notifySubscribers, notifySubscribers_fn).call(this, "cart", this.getState("cart"));
@@ -5694,7 +5789,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CartManager.js
-  var _app9, _stateManager, _logger14, _cartElements, _initCartUI, initCartUI_fn, _updateCartUI, updateCartUI_fn, _createCartItemElement, createCartItemElement_fn, _addToCart, addToCart_fn, _updateCartItemQuantity, updateCartItemQuantity_fn, _removeFromCart, removeFromCart_fn;
+  var _app10, _stateManager, _logger15, _cartElements, _initCartUI, initCartUI_fn, _updateCartUI, updateCartUI_fn, _createCartItemElement, createCartItemElement_fn, _addToCart, addToCart_fn, _updateCartItemQuantity, updateCartItemQuantity_fn, _removeFromCart, removeFromCart_fn;
   var CartManager = class {
     constructor(app) {
       __privateAdd(this, _initCartUI);
@@ -5703,21 +5798,21 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _addToCart);
       __privateAdd(this, _updateCartItemQuantity);
       __privateAdd(this, _removeFromCart);
-      __privateAdd(this, _app9, void 0);
+      __privateAdd(this, _app10, void 0);
       __privateAdd(this, _stateManager, void 0);
-      __privateAdd(this, _logger14, void 0);
+      __privateAdd(this, _logger15, void 0);
       __privateAdd(this, _cartElements, void 0);
-      __privateSet(this, _app9, app);
+      __privateSet(this, _app10, app);
       __privateSet(this, _stateManager, app.state);
-      __privateSet(this, _logger14, app.logger.createModuleLogger("CART"));
+      __privateSet(this, _logger15, app.logger.createModuleLogger("CART"));
       __privateMethod(this, _initCartUI, initCartUI_fn).call(this);
-      __privateGet(this, _logger14).info("CartManager initialized");
+      __privateGet(this, _logger15).info("CartManager initialized");
     }
     clearCart() {
       try {
         return __privateGet(this, _stateManager).clearCart();
       } catch (error) {
-        __privateGet(this, _logger14).error("Error clearing cart:", error);
+        __privateGet(this, _logger15).error("Error clearing cart:", error);
         throw error;
       }
     }
@@ -5729,46 +5824,46 @@ var TwentyNineNext = (() => {
     }
     setShippingMethod(shippingMethodId) {
       try {
-        const campaignData = __privateGet(this, _app9).campaignData;
+        const campaignData = __privateGet(this, _app10).campaignData;
         if (!campaignData || !Array.isArray(campaignData.shipping_methods)) {
-          __privateGet(this, _logger14).error("Campaign data or shipping methods not available.");
+          __privateGet(this, _logger15).error("Campaign data or shipping methods not available.");
           throw new Error("Shipping methods not loaded.");
         }
         const selectedMethod = campaignData.shipping_methods.find(
           (method) => method.ref_id?.toString() === shippingMethodId?.toString()
         );
         if (!selectedMethod) {
-          __privateGet(this, _logger14).error(`Shipping method with ID ${shippingMethodId} not found.`);
+          __privateGet(this, _logger15).error(`Shipping method with ID ${shippingMethodId} not found.`);
           throw new Error(`Shipping method ID ${shippingMethodId} not found.`);
         }
-        __privateGet(this, _logger14).info(`Setting shipping method to:`, selectedMethod);
+        __privateGet(this, _logger15).info(`Setting shipping method to:`, selectedMethod);
         return __privateGet(this, _stateManager).setShippingMethod(selectedMethod);
       } catch (error) {
-        __privateGet(this, _logger14).error("Error setting shipping method:", error);
+        __privateGet(this, _logger15).error("Error setting shipping method:", error);
         throw error;
       }
     }
     applyCoupon(couponCode, discountType = "percentage", discountValue = 0) {
       try {
         const result = __privateGet(this, _stateManager).applyCoupon(couponCode, discountType, discountValue);
-        if (__privateGet(this, _app9).selector && typeof __privateGet(this, _app9).selector.refreshUnitPricing === "function") {
-          setTimeout(() => __privateGet(this, _app9).selector.refreshUnitPricing(), 10);
+        if (__privateGet(this, _app10).selector && typeof __privateGet(this, _app10).selector.refreshUnitPricing === "function") {
+          setTimeout(() => __privateGet(this, _app10).selector.refreshUnitPricing(), 10);
         }
         return result;
       } catch (error) {
-        __privateGet(this, _logger14).error("Error applying coupon:", error);
+        __privateGet(this, _logger15).error("Error applying coupon:", error);
         throw error;
       }
     }
     removeCoupon() {
       try {
         const result = __privateGet(this, _stateManager).removeCoupon();
-        if (__privateGet(this, _app9).selector && typeof __privateGet(this, _app9).selector.refreshUnitPricing === "function") {
-          setTimeout(() => __privateGet(this, _app9).selector.refreshUnitPricing(), 10);
+        if (__privateGet(this, _app10).selector && typeof __privateGet(this, _app10).selector.refreshUnitPricing === "function") {
+          setTimeout(() => __privateGet(this, _app10).selector.refreshUnitPricing(), 10);
         }
         return result;
       } catch (error) {
-        __privateGet(this, _logger14).error("Error removing coupon:", error);
+        __privateGet(this, _logger15).error("Error removing coupon:", error);
         throw error;
       }
     }
@@ -5780,7 +5875,7 @@ var TwentyNineNext = (() => {
       try {
         return await __privateGet(this, _stateManager).syncCartWithApi();
       } catch (error) {
-        __privateGet(this, _logger14).error("Error syncing cart with API:", error);
+        __privateGet(this, _logger15).error("Error syncing cart with API:", error);
         throw error;
       }
     }
@@ -5798,9 +5893,9 @@ var TwentyNineNext = (() => {
     //   }, 3000);
     // }
   };
-  _app9 = new WeakMap();
+  _app10 = new WeakMap();
   _stateManager = new WeakMap();
-  _logger14 = new WeakMap();
+  _logger15 = new WeakMap();
   _cartElements = new WeakMap();
   _initCartUI = new WeakSet();
   initCartUI_fn = function() {
@@ -5824,7 +5919,7 @@ var TwentyNineNext = (() => {
         if (item.id && item.name && item.price)
           __privateMethod(this, _addToCart, addToCart_fn).call(this, item);
         else
-          __privateGet(this, _logger14).error("Invalid product data for add to cart button");
+          __privateGet(this, _logger15).error("Invalid product data for add to cart button");
       });
     });
     __privateGet(this, _stateManager).subscribe("cart", () => __privateMethod(this, _updateCartUI, updateCartUI_fn).call(this));
@@ -5838,7 +5933,7 @@ var TwentyNineNext = (() => {
       element.textContent = itemCount.toString();
       element.classList.toggle("hidden", itemCount === 0);
     });
-    const formatPrice = (price) => __privateGet(this, _app9).campaign?.formatPrice(price) ?? price.toFixed(2);
+    const formatPrice = (price) => __privateGet(this, _app10).campaign?.formatPrice(price) ?? price.toFixed(2);
     __privateGet(this, _cartElements).cartTotal.forEach((element) => element.textContent = formatPrice(cart.totals.total));
     const updateElement = (selector, value, hideIfZero = false) => {
       const element = document.querySelector(selector);
@@ -5863,7 +5958,7 @@ var TwentyNineNext = (() => {
     const couponContainer = document.querySelector("[data-os-cart-coupon-container]");
     if (couponElement && couponContainer) {
       if (cart.couponDetails && cart.couponCode) {
-        couponElement.textContent = __privateGet(this, _app9).discount?.getCouponDisplayText(cart.couponDetails) || cart.couponCode;
+        couponElement.textContent = __privateGet(this, _app10).discount?.getCouponDisplayText(cart.couponDetails) || cart.couponCode;
         couponContainer.classList.remove("hidden");
       } else {
         couponContainer.classList.add("hidden");
@@ -5881,7 +5976,7 @@ var TwentyNineNext = (() => {
   };
   _createCartItemElement = new WeakSet();
   createCartItemElement_fn = function(item) {
-    const formatPrice = (price2) => __privateGet(this, _app9).campaign?.formatPrice(price2) ?? price2.toFixed(2);
+    const formatPrice = (price2) => __privateGet(this, _app10).campaign?.formatPrice(price2) ?? price2.toFixed(2);
     const itemElement = document.createElement("div");
     itemElement.className = "os-cart-item";
     itemElement.setAttribute("data-os-cart-item-id", item.id);
@@ -5936,7 +6031,7 @@ var TwentyNineNext = (() => {
       const result = __privateGet(this, _stateManager).addToCart(item);
       return result;
     } catch (error) {
-      __privateGet(this, _logger14).error("Error adding item to cart:", error);
+      __privateGet(this, _logger15).error("Error adding item to cart:", error);
       throw error;
     }
   };
@@ -5945,7 +6040,7 @@ var TwentyNineNext = (() => {
     try {
       return quantity <= 0 ? __privateMethod(this, _removeFromCart, removeFromCart_fn).call(this, itemId) : __privateGet(this, _stateManager).updateCartItem(itemId, { quantity });
     } catch (error) {
-      __privateGet(this, _logger14).error("Error updating cart item quantity:", error);
+      __privateGet(this, _logger15).error("Error updating cart item quantity:", error);
       throw error;
     }
   };
@@ -5954,7 +6049,7 @@ var TwentyNineNext = (() => {
     try {
       return __privateGet(this, _stateManager).removeFromCart(itemId);
     } catch (error) {
-      __privateGet(this, _logger14).error("Error removing item from cart:", error);
+      __privateGet(this, _logger15).error("Error removing item from cart:", error);
       throw error;
     }
   };
@@ -6266,7 +6361,7 @@ var TwentyNineNext = (() => {
   __privateAdd(DebugUtils, _overlays, []);
 
   // src/managers/SelectorManager.js
-  var _app10, _logger15, _selectors2, _selectedItems, _isDebugMode2, _initSelectors, initSelectors_fn, _initSelector, initSelector_fn, _initCard, initCard_fn, _handleClick, handleClick_fn, _selectItem, selectItem_fn, _updateCart, updateCart_fn, _addItemToCart, addItemToCart_fn, _removeItemFromCart, removeItemFromCart_fn, _syncWithCart, syncWithCart_fn, _initUnitPricingForSelector, initUnitPricingForSelector_fn, _updateUnitPricingForCard, updateUnitPricingForCard_fn, _formatPrice, formatPrice_fn, _updatePriceElement, updatePriceElement_fn;
+  var _app11, _logger16, _selectors2, _selectedItems, _isDebugMode2, _initSelectors, initSelectors_fn, _initSelector, initSelector_fn, _initCard, initCard_fn, _handleClick, handleClick_fn, _selectItem, selectItem_fn, _updateCart, updateCart_fn, _addItemToCart, addItemToCart_fn, _removeItemFromCart, removeItemFromCart_fn, _syncWithCart, syncWithCart_fn, _initUnitPricingForSelector, initUnitPricingForSelector_fn, _updateUnitPricingForCard, updateUnitPricingForCard_fn, _formatPrice, formatPrice_fn, _updatePriceElement, updatePriceElement_fn;
   var SelectorManager = class {
     constructor(app) {
       __privateAdd(this, _initSelectors);
@@ -6303,18 +6398,18 @@ var TwentyNineNext = (() => {
        * @param {Set} processedElements - Set of elements that have already been processed
        */
       __privateAdd(this, _updatePriceElement);
-      __privateAdd(this, _app10, void 0);
-      __privateAdd(this, _logger15, void 0);
+      __privateAdd(this, _app11, void 0);
+      __privateAdd(this, _logger16, void 0);
       __privateAdd(this, _selectors2, {});
       __privateAdd(this, _selectedItems, {});
       __privateAdd(this, _isDebugMode2, false);
-      __privateSet(this, _app10, app);
-      __privateSet(this, _logger15, app.logger.createModuleLogger("SELECTOR"));
+      __privateSet(this, _app11, app);
+      __privateSet(this, _logger16, app.logger.createModuleLogger("SELECTOR"));
       __privateSet(this, _isDebugMode2, DebugUtils.initDebugMode());
       __privateMethod(this, _initSelectors, initSelectors_fn).call(this);
-      __privateGet(this, _logger15).info("SelectorManager initialized");
+      __privateGet(this, _logger16).info("SelectorManager initialized");
       if (__privateGet(this, _isDebugMode2)) {
-        __privateGet(this, _logger15).info("Debug mode enabled for selectors");
+        __privateGet(this, _logger16).info("Debug mode enabled for selectors");
       }
     }
     /**
@@ -6322,7 +6417,7 @@ var TwentyNineNext = (() => {
      * This populates any elements with data-card-price attributes
      */
     initUnitPricing() {
-      __privateGet(this, _logger15).info("Initializing unit pricing for selectors");
+      __privateGet(this, _logger16).info("Initializing unit pricing for selectors");
       setTimeout(() => {
         Object.keys(__privateGet(this, _selectors2)).forEach((selectorId) => {
           __privateMethod(this, _initUnitPricingForSelector, initUnitPricingForSelector_fn).call(this, selectorId);
@@ -6341,9 +6436,9 @@ var TwentyNineNext = (() => {
      * This method is public so it can be called from EventManager if needed
      */
     triggerViewItemList() {
-      const campaignData = __privateGet(this, _app10).getCampaignData();
+      const campaignData = __privateGet(this, _app11).getCampaignData();
       if (!campaignData || !campaignData.packages || campaignData.packages.length === 0) {
-        __privateGet(this, _logger15).warn("Cannot trigger view_item_list: No packages in campaign data");
+        __privateGet(this, _logger16).warn("Cannot trigger view_item_list: No packages in campaign data");
         return;
       }
       const visiblePackageIds = /* @__PURE__ */ new Set();
@@ -6355,7 +6450,7 @@ var TwentyNineNext = (() => {
           }
         });
       });
-      __privateGet(this, _logger15).debug(`Found ${visiblePackageIds.size} unique package IDs in selectors`);
+      __privateGet(this, _logger16).debug(`Found ${visiblePackageIds.size} unique package IDs in selectors`);
       campaignData.packages.forEach((pkg) => {
         const refIdStr = pkg.ref_id?.toString();
         const externalIdStr = pkg.external_id?.toString();
@@ -6364,27 +6459,27 @@ var TwentyNineNext = (() => {
         }
       });
       if (visiblePackages.length > 0) {
-        __privateGet(this, _logger15).info(`Triggering view_item_list for ${visiblePackages.length} visible packages`);
+        __privateGet(this, _logger16).info(`Triggering view_item_list for ${visiblePackages.length} visible packages`);
         const filteredCampaignData = {
           ...campaignData,
           packages: visiblePackages
         };
-        if (__privateGet(this, _app10).eventManager?.viewItemList) {
-          __privateGet(this, _app10).eventManager.viewItemList(filteredCampaignData);
-          __privateGet(this, _logger15).debug("Used eventManager.viewItemList to fire event");
-        } else if (__privateGet(this, _app10).events?.viewItemList) {
-          __privateGet(this, _app10).events.viewItemList(filteredCampaignData);
-          __privateGet(this, _logger15).debug("Used events.viewItemList to fire event");
+        if (__privateGet(this, _app11).eventManager?.viewItemList) {
+          __privateGet(this, _app11).eventManager.viewItemList(filteredCampaignData);
+          __privateGet(this, _logger16).debug("Used eventManager.viewItemList to fire event");
+        } else if (__privateGet(this, _app11).events?.viewItemList) {
+          __privateGet(this, _app11).events.viewItemList(filteredCampaignData);
+          __privateGet(this, _logger16).debug("Used events.viewItemList to fire event");
         } else {
-          __privateGet(this, _logger15).warn("No suitable method found to trigger view_item_list");
+          __privateGet(this, _logger16).warn("No suitable method found to trigger view_item_list");
         }
       } else {
-        __privateGet(this, _logger15).warn("No matching packages found between selectors and campaign data");
+        __privateGet(this, _logger16).warn("No matching packages found between selectors and campaign data");
       }
     }
   };
-  _app10 = new WeakMap();
-  _logger15 = new WeakMap();
+  _app11 = new WeakMap();
+  _logger16 = new WeakMap();
   _selectors2 = new WeakMap();
   _selectedItems = new WeakMap();
   _isDebugMode2 = new WeakMap();
@@ -6392,7 +6487,7 @@ var TwentyNineNext = (() => {
   initSelectors_fn = function() {
     document.querySelectorAll('[data-os-component="selector"][data-os-selection-mode="swap"]').forEach((selector) => __privateMethod(this, _initSelector, initSelector_fn).call(this, selector));
     setTimeout(() => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this), 0);
-    __privateGet(this, _app10).state?.subscribe("cart", () => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this));
+    __privateGet(this, _app11).state?.subscribe("cart", () => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this));
     this.initUnitPricing();
     setTimeout(() => this.triggerViewItemList(), 100);
   };
@@ -6400,7 +6495,7 @@ var TwentyNineNext = (() => {
   initSelector_fn = function(selectorElement) {
     const selectorId = selectorElement.getAttribute("data-os-id");
     if (!selectorId) {
-      __privateGet(this, _logger15).warn("Selector missing data-os-id", selectorElement);
+      __privateGet(this, _logger16).warn("Selector missing data-os-id", selectorElement);
       return;
     }
     const mode = selectorElement.getAttribute("data-os-selection-mode") || "swap";
@@ -6419,7 +6514,7 @@ var TwentyNineNext = (() => {
   initCard_fn = function(selectorId, cardElement) {
     const packageId = cardElement.getAttribute("data-os-package");
     if (!packageId) {
-      __privateGet(this, _logger15).warn("Card missing data-os-package", cardElement);
+      __privateGet(this, _logger16).warn("Card missing data-os-package", cardElement);
       return;
     }
     const shippingId = cardElement.getAttribute("data-os-shipping-id");
@@ -6456,11 +6551,11 @@ var TwentyNineNext = (() => {
     __privateMethod(this, _selectItem, selectItem_fn).call(this, selectorId, item);
     __privateMethod(this, _updateCart, updateCart_fn).call(this, selectorId, previous);
     if (item.shippingId !== null && item.shippingId !== void 0) {
-      __privateGet(this, _logger15).info(`Setting shipping method to ${item.shippingId} based on selected card ${item.packageId}`);
+      __privateGet(this, _logger16).info(`Setting shipping method to ${item.shippingId} based on selected card ${item.packageId}`);
       try {
-        __privateGet(this, _app10).cart.setShippingMethod(item.shippingId);
+        __privateGet(this, _app11).cart.setShippingMethod(item.shippingId);
       } catch (error) {
-        __privateGet(this, _logger15).error(`Failed to set shipping method ${item.shippingId}:`, error);
+        __privateGet(this, _logger16).error(`Failed to set shipping method ${item.shippingId}:`, error);
       }
     }
   };
@@ -6477,12 +6572,12 @@ var TwentyNineNext = (() => {
     item.element.setAttribute("data-os-selected", "true");
     item.isSelected = true;
     __privateGet(this, _selectedItems)[selectorId] = item;
-    __privateGet(this, _logger15).debug(`Selected item ${item.packageId} in selector ${selectorId}`);
+    __privateGet(this, _logger16).debug(`Selected item ${item.packageId} in selector ${selectorId}`);
   };
   _updateCart = new WeakSet();
   updateCart_fn = function(selectorId, previousItem) {
-    if (!__privateGet(this, _app10).cart) {
-      __privateGet(this, _logger15).error("Cart manager not available");
+    if (!__privateGet(this, _app11).cart) {
+      __privateGet(this, _logger16).error("Cart manager not available");
       return;
     }
     const selected = __privateGet(this, _selectedItems)[selectorId];
@@ -6491,34 +6586,34 @@ var TwentyNineNext = (() => {
     if (previousItem && previousItem.packageId !== selected.packageId) {
       __privateMethod(this, _removeItemFromCart, removeItemFromCart_fn).call(this, previousItem);
     }
-    if (!__privateGet(this, _app10).cart.isItemInCart(selected.packageId)) {
+    if (!__privateGet(this, _app11).cart.isItemInCart(selected.packageId)) {
       __privateMethod(this, _addItemToCart, addItemToCart_fn).call(this, selected);
     }
     const currentSelectedItem = __privateGet(this, _selectedItems)[selectorId];
     if (currentSelectedItem && currentSelectedItem.shippingId !== null && currentSelectedItem.shippingId !== void 0) {
-      const currentCartShippingMethod = __privateGet(this, _app10).state?.getState("cart")?.shippingMethod?.ref_id;
+      const currentCartShippingMethod = __privateGet(this, _app11).state?.getState("cart")?.shippingMethod?.ref_id;
       if (currentCartShippingMethod?.toString() !== currentSelectedItem.shippingId.toString()) {
-        __privateGet(this, _logger15).info(`Syncing shipping method to ${currentSelectedItem.shippingId} for selected item ${currentSelectedItem.packageId}`);
+        __privateGet(this, _logger16).info(`Syncing shipping method to ${currentSelectedItem.shippingId} for selected item ${currentSelectedItem.packageId}`);
         try {
-          __privateGet(this, _app10).cart.setShippingMethod(currentSelectedItem.shippingId);
+          __privateGet(this, _app11).cart.setShippingMethod(currentSelectedItem.shippingId);
         } catch (error) {
-          __privateGet(this, _logger15).error(`Failed to sync shipping method ${currentSelectedItem.shippingId}:`, error);
+          __privateGet(this, _logger16).error(`Failed to sync shipping method ${currentSelectedItem.shippingId}:`, error);
         }
       }
     }
   };
   _addItemToCart = new WeakSet();
   addItemToCart_fn = function(item) {
-    if (!__privateGet(this, _app10).cart) {
-      __privateGet(this, _logger15).error("Cart manager not available in addItemToCart");
+    if (!__privateGet(this, _app11).cart) {
+      __privateGet(this, _logger16).error("Cart manager not available in addItemToCart");
       return;
     }
-    if (typeof __privateGet(this, _app10).cart.addToCart !== "function") {
-      __privateGet(this, _logger15).error("addToCart is not a function on this.#app.cart:", __privateGet(this, _app10).cart);
+    if (typeof __privateGet(this, _app11).cart.addToCart !== "function") {
+      __privateGet(this, _logger16).error("addToCart is not a function on this.#app.cart:", __privateGet(this, _app11).cart);
       return;
     }
-    __privateGet(this, _logger15).info(`Adding item ${item.packageId} to cart`);
-    __privateGet(this, _app10).cart.addToCart({
+    __privateGet(this, _logger16).info(`Adding item ${item.packageId} to cart`);
+    __privateGet(this, _app11).cart.addToCart({
       id: item.packageId,
       name: item.name,
       price: item.price,
@@ -6530,34 +6625,34 @@ var TwentyNineNext = (() => {
   };
   _removeItemFromCart = new WeakSet();
   removeItemFromCart_fn = function(item) {
-    if (!__privateGet(this, _app10).cart) {
-      __privateGet(this, _logger15).error("Cart manager not available in removeItemFromCart");
+    if (!__privateGet(this, _app11).cart) {
+      __privateGet(this, _logger16).error("Cart manager not available in removeItemFromCart");
       return;
     }
-    if (typeof __privateGet(this, _app10).cart.removeFromCart !== "function") {
-      __privateGet(this, _logger15).error("removeFromCart is not a function on this.#app.cart:", __privateGet(this, _app10).cart);
+    if (typeof __privateGet(this, _app11).cart.removeFromCart !== "function") {
+      __privateGet(this, _logger16).error("removeFromCart is not a function on this.#app.cart:", __privateGet(this, _app11).cart);
       return;
     }
-    __privateGet(this, _logger15).info(`Removing item ${item.packageId} from cart`);
-    __privateGet(this, _app10).cart.removeFromCart(item.packageId);
+    __privateGet(this, _logger16).info(`Removing item ${item.packageId} from cart`);
+    __privateGet(this, _app11).cart.removeFromCart(item.packageId);
     item.element.classList.remove("os--active");
     item.element.setAttribute("data-os-active", "false");
   };
   _syncWithCart = new WeakSet();
   syncWithCart_fn = function() {
-    if (!__privateGet(this, _app10).cart) {
-      __privateGet(this, _logger15).debug("Cart manager not available for sync");
+    if (!__privateGet(this, _app11).cart) {
+      __privateGet(this, _logger16).debug("Cart manager not available for sync");
       return;
     }
-    const cart = __privateGet(this, _app10).state?.getState("cart");
+    const cart = __privateGet(this, _app11).state?.getState("cart");
     if (!cart) {
-      __privateGet(this, _logger15).debug("Cart state not available");
+      __privateGet(this, _logger16).debug("Cart state not available");
       return;
     }
-    __privateGet(this, _logger15).debug("Syncing with cart, this.#app.cart:", __privateGet(this, _app10).cart);
+    __privateGet(this, _logger16).debug("Syncing with cart, this.#app.cart:", __privateGet(this, _app11).cart);
     Object.keys(__privateGet(this, _selectors2)).forEach((selectorId) => {
       const items = __privateGet(this, _selectors2)[selectorId].items;
-      const cartItemsInSelector = items.filter((item) => __privateGet(this, _app10).cart.isItemInCart(item.packageId));
+      const cartItemsInSelector = items.filter((item) => __privateGet(this, _app11).cart.isItemInCart(item.packageId));
       if (cartItemsInSelector.length > 0) {
         const itemInCart = cartItemsInSelector[0];
         __privateMethod(this, _selectItem, selectItem_fn).call(this, selectorId, itemInCart);
@@ -6573,19 +6668,19 @@ var TwentyNineNext = (() => {
         }
       }
       items.forEach((item) => {
-        const isInCart = __privateGet(this, _app10).cart.isItemInCart(item.packageId);
+        const isInCart = __privateGet(this, _app11).cart.isItemInCart(item.packageId);
         item.element.classList.toggle("os--active", isInCart);
         item.element.setAttribute("data-os-active", isInCart.toString());
       });
       const currentSelectedItem = __privateGet(this, _selectedItems)[selectorId];
       if (currentSelectedItem && currentSelectedItem.shippingId !== null && currentSelectedItem.shippingId !== void 0) {
-        const currentCartShippingMethod = __privateGet(this, _app10).state?.getState("cart")?.shippingMethod?.ref_id;
+        const currentCartShippingMethod = __privateGet(this, _app11).state?.getState("cart")?.shippingMethod?.ref_id;
         if (currentCartShippingMethod?.toString() !== currentSelectedItem.shippingId.toString()) {
-          __privateGet(this, _logger15).info(`Syncing shipping method to ${currentSelectedItem.shippingId} for selected item ${currentSelectedItem.packageId}`);
+          __privateGet(this, _logger16).info(`Syncing shipping method to ${currentSelectedItem.shippingId} for selected item ${currentSelectedItem.packageId}`);
           try {
-            __privateGet(this, _app10).cart.setShippingMethod(currentSelectedItem.shippingId);
+            __privateGet(this, _app11).cart.setShippingMethod(currentSelectedItem.shippingId);
           } catch (error) {
-            __privateGet(this, _logger15).error(`Failed to sync shipping method ${currentSelectedItem.shippingId}:`, error);
+            __privateGet(this, _logger16).error(`Failed to sync shipping method ${currentSelectedItem.shippingId}:`, error);
           }
         }
       }
@@ -6595,12 +6690,12 @@ var TwentyNineNext = (() => {
   initUnitPricingForSelector_fn = function(selectorId) {
     const selector = __privateGet(this, _selectors2)[selectorId];
     if (!selector) {
-      __privateGet(this, _logger15).warn(`Selector ${selectorId} not found for unit pricing`);
+      __privateGet(this, _logger16).warn(`Selector ${selectorId} not found for unit pricing`);
       return;
     }
-    const campaignData = __privateGet(this, _app10)?.campaignData;
+    const campaignData = __privateGet(this, _app11)?.campaignData;
     if (!campaignData || !campaignData.packages) {
-      __privateGet(this, _logger15).warn("Campaign data not available for unit pricing");
+      __privateGet(this, _logger16).warn("Campaign data not available for unit pricing");
       return;
     }
     selector.items.forEach((item) => {
@@ -6613,11 +6708,11 @@ var TwentyNineNext = (() => {
       (pkg) => pkg.ref_id.toString() === item.packageId.toString() || pkg.external_id && pkg.external_id.toString() === item.packageId.toString()
     );
     if (!packageData) {
-      __privateGet(this, _logger15).debug(`Package data not found for item ${item.packageId}`);
+      __privateGet(this, _logger16).debug(`Package data not found for item ${item.packageId}`);
       return;
     }
     const cardElement = item.element;
-    __privateGet(this, _logger15).debug(`Processing unit pricing for package ${item.packageId}:`, {
+    __privateGet(this, _logger16).debug(`Processing unit pricing for package ${item.packageId}:`, {
       packageId: item.packageId,
       name: packageData.name,
       price: packageData.price,
@@ -6629,22 +6724,22 @@ var TwentyNineNext = (() => {
     const totalUnits = packageData.qty || 1;
     let totalPrice = Number.parseFloat(packageData.price_total) || Number.parseFloat(packageData.price) * totalUnits;
     const totalRetailPrice = Number.parseFloat(packageData.price_retail_total) || Number.parseFloat(packageData.price_retail) * totalUnits || totalPrice;
-    const couponDetails = __privateGet(this, _app10).cart?.getCouponDetails?.();
+    const couponDetails = __privateGet(this, _app11).cart?.getCouponDetails?.();
     let discountedTotalPrice = totalPrice;
     if (couponDetails) {
-      __privateGet(this, _logger15).debug(`Active coupon found for unit pricing calculations:`, couponDetails);
+      __privateGet(this, _logger16).debug(`Active coupon found for unit pricing calculations:`, couponDetails);
       if (couponDetails.type === "percentage" && couponDetails.value > 0) {
         const discountPercentage = couponDetails.value / 100;
         discountedTotalPrice = totalPrice * (1 - discountPercentage);
-        __privateGet(this, _logger15).debug(`Applied ${couponDetails.value}% discount to package price: ${totalPrice} -> ${discountedTotalPrice}`);
+        __privateGet(this, _logger16).debug(`Applied ${couponDetails.value}% discount to package price: ${totalPrice} -> ${discountedTotalPrice}`);
       } else if (couponDetails.type === "fixed" && couponDetails.value > 0) {
-        const cart = __privateGet(this, _app10).state?.getState("cart");
+        const cart = __privateGet(this, _app11).state?.getState("cart");
         if (cart && cart.totals && cart.totals.original_subtotal > 0) {
           const cartSubtotal = cart.totals.original_subtotal;
           const packageProportion = totalPrice / cartSubtotal;
           const packageDiscount = couponDetails.value * packageProportion;
           discountedTotalPrice = Math.max(0, totalPrice - packageDiscount);
-          __privateGet(this, _logger15).debug(`Applied proportional fixed discount (${packageDiscount.toFixed(2)}) to package price: ${totalPrice} -> ${discountedTotalPrice}`);
+          __privateGet(this, _logger16).debug(`Applied proportional fixed discount (${packageDiscount.toFixed(2)}) to package price: ${totalPrice} -> ${discountedTotalPrice}`);
         }
       }
     }
@@ -6655,7 +6750,7 @@ var TwentyNineNext = (() => {
     const unitSavingsPercentage = unitRetailPrice > 0 ? unitSavings / unitRetailPrice * 100 : 0;
     const totalSavings = totalRetailPrice - totalPrice;
     const totalSavingsPercentage = totalRetailPrice > 0 ? totalSavings / totalRetailPrice * 100 : 0;
-    __privateGet(this, _logger15).debug(`Calculated prices for package ${item.packageId}:`, {
+    __privateGet(this, _logger16).debug(`Calculated prices for package ${item.packageId}:`, {
       totalUnits,
       totalPrice,
       totalRetailPrice,
@@ -6667,21 +6762,21 @@ var TwentyNineNext = (() => {
       unitSavingsPercentage
     });
     const formatPrice = (price) => {
-      if (__privateGet(this, _app10).campaign?.formatPrice) {
-        return __privateGet(this, _app10).campaign.formatPrice(price);
+      if (__privateGet(this, _app11).campaign?.formatPrice) {
+        return __privateGet(this, _app11).campaign.formatPrice(price);
       }
       return `$${price.toFixed(2)}`;
     };
     const processedElements = /* @__PURE__ */ new Set();
     const subunitElements = cardElement.querySelectorAll("[data-divide-by]");
     if (subunitElements.length > 0) {
-      __privateGet(this, _logger15).debug(`Found ${subunitElements.length} elements with data-divide-by in card ${item.packageId}`);
+      __privateGet(this, _logger16).debug(`Found ${subunitElements.length} elements with data-divide-by in card ${item.packageId}`);
       subunitElements.forEach((element) => {
         const divisor = parseFloat(element.getAttribute("data-divide-by"));
         if (!isNaN(divisor) && divisor > 0) {
           const type = element.getAttribute("data-card-price");
           if (!type) {
-            __privateGet(this, _logger15).debug(`Skipping element with data-divide-by but no data-card-price attribute`);
+            __privateGet(this, _logger16).debug(`Skipping element with data-divide-by but no data-card-price attribute`);
             return;
           }
           let value;
@@ -6711,7 +6806,7 @@ var TwentyNineNext = (() => {
               value = totalSavingsPercentage;
               break;
             default:
-              __privateGet(this, _logger15).debug(`Unknown price type: ${type}`);
+              __privateGet(this, _logger16).debug(`Unknown price type: ${type}`);
               return;
           }
           let formattedValue;
@@ -6720,7 +6815,7 @@ var TwentyNineNext = (() => {
           } else {
             formattedValue = formatPrice(value);
           }
-          __privateGet(this, _logger15).debug(`Setting price for element with data-divide-by="${divisor}":`, {
+          __privateGet(this, _logger16).debug(`Setting price for element with data-divide-by="${divisor}":`, {
             attributeType: type,
             originalValue: element.textContent,
             calculatedValue: value,
@@ -6729,7 +6824,7 @@ var TwentyNineNext = (() => {
           });
           element.textContent = formattedValue;
           processedElements.add(element);
-          __privateGet(this, _logger15).debug(`Updated element with data-divide-by="${divisor}" for ${type}: ${formattedValue}`);
+          __privateGet(this, _logger16).debug(`Updated element with data-divide-by="${divisor}" for ${type}: ${formattedValue}`);
         }
       });
     }
@@ -6741,12 +6836,12 @@ var TwentyNineNext = (() => {
     __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "total-regular", formatPrice(totalRetailPrice), processedElements);
     __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "total-saving-amount", formatPrice(totalSavings), processedElements);
     __privateMethod(this, _updatePriceElement, updatePriceElement_fn).call(this, cardElement, "total-saving-percentage", `${Math.round(totalSavingsPercentage)}%`, processedElements);
-    __privateGet(this, _logger15).debug(`Updated pricing for card ${item.packageId}: ${formatPrice(unitPrice)} per unit, ${formatPrice(totalPrice)} total`);
+    __privateGet(this, _logger16).debug(`Updated pricing for card ${item.packageId}: ${formatPrice(unitPrice)} per unit, ${formatPrice(totalPrice)} total`);
   };
   _formatPrice = new WeakSet();
   formatPrice_fn = function(price) {
-    if (__privateGet(this, _app10).campaign?.formatPrice) {
-      return __privateGet(this, _app10).campaign.formatPrice(price);
+    if (__privateGet(this, _app11).campaign?.formatPrice) {
+      return __privateGet(this, _app11).campaign.formatPrice(price);
     }
     return `$${price.toFixed(2)}`;
   };
@@ -6777,7 +6872,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/ToggleManager.js
-  var _toggleItems, _app11, _logger16, _isDebugMode3, _initToggleItems, initToggleItems_fn, _initToggleItem, initToggleItem_fn, _addDebugOverlay, addDebugOverlay_fn, _toggleItem, toggleItem_fn, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn, _updateToggleItemUI, updateToggleItemUI_fn, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn, _isItemInCart, isItemInCart_fn, _addItemToCart2, addItemToCart_fn2, _removeItemFromCart2, removeItemFromCart_fn2;
+  var _toggleItems, _app12, _logger17, _isDebugMode3, _initToggleItems, initToggleItems_fn, _initToggleItem, initToggleItem_fn, _addDebugOverlay, addDebugOverlay_fn, _toggleItem, toggleItem_fn, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn, _updateToggleItemUI, updateToggleItemUI_fn, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn, _isItemInCart, isItemInCart_fn, _addItemToCart2, addItemToCart_fn2, _removeItemFromCart2, removeItemFromCart_fn2;
   var ToggleManager = class {
     constructor(app) {
       __privateAdd(this, _initToggleItems);
@@ -6791,39 +6886,39 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _addItemToCart2);
       __privateAdd(this, _removeItemFromCart2);
       __privateAdd(this, _toggleItems, {});
-      __privateAdd(this, _app11, void 0);
-      __privateAdd(this, _logger16, void 0);
+      __privateAdd(this, _app12, void 0);
+      __privateAdd(this, _logger17, void 0);
       __privateAdd(this, _isDebugMode3, false);
-      __privateSet(this, _app11, app);
-      __privateSet(this, _logger16, app.logger.createModuleLogger("TOGGLE"));
+      __privateSet(this, _app12, app);
+      __privateSet(this, _logger17, app.logger.createModuleLogger("TOGGLE"));
       __privateSet(this, _isDebugMode3, DebugUtils.initDebugMode());
       __privateMethod(this, _initToggleItems, initToggleItems_fn).call(this);
-      __privateGet(this, _app11).state.subscribe("cart", () => __privateMethod(this, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn).call(this));
-      __privateGet(this, _logger16).info("ToggleManager initialized");
+      __privateGet(this, _app12).state.subscribe("cart", () => __privateMethod(this, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn).call(this));
+      __privateGet(this, _logger17).info("ToggleManager initialized");
       if (__privateGet(this, _isDebugMode3)) {
-        __privateGet(this, _logger16).info("Debug mode enabled for toggle items");
+        __privateGet(this, _logger17).info("Debug mode enabled for toggle items");
       }
     }
   };
   _toggleItems = new WeakMap();
-  _app11 = new WeakMap();
-  _logger16 = new WeakMap();
+  _app12 = new WeakMap();
+  _logger17 = new WeakMap();
   _isDebugMode3 = new WeakMap();
   _initToggleItems = new WeakSet();
   initToggleItems_fn = function() {
     const toggleElements = document.querySelectorAll('[data-os-action="toggle-item"]');
     if (!toggleElements.length) {
-      __privateGet(this, _logger16).debug("No toggle item buttons found in the DOM");
+      __privateGet(this, _logger17).debug("No toggle item buttons found in the DOM");
       return;
     }
-    __privateGet(this, _logger16).info(`Found ${toggleElements.length} toggle item buttons`);
+    __privateGet(this, _logger17).info(`Found ${toggleElements.length} toggle item buttons`);
     toggleElements.forEach((element) => __privateMethod(this, _initToggleItem, initToggleItem_fn).call(this, element));
   };
   _initToggleItem = new WeakSet();
   initToggleItem_fn = function(toggleElement) {
     const packageId = toggleElement.getAttribute("data-os-package");
     if (!packageId) {
-      __privateGet(this, _logger16).warn("Toggle item missing data-os-package attribute", toggleElement);
+      __privateGet(this, _logger17).warn("Toggle item missing data-os-package attribute", toggleElement);
       return;
     }
     const quantity = Number.parseInt(toggleElement.getAttribute("data-os-quantity") ?? "1", 10);
@@ -6837,7 +6932,7 @@ var TwentyNineNext = (() => {
     if (__privateGet(this, _isDebugMode3)) {
       __privateMethod(this, _addDebugOverlay, addDebugOverlay_fn).call(this, toggleElement, toggleId, packageId, quantity);
     }
-    __privateGet(this, _logger16).debug(`Initialized toggle item ${toggleId} for package ${packageId}`);
+    __privateGet(this, _logger17).debug(`Initialized toggle item ${toggleId} for package ${packageId}`);
   };
   _addDebugOverlay = new WeakSet();
   addDebugOverlay_fn = function(element, toggleId, packageId, quantity) {
@@ -6855,18 +6950,18 @@ var TwentyNineNext = (() => {
   toggleItem_fn = function(toggleId) {
     const toggleItem = __privateGet(this, _toggleItems)[toggleId];
     if (!toggleItem) {
-      __privateGet(this, _logger16).error(`Toggle item ${toggleId} not found`);
+      __privateGet(this, _logger17).error(`Toggle item ${toggleId} not found`);
       return;
     }
     const { packageId, quantity, element } = toggleItem;
     const isInCart = __privateMethod(this, _isItemInCart, isItemInCart_fn).call(this, packageId);
     if (isInCart) {
       __privateMethod(this, _removeItemFromCart2, removeItemFromCart_fn2).call(this, packageId);
-      __privateGet(this, _logger16).info(`Toggled OFF item ${packageId}`);
+      __privateGet(this, _logger17).info(`Toggled OFF item ${packageId}`);
     } else {
       const packageData = __privateMethod(this, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn).call(this, packageId);
       if (!packageData) {
-        __privateGet(this, _logger16).error(`Package ${packageId} not found in campaign data`);
+        __privateGet(this, _logger17).error(`Package ${packageId} not found in campaign data`);
         return;
       }
       const isUpsell = element.hasAttribute("data-os-upsell") ? element.getAttribute("data-os-upsell") === "true" : element.closest("[data-os-upsell-section]") !== null;
@@ -6878,18 +6973,18 @@ var TwentyNineNext = (() => {
         type: "package",
         is_upsell: isUpsell
       });
-      __privateGet(this, _logger16).info(`Toggled ON item ${packageId}${isUpsell ? " (upsell)" : ""}`);
+      __privateGet(this, _logger17).info(`Toggled ON item ${packageId}${isUpsell ? " (upsell)" : ""}`);
     }
     __privateMethod(this, _updateToggleItemUI, updateToggleItemUI_fn).call(this, element, packageId);
-    __privateGet(this, _app11).triggerEvent("toggle.changed", { toggleId, packageId, isActive: !isInCart });
+    __privateGet(this, _app12).triggerEvent("toggle.changed", { toggleId, packageId, isActive: !isInCart });
   };
   _getPackageDataFromCampaign = new WeakSet();
   getPackageDataFromCampaign_fn = function(packageId) {
-    if (!__privateGet(this, _app11).campaignData?.packages) {
-      __privateGet(this, _logger16).error("Campaign data not available");
+    if (!__privateGet(this, _app12).campaignData?.packages) {
+      __privateGet(this, _logger17).error("Campaign data not available");
       return null;
     }
-    return __privateGet(this, _app11).campaignData.packages.find((pkg) => pkg.ref_id.toString() === packageId.toString()) ?? null;
+    return __privateGet(this, _app12).campaignData.packages.find((pkg) => pkg.ref_id.toString() === packageId.toString()) ?? null;
   };
   _updateToggleItemUI = new WeakSet();
   updateToggleItemUI_fn = function(element, packageId) {
@@ -6905,30 +7000,30 @@ var TwentyNineNext = (() => {
   };
   _isItemInCart = new WeakSet();
   isItemInCart_fn = function(itemId) {
-    return __privateGet(this, _app11).state.getState("cart").items.some((item) => item.id === itemId);
+    return __privateGet(this, _app12).state.getState("cart").items.some((item) => item.id === itemId);
   };
   _addItemToCart2 = new WeakSet();
   addItemToCart_fn2 = function(item) {
-    if (!__privateGet(this, _app11).cart) {
-      __privateGet(this, _logger16).error("Cart manager not available");
+    if (!__privateGet(this, _app12).cart) {
+      __privateGet(this, _logger17).error("Cart manager not available");
       return;
     }
-    __privateGet(this, _app11).cart.addToCart(item);
+    __privateGet(this, _app12).cart.addToCart(item);
   };
   _removeItemFromCart2 = new WeakSet();
   removeItemFromCart_fn2 = function(itemId) {
-    if (!__privateGet(this, _app11).cart) {
-      __privateGet(this, _logger16).error("Cart manager not available");
+    if (!__privateGet(this, _app12).cart) {
+      __privateGet(this, _logger17).error("Cart manager not available");
       return;
     }
-    __privateGet(this, _app11).cart.removeFromCart(itemId);
+    __privateGet(this, _app12).cart.removeFromCart(itemId);
   };
 
   // src/managers/DebugManager.js
-  var _app12, _logger17, _miniCartVisible, _miniCartElement, _debugBarElement, _isDebugMode4, _init6, init_fn6, _createDebugBar, createDebugBar_fn, _toggleXray, toggleXray_fn, _showMiniCart, showMiniCart_fn, _hideMiniCart, hideMiniCart_fn, _toggleMiniCart, toggleMiniCart_fn, _createMiniCartElement, createMiniCartElement_fn, _updateMiniCart, updateMiniCart_fn;
+  var _app13, _logger18, _miniCartVisible, _miniCartElement, _debugBarElement, _isDebugMode4, _init7, init_fn7, _createDebugBar, createDebugBar_fn, _toggleXray, toggleXray_fn, _showMiniCart, showMiniCart_fn, _hideMiniCart, hideMiniCart_fn, _toggleMiniCart, toggleMiniCart_fn, _createMiniCartElement, createMiniCartElement_fn, _updateMiniCart, updateMiniCart_fn;
   var DebugManager = class {
     constructor(app) {
-      __privateAdd(this, _init6);
+      __privateAdd(this, _init7);
       __privateAdd(this, _createDebugBar);
       __privateAdd(this, _toggleXray);
       __privateAdd(this, _showMiniCart);
@@ -6936,43 +7031,43 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _toggleMiniCart);
       __privateAdd(this, _createMiniCartElement);
       __privateAdd(this, _updateMiniCart);
-      __privateAdd(this, _app12, void 0);
-      __privateAdd(this, _logger17, void 0);
+      __privateAdd(this, _app13, void 0);
+      __privateAdd(this, _logger18, void 0);
       __privateAdd(this, _miniCartVisible, false);
       __privateAdd(this, _miniCartElement, null);
       __privateAdd(this, _debugBarElement, null);
       __privateAdd(this, _isDebugMode4, false);
-      __privateSet(this, _app12, app);
-      __privateSet(this, _logger17, app.logger.createModuleLogger("DEBUG"));
+      __privateSet(this, _app13, app);
+      __privateSet(this, _logger18, app.logger.createModuleLogger("DEBUG"));
       __privateSet(this, _isDebugMode4, DebugUtils.initDebugMode());
-      __privateMethod(this, _init6, init_fn6).call(this);
-      __privateGet(this, _logger17).info("DebugManager initialized");
+      __privateMethod(this, _init7, init_fn7).call(this);
+      __privateGet(this, _logger18).info("DebugManager initialized");
     }
   };
-  _app12 = new WeakMap();
-  _logger17 = new WeakMap();
+  _app13 = new WeakMap();
+  _logger18 = new WeakMap();
   _miniCartVisible = new WeakMap();
   _miniCartElement = new WeakMap();
   _debugBarElement = new WeakMap();
   _isDebugMode4 = new WeakMap();
-  _init6 = new WeakSet();
-  init_fn6 = function() {
+  _init7 = new WeakSet();
+  init_fn7 = function() {
     window.showMiniCart = () => __privateMethod(this, _showMiniCart, showMiniCart_fn).call(this);
     window.hideMiniCart = () => __privateMethod(this, _hideMiniCart, hideMiniCart_fn).call(this);
     window.toggleMiniCart = () => __privateMethod(this, _toggleMiniCart, toggleMiniCart_fn).call(this);
     window.toggleXray = (enabled) => __privateMethod(this, _toggleXray, toggleXray_fn).call(this, enabled);
     if (__privateGet(this, _isDebugMode4)) {
-      __privateGet(this, _logger17).info("Debug mode activated via URL parameter");
+      __privateGet(this, _logger18).info("Debug mode activated via URL parameter");
       __privateMethod(this, _createDebugBar, createDebugBar_fn).call(this);
       if (localStorage.getItem("os_debug_mini_cart_visible") === "true") {
         __privateMethod(this, _showMiniCart, showMiniCart_fn).call(this);
       }
     }
-    __privateGet(this, _app12).state?.subscribe("cart", () => {
+    __privateGet(this, _app13).state?.subscribe("cart", () => {
       if (__privateGet(this, _miniCartVisible))
         __privateMethod(this, _updateMiniCart, updateMiniCart_fn).call(this);
     });
-    __privateGet(this, _logger17).debug("Debug methods exposed to window object");
+    __privateGet(this, _logger18).debug("Debug methods exposed to window object");
   };
   _createDebugBar = new WeakSet();
   createDebugBar_fn = function() {
@@ -7022,16 +7117,16 @@ var TwentyNineNext = (() => {
       if (checkbox)
         checkbox.checked = isEnabled;
     }
-    __privateGet(this, _logger17).info(`X-ray view ${isEnabled ? "enabled" : "disabled"}`);
+    __privateGet(this, _logger18).info(`X-ray view ${isEnabled ? "enabled" : "disabled"}`);
     return isEnabled;
   };
   _showMiniCart = new WeakSet();
   showMiniCart_fn = function() {
     if (__privateGet(this, _miniCartVisible)) {
-      __privateGet(this, _logger17).debug("Mini-cart already visible");
+      __privateGet(this, _logger18).debug("Mini-cart already visible");
       return;
     }
-    __privateGet(this, _logger17).info("Showing mini-cart widget");
+    __privateGet(this, _logger18).info("Showing mini-cart widget");
     __privateGet(this, _miniCartElement) ?? __privateSet(this, _miniCartElement, __privateMethod(this, _createMiniCartElement, createMiniCartElement_fn).call(this));
     __privateGet(this, _miniCartElement).style.display = "block";
     __privateSet(this, _miniCartVisible, true);
@@ -7041,10 +7136,10 @@ var TwentyNineNext = (() => {
   _hideMiniCart = new WeakSet();
   hideMiniCart_fn = function() {
     if (!__privateGet(this, _miniCartVisible)) {
-      __privateGet(this, _logger17).debug("Mini-cart already hidden");
+      __privateGet(this, _logger18).debug("Mini-cart already hidden");
       return;
     }
-    __privateGet(this, _logger17).info("Hiding mini-cart widget");
+    __privateGet(this, _logger18).info("Hiding mini-cart widget");
     if (__privateGet(this, _miniCartElement)) {
       __privateGet(this, _miniCartElement).style.display = "none";
     }
@@ -7107,7 +7202,7 @@ var TwentyNineNext = (() => {
     `;
     refreshButton.addEventListener("click", () => {
       __privateMethod(this, _updateMiniCart, updateMiniCart_fn).call(this);
-      __privateGet(this, _logger17).info("Mini-cart data refreshed manually");
+      __privateGet(this, _logger18).info("Mini-cart data refreshed manually");
     });
     const closeButton = document.createElement("button");
     closeButton.className = "os-debug-mini-cart-close";
@@ -7148,13 +7243,13 @@ var TwentyNineNext = (() => {
     const content = __privateGet(this, _miniCartElement).querySelector(".os-debug-mini-cart-content");
     if (!content)
       return;
-    const cart = __privateGet(this, _app12).state?.getState("cart");
+    const cart = __privateGet(this, _app13).state?.getState("cart");
     if (!cart) {
       content.innerHTML = '<div style="color: #999; text-align: center;">Cart data not available</div>';
       return;
     }
-    __privateGet(this, _logger17).debug("Updating mini-cart with cart data:", cart);
-    const formatPrice = (price) => __privateGet(this, _app12).campaign?.formatPrice(price) ?? `$${price.toFixed(2)}`;
+    __privateGet(this, _logger18).debug("Updating mini-cart with cart data:", cart);
+    const formatPrice = (price) => __privateGet(this, _app13).campaign?.formatPrice(price) ?? `$${price.toFixed(2)}`;
     let html = "";
     if (!cart.items?.length) {
       html += '<div style="color: #999; text-align: center; margin-bottom: 15px;">Cart is empty</div>';
@@ -7282,7 +7377,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/TimerManager.js
-  var _app13, _logger18, _timers, _storagePrefix, _initTimers, initTimers_fn, _setupTimer, setupTimer_fn, _getTimerConfig, getTimerConfig_fn, _formatTime, formatTime_fn, _triggerTimerEvent, triggerTimerEvent_fn;
+  var _app14, _logger19, _timers, _storagePrefix, _initTimers, initTimers_fn, _setupTimer, setupTimer_fn, _getTimerConfig, getTimerConfig_fn, _formatTime, formatTime_fn, _triggerTimerEvent, triggerTimerEvent_fn;
   var TimerManager = class {
     constructor(app) {
       /**
@@ -7317,21 +7412,21 @@ var TwentyNineNext = (() => {
        * @param {Object} detail - Event details
        */
       __privateAdd(this, _triggerTimerEvent);
-      __privateAdd(this, _app13, void 0);
-      __privateAdd(this, _logger18, void 0);
+      __privateAdd(this, _app14, void 0);
+      __privateAdd(this, _logger19, void 0);
       __privateAdd(this, _timers, /* @__PURE__ */ new Map());
       __privateAdd(this, _storagePrefix, "os-timer-");
-      __privateSet(this, _app13, app);
-      __privateSet(this, _logger18, app.logger.createModuleLogger("TIMER"));
+      __privateSet(this, _app14, app);
+      __privateSet(this, _logger19, app.logger.createModuleLogger("TIMER"));
       __privateMethod(this, _initTimers, initTimers_fn).call(this);
-      __privateGet(this, _logger18).infoWithTime("TimerManager initialized");
+      __privateGet(this, _logger19).infoWithTime("TimerManager initialized");
     }
     /**
      * Refresh all timers on the page
      * This can be called after dynamic content is loaded
      */
     refreshTimers() {
-      __privateGet(this, _logger18).infoWithTime("Refreshing timers");
+      __privateGet(this, _logger19).infoWithTime("Refreshing timers");
       __privateGet(this, _timers).forEach((timer) => {
         if (timer.intervalId) {
           clearInterval(timer.intervalId);
@@ -7349,19 +7444,19 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _timers);
     }
   };
-  _app13 = new WeakMap();
-  _logger18 = new WeakMap();
+  _app14 = new WeakMap();
+  _logger19 = new WeakMap();
   _timers = new WeakMap();
   _storagePrefix = new WeakMap();
   _initTimers = new WeakSet();
   initTimers_fn = function() {
-    __privateGet(this, _logger18).infoWithTime("Initializing timers");
+    __privateGet(this, _logger19).infoWithTime("Initializing timers");
     const timerElements = document.querySelectorAll('[data-os-element="timer"]');
     if (timerElements.length === 0) {
-      __privateGet(this, _logger18).debugWithTime("No timer elements found on page");
+      __privateGet(this, _logger19).debugWithTime("No timer elements found on page");
       return;
     }
-    __privateGet(this, _logger18).debugWithTime(`Found ${timerElements.length} timer elements`);
+    __privateGet(this, _logger19).debugWithTime(`Found ${timerElements.length} timer elements`);
     timerElements.forEach((timerElement) => {
       __privateMethod(this, _setupTimer, setupTimer_fn).call(this, timerElement);
     });
@@ -7370,11 +7465,11 @@ var TwentyNineNext = (() => {
   setupTimer_fn = function(timerElement) {
     const parentElement = timerElement.closest('[data-os-element="timer-text"]');
     if (!parentElement) {
-      __privateGet(this, _logger18).warnWithTime(`Timer element has no parent with data-os-element="timer-text", using default configuration`);
+      __privateGet(this, _logger19).warnWithTime(`Timer element has no parent with data-os-element="timer-text", using default configuration`);
     }
     const timerConfig = __privateMethod(this, _getTimerConfig, getTimerConfig_fn).call(this, timerElement, parentElement);
     if (!timerConfig.duration) {
-      __privateGet(this, _logger18).warnWithTime(`Timer element is missing duration, skipping: ${timerElement.outerHTML}`);
+      __privateGet(this, _logger19).warnWithTime(`Timer element is missing duration, skipping: ${timerElement.outerHTML}`);
       return;
     }
     const originalParentContent = parentElement ? parentElement.innerHTML : null;
@@ -7385,13 +7480,13 @@ var TwentyNineNext = (() => {
       const cachedStartTime = parseInt(localStorage.getItem(storageKey) || "");
       if (cachedStartTime > 0) {
         startTime = cachedStartTime;
-        __privateGet(this, _logger18).debugWithTime(`Loaded persisted timer start time for ${timerPersistenceId}: ${new Date(startTime).toISOString()}`);
+        __privateGet(this, _logger19).debugWithTime(`Loaded persisted timer start time for ${timerPersistenceId}: ${new Date(startTime).toISOString()}`);
       } else {
         localStorage.setItem(storageKey, String(startTime));
-        __privateGet(this, _logger18).debugWithTime(`Saved new timer start time for ${timerPersistenceId}: ${new Date(startTime).toISOString()}`);
+        __privateGet(this, _logger19).debugWithTime(`Saved new timer start time for ${timerPersistenceId}: ${new Date(startTime).toISOString()}`);
       }
     } else {
-      __privateGet(this, _logger18).debugWithTime(`Timer has no persistence ID, it will reset with every page load: ${timerElement.outerHTML}`);
+      __privateGet(this, _logger19).debugWithTime(`Timer has no persistence ID, it will reset with every page load: ${timerElement.outerHTML}`);
     }
     const timer = {
       element: timerElement,
@@ -7445,7 +7540,7 @@ var TwentyNineNext = (() => {
     };
     updateHandler();
     timer.intervalId = setInterval(updateHandler, 1e3);
-    __privateGet(this, _logger18).debugWithTime(`Timer initialized: ${timerConfig.duration} seconds, persistence ID: ${timerConfig.persistenceId || "none"}`);
+    __privateGet(this, _logger19).debugWithTime(`Timer initialized: ${timerConfig.duration} seconds, persistence ID: ${timerConfig.persistenceId || "none"}`);
   };
   _getTimerConfig = new WeakSet();
   getTimerConfig_fn = function(timerElement, parentElement) {
@@ -7509,11 +7604,11 @@ var TwentyNineNext = (() => {
     });
     element.dispatchEvent(event);
     document.dispatchEvent(event);
-    __privateGet(this, _logger18).debugWithTime(`Timer event triggered: ${eventName}`);
+    __privateGet(this, _logger19).debugWithTime(`Timer event triggered: ${eventName}`);
   };
 
   // src/managers/DisplayManager.js
-  var _app14, _logger19, _displayElements, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn;
+  var _app15, _logger20, _displayElements, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn;
   var DisplayManager = class {
     constructor(app) {
       /**
@@ -7534,21 +7629,21 @@ var TwentyNineNext = (() => {
        * @param {Object} detail - Event details
        */
       __privateAdd(this, _triggerDisplayEvent);
-      __privateAdd(this, _app14, void 0);
-      __privateAdd(this, _logger19, void 0);
+      __privateAdd(this, _app15, void 0);
+      __privateAdd(this, _logger20, void 0);
       __privateAdd(this, _displayElements, /* @__PURE__ */ new Map());
-      __privateSet(this, _app14, app);
-      __privateSet(this, _logger19, app.logger.createModuleLogger("DISPLAY"));
+      __privateSet(this, _app15, app);
+      __privateSet(this, _logger20, app.logger.createModuleLogger("DISPLAY"));
       __privateMethod(this, _initDisplayElements, initDisplayElements_fn).call(this);
-      __privateGet(this, _app14).state.subscribe("cart", () => this.refreshDisplayElements());
-      __privateGet(this, _logger19).infoWithTime("DisplayManager initialized");
+      __privateGet(this, _app15).state.subscribe("cart", () => this.refreshDisplayElements());
+      __privateGet(this, _logger20).infoWithTime("DisplayManager initialized");
     }
     /**
      * Refresh all display elements based on current cart contents
      */
     refreshDisplayElements() {
-      __privateGet(this, _logger19).debugWithTime("Refreshing display elements");
-      const cart = __privateGet(this, _app14).state.getState("cart");
+      __privateGet(this, _logger20).debugWithTime("Refreshing display elements");
+      const cart = __privateGet(this, _app15).state.getState("cart");
       const cartItemIds = cart.items.map((item) => item.id.toString());
       __privateGet(this, _displayElements).forEach((containerData, container) => {
         __privateMethod(this, _updateContainerDisplay, updateContainerDisplay_fn).call(this, container, containerData, cartItemIds);
@@ -7559,28 +7654,28 @@ var TwentyNineNext = (() => {
      * This can be called after dynamic content is loaded
      */
     refresh() {
-      __privateGet(this, _logger19).infoWithTime("Manually refreshing display elements");
+      __privateGet(this, _logger20).infoWithTime("Manually refreshing display elements");
       __privateGet(this, _displayElements).clear();
       __privateMethod(this, _initDisplayElements, initDisplayElements_fn).call(this);
     }
   };
-  _app14 = new WeakMap();
-  _logger19 = new WeakMap();
+  _app15 = new WeakMap();
+  _logger20 = new WeakMap();
   _displayElements = new WeakMap();
   _initDisplayElements = new WeakSet();
   initDisplayElements_fn = function() {
-    __privateGet(this, _logger19).infoWithTime("Initializing display elements");
+    __privateGet(this, _logger20).infoWithTime("Initializing display elements");
     const swapContainers = document.querySelectorAll('[data-os-cart="swap-display"]');
     if (swapContainers.length === 0) {
-      __privateGet(this, _logger19).debugWithTime("No swap display containers found on page");
+      __privateGet(this, _logger20).debugWithTime("No swap display containers found on page");
       return;
     }
-    __privateGet(this, _logger19).debugWithTime(`Found ${swapContainers.length} swap display containers`);
+    __privateGet(this, _logger20).debugWithTime(`Found ${swapContainers.length} swap display containers`);
     swapContainers.forEach((container, index) => {
       const containerId = container.dataset.osId || `auto-container-${index}`;
       const displayElements = container.querySelectorAll('[data-os-in-cart="display"]');
       if (displayElements.length === 0) {
-        __privateGet(this, _logger19).warnWithTime(`Container ${containerId} has no display elements`);
+        __privateGet(this, _logger20).warnWithTime(`Container ${containerId} has no display elements`);
         return;
       }
       __privateGet(this, _displayElements).set(container, {
@@ -7590,7 +7685,7 @@ var TwentyNineNext = (() => {
           packageId: element.dataset.osPackage
         }))
       });
-      __privateGet(this, _logger19).debugWithTime(`Initialized container ${containerId} with ${displayElements.length} display elements`);
+      __privateGet(this, _logger20).debugWithTime(`Initialized container ${containerId} with ${displayElements.length} display elements`);
     });
     this.refreshDisplayElements();
   };
@@ -7602,7 +7697,7 @@ var TwentyNineNext = (() => {
       if (packageId && cartItemIds.includes(packageId)) {
         element.style.display = "block";
         hasVisibleElement = true;
-        __privateGet(this, _logger19).debugWithTime(`Showing element for package ${packageId} in container ${id}`);
+        __privateGet(this, _logger20).debugWithTime(`Showing element for package ${packageId} in container ${id}`);
       } else {
         element.style.display = "none";
       }
@@ -7624,11 +7719,11 @@ var TwentyNineNext = (() => {
     });
     element.dispatchEvent(event);
     document.dispatchEvent(event);
-    __privateGet(this, _logger19).debugWithTime(`Display event triggered: ${eventName}`);
+    __privateGet(this, _logger20).debugWithTime(`Display event triggered: ${eventName}`);
   };
 
   // src/managers/CartDisplayManager.js
-  var _app15, _logger20, _elements3, _config2, _lineItemTemplate, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice2, formatPrice_fn2, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
+  var _app16, _logger21, _elements3, _config2, _lineItemTemplate, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice2, formatPrice_fn2, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
   var CartDisplayManager = class {
     constructor(app) {
       /**
@@ -7700,8 +7795,8 @@ var TwentyNineNext = (() => {
        * @returns {NodeList} - All matching elements
        */
       __privateAdd(this, _findAllSummaryElements);
-      __privateAdd(this, _app15, void 0);
-      __privateAdd(this, _logger20, void 0);
+      __privateAdd(this, _app16, void 0);
+      __privateAdd(this, _logger21, void 0);
       __privateAdd(this, _elements3, {
         lineDisplays: [],
         // Changed to array to support multiple displays
@@ -7734,48 +7829,48 @@ var TwentyNineNext = (() => {
         showTaxPendingMessage: true
       });
       __privateAdd(this, _lineItemTemplate, null);
-      __privateSet(this, _app15, app);
-      __privateSet(this, _logger20, app.logger.createModuleLogger("CART_DISPLAY"));
+      __privateSet(this, _app16, app);
+      __privateSet(this, _logger21, app.logger.createModuleLogger("CART_DISPLAY"));
       __privateMethod(this, _initCartDisplay, initCartDisplay_fn).call(this);
-      __privateGet(this, _app15).state.subscribe("cart", () => this.updateCartDisplay());
-      __privateGet(this, _logger20).infoWithTime("CartDisplayManager initialized");
+      __privateGet(this, _app16).state.subscribe("cart", () => this.updateCartDisplay());
+      __privateGet(this, _logger21).infoWithTime("CartDisplayManager initialized");
     }
     /**
      * Update the cart display with current cart data
      */
     updateCartDisplay() {
-      __privateGet(this, _logger20).debugWithTime("Updating cart display");
-      const cart = __privateGet(this, _app15).state.getState("cart");
+      __privateGet(this, _logger21).debugWithTime("Updating cart display");
+      const cart = __privateGet(this, _app16).state.getState("cart");
       if (!cart) {
-        __privateGet(this, _logger20).warnWithTime("Cart data not available");
+        __privateGet(this, _logger21).warnWithTime("Cart data not available");
         return;
       }
-      __privateGet(this, _logger20).debugWithTime(`Cart data: ${JSON.stringify(cart)}`);
+      __privateGet(this, _logger21).debugWithTime(`Cart data: ${JSON.stringify(cart)}`);
       __privateMethod(this, _updateLineItems, updateLineItems_fn).call(this, cart.items);
       __privateMethod(this, _updateSummary, updateSummary_fn).call(this, cart.totals);
       __privateMethod(this, _updateShipping, updateShipping_fn).call(this, cart.totals.shipping, cart.shippingMethod);
       __privateMethod(this, _updateSavings, updateSavings_fn).call(this, cart.totals);
       __privateMethod(this, _updateGrandTotal, updateGrandTotal_fn).call(this, cart.totals.total);
       __privateMethod(this, _updateCompareTotals, updateCompareTotals_fn).call(this, cart.totals);
-      __privateGet(this, _logger20).debugWithTime("Cart display updated");
+      __privateGet(this, _logger21).debugWithTime("Cart display updated");
     }
     /**
      * Refresh the cart display and re-find all elements
      * This can be called after dynamic content is loaded or when the viewport changes
      */
     refresh() {
-      __privateGet(this, _logger20).infoWithTime("Manually refreshing cart display");
+      __privateGet(this, _logger21).infoWithTime("Manually refreshing cart display");
       __privateMethod(this, _initCartDisplay, initCartDisplay_fn).call(this);
     }
   };
-  _app15 = new WeakMap();
-  _logger20 = new WeakMap();
+  _app16 = new WeakMap();
+  _logger21 = new WeakMap();
   _elements3 = new WeakMap();
   _config2 = new WeakMap();
   _lineItemTemplate = new WeakMap();
   _initCartDisplay = new WeakSet();
   initCartDisplay_fn = function() {
-    __privateGet(this, _logger20).infoWithTime("Initializing cart display");
+    __privateGet(this, _logger21).infoWithTime("Initializing cart display");
     __privateGet(this, _elements3).lineDisplays = document.querySelectorAll('[data-os-cart-summary="line-display"]');
     __privateGet(this, _elements3).summaryContainers = document.querySelectorAll('[data-os-cart="summary"]');
     __privateGet(this, _elements3).savingsBars = document.querySelectorAll('[data-os-cart-summary="savings"]');
@@ -7787,17 +7882,17 @@ var TwentyNineNext = (() => {
     __privateGet(this, _elements3).summaryTexts = document.querySelectorAll('[os-checkout-element="summary-text"]');
     __privateGet(this, _elements3).summaryIcons = document.querySelectorAll("[os-summary-icon]");
     __privateGet(this, _elements3).compareTotalElements = document.querySelectorAll('[data-os-cart-summary="compare-total"]');
-    __privateGet(this, _logger20).debugWithTime(`Line displays found: ${__privateGet(this, _elements3).lineDisplays.length}`);
-    __privateGet(this, _logger20).debugWithTime(`Summary containers found: ${__privateGet(this, _elements3).summaryContainers.length}`);
-    __privateGet(this, _logger20).debugWithTime(`Savings bars found: ${__privateGet(this, _elements3).savingsBars.length}`);
-    __privateGet(this, _logger20).debugWithTime(`Shipping bars found: ${__privateGet(this, _elements3).shippingBars.length}`);
-    __privateGet(this, _logger20).debugWithTime(`Grand total elements found: ${__privateGet(this, _elements3).grandTotals.length}`);
-    __privateGet(this, _logger20).debugWithTime(`Subtotal elements found: ${__privateGet(this, _elements3).subtotals.length}`);
-    __privateGet(this, _logger20).debugWithTime(`Summary bars found: ${__privateGet(this, _elements3).summaryBars.length}`);
-    __privateGet(this, _logger20).debugWithTime(`Summary panels found: ${__privateGet(this, _elements3).summaryPanels.length}`);
-    __privateGet(this, _logger20).debugWithTime(`Summary texts found: ${__privateGet(this, _elements3).summaryTexts.length}`);
-    __privateGet(this, _logger20).debugWithTime(`Summary icons found: ${__privateGet(this, _elements3).summaryIcons.length}`);
-    __privateGet(this, _logger20).debugWithTime(`Compare total elements found: ${__privateGet(this, _elements3).compareTotalElements.length}`);
+    __privateGet(this, _logger21).debugWithTime(`Line displays found: ${__privateGet(this, _elements3).lineDisplays.length}`);
+    __privateGet(this, _logger21).debugWithTime(`Summary containers found: ${__privateGet(this, _elements3).summaryContainers.length}`);
+    __privateGet(this, _logger21).debugWithTime(`Savings bars found: ${__privateGet(this, _elements3).savingsBars.length}`);
+    __privateGet(this, _logger21).debugWithTime(`Shipping bars found: ${__privateGet(this, _elements3).shippingBars.length}`);
+    __privateGet(this, _logger21).debugWithTime(`Grand total elements found: ${__privateGet(this, _elements3).grandTotals.length}`);
+    __privateGet(this, _logger21).debugWithTime(`Subtotal elements found: ${__privateGet(this, _elements3).subtotals.length}`);
+    __privateGet(this, _logger21).debugWithTime(`Summary bars found: ${__privateGet(this, _elements3).summaryBars.length}`);
+    __privateGet(this, _logger21).debugWithTime(`Summary panels found: ${__privateGet(this, _elements3).summaryPanels.length}`);
+    __privateGet(this, _logger21).debugWithTime(`Summary texts found: ${__privateGet(this, _elements3).summaryTexts.length}`);
+    __privateGet(this, _logger21).debugWithTime(`Summary icons found: ${__privateGet(this, _elements3).summaryIcons.length}`);
+    __privateGet(this, _logger21).debugWithTime(`Compare total elements found: ${__privateGet(this, _elements3).compareTotalElements.length}`);
     if (__privateGet(this, _elements3).summaryContainers.length > 0) {
       const firstContainer = __privateGet(this, _elements3).summaryContainers[0];
       __privateGet(this, _config2).showComparePricing = firstContainer.dataset.showComparePricing !== "false";
@@ -7810,17 +7905,17 @@ var TwentyNineNext = (() => {
       __privateSet(this, _lineItemTemplate, existingLineItem.cloneNode(true));
     }
     __privateMethod(this, _initSummaryToggle, initSummaryToggle_fn).call(this);
-    __privateGet(this, _logger20).debugWithTime("Cart display elements initialized");
+    __privateGet(this, _logger21).debugWithTime("Cart display elements initialized");
     this.updateCartDisplay();
   };
   _initSummaryToggle = new WeakSet();
   initSummaryToggle_fn = function() {
     const { summaryBars, summaryPanels, summaryTexts, summaryIcons } = __privateGet(this, _elements3);
     if (!summaryBars.length || !summaryPanels.length) {
-      __privateGet(this, _logger20).debugWithTime("Summary toggle elements not found, skipping initialization");
+      __privateGet(this, _logger21).debugWithTime("Summary toggle elements not found, skipping initialization");
       return;
     }
-    __privateGet(this, _logger20).debugWithTime("Initializing summary toggle");
+    __privateGet(this, _logger21).debugWithTime("Initializing summary toggle");
     summaryPanels.forEach((panel, index) => {
       panel.classList.add("no-transition");
       if (!panel.classList.contains("cc-expanded")) {
@@ -7850,7 +7945,7 @@ var TwentyNineNext = (() => {
         }
       });
     }, 250));
-    __privateGet(this, _logger20).debugWithTime("Summary toggle initialized");
+    __privateGet(this, _logger21).debugWithTime("Summary toggle initialized");
   };
   _toggleSummary = new WeakSet();
   toggleSummary_fn = function(index = 0) {
@@ -7876,7 +7971,7 @@ var TwentyNineNext = (() => {
           panel.style.height = "auto";
         }
       }, { once: true });
-      __privateGet(this, _logger20).debugWithTime("Summary panel expanded");
+      __privateGet(this, _logger21).debugWithTime("Summary panel expanded");
     } else {
       const currentHeight = panel.scrollHeight;
       panel.style.height = `${currentHeight}px`;
@@ -7894,17 +7989,17 @@ var TwentyNineNext = (() => {
           panel.classList.remove("cc-expanded");
         }
       }, { once: true });
-      __privateGet(this, _logger20).debugWithTime("Summary panel collapsed");
+      __privateGet(this, _logger21).debugWithTime("Summary panel collapsed");
     }
   };
   _updateLineItems = new WeakSet();
   updateLineItems_fn = function(items) {
     if (!__privateGet(this, _elements3).lineDisplays.length || !__privateGet(this, _lineItemTemplate)) {
-      __privateGet(this, _logger20).warnWithTime("Line displays or template not found");
+      __privateGet(this, _logger21).warnWithTime("Line displays or template not found");
       return;
     }
     if (!items || items.length === 0) {
-      __privateGet(this, _logger20).debugWithTime("No items in cart");
+      __privateGet(this, _logger21).debugWithTime("No items in cart");
       return;
     }
     __privateGet(this, _elements3).lineDisplays.forEach((lineDisplay) => {
@@ -7978,7 +8073,7 @@ var TwentyNineNext = (() => {
       __privateGet(this, _elements3).subtotals.forEach((element) => {
         element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.subtotal);
       });
-      __privateGet(this, _logger20).debugWithTime(`Updated subtotal to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.subtotal)}`);
+      __privateGet(this, _logger21).debugWithTime(`Updated subtotal to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.subtotal)}`);
     }
     if (totals.discount > 0) {
       const discountElements = document.querySelectorAll('[data-os-cart-summary="discount-amount"]');
@@ -7989,7 +8084,7 @@ var TwentyNineNext = (() => {
       discountRows.forEach((row) => {
         row.classList.remove("hide");
       });
-      __privateGet(this, _logger20).debugWithTime(`Updated discount amount to: -${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.discount)}`);
+      __privateGet(this, _logger21).debugWithTime(`Updated discount amount to: -${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.discount)}`);
       const originalSubtotalElements = document.querySelectorAll('[data-os-cart-summary="original-subtotal"]');
       originalSubtotalElements.forEach((element) => {
         element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.original_subtotal || totals.subtotal + totals.discount);
@@ -8009,7 +8104,7 @@ var TwentyNineNext = (() => {
   _updateShipping = new WeakSet();
   updateShipping_fn = function(shippingCost, shippingMethod) {
     if (!__privateGet(this, _elements3).shippingBars.length) {
-      __privateGet(this, _logger20).warnWithTime("Shipping bars not found");
+      __privateGet(this, _logger21).warnWithTime("Shipping bars not found");
       return;
     }
     __privateGet(this, _elements3).shippingBars.forEach((shippingBar) => {
@@ -8033,7 +8128,7 @@ var TwentyNineNext = (() => {
   _updateSavings = new WeakSet();
   updateSavings_fn = function(totals) {
     if (!__privateGet(this, _elements3).savingsBars.length) {
-      __privateGet(this, _logger20).warnWithTime("Savings bars not found");
+      __privateGet(this, _logger21).warnWithTime("Savings bars not found");
       return;
     }
     __privateGet(this, _elements3).savingsBars.forEach((savingsBar) => {
@@ -8042,11 +8137,11 @@ var TwentyNineNext = (() => {
       if (totals.savings > 0 && totals.savings_percentage > 0) {
         if (savingsAmount) {
           savingsAmount.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.savings);
-          __privateGet(this, _logger20).debugWithTime(`Updated savings amount to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.savings)}`);
+          __privateGet(this, _logger21).debugWithTime(`Updated savings amount to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, totals.savings)}`);
         }
         if (savingsPercentage) {
           savingsPercentage.textContent = `${Math.round(totals.savings_percentage)}% OFF`;
-          __privateGet(this, _logger20).debugWithTime(`Updated savings percentage to: ${Math.round(totals.savings_percentage)}% OFF`);
+          __privateGet(this, _logger21).debugWithTime(`Updated savings percentage to: ${Math.round(totals.savings_percentage)}% OFF`);
         }
         savingsBar.classList.remove("hide");
       } else {
@@ -8067,18 +8162,18 @@ var TwentyNineNext = (() => {
   _updateGrandTotal = new WeakSet();
   updateGrandTotal_fn = function(total) {
     if (!__privateGet(this, _elements3).grandTotals.length) {
-      __privateGet(this, _logger20).warnWithTime("Grand total elements not found");
+      __privateGet(this, _logger21).warnWithTime("Grand total elements not found");
       return;
     }
     __privateGet(this, _elements3).grandTotals.forEach((element) => {
       element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, total);
     });
-    __privateGet(this, _logger20).debugWithTime(`Updated grand total to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, total)}`);
+    __privateGet(this, _logger21).debugWithTime(`Updated grand total to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, total)}`);
   };
   _formatPrice2 = new WeakSet();
   formatPrice_fn2 = function(price) {
-    if (__privateGet(this, _app15).campaign?.formatPrice) {
-      return __privateGet(this, _app15).campaign.formatPrice(price);
+    if (__privateGet(this, _app16).campaign?.formatPrice) {
+      return __privateGet(this, _app16).campaign.formatPrice(price);
     }
     return `${__privateGet(this, _config2).currencySymbol}${price.toFixed(2)} USD`;
   };
@@ -8097,11 +8192,11 @@ var TwentyNineNext = (() => {
   _updateCompareTotals = new WeakSet();
   updateCompareTotals_fn = function(totals) {
     if (!__privateGet(this, _elements3).compareTotalElements.length) {
-      __privateGet(this, _logger20).debugWithTime("No compare-total elements found");
+      __privateGet(this, _logger21).debugWithTime("No compare-total elements found");
       return;
     }
-    __privateGet(this, _logger20).debugWithTime("Updating compare-total elements");
-    __privateGet(this, _logger20).debugWithTime(`Cart totals: ${JSON.stringify(totals)}`);
+    __privateGet(this, _logger21).debugWithTime("Updating compare-total elements");
+    __privateGet(this, _logger21).debugWithTime(`Cart totals: ${JSON.stringify(totals)}`);
     document.body.setAttribute("data-debug-cart-totals", JSON.stringify({
       total: totals.total,
       subtotal: totals.subtotal,
@@ -8114,10 +8209,10 @@ var TwentyNineNext = (() => {
       let compareValue = null;
       if (totals.retail_subtotal && totals.retail_subtotal > totals.subtotal) {
         compareValue = totals.retail_subtotal;
-        __privateGet(this, _logger20).debugWithTime(`Using retail_subtotal (${compareValue}) as compare value - product has built-in discount`);
+        __privateGet(this, _logger21).debugWithTime(`Using retail_subtotal (${compareValue}) as compare value - product has built-in discount`);
       } else if (totals.discount > 0) {
         compareValue = totals.original_subtotal || totals.subtotal + totals.discount;
-        __privateGet(this, _logger20).debugWithTime(`Using original_subtotal (${compareValue}) as compare value because a coupon is applied`);
+        __privateGet(this, _logger21).debugWithTime(`Using original_subtotal (${compareValue}) as compare value because a coupon is applied`);
       } else {
         switch (totalType) {
           case "retail":
@@ -8139,24 +8234,24 @@ var TwentyNineNext = (() => {
         const couponCompareValue = totals.original_subtotal || totals.subtotal + totals.discount;
         if (totals.retail_subtotal > couponCompareValue) {
           compareValue = totals.retail_subtotal;
-          __privateGet(this, _logger20).debugWithTime(`Using retail_subtotal (${compareValue}) as it's higher than original_subtotal with coupon`);
+          __privateGet(this, _logger21).debugWithTime(`Using retail_subtotal (${compareValue}) as it's higher than original_subtotal with coupon`);
         } else {
           compareValue = couponCompareValue;
-          __privateGet(this, _logger20).debugWithTime(`Using original_subtotal (${compareValue}) as it's higher than retail_subtotal`);
+          __privateGet(this, _logger21).debugWithTime(`Using original_subtotal (${compareValue}) as it's higher than retail_subtotal`);
         }
       }
       const hasStyleAttr = element.hasAttribute("data-style");
       const style = element.getAttribute("data-style");
       const isDiagonalLine = style === "diagonal-line";
-      __privateGet(this, _logger20).debugWithTime(`Element ${element.outerHTML} has style? ${hasStyleAttr}, style=${style}, isDiagonal=${isDiagonalLine}`);
-      __privateGet(this, _logger20).debugWithTime(`Compare value: ${compareValue}, Total: ${totals.total}, Should show? ${compareValue && compareValue > totals.total}`);
+      __privateGet(this, _logger21).debugWithTime(`Element ${element.outerHTML} has style? ${hasStyleAttr}, style=${style}, isDiagonal=${isDiagonalLine}`);
+      __privateGet(this, _logger21).debugWithTime(`Compare value: ${compareValue}, Total: ${totals.total}, Should show? ${compareValue && compareValue > totals.total}`);
       element.setAttribute("data-compare-value", compareValue || "none");
       if (isDiagonalLine) {
         if (compareValue && compareValue > totals.total) {
           element.classList.add("diagonal-strike");
           element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, compareValue);
           element.classList.remove("hide");
-          __privateGet(this, _logger20).debugWithTime(`Updated diagonal-line compare-total to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, compareValue)}`);
+          __privateGet(this, _logger21).debugWithTime(`Updated diagonal-line compare-total to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, compareValue)}`);
         } else {
           element.classList.remove("diagonal-strike");
           element.classList.add("hide");
@@ -8165,10 +8260,10 @@ var TwentyNineNext = (() => {
         if (compareValue && compareValue > totals.total) {
           element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, compareValue);
           element.classList.remove("hide");
-          __privateGet(this, _logger20).debugWithTime(`Updated compare-total to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, compareValue)}`);
+          __privateGet(this, _logger21).debugWithTime(`Updated compare-total to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, compareValue)}`);
         } else {
           element.classList.add("hide");
-          __privateGet(this, _logger20).debugWithTime(`Hiding compare-total element: compareValue=${compareValue}, total=${totals.total}`);
+          __privateGet(this, _logger21).debugWithTime(`Hiding compare-total element: compareValue=${compareValue}, total=${totals.total}`);
         }
       }
     });
@@ -8179,7 +8274,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/AttributionManager.js
-  var _app16, _logger21, _attributionData, _initialized2, _init7, init_fn7, _collectAttributionData, collectAttributionData_fn, _handleEverflowClickId, handleEverflowClickId_fn, _collectTrackingTags, collectTrackingTags_fn, _storeAttributionData, storeAttributionData_fn, _persistAttributionData, persistAttributionData_fn, _loadPersistedAttributionData, loadPersistedAttributionData_fn, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn, _setupEventListeners4, setupEventListeners_fn4, _getStoredValue, getStoredValue_fn, _getCookie, getCookie_fn, _getDeviceType, getDeviceType_fn, _getFacebookPixelId, getFacebookPixelId_fn;
+  var _app17, _logger22, _attributionData, _initialized2, _init8, init_fn8, _collectAttributionData, collectAttributionData_fn, _handleEverflowClickId, handleEverflowClickId_fn, _collectTrackingTags, collectTrackingTags_fn, _storeAttributionData, storeAttributionData_fn, _persistAttributionData, persistAttributionData_fn, _loadPersistedAttributionData, loadPersistedAttributionData_fn, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn, _setupEventListeners4, setupEventListeners_fn4, _getStoredValue, getStoredValue_fn, _getCookie, getCookie_fn, _getDeviceType, getDeviceType_fn, _getFacebookPixelId, getFacebookPixelId_fn;
   var AttributionManager = class {
     /**
      * Initialize the AttributionManager
@@ -8189,7 +8284,7 @@ var TwentyNineNext = (() => {
       /**
        * Initialize the AttributionManager
        */
-      __privateAdd(this, _init7);
+      __privateAdd(this, _init8);
       /**
        * Collect attribution data from various sources
        */
@@ -8248,13 +8343,13 @@ var TwentyNineNext = (() => {
        * @returns {string} The Facebook Pixel ID or empty string if not found
        */
       __privateAdd(this, _getFacebookPixelId);
-      __privateAdd(this, _app16, void 0);
-      __privateAdd(this, _logger21, void 0);
+      __privateAdd(this, _app17, void 0);
+      __privateAdd(this, _logger22, void 0);
       __privateAdd(this, _attributionData, {});
       __privateAdd(this, _initialized2, false);
-      __privateSet(this, _app16, app);
-      __privateSet(this, _logger21, app.logger.createModuleLogger("ATTRIBUTION"));
-      __privateMethod(this, _init7, init_fn7).call(this);
+      __privateSet(this, _app17, app);
+      __privateSet(this, _logger22, app.logger.createModuleLogger("ATTRIBUTION"));
+      __privateMethod(this, _init8, init_fn8).call(this);
     }
     /**
      * Update attribution data with new values
@@ -8268,16 +8363,16 @@ var TwentyNineNext = (() => {
         };
       }
       if (newData.funnel) {
-        __privateGet(this, _logger21).debug(`Updating funnel value to: ${newData.funnel}`);
+        __privateGet(this, _logger22).debug(`Updating funnel value to: ${newData.funnel}`);
       }
       __privateSet(this, _attributionData, {
         ...__privateGet(this, _attributionData),
         ...newData
       });
       __privateMethod(this, _storeAttributionData, storeAttributionData_fn).call(this);
-      __privateGet(this, _logger21).debug("Attribution data updated", newData);
-      if (__privateGet(this, _app16).events) {
-        __privateGet(this, _app16).events.trigger("attribution.updated", {
+      __privateGet(this, _logger22).debug("Attribution data updated", newData);
+      if (__privateGet(this, _app17).events) {
+        __privateGet(this, _app17).events.trigger("attribution.updated", {
           attribution: __privateGet(this, _attributionData)
         });
       }
@@ -8325,7 +8420,7 @@ var TwentyNineNext = (() => {
       console.group("AttributionManager Debug Info");
       const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
       const funnelFromTag = funnelMetaTag ? funnelMetaTag.getAttribute("data-tag-value") : "";
-      const campaignName = __privateGet(this, _app16).campaign?.getCampaignName() || __privateGet(this, _app16).campaignData?.name || "";
+      const campaignName = __privateGet(this, _app17).campaign?.getCampaignName() || __privateGet(this, _app17).campaignData?.name || "";
       /* @__PURE__ */ console.log("Key Attribution Values:");
       /* @__PURE__ */ console.log("- Affiliate:", __privateGet(this, _attributionData).affiliate);
       /* @__PURE__ */ console.log("- Funnel:", __privateGet(this, _attributionData).funnel);
@@ -8384,9 +8479,9 @@ var TwentyNineNext = (() => {
       } : {
         exists: false
       });
-      /* @__PURE__ */ console.log("Campaign Name:", __privateGet(this, _app16).campaignData?.name || "Not available");
-      if (__privateGet(this, _app16).state) {
-        /* @__PURE__ */ console.log("API-formatted State Attribution:", __privateGet(this, _app16).state.getState("attribution"));
+      /* @__PURE__ */ console.log("Campaign Name:", __privateGet(this, _app17).campaignData?.name || "Not available");
+      if (__privateGet(this, _app17).state) {
+        /* @__PURE__ */ console.log("API-formatted State Attribution:", __privateGet(this, _app17).state.getState("attribution"));
       }
       console.groupEnd();
       return "Attribution debug info logged to console.";
@@ -8398,12 +8493,12 @@ var TwentyNineNext = (() => {
      */
     setFunnelName(funnelName) {
       if (!funnelName) {
-        __privateGet(this, _logger21).warn("Cannot set empty funnel name");
+        __privateGet(this, _logger22).warn("Cannot set empty funnel name");
         return false;
       }
       __privateGet(this, _attributionData).funnel = funnelName;
       __privateMethod(this, _storeAttributionData, storeAttributionData_fn).call(this);
-      __privateGet(this, _logger21).info(`Funnel name set to: ${funnelName}`);
+      __privateGet(this, _logger22).info(`Funnel name set to: ${funnelName}`);
       return true;
     }
     /**
@@ -8413,7 +8508,7 @@ var TwentyNineNext = (() => {
      */
     setEverflowClickId(clickId) {
       if (!clickId) {
-        __privateGet(this, _logger21).warn("Cannot set empty Everflow click ID");
+        __privateGet(this, _logger22).warn("Cannot set empty Everflow click ID");
         return false;
       }
       localStorage.setItem("evclid", clickId);
@@ -8423,22 +8518,22 @@ var TwentyNineNext = (() => {
       this.updateAttributionData({
         metadata
       });
-      __privateGet(this, _logger21).info(`Everflow click ID set to: ${clickId}`);
+      __privateGet(this, _logger22).info(`Everflow click ID set to: ${clickId}`);
       return true;
     }
   };
-  _app16 = new WeakMap();
-  _logger21 = new WeakMap();
+  _app17 = new WeakMap();
+  _logger22 = new WeakMap();
   _attributionData = new WeakMap();
   _initialized2 = new WeakMap();
-  _init7 = new WeakSet();
-  init_fn7 = function() {
-    __privateGet(this, _logger21).info("Initializing AttributionManager");
+  _init8 = new WeakSet();
+  init_fn8 = function() {
+    __privateGet(this, _logger22).info("Initializing AttributionManager");
     __privateMethod(this, _collectAttributionData, collectAttributionData_fn).call(this);
     __privateMethod(this, _storeAttributionData, storeAttributionData_fn).call(this);
     __privateMethod(this, _setupEventListeners4, setupEventListeners_fn4).call(this);
     __privateSet(this, _initialized2, true);
-    __privateGet(this, _logger21).info("AttributionManager initialized successfully");
+    __privateGet(this, _logger22).info("AttributionManager initialized successfully");
   };
   _collectAttributionData = new WeakSet();
   collectAttributionData_fn = function() {
@@ -8486,7 +8581,7 @@ var TwentyNineNext = (() => {
       first_visit_timestamp: __privateMethod(this, _getFirstVisitTimestamp, getFirstVisitTimestamp_fn).call(this),
       current_visit_timestamp: Date.now()
     });
-    __privateGet(this, _logger21).debug("Attribution data collected");
+    __privateGet(this, _logger22).debug("Attribution data collected");
   };
   _handleEverflowClickId = new WeakSet();
   handleEverflowClickId_fn = function(metadata) {
@@ -8496,43 +8591,43 @@ var TwentyNineNext = (() => {
       evclid = urlParams.get("evclid");
       localStorage.setItem("evclid", evclid);
       sessionStorage.setItem("evclid", evclid);
-      __privateGet(this, _logger21).debug(`Everflow click ID found in URL: ${evclid}`);
+      __privateGet(this, _logger22).debug(`Everflow click ID found in URL: ${evclid}`);
     } else if (!evclid && sessionStorage.getItem("evclid")) {
       evclid = sessionStorage.getItem("evclid");
       localStorage.setItem("evclid", evclid);
-      __privateGet(this, _logger21).debug(`Everflow click ID found in sessionStorage: ${evclid}`);
+      __privateGet(this, _logger22).debug(`Everflow click ID found in sessionStorage: ${evclid}`);
     }
     if (urlParams.has("sg_evclid")) {
       const sg_evclid = urlParams.get("sg_evclid");
       sessionStorage.setItem("sg_evclid", sg_evclid);
       localStorage.setItem("sg_evclid", sg_evclid);
       metadata.sg_evclid = sg_evclid;
-      __privateGet(this, _logger21).debug(`SG Everflow click ID found: ${sg_evclid}`);
+      __privateGet(this, _logger22).debug(`SG Everflow click ID found: ${sg_evclid}`);
     } else if (localStorage.getItem("sg_evclid")) {
       metadata.sg_evclid = localStorage.getItem("sg_evclid");
     }
     if (evclid) {
       metadata.everflow_transaction_id = evclid;
-      __privateGet(this, _logger21).debug(`Added Everflow transaction ID to metadata: ${evclid}`);
+      __privateGet(this, _logger22).debug(`Added Everflow transaction ID to metadata: ${evclid}`);
     }
   };
   _collectTrackingTags = new WeakSet();
   collectTrackingTags_fn = function(metadata) {
     const trackingTags = document.querySelectorAll('meta[name="os-tracking-tag"]');
-    __privateGet(this, _logger21).debug(`Found ${trackingTags.length} tracking tags`);
+    __privateGet(this, _logger22).debug(`Found ${trackingTags.length} tracking tags`);
     trackingTags.forEach((tag) => {
       const tagName = tag.getAttribute("data-tag-name");
       const tagValue = tag.getAttribute("data-tag-value");
       const shouldPersist = tag.getAttribute("data-persist") === "true";
       if (tagName && tagValue) {
         metadata[tagName] = tagValue;
-        __privateGet(this, _logger21).debug(`Added tracking tag: ${tagName} = ${tagValue}`);
+        __privateGet(this, _logger22).debug(`Added tracking tag: ${tagName} = ${tagValue}`);
         if (shouldPersist) {
           try {
             sessionStorage.setItem(`os_tag_${tagName}`, tagValue);
-            __privateGet(this, _logger21).debug(`Persisted tracking tag: ${tagName} = ${tagValue}`);
+            __privateGet(this, _logger22).debug(`Persisted tracking tag: ${tagName} = ${tagValue}`);
           } catch (error) {
-            __privateGet(this, _logger21).error(`Error persisting tracking tag ${tagName}:`, error);
+            __privateGet(this, _logger22).error(`Error persisting tracking tag ${tagName}:`, error);
           }
         }
       }
@@ -8540,27 +8635,27 @@ var TwentyNineNext = (() => {
   };
   _storeAttributionData = new WeakSet();
   storeAttributionData_fn = function() {
-    if (!__privateGet(this, _app16).state) {
-      __privateGet(this, _logger21).warn("State manager not available, attribution data will not be stored");
+    if (!__privateGet(this, _app17).state) {
+      __privateGet(this, _logger22).warn("State manager not available, attribution data will not be stored");
       return;
     }
-    __privateGet(this, _app16).state.setState("cart.attribution", __privateGet(this, _attributionData));
-    __privateGet(this, _app16).state.setState("attribution", this.getAttributionForApi());
+    __privateGet(this, _app17).state.setState("cart.attribution", __privateGet(this, _attributionData));
+    __privateGet(this, _app17).state.setState("attribution", this.getAttributionForApi());
     __privateMethod(this, _persistAttributionData, persistAttributionData_fn).call(this);
-    if (__privateGet(this, _app16).events) {
-      __privateGet(this, _app16).events.trigger("attribution.updated", {
+    if (__privateGet(this, _app17).events) {
+      __privateGet(this, _app17).events.trigger("attribution.updated", {
         attribution: __privateGet(this, _attributionData)
       });
     }
-    __privateGet(this, _logger21).debug("Attribution data stored in state");
+    __privateGet(this, _logger22).debug("Attribution data stored in state");
   };
   _persistAttributionData = new WeakSet();
   persistAttributionData_fn = function() {
     try {
       localStorage.setItem("os_attribution", JSON.stringify(__privateGet(this, _attributionData)));
-      __privateGet(this, _logger21).debug("Attribution data persisted to localStorage");
+      __privateGet(this, _logger22).debug("Attribution data persisted to localStorage");
     } catch (error) {
-      __privateGet(this, _logger21).error("Error persisting attribution data to localStorage:", error);
+      __privateGet(this, _logger22).error("Error persisting attribution data to localStorage:", error);
     }
   };
   _loadPersistedAttributionData = new WeakSet();
@@ -8571,7 +8666,7 @@ var TwentyNineNext = (() => {
         return JSON.parse(persistedData);
       }
     } catch (error) {
-      __privateGet(this, _logger21).error("Error loading attribution data from localStorage:", error);
+      __privateGet(this, _logger22).error("Error loading attribution data from localStorage:", error);
     }
     return {};
   };
@@ -8592,21 +8687,21 @@ var TwentyNineNext = (() => {
         metadata
       });
     });
-    if (__privateGet(this, _app16).events) {
-      __privateGet(this, _app16).events.on("campaign.loaded", (data) => {
+    if (__privateGet(this, _app17).events) {
+      __privateGet(this, _app17).events.on("campaign.loaded", (data) => {
         if (data && data.campaign && data.campaign.name && !__privateGet(this, _attributionData).funnel) {
           const funnelMetaTag = document.querySelector('meta[name="os-tracking-tag"][data-tag-name="funnel_name"]');
           const funnelName = funnelMetaTag?.getAttribute("data-tag-value") || data.campaign.name;
           this.setFunnelName(funnelName);
         }
       });
-      __privateGet(this, _app16).events.on("prospect.cartCreated", () => {
+      __privateGet(this, _app17).events.on("prospect.cartCreated", () => {
         const metadata = __privateGet(this, _attributionData).metadata || {};
         metadata.conversion_timestamp = Date.now();
         this.updateAttributionData({
           metadata
         });
-        __privateGet(this, _logger21).debug("Cart created, updated metadata with conversion timestamp");
+        __privateGet(this, _logger22).debug("Cart created, updated metadata with conversion timestamp");
       });
     }
   };
@@ -8618,7 +8713,7 @@ var TwentyNineNext = (() => {
       try {
         sessionStorage.setItem(key, value);
       } catch (error) {
-        __privateGet(this, _logger21).error(`Error storing ${key} in sessionStorage:`, error);
+        __privateGet(this, _logger22).error(`Error storing ${key} in sessionStorage:`, error);
       }
       return value;
     }
@@ -8627,14 +8722,14 @@ var TwentyNineNext = (() => {
         return sessionStorage.getItem(key);
       }
     } catch (error) {
-      __privateGet(this, _logger21).error(`Error reading ${key} from sessionStorage:`, error);
+      __privateGet(this, _logger22).error(`Error reading ${key} from sessionStorage:`, error);
     }
     try {
       if (localStorage.getItem(key)) {
         return localStorage.getItem(key);
       }
     } catch (error) {
-      __privateGet(this, _logger21).error(`Error reading ${key} from localStorage:`, error);
+      __privateGet(this, _logger22).error(`Error reading ${key} from localStorage:`, error);
     }
     const persistedData = __privateMethod(this, _loadPersistedAttributionData, loadPersistedAttributionData_fn).call(this);
     if (persistedData[key]) {
@@ -8664,7 +8759,7 @@ var TwentyNineNext = (() => {
     if (osFbPixelMeta) {
       const pixelId = osFbPixelMeta.getAttribute("content");
       if (pixelId) {
-        __privateGet(this, _logger21).debug(`Facebook Pixel ID found from os-facebook-pixel meta tag: ${pixelId}`);
+        __privateGet(this, _logger22).debug(`Facebook Pixel ID found from os-facebook-pixel meta tag: ${pixelId}`);
         return pixelId;
       }
     }
@@ -8682,7 +8777,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/EventManager.js
-  var _app17, _logger22, _isInitialized, _platforms, _debugMode4, _processedOrderIds, _viewItemListFired2, _loadProcessedOrderIds, loadProcessedOrderIds_fn, _saveProcessedOrderIds, saveProcessedOrderIds_fn, _detectPlatforms, detectPlatforms_fn, _setupEventListeners5, setupEventListeners_fn5, _getUserDataForTracking, getUserDataForTracking_fn, _hashString, hashString_fn, _fireEvent, fireEvent_fn;
+  var _app18, _logger23, _isInitialized, _platforms, _debugMode4, _processedOrderIds, _viewItemListFired2, _loadProcessedOrderIds, loadProcessedOrderIds_fn, _saveProcessedOrderIds, saveProcessedOrderIds_fn, _detectPlatforms, detectPlatforms_fn, _setupEventListeners5, setupEventListeners_fn5, _getUserDataForTracking, getUserDataForTracking_fn, _hashString, hashString_fn, _fireEvent, fireEvent_fn;
   var EventManager = class {
     // Track if view_item_list has been fired
     constructor(app) {
@@ -8720,8 +8815,8 @@ var TwentyNineNext = (() => {
        * @param {Object} eventData - The event data
        */
       __privateAdd(this, _fireEvent);
-      __privateAdd(this, _app17, void 0);
-      __privateAdd(this, _logger22, void 0);
+      __privateAdd(this, _app18, void 0);
+      __privateAdd(this, _logger23, void 0);
       __privateAdd(this, _isInitialized, false);
       __privateAdd(this, _platforms, {
         gtm: { enabled: false, initialized: false },
@@ -8732,8 +8827,8 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _processedOrderIds, /* @__PURE__ */ new Set());
       // Track processed order IDs to prevent duplicates
       __privateAdd(this, _viewItemListFired2, false);
-      __privateSet(this, _app17, app);
-      __privateSet(this, _logger22, app.logger.createModuleLogger("EVENT"));
+      __privateSet(this, _app18, app);
+      __privateSet(this, _logger23, app.logger.createModuleLogger("EVENT"));
       __privateSet(this, _debugMode4, app.options?.debug || false);
       this.init();
     }
@@ -8741,24 +8836,24 @@ var TwentyNineNext = (() => {
      * Initialize the event manager
      */
     init() {
-      __privateGet(this, _logger22).info("Initializing EventManager");
+      __privateGet(this, _logger23).info("Initializing EventManager");
       __privateMethod(this, _detectPlatforms, detectPlatforms_fn).call(this);
       __privateMethod(this, _setupEventListeners5, setupEventListeners_fn5).call(this);
       __privateMethod(this, _loadProcessedOrderIds, loadProcessedOrderIds_fn).call(this);
       __privateSet(this, _isInitialized, true);
-      __privateGet(this, _logger22).info("EventManager initialized");
+      __privateGet(this, _logger23).info("EventManager initialized");
     }
     /**
      * Fire a view_item_list event
      * @param {Object} campaignData - The campaign data
      */
     viewItemList(campaignData) {
-      __privateGet(this, _logger22).debug("viewItemList called with campaign data:", campaignData ? "present" : "missing");
+      __privateGet(this, _logger23).debug("viewItemList called with campaign data:", campaignData ? "present" : "missing");
       if (!campaignData || !campaignData.packages || campaignData.packages.length === 0) {
-        __privateGet(this, _logger22).warn("Cannot fire view_item_list event: No packages found in campaign data");
+        __privateGet(this, _logger23).warn("Cannot fire view_item_list event: No packages found in campaign data");
         return;
       }
-      __privateGet(this, _logger22).debug(`Found ${campaignData.packages.length} packages in campaign data`);
+      __privateGet(this, _logger23).debug(`Found ${campaignData.packages.length} packages in campaign data`);
       const items = campaignData.packages.map((pkg) => {
         const price = typeof pkg.price === "string" ? parseFloat(pkg.price) : pkg.price || 0;
         return {
@@ -8776,7 +8871,7 @@ var TwentyNineNext = (() => {
           items
         }
       };
-      __privateGet(this, _logger22).debug("Firing view_item_list event with data:", eventData);
+      __privateGet(this, _logger23).debug("Firing view_item_list event with data:", eventData);
       __privateMethod(this, _fireEvent, fireEvent_fn).call(this, "view_item_list", eventData);
     }
     /**
@@ -8789,9 +8884,9 @@ var TwentyNineNext = (() => {
       let currency = "USD";
       let value = 0;
       if (isSinglePackage) {
-        __privateGet(this, _logger22).debug("addToCart called with single package, converting to cart format");
+        __privateGet(this, _logger23).debug("addToCart called with single package, converting to cart format");
         if (!cartData) {
-          __privateGet(this, _logger22).warn("Cannot fire add_to_cart event: No package data provided");
+          __privateGet(this, _logger23).warn("Cannot fire add_to_cart event: No package data provided");
           return;
         }
         const pkg = cartData;
@@ -8799,7 +8894,7 @@ var TwentyNineNext = (() => {
           item_id: pkg.external_id || pkg.ref_id || pkg.id,
           item_name: pkg.name,
           price: parseFloat(pkg.price) || 0,
-          currency: pkg.currency || __privateGet(this, _app17).getCampaignData()?.currency || "USD",
+          currency: pkg.currency || __privateGet(this, _app18).getCampaignData()?.currency || "USD",
           quantity: pkg.quantity || 1
         };
         items = [item];
@@ -8807,7 +8902,7 @@ var TwentyNineNext = (() => {
         value = item.price * item.quantity;
       } else {
         if (!cartData || !cartData.items || cartData.items.length === 0) {
-          __privateGet(this, _logger22).warn("Cannot fire add_to_cart event: No items in cart");
+          __privateGet(this, _logger23).warn("Cannot fire add_to_cart event: No items in cart");
           return;
         }
         items = cartData.items.map((item) => ({
@@ -8837,16 +8932,16 @@ var TwentyNineNext = (() => {
      */
     purchase(orderData, force = false) {
       if (!orderData || !orderData.lines || orderData.lines.length === 0) {
-        __privateGet(this, _logger22).warn("Cannot fire purchase event: No items in order");
+        __privateGet(this, _logger23).warn("Cannot fire purchase event: No items in order");
         return;
       }
       const orderId = orderData.number || orderData.ref_id;
-      __privateGet(this, _logger22).debug(`Purchase method called for order ${orderId}, force=${force}, already processed=${__privateGet(this, _processedOrderIds).has(orderId)}`);
+      __privateGet(this, _logger23).debug(`Purchase method called for order ${orderId}, force=${force}, already processed=${__privateGet(this, _processedOrderIds).has(orderId)}`);
       if (!force && orderId && __privateGet(this, _processedOrderIds).has(orderId)) {
-        __privateGet(this, _logger22).info(`Purchase event for order ${orderId} already fired, skipping`);
+        __privateGet(this, _logger23).info(`Purchase event for order ${orderId} already fired, skipping`);
         return;
       }
-      __privateGet(this, _logger22).info(`Preparing to fire purchase event for order ${orderId}`);
+      __privateGet(this, _logger23).info(`Preparing to fire purchase event for order ${orderId}`);
       const items = orderData.lines.map((line) => ({
         item_id: line.product_id || line.id,
         item_name: line.product_title || line.name,
@@ -8872,7 +8967,7 @@ var TwentyNineNext = (() => {
       if (orderId) {
         __privateGet(this, _processedOrderIds).add(orderId);
         __privateMethod(this, _saveProcessedOrderIds, saveProcessedOrderIds_fn).call(this);
-        __privateGet(this, _logger22).debug(`Marked order ${orderId} as processed, total processed orders: ${__privateGet(this, _processedOrderIds).size}`);
+        __privateGet(this, _logger23).debug(`Marked order ${orderId} as processed, total processed orders: ${__privateGet(this, _processedOrderIds).size}`);
       }
     }
     /**
@@ -8881,14 +8976,14 @@ var TwentyNineNext = (() => {
      */
     viewItem(packageData) {
       if (!packageData) {
-        __privateGet(this, _logger22).warn("Cannot fire view_item event: No package data provided");
+        __privateGet(this, _logger23).warn("Cannot fire view_item event: No package data provided");
         return;
       }
       const item = {
         item_id: packageData.ref_id || packageData.external_id || packageData.id,
         item_name: packageData.name,
         price: parseFloat(packageData.price) || 0,
-        currency: packageData.currency || __privateGet(this, _app17).getCampaignData()?.currency || "USD",
+        currency: packageData.currency || __privateGet(this, _app18).getCampaignData()?.currency || "USD",
         quantity: 1
       };
       const eventData = {
@@ -8905,9 +9000,9 @@ var TwentyNineNext = (() => {
      * Manually fire a begin_checkout event
      */
     beginCheckout() {
-      const cart = __privateGet(this, _app17).state.getState("cart");
+      const cart = __privateGet(this, _app18).state.getState("cart");
       if (!cart || !cart.items || cart.items.length === 0) {
-        __privateGet(this, _logger22).warn("Cannot fire begin_checkout event: No items in cart");
+        __privateGet(this, _logger23).warn("Cannot fire begin_checkout event: No items in cart");
         return;
       }
       const items = cart.items.map((item) => ({
@@ -8934,26 +9029,26 @@ var TwentyNineNext = (() => {
      */
     fireCustomEvent(eventName, eventData = {}) {
       if (!eventName) {
-        __privateGet(this, _logger22).warn("Cannot fire custom event: No event name provided");
+        __privateGet(this, _logger23).warn("Cannot fire custom event: No event name provided");
         return;
       }
       const formattedEventData = {
         event: eventName,
         ...eventData
       };
-      __privateGet(this, _logger22).debug(`Firing custom event: ${eventName}`, formattedEventData);
+      __privateGet(this, _logger23).debug(`Firing custom event: ${eventName}`, formattedEventData);
       if (__privateGet(this, _platforms).gtm.enabled) {
         window.dataLayer = window.dataLayer || [];
         window.dataLayer.push(formattedEventData);
-        __privateGet(this, _logger22).debug(`Custom event ${eventName} fired to Google Tag Manager`);
+        __privateGet(this, _logger23).debug(`Custom event ${eventName} fired to Google Tag Manager`);
       }
       if (__privateGet(this, _platforms).fbPixel.enabled && typeof window.fbq === "function") {
         window.fbq("trackCustom", eventName, eventData);
-        __privateGet(this, _logger22).debug(`Custom event ${eventName} fired to Facebook Pixel`);
+        __privateGet(this, _logger23).debug(`Custom event ${eventName} fired to Facebook Pixel`);
       }
       if (__privateGet(this, _platforms).ga4.enabled && typeof window.gtag === "function") {
         window.gtag("event", eventName, eventData);
-        __privateGet(this, _logger22).debug(`Custom event ${eventName} fired to Google Analytics 4`);
+        __privateGet(this, _logger23).debug(`Custom event ${eventName} fired to Google Analytics 4`);
       }
       const customEvent = new CustomEvent(`os:${eventName}`, {
         bubbles: true,
@@ -8969,9 +9064,9 @@ var TwentyNineNext = (() => {
     setPlatformEnabled(platform2, enabled) {
       if (__privateGet(this, _platforms)[platform2]) {
         __privateGet(this, _platforms)[platform2].enabled = enabled;
-        __privateGet(this, _logger22).info(`${platform2} ${enabled ? "enabled" : "disabled"}`);
+        __privateGet(this, _logger23).info(`${platform2} ${enabled ? "enabled" : "disabled"}`);
       } else {
-        __privateGet(this, _logger22).warn(`Unknown platform: ${platform2}`);
+        __privateGet(this, _logger23).warn(`Unknown platform: ${platform2}`);
       }
     }
     /**
@@ -8989,8 +9084,8 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _isInitialized);
     }
   };
-  _app17 = new WeakMap();
-  _logger22 = new WeakMap();
+  _app18 = new WeakMap();
+  _logger23 = new WeakMap();
   _isInitialized = new WeakMap();
   _platforms = new WeakMap();
   _debugMode4 = new WeakMap();
@@ -9004,11 +9099,11 @@ var TwentyNineNext = (() => {
         const parsedIds = JSON.parse(storedIds);
         if (Array.isArray(parsedIds)) {
           parsedIds.forEach((id) => __privateGet(this, _processedOrderIds).add(id));
-          __privateGet(this, _logger22).debug(`Loaded ${parsedIds.length} processed order IDs from sessionStorage`);
+          __privateGet(this, _logger23).debug(`Loaded ${parsedIds.length} processed order IDs from sessionStorage`);
         }
       }
     } catch (error) {
-      __privateGet(this, _logger22).error("Error loading processed order IDs from sessionStorage:", error);
+      __privateGet(this, _logger23).error("Error loading processed order IDs from sessionStorage:", error);
     }
   };
   _saveProcessedOrderIds = new WeakSet();
@@ -9016,9 +9111,9 @@ var TwentyNineNext = (() => {
     try {
       const idsArray = Array.from(__privateGet(this, _processedOrderIds));
       sessionStorage.setItem("os_processed_order_ids", JSON.stringify(idsArray));
-      __privateGet(this, _logger22).debug(`Saved ${idsArray.length} processed order IDs to sessionStorage`);
+      __privateGet(this, _logger23).debug(`Saved ${idsArray.length} processed order IDs to sessionStorage`);
     } catch (error) {
-      __privateGet(this, _logger22).error("Error saving processed order IDs to sessionStorage:", error);
+      __privateGet(this, _logger23).error("Error saving processed order IDs to sessionStorage:", error);
     }
   };
   _detectPlatforms = new WeakSet();
@@ -9026,33 +9121,33 @@ var TwentyNineNext = (() => {
     if (typeof window.dataLayer !== "undefined") {
       __privateGet(this, _platforms).gtm.enabled = true;
       __privateGet(this, _platforms).gtm.initialized = true;
-      __privateGet(this, _logger22).info("Google Tag Manager detected");
+      __privateGet(this, _logger23).info("Google Tag Manager detected");
     } else {
-      __privateGet(this, _logger22).info("Google Tag Manager not detected");
+      __privateGet(this, _logger23).info("Google Tag Manager not detected");
     }
     if (typeof window.fbq !== "undefined") {
       __privateGet(this, _platforms).fbPixel.enabled = true;
       __privateGet(this, _platforms).fbPixel.initialized = true;
-      __privateGet(this, _logger22).info("Facebook Pixel detected");
+      __privateGet(this, _logger23).info("Facebook Pixel detected");
     } else {
-      __privateGet(this, _logger22).info("Facebook Pixel not detected");
+      __privateGet(this, _logger23).info("Facebook Pixel not detected");
     }
     if (typeof window.gtag !== "undefined") {
       __privateGet(this, _platforms).ga4.enabled = true;
       __privateGet(this, _platforms).ga4.initialized = true;
-      __privateGet(this, _logger22).info("Google Analytics 4 detected");
+      __privateGet(this, _logger23).info("Google Analytics 4 detected");
     } else {
-      __privateGet(this, _logger22).info("Google Analytics 4 not detected");
+      __privateGet(this, _logger23).info("Google Analytics 4 not detected");
     }
   };
   _setupEventListeners5 = new WeakSet();
   setupEventListeners_fn5 = function() {
     let previousCartItems = [];
-    __privateGet(this, _app17).on("campaign.loaded", (data) => {
-      __privateGet(this, _logger22).debug("Campaign loaded event received, triggering viewVisibleItemList");
+    __privateGet(this, _app18).on("campaign.loaded", (data) => {
+      __privateGet(this, _logger23).debug("Campaign loaded event received, triggering viewVisibleItemList");
       this.viewVisibleItemList();
     });
-    __privateGet(this, _app17).on("cart.updated", (data) => {
+    __privateGet(this, _app18).on("cart.updated", (data) => {
       if (data.cart && data.cart.items && data.cart.items.length > 0) {
         const currentCartItemsJSON = JSON.stringify(data.cart.items.map((item) => ({
           id: item.id,
@@ -9060,26 +9155,26 @@ var TwentyNineNext = (() => {
         })));
         const previousCartItemsJSON = JSON.stringify(previousCartItems);
         if (currentCartItemsJSON !== previousCartItemsJSON) {
-          __privateGet(this, _logger22).debug("Cart items changed, firing add_to_cart event");
+          __privateGet(this, _logger23).debug("Cart items changed, firing add_to_cart event");
           this.addToCart(data.cart);
           previousCartItems = data.cart.items.map((item) => ({
             id: item.id,
             quantity: item.quantity
           }));
         } else {
-          __privateGet(this, _logger22).debug("Cart updated but items unchanged, not firing add_to_cart");
+          __privateGet(this, _logger23).debug("Cart updated but items unchanged, not firing add_to_cart");
         }
       } else {
         previousCartItems = [];
       }
     });
-    __privateGet(this, _app17).on("order.loaded", (data) => {
-      __privateGet(this, _logger22).debug("Received order.loaded event with data:", JSON.stringify(data, null, 2));
+    __privateGet(this, _app18).on("order.loaded", (data) => {
+      __privateGet(this, _logger23).debug("Received order.loaded event with data:", JSON.stringify(data, null, 2));
       if (data.order) {
-        __privateGet(this, _logger22).info("Order loaded on receipt page, checking if purchase event needed");
+        __privateGet(this, _logger23).info("Order loaded on receipt page, checking if purchase event needed");
         this.purchase(data.order);
       } else {
-        __privateGet(this, _logger22).warn("Order.loaded event received but no order data found", data);
+        __privateGet(this, _logger23).warn("Order.loaded event received but no order data found", data);
       }
     });
   };
@@ -9117,16 +9212,16 @@ var TwentyNineNext = (() => {
   };
   _fireEvent = new WeakSet();
   fireEvent_fn = function(eventName, eventData) {
-    __privateGet(this, _logger22).debug(`Firing ${eventName} event`, eventData);
+    __privateGet(this, _logger23).debug(`Firing ${eventName} event`, eventData);
     if (__privateGet(this, _platforms).gtm.enabled) {
       window.dataLayer = window.dataLayer || [];
-      __privateGet(this, _logger22).debug("Clearing previous ecommerce data in dataLayer");
+      __privateGet(this, _logger23).debug("Clearing previous ecommerce data in dataLayer");
       window.dataLayer.push({ ecommerce: null });
       /* @__PURE__ */ console.log(`🔥 Firing ${eventName} event to dataLayer`);
       window.dataLayer.push(eventData);
-      __privateGet(this, _logger22).debug(`${eventName} event fired to Google Tag Manager`);
+      __privateGet(this, _logger23).debug(`${eventName} event fired to Google Tag Manager`);
     } else {
-      __privateGet(this, _logger22).warn(`Cannot fire ${eventName} event to GTM: GTM not enabled`);
+      __privateGet(this, _logger23).warn(`Cannot fire ${eventName} event to GTM: GTM not enabled`);
       /* @__PURE__ */ console.log("GTM not detected, initializing dataLayer and pushing event");
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({ ecommerce: null });
@@ -9158,7 +9253,7 @@ var TwentyNineNext = (() => {
           });
           break;
       }
-      __privateGet(this, _logger22).debug(`${eventName} event fired to Facebook Pixel`);
+      __privateGet(this, _logger23).debug(`${eventName} event fired to Facebook Pixel`);
     }
     if (__privateGet(this, _platforms).ga4.enabled) {
       window.gtag("event", eventName, {
@@ -9166,7 +9261,7 @@ var TwentyNineNext = (() => {
         value: eventData.ecommerce.value,
         items: eventData.ecommerce.items
       });
-      __privateGet(this, _logger22).debug(`${eventName} event fired to Google Analytics 4`);
+      __privateGet(this, _logger23).debug(`${eventName} event fired to Google Analytics 4`);
     }
     const customEvent = new CustomEvent(`os:${eventName}`, {
       bubbles: true,
@@ -10402,13 +10497,13 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/TooltipManager.js
-  var _app18, _logger23, _tooltip, _arrowElement, _textContainer, _currentElement, _showTimeout, _hideTimeout, _initialized3, _init8, init_fn8, _createTooltip, createTooltip_fn, _setupEventListeners6, setupEventListeners_fn6, _showTooltip, showTooltip_fn, _hideTooltip, hideTooltip_fn;
+  var _app19, _logger24, _tooltip, _arrowElement, _textContainer, _currentElement, _showTimeout, _hideTimeout, _initialized3, _init9, init_fn9, _createTooltip, createTooltip_fn, _setupEventListeners6, setupEventListeners_fn6, _showTooltip, showTooltip_fn, _hideTooltip, hideTooltip_fn;
   var TooltipManager = class {
     constructor(app) {
       /**
        * Initialize the tooltip system
        */
-      __privateAdd(this, _init8);
+      __privateAdd(this, _init9);
       /**
        * Create the tooltip element
        */
@@ -10425,8 +10520,8 @@ var TwentyNineNext = (() => {
        * Hide the tooltip
        */
       __privateAdd(this, _hideTooltip);
-      __privateAdd(this, _app18, void 0);
-      __privateAdd(this, _logger23, void 0);
+      __privateAdd(this, _app19, void 0);
+      __privateAdd(this, _logger24, void 0);
       __privateAdd(this, _tooltip, void 0);
       __privateAdd(this, _arrowElement, void 0);
       __privateAdd(this, _textContainer, void 0);
@@ -10434,14 +10529,14 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _showTimeout, null);
       __privateAdd(this, _hideTimeout, null);
       __privateAdd(this, _initialized3, false);
-      __privateSet(this, _app18, app);
-      __privateSet(this, _logger23, app.logger.createModuleLogger("TOOLTIP"));
-      __privateMethod(this, _init8, init_fn8).call(this);
-      __privateGet(this, _logger23).info("TooltipManager initialized");
+      __privateSet(this, _app19, app);
+      __privateSet(this, _logger24, app.logger.createModuleLogger("TOOLTIP"));
+      __privateMethod(this, _init9, init_fn9).call(this);
+      __privateGet(this, _logger24).info("TooltipManager initialized");
     }
   };
-  _app18 = new WeakMap();
-  _logger23 = new WeakMap();
+  _app19 = new WeakMap();
+  _logger24 = new WeakMap();
   _tooltip = new WeakMap();
   _arrowElement = new WeakMap();
   _textContainer = new WeakMap();
@@ -10449,8 +10544,8 @@ var TwentyNineNext = (() => {
   _showTimeout = new WeakMap();
   _hideTimeout = new WeakMap();
   _initialized3 = new WeakMap();
-  _init8 = new WeakSet();
-  init_fn8 = function() {
+  _init9 = new WeakSet();
+  init_fn9 = function() {
     if (__privateGet(this, _initialized3))
       return;
     __privateSet(this, _tooltip, __privateMethod(this, _createTooltip, createTooltip_fn).call(this));
@@ -10458,7 +10553,7 @@ var TwentyNineNext = (() => {
     __privateSet(this, _textContainer, __privateGet(this, _tooltip).querySelector("#checkout-tooltip-text"));
     __privateMethod(this, _setupEventListeners6, setupEventListeners_fn6).call(this);
     __privateSet(this, _initialized3, true);
-    __privateGet(this, _logger23).info("Tooltip system initialized with floating-ui");
+    __privateGet(this, _logger24).info("Tooltip system initialized with floating-ui");
   };
   _createTooltip = new WeakSet();
   createTooltip_fn = function() {
@@ -10517,7 +10612,7 @@ var TwentyNineNext = (() => {
   _showTooltip = new WeakSet();
   showTooltip_fn = function(element) {
     if (!__privateGet(this, _initialized3)) {
-      __privateGet(this, _logger23).warn("Cannot show tooltip: system not initialized");
+      __privateGet(this, _logger24).warn("Cannot show tooltip: system not initialized");
       return;
     }
     clearTimeout(__privateGet(this, _hideTimeout));
@@ -10575,10 +10670,10 @@ var TwentyNineNext = (() => {
 
   // src/managers/UpsellManager.js
   init_NavigationPrevention();
-  var _app19, _logger24, _stateManager2, _api, _upsellElements, _orderRef, _init9, init_fn9, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _redirect, redirect_fn, _displayError, displayError_fn;
+  var _app20, _logger25, _stateManager2, _api, _upsellElements, _orderRef, _init10, init_fn10, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _redirect, redirect_fn, _displayError, displayError_fn;
   var UpsellManager = class {
     constructor(app) {
-      __privateAdd(this, _init9);
+      __privateAdd(this, _init10);
       /**
        * Get the order reference ID from URL parameters or sessionStorage
        * @returns {string|null} The order reference ID or null if not found
@@ -10617,18 +10712,18 @@ var TwentyNineNext = (() => {
        * @param {string} message - The error message to display
        */
       __privateAdd(this, _displayError);
-      __privateAdd(this, _app19, void 0);
-      __privateAdd(this, _logger24, void 0);
+      __privateAdd(this, _app20, void 0);
+      __privateAdd(this, _logger25, void 0);
       __privateAdd(this, _stateManager2, void 0);
       __privateAdd(this, _api, void 0);
       __privateAdd(this, _upsellElements, {});
       __privateAdd(this, _orderRef, null);
-      __privateSet(this, _app19, app);
-      __privateSet(this, _logger24, app.logger.createModuleLogger("UPSELL"));
+      __privateSet(this, _app20, app);
+      __privateSet(this, _logger25, app.logger.createModuleLogger("UPSELL"));
       __privateSet(this, _stateManager2, app.state);
       __privateSet(this, _api, app.api);
-      __privateMethod(this, _init9, init_fn9).call(this);
-      __privateGet(this, _logger24).info("UpsellManager initialized");
+      __privateMethod(this, _init10, init_fn10).call(this);
+      __privateGet(this, _logger25).info("UpsellManager initialized");
     }
     /**
      * Accept an upsell offer by adding the product to the order
@@ -10638,10 +10733,10 @@ var TwentyNineNext = (() => {
      */
     async acceptUpsell(packageId, quantity = 1, nextUrl) {
       if (!__privateGet(this, _orderRef)) {
-        __privateGet(this, _logger24).error("Cannot accept upsell: No order reference ID found");
+        __privateGet(this, _logger25).error("Cannot accept upsell: No order reference ID found");
         return;
       }
-      __privateGet(this, _logger24).info(`Accepting upsell: Package ${packageId}, Quantity ${quantity}`);
+      __privateGet(this, _logger25).info(`Accepting upsell: Package ${packageId}, Quantity ${quantity}`);
       __privateMethod(this, _disableUpsellButtons, disableUpsellButtons_fn).call(this);
       try {
         document.body.classList.add("os-loading");
@@ -10653,11 +10748,11 @@ var TwentyNineNext = (() => {
           }]
         };
         const response = await __privateGet(this, _api).createOrderUpsell(__privateGet(this, _orderRef), upsellData);
-        __privateGet(this, _logger24).info("Upsell successfully added to order", response);
+        __privateGet(this, _logger25).info("Upsell successfully added to order", response);
         __privateMethod(this, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn).call(this, response, packageId, quantity);
         __privateMethod(this, _redirect, redirect_fn).call(this, nextUrl);
       } catch (error) {
-        __privateGet(this, _logger24).error("Error accepting upsell:", error);
+        __privateGet(this, _logger25).error("Error accepting upsell:", error);
         document.body.classList.remove("os-loading");
         __privateMethod(this, _enableUpsellButtons, enableUpsellButtons_fn).call(this);
         __privateMethod(this, _displayError, displayError_fn).call(this, "There was an error processing your upsell. Please try again.");
@@ -10668,25 +10763,25 @@ var TwentyNineNext = (() => {
      * @param {string} nextUrl - The URL to redirect to
      */
     declineUpsell(nextUrl) {
-      __privateGet(this, _logger24).info("Declining upsell offer");
+      __privateGet(this, _logger25).info("Declining upsell offer");
       __privateMethod(this, _disableUpsellButtons, disableUpsellButtons_fn).call(this);
       __privateMethod(this, _redirect, redirect_fn).call(this, nextUrl);
     }
   };
-  _app19 = new WeakMap();
-  _logger24 = new WeakMap();
+  _app20 = new WeakMap();
+  _logger25 = new WeakMap();
   _stateManager2 = new WeakMap();
   _api = new WeakMap();
   _upsellElements = new WeakMap();
   _orderRef = new WeakMap();
-  _init9 = new WeakSet();
-  init_fn9 = function() {
+  _init10 = new WeakSet();
+  init_fn10 = function() {
     __privateSet(this, _orderRef, __privateMethod(this, _getOrderReferenceId, getOrderReferenceId_fn).call(this));
     if (__privateGet(this, _orderRef)) {
-      __privateGet(this, _logger24).info(`Order reference ID found: ${__privateGet(this, _orderRef)}`);
+      __privateGet(this, _logger25).info(`Order reference ID found: ${__privateGet(this, _orderRef)}`);
       __privateGet(this, _stateManager2).setState("order.ref_id", __privateGet(this, _orderRef));
     } else {
-      __privateGet(this, _logger24).warn("No order reference ID found, upsell functionality will be limited");
+      __privateGet(this, _logger25).warn("No order reference ID found, upsell functionality will be limited");
     }
     __privateMethod(this, _initUpsellElements, initUpsellElements_fn).call(this);
     __privateMethod(this, _bindEvents, bindEvents_fn).call(this);
@@ -10697,9 +10792,9 @@ var TwentyNineNext = (() => {
     let refId = urlParams.get("ref_id");
     if (!refId) {
       refId = sessionStorage.getItem("order_ref_id");
-      __privateGet(this, _logger24).debug("Getting order ref_id from sessionStorage:", refId);
+      __privateGet(this, _logger25).debug("Getting order ref_id from sessionStorage:", refId);
     } else {
-      __privateGet(this, _logger24).debug("Getting order ref_id from URL parameters:", refId);
+      __privateGet(this, _logger25).debug("Getting order ref_id from URL parameters:", refId);
       sessionStorage.setItem("order_ref_id", refId);
     }
     return refId;
@@ -10710,7 +10805,7 @@ var TwentyNineNext = (() => {
       acceptButtons: document.querySelectorAll('[data-os-upsell="accept"]'),
       declineButtons: document.querySelectorAll('[data-os-upsell="decline"]')
     });
-    __privateGet(this, _logger24).debug(`Found ${__privateGet(this, _upsellElements).acceptButtons.length} accept buttons and ${__privateGet(this, _upsellElements).declineButtons.length} decline buttons`);
+    __privateGet(this, _logger25).debug(`Found ${__privateGet(this, _upsellElements).acceptButtons.length} accept buttons and ${__privateGet(this, _upsellElements).declineButtons.length} decline buttons`);
   };
   _bindEvents = new WeakSet();
   bindEvents_fn = function() {
@@ -10721,7 +10816,7 @@ var TwentyNineNext = (() => {
         const quantity = parseInt(button.getAttribute("data-os-quantity") || "1", 10);
         const nextUrl = button.getAttribute("data-os-next-url");
         if (!packageId) {
-          __privateGet(this, _logger24).error("No package ID specified for upsell accept button");
+          __privateGet(this, _logger25).error("No package ID specified for upsell accept button");
           return;
         }
         this.acceptUpsell(packageId, quantity, nextUrl);
@@ -10734,7 +10829,7 @@ var TwentyNineNext = (() => {
         if (nextUrl) {
           this.declineUpsell(nextUrl);
         } else {
-          __privateGet(this, _logger24).error("No next URL specified for upsell decline button");
+          __privateGet(this, _logger25).error("No next URL specified for upsell decline button");
         }
       });
     });
@@ -10742,16 +10837,16 @@ var TwentyNineNext = (() => {
   _storeUpsellPurchaseData = new WeakSet();
   storeUpsellPurchaseData_fn = function(response, packageId, quantity) {
     try {
-      const campaignData = __privateGet(this, _app19).getCampaignData();
+      const campaignData = __privateGet(this, _app20).getCampaignData();
       if (!campaignData || !campaignData.packages) {
-        __privateGet(this, _logger24).warn("Campaign data not available for upsell tracking");
+        __privateGet(this, _logger25).warn("Campaign data not available for upsell tracking");
         return;
       }
       const packageData = campaignData.packages.find(
         (pkg) => pkg.ref_id.toString() === packageId.toString() || pkg.external_id?.toString() === packageId.toString()
       );
       if (!packageData) {
-        __privateGet(this, _logger24).warn(`Package data not found for upsell tracking: ${packageId}`);
+        __privateGet(this, _logger25).warn(`Package data not found for upsell tracking: ${packageId}`);
         return;
       }
       const upsellPurchaseData = {
@@ -10769,14 +10864,14 @@ var TwentyNineNext = (() => {
       };
       sessionStorage.setItem("pending_upsell_purchase", "true");
       sessionStorage.setItem("upsell_purchase_data", JSON.stringify(upsellPurchaseData));
-      __privateGet(this, _logger24).info("Stored upsell purchase data for tracking on next page load", upsellPurchaseData);
+      __privateGet(this, _logger25).info("Stored upsell purchase data for tracking on next page load", upsellPurchaseData);
     } catch (error) {
-      __privateGet(this, _logger24).error("Error storing upsell purchase data:", error);
+      __privateGet(this, _logger25).error("Error storing upsell purchase data:", error);
     }
   };
   _disableUpsellButtons = new WeakSet();
   disableUpsellButtons_fn = function() {
-    __privateGet(this, _logger24).debug("Disabling upsell buttons");
+    __privateGet(this, _logger25).debug("Disabling upsell buttons");
     __privateGet(this, _upsellElements).acceptButtons.forEach((button) => {
       button.style.pointerEvents = "none";
       button.classList.add("os-button-disabled");
@@ -10788,7 +10883,7 @@ var TwentyNineNext = (() => {
   };
   _enableUpsellButtons = new WeakSet();
   enableUpsellButtons_fn = function() {
-    __privateGet(this, _logger24).debug("Re-enabling upsell buttons");
+    __privateGet(this, _logger25).debug("Re-enabling upsell buttons");
     __privateGet(this, _upsellElements).acceptButtons.forEach((button) => {
       button.style.pointerEvents = "";
       button.classList.remove("os-button-disabled");
@@ -10801,7 +10896,7 @@ var TwentyNineNext = (() => {
   _redirect = new WeakSet();
   redirect_fn = function(url) {
     if (!url) {
-      __privateGet(this, _logger24).warn("No URL provided for redirect");
+      __privateGet(this, _logger25).warn("No URL provided for redirect");
       return;
     }
     const redirectUrl = new URL(url, window.location.origin);
@@ -10812,7 +10907,7 @@ var TwentyNineNext = (() => {
     if (currentUrlParams.has("debug") && currentUrlParams.get("debug") === "true" && !redirectUrl.searchParams.has("debug")) {
       redirectUrl.searchParams.append("debug", "true");
     }
-    __privateGet(this, _logger24).info(`Redirecting to ${redirectUrl.href}`);
+    __privateGet(this, _logger25).info(`Redirecting to ${redirectUrl.href}`);
     window.location.href = redirectUrl.href;
   };
   _displayError = new WeakSet();
@@ -10827,14 +10922,14 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/DiscountManager.js
-  var _app20, _logger25;
+  var _app21, _logger26;
   var DiscountManager = class {
     constructor(app) {
-      __privateAdd(this, _app20, void 0);
-      __privateAdd(this, _logger25, void 0);
-      __privateSet(this, _app20, app);
-      __privateSet(this, _logger25, app.logger.createModuleLogger("DISCOUNT"));
-      __privateGet(this, _logger25).info("DiscountManager initialized");
+      __privateAdd(this, _app21, void 0);
+      __privateAdd(this, _logger26, void 0);
+      __privateSet(this, _app21, app);
+      __privateSet(this, _logger26, app.logger.createModuleLogger("DISCOUNT"));
+      __privateGet(this, _logger26).info("DiscountManager initialized");
     }
     /**
      * Calculate discount amount based on coupon details and subtotal
@@ -10850,17 +10945,17 @@ var TwentyNineNext = (() => {
       switch (couponDetails.type) {
         case "percentage":
           discountAmount = subtotal * (couponDetails.value / 100);
-          __privateGet(this, _logger25).debug(`Applied ${couponDetails.value}% discount: -${discountAmount}`);
+          __privateGet(this, _logger26).debug(`Applied ${couponDetails.value}% discount: -${discountAmount}`);
           break;
         case "fixed":
           discountAmount = Math.min(subtotal, couponDetails.value);
-          __privateGet(this, _logger25).debug(`Applied fixed discount: -${discountAmount}`);
+          __privateGet(this, _logger26).debug(`Applied fixed discount: -${discountAmount}`);
           break;
         case "free_shipping":
-          __privateGet(this, _logger25).debug("Applied free shipping discount");
+          __privateGet(this, _logger26).debug("Applied free shipping discount");
           break;
         default:
-          __privateGet(this, _logger25).warn(`Unknown discount type: ${couponDetails.type}`);
+          __privateGet(this, _logger26).warn(`Unknown discount type: ${couponDetails.type}`);
           break;
       }
       return discountAmount;
@@ -10895,8 +10990,8 @@ var TwentyNineNext = (() => {
       }
     }
   };
-  _app20 = new WeakMap();
-  _logger25 = new WeakMap();
+  _app21 = new WeakMap();
+  _logger26 = new WeakMap();
 
   // src/utils/PBAccordion.js
   var PBAccordion = class {
@@ -11668,3 +11763,4 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
+//# sourceMappingURL=29next.js.map

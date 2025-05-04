@@ -13,6 +13,7 @@ import { PaymentSelector } from '../components/checkout/PaymentSelector.js';
 import { AddressAutocomplete } from '../components/checkout/AddressAutocomplete.js';
 import { PhoneInputHandler } from '../components/checkout/PhoneInputHandler.js';
 import { ProspectCartHandler } from '../components/checkout/ProspectCartHandler.js';
+import { ShippingSelector } from '../components/checkout/ShippingSelector.js';
 import { KonamiCodeHandler } from '../utils/KonamiCodeHandler.js';
 
 export class CheckoutPage {
@@ -97,6 +98,7 @@ export class CheckoutPage {
       this.#initPaymentSelector();
       this.#initFormValidator();
       this.#initPaymentHandler();
+      this.#initShippingSelector();
       this.#initAddressAutocomplete();
       this.#initPhoneInputHandler();
       this.#initProspectCartHandler();
@@ -215,6 +217,14 @@ export class CheckoutPage {
       this.paymentHandler = new PaymentHandler(this.#apiClient, this.#logger, this.#app);
     } catch (error) {
       this.#logger.error('Error initializing PaymentHandler', error);
+    }
+  }
+
+  #initShippingSelector() {
+    try {
+      this.shippingSelector = new ShippingSelector(this.#app);
+    } catch (error) {
+      this.#logger.error('Error initializing ShippingSelector', error);
     }
   }
 
