@@ -3903,6 +3903,17 @@ var TwentyNineNext = (() => {
     __privateGet(this, _logger7).debug(`Setting payment mode to: ${mode}, animate: ${animate}`);
     __privateGet(this, _container)?.setAttribute("os-payment-mode", mode);
     __privateSet(this, _currentMode, mode);
+    const creditHeader = __privateGet(this, _container)?.querySelector(".cc-header");
+    const paypalHeader = __privateGet(this, _container)?.querySelector(".paypal-header");
+    creditHeader?.classList.remove("os--active");
+    paypalHeader?.classList.remove("os--active");
+    if (mode === "credit" && creditHeader) {
+      creditHeader.classList.add("os--active");
+      __privateGet(this, _logger7).debug("Added os--active to .cc-header");
+    } else if (mode === "paypal" && paypalHeader) {
+      paypalHeader.classList.add("os--active");
+      __privateGet(this, _logger7).debug("Added os--active to .paypal-header");
+    }
     __privateGet(this, _forms).forEach((form) => {
       form.style.transition = "none";
       form.offsetHeight;
@@ -7998,20 +8009,20 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger21).warnWithTime("Line displays or template not found");
       return;
     }
-    if (!items || items.length === 0) {
-      __privateGet(this, _logger21).debugWithTime("No items in cart");
-      return;
-    }
     __privateGet(this, _elements3).lineDisplays.forEach((lineDisplay) => {
       lineDisplay.innerHTML = "";
-      items.forEach((item) => {
-        const lineItemElement = __privateMethod(this, _createLineItemElement, createLineItemElement_fn).call(this, item);
-        lineDisplay.appendChild(lineItemElement);
-      });
+      if (!items || items.length === 0) {
+        __privateGet(this, _logger21).debugWithTime(`No items in cart for display: ${lineDisplay.outerHTML.substring(0, 100)}...`);
+      } else {
+        items.forEach((item) => {
+          const lineItemElement = __privateMethod(this, _createLineItemElement, createLineItemElement_fn).call(this, item);
+          lineDisplay.appendChild(lineItemElement);
+        });
+      }
     });
     const scrollIndicators = document.querySelectorAll('[data-os-cart-summary="summary-scroll"]');
     if (scrollIndicators.length) {
-      const shouldShowScroll = items.length > 2;
+      const shouldShowScroll = items && items.length > 2;
       scrollIndicators.forEach((indicator) => {
         indicator.classList.toggle("hide", !shouldShowScroll);
       });
@@ -11763,4 +11774,3 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
-//# sourceMappingURL=29next.js.map
