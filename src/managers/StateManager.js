@@ -377,7 +377,7 @@ export class StateManager {
     
     return {
       lines: items.map(item => ({ product_id: item.id, quantity: item.quantity || 1, price: item.price })),
-      shipping_method: shippingMethod?.code ?? null,
+      shipping_method: shippingMethod?.ref_id ?? null,
       coupon_code: couponCode,
       vouchers: vouchers,
       user: { email, first_name: firstName, last_name: lastName, phone },

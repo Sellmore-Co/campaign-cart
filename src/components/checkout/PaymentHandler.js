@@ -618,9 +618,11 @@ export class PaymentHandler {
   }
 
   #getShippingMethod(state) {
-    const method = state.cart?.shippingMethod;
-    return typeof method === 'number' ? method : 
-           parseInt(method, 10) || 1;
+    const method = state.cart?.shippingMethod; // This is the object { ref_id: 2, code: 'default', ... }
+    // Extract the ref_id before parsing
+    const refId = method?.ref_id;
+    // Parse the refId, default to 1 if null, undefined, or NaN
+    return parseInt(refId, 10) || 1;
   }
 
   #getCartLines(items) {
@@ -715,7 +717,6 @@ export class PaymentHandler {
       }[orderData.payment_method] || orderData.payment_method;
       delete formatted.payment_method;
     }
-    formatted.shipping_method = parseInt(formatted.shipping_method, 10) || 1;
     formatted.billing_address = formatted.billing_address || formatted.shipping_address;
     
     // Make sure vouchers are preserved from the original order data

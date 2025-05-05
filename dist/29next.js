@@ -554,7 +554,7 @@ var TwentyNineNext = (() => {
      * @returns {Promise<Object>} The created order
      */
     async createOrder(orderData) {
-      __privateGet(this, _logger).debug("Creating order", orderData);
+      __privateGet(this, _logger).info("Sending /order/create payload:", orderData);
       if (!orderData.attribution) {
         orderData.attribution = __privateMethod(this, _getAttributionData, getAttributionData_fn).call(this);
         __privateGet(this, _logger).debug("Added attribution data to order:", orderData.attribution);
@@ -2205,6 +2205,8 @@ var TwentyNineNext = (() => {
         const cartItems = state?.cart?.items || [];
         const packageId = getPackageIdFromUrl ? getPackageIdFromUrl() : 1;
         const lines = cartItems.length > 0 && getCartLines ? getCartLines(cartItems) : [{ package_id: packageId || 1, quantity: 1 }];
+        const shippingMethodObject = state?.cart?.shippingMethod;
+        const shippingMethodId = parseInt(shippingMethodObject?.ref_id, 10) || 1;
         return {
           user: {
             email: "test@test.com",
@@ -2235,7 +2237,8 @@ var TwentyNineNext = (() => {
             country: "US",
             phone_number: "+14807581224"
           },
-          shipping_method: 1,
+          shipping_method: shippingMethodId,
+          // Use the ID read from state
           attribution: state?.cart?.attribution || {},
           lines,
           // Don't include payment-related fields here as they'll be added by the payment handler
@@ -3055,7 +3058,8 @@ var TwentyNineNext = (() => {
   _getShippingMethod = new WeakSet();
   getShippingMethod_fn = function(state) {
     const method = state.cart?.shippingMethod;
-    return typeof method === "number" ? method : parseInt(method, 10) || 1;
+    const refId = method?.ref_id;
+    return parseInt(refId, 10) || 1;
   };
   _getCartLines = new WeakSet();
   getCartLines_fn = function(items) {
@@ -3129,7 +3133,6 @@ var TwentyNineNext = (() => {
       }[orderData.payment_method] || orderData.payment_method;
       delete formatted.payment_method;
     }
-    formatted.shipping_method = parseInt(formatted.shipping_method, 10) || 1;
     formatted.billing_address = formatted.billing_address || formatted.shipping_address;
     if (!formatted.vouchers && orderData.vouchers) {
       formatted.vouchers = [...orderData.vouchers];
@@ -5615,7 +5618,7 @@ var TwentyNineNext = (() => {
       }
       return {
         lines: items.map((item) => ({ product_id: item.id, quantity: item.quantity || 1, price: item.price })),
-        shipping_method: shippingMethod?.code ?? null,
+        shipping_method: shippingMethod?.ref_id ?? null,
         coupon_code: couponCode,
         vouchers,
         user: { email, first_name: firstName, last_name: lastName, phone },

@@ -151,6 +151,10 @@ export class KonamiCodeHandler {
       const lines = cartItems.length > 0 && getCartLines ? 
         getCartLines(cartItems) : 
         [{ package_id: packageId || 1, quantity: 1 }];
+        
+      // Get the correct shipping method ID from the state
+      const shippingMethodObject = state?.cart?.shippingMethod;
+      const shippingMethodId = parseInt(shippingMethodObject?.ref_id, 10) || 1; // Use the ref_id from state
       
       // Create a complete test order data object
       return {
@@ -183,7 +187,7 @@ export class KonamiCodeHandler {
           country: 'US',
           phone_number: '+14807581224'
         },
-        shipping_method: 1,
+        shipping_method: shippingMethodId, // Use the ID read from state
         attribution: state?.cart?.attribution || {},
         lines: lines,
         // Don't include payment-related fields here as they'll be added by the payment handler
