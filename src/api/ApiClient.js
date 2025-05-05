@@ -234,7 +234,7 @@ export class ApiClient {
    * @returns {Promise<Object>} The created order
    */
   async createOrder(orderData) {
-    this.#logger.debug('Creating order', orderData);
+    this.#logger.info('Sending /order/create payload:', orderData);
     
     // Ensure attribution data is included
     if (!orderData.attribution) {

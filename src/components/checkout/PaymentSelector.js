@@ -43,6 +43,21 @@ export class PaymentSelector {
     this.#container?.setAttribute('os-payment-mode', mode);
     this.#currentMode = mode;
 
+    // Clear os--active from all headers first and add to the selected one
+    const creditHeader = this.#container?.querySelector('.cc-header');
+    const paypalHeader = this.#container?.querySelector('.paypal-header');
+    
+    creditHeader?.classList.remove('os--active');
+    paypalHeader?.classList.remove('os--active');
+
+    if (mode === 'credit' && creditHeader) {
+        creditHeader.classList.add('os--active');
+        this.#logger.debug('Added os--active to .cc-header');
+    } else if (mode === 'paypal' && paypalHeader) {
+        paypalHeader.classList.add('os--active');
+        this.#logger.debug('Added os--active to .paypal-header');
+    }
+
     this.#forms.forEach(form => {
       form.style.transition = 'none';
       form.offsetHeight; // Force reflow

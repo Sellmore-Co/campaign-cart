@@ -268,28 +268,29 @@ export class CartDisplayManager {
       this.#logger.warnWithTime('Line displays or template not found');
       return;
     }
-    
-    if (!items || items.length === 0) {
-      this.#logger.debugWithTime('No items in cart');
-      return;
-    }
-    
+
     // Update each line display container
     this.#elements.lineDisplays.forEach(lineDisplay => {
-      // Clear existing line items
+      // Clear existing line items *first*
       lineDisplay.innerHTML = '';
-      
-      // Add each item to the display
-      items.forEach(item => {
-        const lineItemElement = this.#createLineItemElement(item);
-        lineDisplay.appendChild(lineItemElement);
-      });
+
+      // Check if there are items to add to *this specific* display
+      if (!items || items.length === 0) {
+        this.#logger.debugWithTime(`No items in cart for display: ${lineDisplay.outerHTML.substring(0, 100)}...`);
+        // No need to return here, just don't add anything
+      } else {
+        // Add each item to the display
+        items.forEach(item => {
+          const lineItemElement = this.#createLineItemElement(item);
+          lineDisplay.appendChild(lineItemElement);
+        });
+      }
     });
-    
-    // Check if we need to show the scroll indicator
+
+    // Check if we need to show the scroll indicator (based on the global items array)
     const scrollIndicators = document.querySelectorAll('[data-os-cart-summary="summary-scroll"]');
     if (scrollIndicators.length) {
-      const shouldShowScroll = items.length > 2;
+      const shouldShowScroll = items && items.length > 2;
       scrollIndicators.forEach(indicator => {
         indicator.classList.toggle('hide', !shouldShowScroll);
       });
