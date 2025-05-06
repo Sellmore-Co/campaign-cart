@@ -5515,8 +5515,12 @@ var TwentyNineNext = (() => {
       const packageData = __privateGet(this, _app9).campaignData?.packages?.find(
         (pkg) => pkg.ref_id.toString() === item.id.toString() || pkg.external_id?.toString() === item.id.toString()
       );
+      const itemPackageId = packageData?.ref_id?.toString() || item.id.toString();
       const enhancedItem = {
         ...item,
+        // Original item properties (includes item.id)
+        package_id: itemPackageId,
+        // Explicitly set package_id
         ...packageData && {
           name: packageData.name || item.name,
           price: Number.parseFloat(packageData.price) || item.price,
@@ -5530,9 +5534,11 @@ var TwentyNineNext = (() => {
           interval_count: packageData.interval_count ?? void 0,
           image: packageData.image || item.image,
           external_id: packageData.external_id ?? void 0
+          // Note: We ensure package_id is set above, based on item.id or packageData.ref_id
         },
         quantity: item.quantity || 1
       };
+      __privateGet(this, _logger14).debugWithTime(`[StateManager] Enhanced item for cart: ${JSON.stringify(enhancedItem)}`);
       const existingItemIndex = cart.items.findIndex((i) => i.id === item.id);
       const updatedItems = existingItemIndex >= 0 ? __privateMethod(this, _updateExistingItem, updateExistingItem_fn).call(this, cart.items, existingItemIndex, enhancedItem) : [...cart.items, enhancedItem];
       this.setState("cart.items", updatedItems);
@@ -7005,6 +7011,12 @@ var TwentyNineNext = (() => {
     const isInCart = __privateMethod(this, _isItemInCart, isItemInCart_fn).call(this, packageId);
     element.classList.toggle("os--active", isInCart);
     element.setAttribute("data-os-active", isInCart.toString());
+    const wrapper = element.closest("[data-os-toggle-wrapper]");
+    if (wrapper) {
+      wrapper.classList.toggle("os--active", isInCart);
+      __privateGet(this, _logger17).debug(`Toggled os--active class on wrapper for package ${packageId} to ${isInCart}`);
+    } else {
+    }
   };
   _updateAllToggleItemsUI = new WeakSet();
   updateAllToggleItemsUI_fn = function() {
@@ -7840,7 +7852,11 @@ var TwentyNineNext = (() => {
         currencySymbol: "$",
         showComparePricing: true,
         showProductImages: true,
-        showTaxPendingMessage: true
+        showTaxPendingMessage: true,
+        frequencyOverrides: {},
+        // Added for frequency text overrides by package ID
+        priceOverrides: {}
+        // Added for price overrides by package ID
       });
       __privateAdd(this, _lineItemTemplate, null);
       __privateSet(this, _app16, app);
@@ -7853,20 +7869,24 @@ var TwentyNineNext = (() => {
      * Update the cart display with current cart data
      */
     updateCartDisplay() {
-      __privateGet(this, _logger21).debugWithTime("Updating cart display");
+      __privateGet(this, _logger21).debugWithTime("[UPDATE] updateCartDisplay CALLED");
       const cart = __privateGet(this, _app16).state.getState("cart");
       if (!cart) {
-        __privateGet(this, _logger21).warnWithTime("Cart data not available");
+        __privateGet(this, _logger21).warnWithTime("[UPDATE] Cart data not available, returning.");
         return;
       }
-      __privateGet(this, _logger21).debugWithTime(`Cart data: ${JSON.stringify(cart)}`);
+      if (!Array.isArray(cart.items)) {
+        __privateGet(this, _logger21).warnWithTime(`[UPDATE] Cart data present, but cart.items is not an array (type: ${typeof cart.items}). Cannot update display.`);
+        return;
+      }
+      __privateGet(this, _logger21).debugWithTime(`[UPDATE] Processing cart with ${cart.items.length} items. Package IDs: ${cart.items.map((item) => item?.package_id || "N/A").join(", ")}`);
       __privateMethod(this, _updateLineItems, updateLineItems_fn).call(this, cart.items);
       __privateMethod(this, _updateSummary, updateSummary_fn).call(this, cart.totals);
       __privateMethod(this, _updateShipping, updateShipping_fn).call(this, cart.totals.shipping, cart.shippingMethod);
       __privateMethod(this, _updateSavings, updateSavings_fn).call(this, cart.totals);
       __privateMethod(this, _updateGrandTotal, updateGrandTotal_fn).call(this, cart.totals.total);
       __privateMethod(this, _updateCompareTotals, updateCompareTotals_fn).call(this, cart.totals);
-      __privateGet(this, _logger21).debugWithTime("Cart display updated");
+      __privateGet(this, _logger21).debugWithTime("[UPDATE] Cart display fully updated");
     }
     /**
      * Refresh the cart display and re-find all elements
@@ -7884,7 +7904,18 @@ var TwentyNineNext = (() => {
   _lineItemTemplate = new WeakMap();
   _initCartDisplay = new WeakSet();
   initCartDisplay_fn = function() {
-    __privateGet(this, _logger21).infoWithTime("Initializing cart display");
+    __privateGet(this, _logger21).infoWithTime("[INIT] Initializing cart display");
+    if (window.osConfig && window.osConfig.cartDisplayConfig) {
+      if (window.osConfig.cartDisplayConfig.frequencyOverrides) {
+        __privateGet(this, _config2).frequencyOverrides = window.osConfig.cartDisplayConfig.frequencyOverrides;
+      }
+      if (window.osConfig.cartDisplayConfig.priceOverrides) {
+        __privateGet(this, _config2).priceOverrides = window.osConfig.cartDisplayConfig.priceOverrides;
+      }
+      __privateGet(this, _logger21).debugWithTime(`[INIT] Loaded cartDisplayConfig. Freq Keys: ${Object.keys(__privateGet(this, _config2).frequencyOverrides || {}).join(",") || "none"}, Price Keys: ${Object.keys(__privateGet(this, _config2).priceOverrides || {}).join(",") || "none"}`);
+    } else {
+      __privateGet(this, _logger21).debugWithTime("[INIT] No cartDisplayConfig found in window.osConfig.");
+    }
     __privateGet(this, _elements3).lineDisplays = document.querySelectorAll('[data-os-cart-summary="line-display"]');
     __privateGet(this, _elements3).summaryContainers = document.querySelectorAll('[data-os-cart="summary"]');
     __privateGet(this, _elements3).savingsBars = document.querySelectorAll('[data-os-cart-summary="savings"]');
@@ -7896,17 +7927,6 @@ var TwentyNineNext = (() => {
     __privateGet(this, _elements3).summaryTexts = document.querySelectorAll('[os-checkout-element="summary-text"]');
     __privateGet(this, _elements3).summaryIcons = document.querySelectorAll("[os-summary-icon]");
     __privateGet(this, _elements3).compareTotalElements = document.querySelectorAll('[data-os-cart-summary="compare-total"]');
-    __privateGet(this, _logger21).debugWithTime(`Line displays found: ${__privateGet(this, _elements3).lineDisplays.length}`);
-    __privateGet(this, _logger21).debugWithTime(`Summary containers found: ${__privateGet(this, _elements3).summaryContainers.length}`);
-    __privateGet(this, _logger21).debugWithTime(`Savings bars found: ${__privateGet(this, _elements3).savingsBars.length}`);
-    __privateGet(this, _logger21).debugWithTime(`Shipping bars found: ${__privateGet(this, _elements3).shippingBars.length}`);
-    __privateGet(this, _logger21).debugWithTime(`Grand total elements found: ${__privateGet(this, _elements3).grandTotals.length}`);
-    __privateGet(this, _logger21).debugWithTime(`Subtotal elements found: ${__privateGet(this, _elements3).subtotals.length}`);
-    __privateGet(this, _logger21).debugWithTime(`Summary bars found: ${__privateGet(this, _elements3).summaryBars.length}`);
-    __privateGet(this, _logger21).debugWithTime(`Summary panels found: ${__privateGet(this, _elements3).summaryPanels.length}`);
-    __privateGet(this, _logger21).debugWithTime(`Summary texts found: ${__privateGet(this, _elements3).summaryTexts.length}`);
-    __privateGet(this, _logger21).debugWithTime(`Summary icons found: ${__privateGet(this, _elements3).summaryIcons.length}`);
-    __privateGet(this, _logger21).debugWithTime(`Compare total elements found: ${__privateGet(this, _elements3).compareTotalElements.length}`);
     if (__privateGet(this, _elements3).summaryContainers.length > 0) {
       const firstContainer = __privateGet(this, _elements3).summaryContainers[0];
       __privateGet(this, _config2).showComparePricing = firstContainer.dataset.showComparePricing !== "false";
@@ -7917,9 +7937,14 @@ var TwentyNineNext = (() => {
     const existingLineItem = document.querySelector('[data-os-cart-summary="line-item"]');
     if (existingLineItem) {
       __privateSet(this, _lineItemTemplate, existingLineItem.cloneNode(true));
+      __privateGet(this, _logger21).debugWithTime("[INIT] Line item template found and cloned.");
+      const hasFreqInTemplate = !!__privateGet(this, _lineItemTemplate).querySelector('[data-os-cart-summary="line-frequency"]');
+      const hasSaleInTemplate = !!__privateGet(this, _lineItemTemplate).querySelector('[data-os-cart-summary="line-sale"]');
+      __privateGet(this, _logger21).debugWithTime(`[INIT] Template check: Has Frequency? ${hasFreqInTemplate}. Has Sale Price? ${hasSaleInTemplate}`);
+    } else {
+      __privateGet(this, _logger21).warnWithTime("[INIT] CRITICAL: Line item template NOT FOUND.");
     }
     __privateMethod(this, _initSummaryToggle, initSummaryToggle_fn).call(this);
-    __privateGet(this, _logger21).debugWithTime("Cart display elements initialized");
     this.updateCartDisplay();
   };
   _initSummaryToggle = new WeakSet();
@@ -8008,15 +8033,14 @@ var TwentyNineNext = (() => {
   };
   _updateLineItems = new WeakSet();
   updateLineItems_fn = function(items) {
+    __privateGet(this, _logger21).debugWithTime(`[#updateLineItems] Entered. Item count: ${items.length}.`);
     if (!__privateGet(this, _elements3).lineDisplays.length || !__privateGet(this, _lineItemTemplate)) {
-      __privateGet(this, _logger21).warnWithTime("Line displays or template not found");
+      __privateGet(this, _logger21).warnWithTime("[#updateLineItems] Line displays or template not found, cannot update.");
       return;
     }
     __privateGet(this, _elements3).lineDisplays.forEach((lineDisplay) => {
       lineDisplay.innerHTML = "";
-      if (!items || items.length === 0) {
-        __privateGet(this, _logger21).debugWithTime(`No items in cart for display: ${lineDisplay.outerHTML.substring(0, 100)}...`);
-      } else {
+      if (items && items.length > 0) {
         items.forEach((item) => {
           const lineItemElement = __privateMethod(this, _createLineItemElement, createLineItemElement_fn).call(this, item);
           lineDisplay.appendChild(lineItemElement);
@@ -8030,14 +8054,67 @@ var TwentyNineNext = (() => {
         indicator.classList.toggle("hide", !shouldShowScroll);
       });
     }
+    setTimeout(() => {
+      __privateGet(this, _logger21).debugWithTime(`[Direct DOM Update] Attempting...`);
+      const allFrequencyElements = document.querySelectorAll('[data-os-cart-summary="line-frequency"]');
+      allFrequencyElements.forEach((el) => {
+        const itemElement = el.closest('[data-os-cart-summary="line-item"]');
+        if (!itemElement)
+          return;
+        const titleElement = itemElement.querySelector('[data-os-cart-summary="line-title"]');
+        if (!titleElement || !items)
+          return;
+        const itemTitle = titleElement.textContent;
+        const matchingItem = items.find((cartItem) => cartItem.name === itemTitle);
+        if (matchingItem) {
+          const directItemPackageIdString = matchingItem.package_id !== void 0 && matchingItem.package_id !== null ? matchingItem.package_id.toString() : "undefined";
+          if (directItemPackageIdString !== "undefined" && __privateGet(this, _config2).frequencyOverrides && __privateGet(this, _config2).frequencyOverrides[directItemPackageIdString]) {
+            const overrideText = __privateGet(this, _config2).frequencyOverrides[directItemPackageIdString];
+            __privateGet(this, _logger21).debugWithTime(`[Direct DOM Update] Setting frequency for "${itemTitle}" (package_id "${directItemPackageIdString}")`);
+            el.textContent = overrideText;
+            el.classList.remove("hide");
+          }
+        }
+      });
+      const allSalePriceElements = document.querySelectorAll('[data-os-cart-summary="line-sale"]');
+      allSalePriceElements.forEach((el) => {
+        const itemElement = el.closest('[data-os-cart-summary="line-item"]');
+        if (!itemElement)
+          return;
+        const titleElement = itemElement.querySelector('[data-os-cart-summary="line-title"]');
+        if (!titleElement || !items)
+          return;
+        const itemTitle = titleElement.textContent;
+        const matchingItem = items.find((cartItem) => cartItem.name === itemTitle);
+        if (matchingItem) {
+          const directItemPackageIdString = matchingItem.package_id !== void 0 && matchingItem.package_id !== null ? matchingItem.package_id.toString() : "undefined";
+          if (directItemPackageIdString !== "undefined" && __privateGet(this, _config2).priceOverrides && __privateGet(this, _config2).priceOverrides[directItemPackageIdString] !== void 0) {
+            const overridePrice = __privateGet(this, _config2).priceOverrides[directItemPackageIdString];
+            __privateGet(this, _logger21).debugWithTime(`[Direct DOM Update] Setting price for "${itemTitle}" (package_id "${directItemPackageIdString}")`);
+            el.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, overridePrice * (matchingItem.quantity || 1));
+          }
+        }
+      });
+    }, 150);
   };
   _createLineItemElement = new WeakSet();
   createLineItemElement_fn = function(item) {
+    if (!item) {
+      __privateGet(this, _logger21).warnWithTime("[#createLineItemElement] Item is null or undefined. Skipping.");
+      return document.createElement("div");
+    }
+    if (!__privateGet(this, _lineItemTemplate)) {
+      __privateGet(this, _logger21).warnWithTime("[#createLineItemElement] Line item template is missing.");
+      const el = document.createElement("div");
+      el.textContent = "Error: Line item template missing";
+      return el;
+    }
+    const itemPackageIdString = item.package_id !== void 0 && item.package_id !== null ? item.package_id.toString() : "undefined";
+    __privateGet(this, _logger21).debugWithTime(`[#createLineItemElement] For item: "${item.name}", package_id: "${itemPackageIdString}"`);
     const lineItem = __privateGet(this, _lineItemTemplate).cloneNode(true);
     const titleElement = lineItem.querySelector('[data-os-cart-summary="line-title"]');
-    if (titleElement) {
+    if (titleElement)
       titleElement.textContent = item.name;
-    }
     if (__privateGet(this, _config2).showProductImages) {
       const imageElement = lineItem.querySelector('[data-os-cart-summary="line-image"]');
       if (imageElement && item.image) {
@@ -8046,8 +8123,23 @@ var TwentyNineNext = (() => {
       }
     }
     const qtyElement = lineItem.querySelector('[os-cart="line_item-qty"]');
-    if (qtyElement) {
+    if (qtyElement)
       qtyElement.textContent = item.quantity || 1;
+    const frequencyElement = lineItem.querySelector('[data-os-cart-summary="line-frequency"]');
+    if (frequencyElement) {
+      let frequencyText = null;
+      if (itemPackageIdString !== "undefined" && __privateGet(this, _config2).frequencyOverrides && __privateGet(this, _config2).frequencyOverrides[itemPackageIdString]) {
+        frequencyText = __privateGet(this, _config2).frequencyOverrides[itemPackageIdString];
+        __privateGet(this, _logger21).debugWithTime(`[#createLineItemElement] Using frequency override for package_id "${itemPackageIdString}"`);
+      } else if (item.subscription_frequency) {
+        frequencyText = `Schedule: Every ${item.subscription_frequency} Days`;
+      }
+      if (frequencyText) {
+        frequencyElement.textContent = frequencyText;
+        frequencyElement.classList.remove("hide");
+      } else {
+        frequencyElement.classList.add("hide");
+      }
     }
     const comparePrice = lineItem.querySelector('[data-os-cart-summary="line-compare"]');
     const salePrice = lineItem.querySelector('[data-os-cart-summary="line-sale"]');
@@ -8058,7 +8150,12 @@ var TwentyNineNext = (() => {
       comparePrice.classList.add("hide");
     }
     if (salePrice) {
-      salePrice.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, item.price * (item.quantity || 1));
+      let displayPrice = item.price;
+      if (itemPackageIdString !== "undefined" && __privateGet(this, _config2).priceOverrides && __privateGet(this, _config2).priceOverrides[itemPackageIdString] !== void 0) {
+        displayPrice = __privateGet(this, _config2).priceOverrides[itemPackageIdString];
+        __privateGet(this, _logger21).debugWithTime(`[#createLineItemElement] Using price override for package_id "${itemPackageIdString}"`);
+      }
+      salePrice.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, displayPrice * (item.quantity || 1));
     }
     const savingsPercentElement = lineItem.querySelector('[data-os-cart-summary="line-saving-percent"]');
     if (savingsPercentElement && item.retail_price) {
@@ -8066,9 +8163,8 @@ var TwentyNineNext = (() => {
       if (savingsPercent > 0) {
         const format = savingsPercentElement.dataset.osFormat || "default";
         let savingsText = `${savingsPercent}% OFF`;
-        if (format === "parenthesis") {
+        if (format === "parenthesis")
           savingsText = `(${savingsPercent}% OFF)`;
-        }
         savingsPercentElement.textContent = savingsText;
         savingsPercentElement.classList.remove("hide");
       } else {

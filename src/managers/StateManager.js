@@ -169,8 +169,13 @@ export class StateManager {
       pkg.ref_id.toString() === item.id.toString() || pkg.external_id?.toString() === item.id.toString()
     );
 
+    // Ensure package_id is set on the item, defaulting to item.id
+    // This makes it consistent for consumers like CartDisplayManager
+    const itemPackageId = packageData?.ref_id?.toString() || item.id.toString();
+
     const enhancedItem = {
-      ...item,
+      ...item, // Original item properties (includes item.id)
+      package_id: itemPackageId, // Explicitly set package_id
       ...(packageData && {
         name: packageData.name || item.name,
         price: Number.parseFloat(packageData.price) || item.price,
@@ -184,9 +189,11 @@ export class StateManager {
         interval_count: packageData.interval_count ?? undefined,
         image: packageData.image || item.image,
         external_id: packageData.external_id ?? undefined
+        // Note: We ensure package_id is set above, based on item.id or packageData.ref_id
       }),
       quantity: item.quantity || 1
     };
+    this.#logger.debugWithTime(`[StateManager] Enhanced item for cart: ${JSON.stringify(enhancedItem)}`);
 
     const existingItemIndex = cart.items.findIndex(i => i.id === item.id);
     const updatedItems = existingItemIndex >= 0
