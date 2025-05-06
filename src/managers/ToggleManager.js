@@ -132,6 +132,16 @@ export class ToggleManager {
     const isInCart = this.#isItemInCart(packageId);
     element.classList.toggle('os--active', isInCart);
     element.setAttribute('data-os-active', isInCart.toString());
+
+    // Find the parent wrapper and toggle its class as well
+    const wrapper = element.closest('[data-os-toggle-wrapper]');
+    if (wrapper) {
+      wrapper.classList.toggle('os--active', isInCart);
+      this.#logger.debug(`Toggled os--active class on wrapper for package ${packageId} to ${isInCart}`);
+    } else {
+      // Optional: Log if a wrapper isn't found, for debugging purposes
+      // this.#logger.debug(`No [data-os-toggle-wrapper] found for toggle item of package ${packageId}`);
+    }
   }
 
   #updateAllToggleItemsUI() {

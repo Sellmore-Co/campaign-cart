@@ -52,6 +52,14 @@ export class TwentyNineNext {
     this.campaign = new CampaignHelper(this);
     this.upsell = new UpsellManager(this);
 
+    // After all essential managers (especially discount) are instantiated,
+    // tell StateManager to perform its full initial calculation and update.
+    if (this.state && typeof this.state.finalizeInitializationAndRecalculate === 'function') {
+      this.state.finalizeInitializationAndRecalculate();
+    } else {
+      this.coreLogger.error('[TwentyNineNext Constructor] StateManager not ready or finalizeInitializationAndRecalculate not found!');
+    }
+
     // Unified event system
     this.events = {
       on: (event, callback) => this.on(event, callback),
@@ -205,7 +213,7 @@ export class TwentyNineNext {
   }
 
   async init() {
-    this.coreLogger.info('Initializing 29next client');
+    this.coreLogger.info('Initializing 29next client (async init phase)');
     this.api.init();
 
     // Ensure window.on29NextReady is an array
