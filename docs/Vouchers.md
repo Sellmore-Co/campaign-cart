@@ -6,9 +6,11 @@ This document explains how to use the enhanced voucher/discount system in Campai
 
 The voucher system allows you to apply different types of discounts to the cart:
 
-- **Percentage discounts**: Apply a percentage off the cart subtotal
-- **Fixed amount discounts**: Apply a fixed dollar amount off the cart subtotal
-- **Free shipping**: Eliminate shipping costs
+- **Percentage discounts**: Apply a percentage off the applicable subtotal (either entire cart or specific items).
+- **Fixed amount discounts**: Apply a fixed dollar amount off the applicable subtotal.
+- **Free shipping**: Eliminate shipping costs.
+
+Discounts can be general (applying to the entire cart subtotal) or specific to certain product IDs.
 
 ## Using Vouchers in JavaScript
 
@@ -17,30 +19,47 @@ The voucher system allows you to apply different types of discounts to the cart:
 The basic syntax for applying a voucher is:
 
 ```javascript
-client.cart.applyCoupon(code, discountType, discountValue);
+client.cart.applyCoupon(code, discountType, discountValue, applicableProductIds?);
 ```
 
 Where:
-- `code` is the voucher code (string)
-- `discountType` is one of: `'percentage'`, `'fixed'`, or `'free_shipping'`
-- `discountValue` is the discount amount (number)
+- `code` is the voucher code (string).
+- `discountType` is one of: `'percentage'`, `'fixed'`, or `'free_shipping'`.
+- `discountValue` is the discount amount (number).
+- `applicableProductIds` (optional) is an array of strings representing the `package_id`s (or `id`s) of products this coupon should exclusively apply to. E.g., `["4", "prod_B"]`.
 
-> **Note on API Compatibility**: While the cart system handles these different voucher types locally, when sending to the API, only the voucher code is transmitted. The API must be configured to recognize these codes and apply the appropriate discount type and value.
+When `applicableProductIds` is provided, the `StateManager` stores these IDs within the `couponDetails` object. The `DiscountManager` then uses this information to calculate the discount only on the subtotal of the items in the cart that match these IDs.
+
+> **Note on API Compatibility**: While the cart system handles these different voucher types locally (including product-specificity for calculation), when sending to the API, the `vouchers` array in the cart payload typically includes the coupon code and its properties. The API service must be configured to recognize these voucher codes and correctly apply discounts, potentially respecting product restrictions if your backend supports them.
 
 ### Examples
 
-#### Applying a Percentage Discount
+#### Applying a General Percentage Discount
 
 ```javascript
-// Apply a 10% discount with code "10PERCENTOFF"
+// Apply a 10% discount to the entire cart with code "10PERCENTOFF"
 client.cart.applyCoupon('10PERCENTOFF', 'percentage', 10);
 ```
 
-#### Applying a Fixed Amount Discount
+#### Applying a Product-Specific Percentage Discount
 
 ```javascript
-// Apply a $5 discount with code "5DOLLARSOFF"
+// Apply a 25% discount with code "SAVEONPRODUCT4" only to items with package_id "4"
+client.cart.applyCoupon('SAVEONPRODUCT4', 'percentage', 25, ["4"]);
+```
+
+#### Applying a General Fixed Amount Discount
+
+```javascript
+// Apply a $5 discount to the entire cart with code "5DOLLARSOFF"
 client.cart.applyCoupon('5DOLLARSOFF', 'fixed', 5);
+```
+
+#### Applying a Product-Specific Fixed Amount Discount
+
+```javascript
+// Apply a $10 discount with code "TENOFFSPECIAL" only to items with package_id "special_item_123"
+client.cart.applyCoupon('TENOFFSPECIAL', 'fixed', 10, ["special_item_123"]);
 ```
 
 #### Applying a Free Shipping Voucher
@@ -71,21 +90,37 @@ if (cart.couponDetails) {
   console.log('Applied coupon:', cart.couponDetails.code);
   console.log('Discount type:', cart.couponDetails.type);
   console.log('Discount value:', cart.couponDetails.value);
-  console.log('Discount amount:', cart.totals.discount);
+  console.log('Discount amount (total for cart):', cart.totals.discount);
+  if (cart.couponDetails.applicable_product_ids && cart.couponDetails.applicable_product_ids.length > 0) {
+    console.log('Coupon applies to specific products:', cart.couponDetails.applicable_product_ids.join(', '));
+  }
+  
+  // To see per-item discount (if calculated and stored by StateManager):
+  cart.items.forEach(item => {
+    if (item.applied_coupon_discount_amount && parseFloat(item.applied_coupon_discount_amount) > 0) {
+      console.log(`Item "${item.name}" (ID: ${item.package_id}) has an applied discount of: ${item.applied_coupon_discount_amount}`);
+    }
+  });
 }
 ```
 
 ## Integrating with Checkout
 
-The voucher information is automatically included when proceeding to checkout. The discount is displayed in the cart summary and the voucher code is passed to the API when creating an order.
+The voucher information is automatically included when proceeding to checkout. The discount is displayed in the cart summary.
 
-When creating an order via the API, only the voucher code is sent in this format:
+When creating an order via the API, the `vouchers` array in the payload sent by `getCartForApi()` (from `StateManager.js`) will include the coupon code, type, and value, which can help the backend validate and apply the discount correctly, including any product restrictions if the backend logic supports them.
 
+Example `vouchers` array in API payload:
 ```javascript
-"vouchers": ["5DOLLARSOFF"]  // Only the code is sent, not the type or value
+"vouchers": [
+  {
+    "code": "SAVEONPRODUCT4",
+    "type": "percentage",
+    "value": 25
+    // Backend would need to know/check applicable_product_ids based on its own data for SAVEONPRODUCT4
+  }
+]
 ```
-
-The API service must be configured to recognize these voucher codes and apply the appropriate discount.
 
 ## Displaying Voucher Information
 
@@ -107,6 +142,7 @@ You can use the following data attributes to display voucher information in your
   <span data-os-cart-coupon></span>
 </div>
 ```
+For displaying coupon-adjusted prices on individual line items, see the `CartDisplay.md` documentation regarding the `data-os-show-item-discount` attribute.
 
 ## Showing Compare Prices
 
@@ -118,9 +154,9 @@ When a coupon is applied, you can display the original (pre-discount) price with
 ```
 
 The system will automatically:
-1. Show built-in retail discounts when products have them
-2. Show the original subtotal when a coupon is applied
-3. Select the higher price when both are present
+1. Show built-in retail discounts when products have them.
+2. Show the original subtotal (`original_subtotal` from cart totals) in the `compare-total` element if a coupon is applied (`totals.discount > 0`).
+3. Select the higher price for comparison if both retail and coupon-based original prices are relevant.
 
 ## Advanced Usage
 

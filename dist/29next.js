@@ -5438,15 +5438,15 @@ var TwentyNineNext = (() => {
   _viewItemListFired = new WeakMap();
 
   // src/managers/StateManager.js
-  var _app9, _logger14, _state, _subscribers, _initDefaultState, initDefaultState_fn, _loadState, loadState_fn, _saveState, saveState_fn, _notifySubscribers, notifySubscribers_fn, _updateExistingItem, updateExistingItem_fn, _calculateCartTotals, calculateCartTotals_fn, _recalculateCart, recalculateCart_fn;
+  var _app9, _logger14, _state, _subscribers, _initDefaultState, initDefaultState_fn, _loadState, loadState_fn, _saveState, saveState_fn, _notifySubscribers, notifySubscribers_fn, _processCartUpdates, processCartUpdates_fn, _updateItemAppliedDiscounts, updateItemAppliedDiscounts_fn, _recalculateCart, recalculateCart_fn;
   var StateManager = class {
     constructor(app) {
       __privateAdd(this, _initDefaultState);
       __privateAdd(this, _loadState);
       __privateAdd(this, _saveState);
       __privateAdd(this, _notifySubscribers);
-      __privateAdd(this, _updateExistingItem);
-      __privateAdd(this, _calculateCartTotals);
+      __privateAdd(this, _processCartUpdates);
+      __privateAdd(this, _updateItemAppliedDiscounts);
       __privateAdd(this, _recalculateCart);
       __privateAdd(this, _app9, void 0);
       __privateAdd(this, _logger14, void 0);
@@ -5456,36 +5456,37 @@ var TwentyNineNext = (() => {
       __privateSet(this, _logger14, app.logger.createModuleLogger("STATE"));
       __privateSet(this, _state, __privateMethod(this, _initDefaultState, initDefaultState_fn).call(this));
       __privateMethod(this, _loadState, loadState_fn).call(this);
-      __privateMethod(this, _recalculateCart, recalculateCart_fn).call(this, false);
+      __privateMethod(this, _processCartUpdates, processCartUpdates_fn).call(this, false);
       __privateGet(this, _logger14).info("StateManager initialized");
     }
     getState(path = null) {
       if (!path)
-        return { ...__privateGet(this, _state), cart: { ...__privateGet(this, _state).cart, totals: __privateMethod(this, _calculateCartTotals, calculateCartTotals_fn).call(this) } };
-      if (path === "cart")
-        return { ...__privateGet(this, _state).cart, totals: __privateMethod(this, _calculateCartTotals, calculateCartTotals_fn).call(this) };
-      if (path === "cart.totals" || path.startsWith("cart.totals."))
-        return __privateMethod(this, _calculateCartTotals, calculateCartTotals_fn).call(this);
+        return __privateGet(this, _state);
       return path.split(".").reduce((obj, key) => obj?.[key] ?? null, __privateGet(this, _state));
     }
     setState(path, value, notify = true) {
       let current = __privateGet(this, _state);
       const parts = path.split(".");
+      let parent = __privateGet(this, _state);
+      let finalPart = parts[0];
       for (const [i, part] of parts.entries()) {
         if (i === parts.length - 1) {
           current[part] = value;
+          finalPart = part;
         } else {
           current[part] ?? (current[part] = {});
+          parent = current;
           current = current[part];
         }
       }
-      if (path.startsWith("cart.items"))
-        __privateMethod(this, _recalculateCart, recalculateCart_fn).call(this, false);
-      __privateMethod(this, _saveState, saveState_fn).call(this);
-      if (notify) {
-        __privateMethod(this, _notifySubscribers, notifySubscribers_fn).call(this, path, value);
-        if (path.startsWith("cart.items"))
-          __privateMethod(this, _notifySubscribers, notifySubscribers_fn).call(this, "cart", this.getState("cart"));
+      const cartRelatedChange = path.startsWith("cart.items") || path === "cart.couponDetails" || path === "cart.couponCode" || path.startsWith("cart.shippingMethod");
+      if (cartRelatedChange) {
+        __privateMethod(this, _processCartUpdates, processCartUpdates_fn).call(this, notify, path);
+      } else {
+        __privateMethod(this, _saveState, saveState_fn).call(this);
+        if (notify) {
+          __privateMethod(this, _notifySubscribers, notifySubscribers_fn).call(this, path, value);
+        }
       }
       return this;
     }
@@ -5508,7 +5509,7 @@ var TwentyNineNext = (() => {
     }
     addToCart(item) {
       if (!item?.id || !item.name || item.price === void 0) {
-        __privateGet(this, _logger14).error("Invalid item:", item);
+        __privateGet(this, _logger14).error("Invalid item for addToCart:", item);
         throw new Error("Invalid item. Must have id, name, and price.");
       }
       const cart = this.getState("cart");
@@ -5516,34 +5517,45 @@ var TwentyNineNext = (() => {
         (pkg) => pkg.ref_id.toString() === item.id.toString() || pkg.external_id?.toString() === item.id.toString()
       );
       const itemPackageId = packageData?.ref_id?.toString() || item.id.toString();
-      const enhancedItem = {
-        ...item,
-        // Original item properties (includes item.id)
-        package_id: itemPackageId,
-        // Explicitly set package_id
-        ...packageData && {
-          name: packageData.name || item.name,
-          price: Number.parseFloat(packageData.price) || item.price,
-          price_total: Number.parseFloat(packageData.price_total) || item.price * (item.quantity || 1),
-          retail_price: Number.parseFloat(packageData.price_retail) ?? void 0,
-          retail_price_total: Number.parseFloat(packageData.price_retail_total) ?? void 0,
-          is_recurring: packageData.is_recurring ?? false,
-          price_recurring: packageData.price_recurring ? Number.parseFloat(packageData.price_recurring) : void 0,
-          price_recurring_total: packageData.price_recurring_total ? Number.parseFloat(packageData.price_recurring_total) : void 0,
-          interval: packageData.interval ?? void 0,
-          interval_count: packageData.interval_count ?? void 0,
-          image: packageData.image || item.image,
-          external_id: packageData.external_id ?? void 0
-          // Note: We ensure package_id is set above, based on item.id or packageData.ref_id
-        },
-        quantity: item.quantity || 1
-      };
-      __privateGet(this, _logger14).debugWithTime(`[StateManager] Enhanced item for cart: ${JSON.stringify(enhancedItem)}`);
-      const existingItemIndex = cart.items.findIndex((i) => i.id === item.id);
-      const updatedItems = existingItemIndex >= 0 ? __privateMethod(this, _updateExistingItem, updateExistingItem_fn).call(this, cart.items, existingItemIndex, enhancedItem) : [...cart.items, enhancedItem];
-      this.setState("cart.items", updatedItems);
-      __privateGet(this, _logger14).info(`Item added to cart: ${enhancedItem.name}`);
-      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      const quantityToAdd = item.quantity || 1;
+      const existingItemIndex = __privateGet(this, _state).cart.items.findIndex((i) => i.id === item.id && i.package_id === itemPackageId);
+      let newItems;
+      if (existingItemIndex >= 0) {
+        newItems = __privateGet(this, _state).cart.items.map((cartItem, index) => {
+          if (index === existingItemIndex) {
+            const newQuantity = (cartItem.quantity || 1) + quantityToAdd;
+            return {
+              ...cartItem,
+              quantity: newQuantity,
+              price_total: (cartItem.price || 0) * newQuantity,
+              ...cartItem.retail_price && { retail_price_total: (cartItem.retail_price || 0) * newQuantity },
+              ...cartItem.price_recurring && { price_recurring_total: (cartItem.price_recurring || 0) * newQuantity }
+            };
+          }
+          return cartItem;
+        });
+      } else {
+        const enhancedItem = {
+          ...item,
+          package_id: itemPackageId,
+          quantity: quantityToAdd,
+          price: Number.parseFloat(packageData?.price || item.price),
+          price_total: Number.parseFloat(packageData?.price || item.price) * quantityToAdd,
+          retail_price: Number.parseFloat(packageData?.price_retail) ?? void 0,
+          retail_price_total: packageData?.price_retail ? Number.parseFloat(packageData.price_retail) * quantityToAdd : void 0,
+          is_recurring: packageData?.is_recurring ?? false,
+          price_recurring: packageData?.price_recurring ? Number.parseFloat(packageData.price_recurring) : void 0,
+          price_recurring_total: packageData?.price_recurring ? Number.parseFloat(packageData.price_recurring) * quantityToAdd : void 0,
+          interval: packageData?.interval ?? void 0,
+          interval_count: packageData?.interval_count ?? void 0,
+          image: packageData?.image || item.image,
+          external_id: packageData?.external_id ?? void 0,
+          applied_coupon_discount_amount: "0.00"
+        };
+        newItems = [...__privateGet(this, _state).cart.items, enhancedItem];
+      }
+      this.setState("cart.items", newItems);
+      __privateGet(this, _logger14).info(`Item added/updated in cart: ${item.name}`);
       return this.getState("cart");
     }
     updateCartItem(itemId, updates) {
@@ -5559,14 +5571,12 @@ var TwentyNineNext = (() => {
         updatedItems.splice(itemIndex, 1);
       this.setState("cart.items", updatedItems);
       __privateGet(this, _logger14).info(`Cart item updated: ${itemId}`);
-      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     removeFromCart(itemId) {
       const updatedItems = this.getState("cart").items.filter((item) => item.id !== itemId);
       this.setState("cart.items", updatedItems);
       __privateGet(this, _logger14).info(`Item removed from cart: ${itemId}`);
-      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     clearCart() {
@@ -5575,33 +5585,28 @@ var TwentyNineNext = (() => {
       this.setState("cart.couponDetails", null);
       this.setState("cart.shippingMethod", null);
       __privateGet(this, _logger14).info("Cart cleared");
-      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     setShippingMethod(shippingMethod) {
       this.setState("cart.shippingMethod", shippingMethod);
       __privateGet(this, _logger14).info(`Shipping method set: ${shippingMethod.code}`);
-      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
-    applyCoupon(couponCode, discountType = "percentage", discountValue = 0) {
-      this.setState("cart.couponCode", couponCode);
+    applyCoupon(couponCode, discountType = "percentage", discountValue = 0, applicableProductIds = []) {
       this.setState("cart.couponDetails", {
         code: couponCode,
         type: discountType,
-        value: parseFloat(discountValue)
+        value: parseFloat(discountValue),
+        applicable_product_ids: applicableProductIds
       });
-      __privateGet(this, _logger14).info(`Coupon applied: ${couponCode} (${discountType}: ${discountValue})`);
-      __privateMethod(this, _recalculateCart, recalculateCart_fn).call(this, true);
-      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
+      this.setState("cart.couponCode", couponCode);
+      __privateGet(this, _logger14).info(`Attempted to apply coupon: ${couponCode}`);
       return this.getState("cart");
     }
     removeCoupon() {
-      this.setState("cart.couponCode", null);
       this.setState("cart.couponDetails", null);
+      this.setState("cart.couponCode", null);
       __privateGet(this, _logger14).info("Coupon removed");
-      __privateMethod(this, _recalculateCart, recalculateCart_fn).call(this, true);
-      __privateGet(this, _app9).triggerEvent("cart.updated", { cart: this.getState("cart") });
       return this.getState("cart");
     }
     isItemInCart(itemId) {
@@ -5705,6 +5710,14 @@ var TwentyNineNext = (() => {
       const savedState = sessionStorage.getItem("os_state");
       if (savedState) {
         const parsedState = JSON.parse(savedState);
+        if (parsedState.cart && Array.isArray(parsedState.cart.items)) {
+          parsedState.cart.items = parsedState.cart.items.map((item) => ({
+            ...item,
+            applied_coupon_discount_amount: item.applied_coupon_discount_amount || "0.00"
+          }));
+        } else if (parsedState.cart) {
+          parsedState.cart.items = [];
+        }
         __privateSet(this, _state, { ...__privateGet(this, _state), ...parsedState, ui: { ...__privateGet(this, _state).ui } });
         __privateGet(this, _logger14).info("State loaded from sessionStorage");
       }
@@ -5716,7 +5729,7 @@ var TwentyNineNext = (() => {
   saveState_fn = function() {
     try {
       const stateToSave = {
-        cart: { ...__privateGet(this, _state).cart, totals: __privateMethod(this, _calculateCartTotals, calculateCartTotals_fn).call(this) },
+        cart: __privateGet(this, _state).cart,
         user: __privateGet(this, _state).user
       };
       sessionStorage.setItem("os_state", JSON.stringify(stateToSave));
@@ -5741,71 +5754,97 @@ var TwentyNineNext = (() => {
       }
     }
   };
-  _updateExistingItem = new WeakSet();
-  updateExistingItem_fn = function(items, index, newItem) {
-    const updatedItems = [...items];
-    updatedItems[index] = {
-      ...updatedItems[index],
-      quantity: (updatedItems[index].quantity || 1) + (newItem.quantity || 1),
-      price_total: updatedItems[index].price * (updatedItems[index].quantity || 1 + (newItem.quantity || 1)),
-      ...updatedItems[index].retail_price && {
-        retail_price_total: updatedItems[index].retail_price * (updatedItems[index].quantity || 1 + (newItem.quantity || 1))
-      },
-      ...updatedItems[index].price_recurring && {
-        price_recurring_total: updatedItems[index].price_recurring * (updatedItems[index].quantity || 1 + (newItem.quantity || 1))
+  _processCartUpdates = new WeakSet();
+  processCartUpdates_fn = function(notify = true, changedPath = "cart") {
+    __privateGet(this, _logger14).debug(`[StateManager] Processing cart updates triggered by: ${changedPath}`);
+    __privateMethod(this, _updateItemAppliedDiscounts, updateItemAppliedDiscounts_fn).call(this);
+    __privateMethod(this, _recalculateCart, recalculateCart_fn).call(this);
+    __privateMethod(this, _saveState, saveState_fn).call(this);
+    if (notify) {
+      if (changedPath !== "cart") {
+        const changedValue = changedPath.split(".").reduce((obj, key) => obj?.[key] ?? null, __privateGet(this, _state));
+        __privateMethod(this, _notifySubscribers, notifySubscribers_fn).call(this, changedPath, changedValue);
       }
-    };
-    return updatedItems;
-  };
-  _calculateCartTotals = new WeakSet();
-  calculateCartTotals_fn = function() {
-    const { items, shippingMethod, couponDetails } = __privateGet(this, _state).cart;
-    const subtotal = items.reduce((acc, item) => acc + (item.price_total ?? item.price * (item.quantity || 1)), 0);
-    let discountAmount = 0;
-    if (couponDetails && __privateGet(this, _app9).discount) {
-      discountAmount = __privateGet(this, _app9).discount.calculateDiscount(couponDetails, subtotal);
+      __privateMethod(this, _notifySubscribers, notifySubscribers_fn).call(this, "cart", this.getState("cart"));
     }
-    const discountedSubtotal = subtotal - discountAmount;
-    const retailSubtotal = items.reduce((acc, item) => acc + (item.retail_price_total ?? (item.retail_price ?? item.price) * (item.quantity || 1)), 0);
-    const savings = retailSubtotal - discountedSubtotal;
+  };
+  _updateItemAppliedDiscounts = new WeakSet();
+  updateItemAppliedDiscounts_fn = function() {
+    const { items, couponDetails } = __privateGet(this, _state).cart;
+    if (!Array.isArray(items)) {
+      __privateGet(this, _logger14).warn("[StateManager] #updateItemAppliedDiscounts: cart.items is not an array.");
+      return;
+    }
+    __privateGet(this, _state).cart.items = items.map((item) => {
+      let itemDiscountAmount = 0;
+      const itemBasePricePerUnit = item.price || 0;
+      const quantity = item.quantity || 1;
+      if (couponDetails && couponDetails.code && __privateGet(this, _app9).discount) {
+        let isItemApplicableForCoupon = false;
+        if (couponDetails.applicable_product_ids && couponDetails.applicable_product_ids.length > 0) {
+          if (couponDetails.applicable_product_ids.includes(item.package_id?.toString()) || couponDetails.applicable_product_ids.includes(item.id?.toString())) {
+            isItemApplicableForCoupon = true;
+          }
+        } else {
+          isItemApplicableForCoupon = true;
+        }
+        if (isItemApplicableForCoupon) {
+          if (couponDetails.type === "percentage") {
+            itemDiscountAmount = itemBasePricePerUnit * quantity * (couponDetails.value / 100);
+          } else if (couponDetails.type === "fixed") {
+            if (couponDetails.applicable_product_ids && couponDetails.applicable_product_ids.length > 0) {
+              itemDiscountAmount = Math.min(itemBasePricePerUnit * quantity, couponDetails.value);
+            } else {
+              itemDiscountAmount = 0;
+            }
+          }
+        }
+      }
+      return {
+        ...item,
+        applied_coupon_discount_amount: parseFloat(itemDiscountAmount.toFixed(2))
+      };
+    });
+    __privateGet(this, _logger14).debug("[StateManager] Updated per-item applied_coupon_discount_amount.");
+  };
+  _recalculateCart = new WeakSet();
+  recalculateCart_fn = function() {
+    const { items, shippingMethod, couponDetails } = __privateGet(this, _state).cart;
+    const currentItems = Array.isArray(items) ? items : [];
+    const subtotalPreDiscount = currentItems.reduce((acc, item) => acc + (item.price_total ?? item.price * (item.quantity || 1)), 0);
+    let totalDiscountFromCoupon = 0;
+    if (couponDetails && couponDetails.code && __privateGet(this, _app9).discount) {
+      totalDiscountFromCoupon = __privateGet(this, _app9).discount.calculateDiscount(couponDetails, subtotalPreDiscount, currentItems);
+    }
+    const subtotalAfterDiscount = subtotalPreDiscount - totalDiscountFromCoupon;
+    const retailSubtotal = currentItems.reduce((acc, item) => acc + (item.retail_price_total ?? (item.retail_price ?? item.price) * (item.quantity || 1)), 0);
+    const savings = retailSubtotal - subtotalAfterDiscount;
     const savingsPercentage = retailSubtotal > 0 ? savings / retailSubtotal * 100 : 0;
-    const recurringTotal = items.reduce((acc, item) => acc + (item.is_recurring && item.price_recurring ? item.price_recurring * (item.quantity || 1) : 0), 0);
+    const recurringTotal = currentItems.reduce((acc, item) => acc + (item.is_recurring && item.price_recurring ? item.price_recurring * (item.quantity || 1) : 0), 0);
     let shipping = shippingMethod?.price ? Number.parseFloat(shippingMethod.price) : 0;
     if (couponDetails && couponDetails.type === "free_shipping") {
       shipping = 0;
     }
     const tax = 0;
-    const total = discountedSubtotal + shipping + tax;
+    const finalTotal = subtotalAfterDiscount + shipping + tax;
     const currency = __privateGet(this, _app9).campaignData?.currency ?? "USD";
     const currencySymbol = { USD: "$", EUR: "€", GBP: "£" }[currency] ?? "$";
-    return {
-      subtotal: discountedSubtotal,
-      // This is now the discounted subtotal
-      original_subtotal: subtotal,
-      // Keep the original subtotal for reference
+    __privateGet(this, _state).cart.totals = {
+      subtotal: subtotalAfterDiscount,
+      original_subtotal: subtotalPreDiscount,
       retail_subtotal: retailSubtotal,
       savings,
       savings_percentage: savingsPercentage,
       shipping,
       tax,
-      total,
+      total: finalTotal,
       recurring_total: recurringTotal,
-      discount: discountAmount,
-      coupon_savings: discountAmount,
+      discount: totalDiscountFromCoupon,
+      coupon_savings: totalDiscountFromCoupon,
       currency,
       currency_symbol: currencySymbol
     };
-  };
-  _recalculateCart = new WeakSet();
-  recalculateCart_fn = function(notify = true) {
-    const totals = __privateMethod(this, _calculateCartTotals, calculateCartTotals_fn).call(this);
-    __privateGet(this, _state).cart.totals = totals;
-    __privateGet(this, _logger14).debug("Cart totals recalculated");
-    if (notify) {
-      __privateMethod(this, _notifySubscribers, notifySubscribers_fn).call(this, "cart.totals", totals);
-      __privateMethod(this, _notifySubscribers, notifySubscribers_fn).call(this, "cart", this.getState("cart"));
-    }
-    return totals;
+    __privateGet(this, _logger14).debug("[StateManager] Cart totals recalculated.");
   };
 
   // src/managers/CartManager.js
@@ -5863,9 +5902,9 @@ var TwentyNineNext = (() => {
         throw error;
       }
     }
-    applyCoupon(couponCode, discountType = "percentage", discountValue = 0) {
+    applyCoupon(couponCode, discountType = "percentage", discountValue = 0, applicableProductIds = []) {
       try {
-        const result = __privateGet(this, _stateManager).applyCoupon(couponCode, discountType, discountValue);
+        const result = __privateGet(this, _stateManager).applyCoupon(couponCode, discountType, discountValue, applicableProductIds);
         if (__privateGet(this, _app10).selector && typeof __privateGet(this, _app10).selector.refreshUnitPricing === "function") {
           setTimeout(() => __privateGet(this, _app10).selector.refreshUnitPricing(), 10);
         }
@@ -7773,6 +7812,7 @@ var TwentyNineNext = (() => {
       /**
        * Create a line item element
        * @param {Object} item - Cart item
+       * @param {boolean} showDiscountedPriceOnLineItem - Flag indicating if this item should show a discounted price
        * @returns {HTMLElement} Line item element
        */
       __privateAdd(this, _createLineItemElement);
@@ -8038,12 +8078,14 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger21).warnWithTime("[#updateLineItems] Line displays or template not found, cannot update.");
       return;
     }
-    __privateGet(this, _elements3).lineDisplays.forEach((lineDisplay) => {
-      lineDisplay.innerHTML = "";
+    __privateGet(this, _elements3).lineDisplays.forEach((lineDisplayElement) => {
+      lineDisplayElement.innerHTML = "";
+      const showDiscountedPriceOnLineItem = lineDisplayElement.dataset.osShowItemDiscount === "true";
+      __privateGet(this, _logger21).debugWithTime(`[#updateLineItems] lineDisplay ${lineDisplayElement.classList} showDiscountedPriceOnLineItem: ${showDiscountedPriceOnLineItem}`);
       if (items && items.length > 0) {
         items.forEach((item) => {
-          const lineItemElement = __privateMethod(this, _createLineItemElement, createLineItemElement_fn).call(this, item);
-          lineDisplay.appendChild(lineItemElement);
+          const lineItemElement = __privateMethod(this, _createLineItemElement, createLineItemElement_fn).call(this, item, showDiscountedPriceOnLineItem);
+          lineDisplayElement.appendChild(lineItemElement);
         });
       }
     });
@@ -8098,7 +8140,7 @@ var TwentyNineNext = (() => {
     }, 150);
   };
   _createLineItemElement = new WeakSet();
-  createLineItemElement_fn = function(item) {
+  createLineItemElement_fn = function(item, showDiscountedPriceOnLineItem = false) {
     if (!item) {
       __privateGet(this, _logger21).warnWithTime("[#createLineItemElement] Item is null or undefined. Skipping.");
       return document.createElement("div");
@@ -8110,8 +8152,16 @@ var TwentyNineNext = (() => {
       return el;
     }
     const itemPackageIdString = item.package_id !== void 0 && item.package_id !== null ? item.package_id.toString() : "undefined";
-    __privateGet(this, _logger21).debugWithTime(`[#createLineItemElement] For item: "${item.name}", package_id: "${itemPackageIdString}"`);
+    __privateGet(this, _logger21).debugWithTime(`[#createLineItemElement] For item: "${item.name}", package_id: "${itemPackageIdString}", showDiscounted: ${showDiscountedPriceOnLineItem}`);
     const lineItem = __privateGet(this, _lineItemTemplate).cloneNode(true);
+    if (itemPackageIdString !== "undefined") {
+      lineItem.dataset.osPackageId = itemPackageIdString;
+    }
+    if (item.is_upsell === true) {
+      lineItem.dataset.osItemType = "upsell";
+    } else {
+      lineItem.dataset.osItemType = "standard";
+    }
     const titleElement = lineItem.querySelector('[data-os-cart-summary="line-title"]');
     if (titleElement)
       titleElement.textContent = item.name;
@@ -8141,37 +8191,79 @@ var TwentyNineNext = (() => {
         frequencyElement.classList.add("hide");
       }
     }
-    const comparePrice = lineItem.querySelector('[data-os-cart-summary="line-compare"]');
-    const salePrice = lineItem.querySelector('[data-os-cart-summary="line-sale"]');
-    if (comparePrice && item.retail_price && __privateGet(this, _config2).showComparePricing) {
-      comparePrice.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, item.retail_price * (item.quantity || 1));
-      comparePrice.classList.remove("hide");
-    } else if (comparePrice) {
-      comparePrice.classList.add("hide");
+    const comparePriceEl = lineItem.querySelector('[data-os-cart-summary="line-compare"]');
+    const salePriceEl = lineItem.querySelector('[data-os-cart-summary="line-sale"]');
+    let itemPriceForDisplay = item.price;
+    if (itemPackageIdString !== "undefined" && __privateGet(this, _config2).priceOverrides && __privateGet(this, _config2).priceOverrides[itemPackageIdString] !== void 0) {
+      itemPriceForDisplay = __privateGet(this, _config2).priceOverrides[itemPackageIdString];
+      __privateGet(this, _logger21).debugWithTime(`[#createLineItemElement] Using config price override ("${itemPackageIdString}"). Price for display: ${itemPriceForDisplay}`);
     }
-    if (salePrice) {
-      let displayPrice = item.price;
-      if (itemPackageIdString !== "undefined" && __privateGet(this, _config2).priceOverrides && __privateGet(this, _config2).priceOverrides[itemPackageIdString] !== void 0) {
-        displayPrice = __privateGet(this, _config2).priceOverrides[itemPackageIdString];
-        __privateGet(this, _logger21).debugWithTime(`[#createLineItemElement] Using price override for package_id "${itemPackageIdString}"`);
+    let finalSalePrice = itemPriceForDisplay;
+    if (showDiscountedPriceOnLineItem && item.applied_coupon_discount_amount && typeof item.applied_coupon_discount_amount === "number" && item.applied_coupon_discount_amount > 0) {
+      const perItemTotalDiscount = item.applied_coupon_discount_amount;
+      const perUnitDiscount = perItemTotalDiscount / (item.quantity || 1);
+      finalSalePrice = Math.max(0, itemPriceForDisplay - perUnitDiscount);
+      __privateGet(this, _logger21).debugWithTime(`[#createLineItemElement] Applied item coupon discount. Original: ${itemPriceForDisplay}, Per-unit discount: ${perUnitDiscount.toFixed(2)}, New sale price (per unit): ${finalSalePrice.toFixed(2)} for package_id "${itemPackageIdString}"`);
+      if (salePriceEl)
+        salePriceEl.classList.add("price--coupon-applied");
+    } else {
+      if (salePriceEl)
+        salePriceEl.classList.remove("price--coupon-applied");
+    }
+    if (salePriceEl) {
+      salePriceEl.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, finalSalePrice * (item.quantity || 1));
+    }
+    if (item.retail_price && __privateGet(this, _config2).showComparePricing) {
+      if (comparePriceEl) {
+        const basePriceForCompare = itemPriceForDisplay;
+        if (item.retail_price > basePriceForCompare) {
+          comparePriceEl.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, item.retail_price * (item.quantity || 1));
+          comparePriceEl.classList.remove("hide");
+        } else {
+          comparePriceEl.classList.add("hide");
+        }
       }
-      salePrice.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, displayPrice * (item.quantity || 1));
+    } else if (comparePriceEl) {
+      comparePriceEl.classList.add("hide");
     }
     const savingsPercentElement = lineItem.querySelector('[data-os-cart-summary="line-saving-percent"]');
     if (savingsPercentElement && item.retail_price) {
-      const savingsPercent = Math.round((1 - item.price / item.retail_price) * 100);
-      if (savingsPercent > 0) {
-        const format = savingsPercentElement.dataset.osFormat || "default";
-        let savingsText = `${savingsPercent}% OFF`;
-        if (format === "parenthesis")
-          savingsText = `(${savingsPercent}% OFF)`;
-        savingsPercentElement.textContent = savingsText;
-        savingsPercentElement.classList.remove("hide");
+      const retailTotal = item.retail_price * (item.quantity || 1);
+      const saleTotal = finalSalePrice * (item.quantity || 1);
+      if (retailTotal > saleTotal) {
+        const savingsPercent = Math.round((1 - saleTotal / retailTotal) * 100);
+        if (savingsPercent > 0) {
+          const format = savingsPercentElement.dataset.osFormat || "default";
+          let savingsText = `${savingsPercent}% OFF`;
+          if (format === "parenthesis")
+            savingsText = `(${savingsPercent}% OFF)`;
+          savingsPercentElement.textContent = savingsText;
+          savingsPercentElement.classList.remove("hide");
+        } else {
+          savingsPercentElement.classList.add("hide");
+        }
       } else {
         savingsPercentElement.classList.add("hide");
       }
     } else if (savingsPercentElement) {
       savingsPercentElement.classList.add("hide");
+    }
+    const removeButton = lineItem.querySelector('[data-os-cart-summary="remove-line"]');
+    if (removeButton) {
+      removeButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        const itemIdToRemove = item.id?.toString();
+        __privateGet(this, _logger21).infoWithTime(`Remove button clicked for item id: ${itemIdToRemove} (package_id: ${itemPackageIdString})`);
+        if (itemIdToRemove && itemIdToRemove !== "undefined" && __privateGet(this, _app16).cart) {
+          try {
+            __privateGet(this, _app16).cart.removeFromCart(itemIdToRemove);
+          } catch (error) {
+            __privateGet(this, _logger21).errorWithTime(`Error removing item id ${itemIdToRemove} from cart:`, error);
+          }
+        } else {
+          __privateGet(this, _logger21).warnWithTime(`Cannot remove item: item.id is undefined or cart manager not available.`);
+        }
+      });
     }
     return lineItem;
   };
@@ -11045,24 +11137,45 @@ var TwentyNineNext = (() => {
      * Calculate discount amount based on coupon details and subtotal
      * @param {Object} couponDetails - Coupon details object
      * @param {number} subtotal - Cart subtotal before discount
+     * @param {Array} cartItems - Array of cart items
      * @returns {number} Calculated discount amount
      */
-    calculateDiscount(couponDetails, subtotal) {
+    calculateDiscount(couponDetails, subtotal, cartItems = []) {
       if (!couponDetails || !couponDetails.code) {
+        __privateGet(this, _logger26).debug("No coupon details or code provided.");
         return 0;
+      }
+      let discountableSubtotal = subtotal;
+      let itemEligibilityMessage = "";
+      if (couponDetails.applicable_product_ids && Array.isArray(couponDetails.applicable_product_ids) && couponDetails.applicable_product_ids.length > 0) {
+        __privateGet(this, _logger26).debug(`Coupon "${couponDetails.code}" is product-specific. Applicable IDs: ${couponDetails.applicable_product_ids.join(", ")}`);
+        const applicableItems = cartItems.filter(
+          (item) => couponDetails.applicable_product_ids.includes(item.package_id?.toString()) || // Prefer package_id
+          couponDetails.applicable_product_ids.includes(item.id?.toString())
+          // Fallback to id if package_id isn't there
+        );
+        if (applicableItems.length === 0) {
+          __privateGet(this, _logger26).info(`Coupon "${couponDetails.code}" requires specific products not found in the cart. No discount applied.`);
+          return 0;
+        }
+        discountableSubtotal = applicableItems.reduce((acc, item) => acc + (item.price_total ?? item.price * (item.quantity || 1)), 0);
+        itemEligibilityMessage = ` on applicable items (subtotal: ${discountableSubtotal.toFixed(2)})`;
+        __privateGet(this, _logger26).debug(`Subtotal of applicable items for coupon "${couponDetails.code}": ${discountableSubtotal}`);
+      } else {
+        __privateGet(this, _logger26).debug(`Coupon "${couponDetails.code}" is not product-specific or no cartItems provided for check.`);
       }
       let discountAmount = 0;
       switch (couponDetails.type) {
         case "percentage":
-          discountAmount = subtotal * (couponDetails.value / 100);
-          __privateGet(this, _logger26).debug(`Applied ${couponDetails.value}% discount: -${discountAmount}`);
+          discountAmount = discountableSubtotal * (couponDetails.value / 100);
+          __privateGet(this, _logger26).debug(`Applied ${couponDetails.value}% discount${itemEligibilityMessage}: -${discountAmount.toFixed(2)}`);
           break;
         case "fixed":
-          discountAmount = Math.min(subtotal, couponDetails.value);
-          __privateGet(this, _logger26).debug(`Applied fixed discount: -${discountAmount}`);
+          discountAmount = Math.min(discountableSubtotal, couponDetails.value);
+          __privateGet(this, _logger26).debug(`Applied fixed discount${itemEligibilityMessage}: -${discountAmount.toFixed(2)}`);
           break;
         case "free_shipping":
-          __privateGet(this, _logger26).debug("Applied free shipping discount");
+          __privateGet(this, _logger26).debug("Applied free shipping discount (handled in shipping calculation)");
           break;
         default:
           __privateGet(this, _logger26).warn(`Unknown discount type: ${couponDetails.type}`);
@@ -11873,3 +11986,4 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
+//# sourceMappingURL=29next.js.map

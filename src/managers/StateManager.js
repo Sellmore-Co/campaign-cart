@@ -17,7 +17,7 @@ export class StateManager {
     this.#logger = app.logger.createModuleLogger('STATE');
     this.#state = this.#initDefaultState();
     this.#loadState();
-    this.#recalculateCart(false);
+    this.#processCartUpdates(false);
     this.#logger.info('StateManager initialized');
   }
 
@@ -73,6 +73,14 @@ export class StateManager {
       const savedState = sessionStorage.getItem('os_state');
       if (savedState) {
         const parsedState = JSON.parse(savedState);
+        if (parsedState.cart && Array.isArray(parsedState.cart.items)) {
+          parsedState.cart.items = parsedState.cart.items.map(item => ({
+            ...item,
+            applied_coupon_discount_amount: item.applied_coupon_discount_amount || '0.00' 
+          }));
+        } else if (parsedState.cart) {
+          parsedState.cart.items = [];
+        }
         this.#state = { ...this.#state, ...parsedState, ui: { ...this.#state.ui } };
         this.#logger.info('State loaded from sessionStorage');
       }
@@ -84,7 +92,7 @@ export class StateManager {
   #saveState() {
     try {
       const stateToSave = {
-        cart: { ...this.#state.cart, totals: this.#calculateCartTotals() },
+        cart: this.#state.cart,
         user: this.#state.user
       };
       sessionStorage.setItem('os_state', JSON.stringify(stateToSave));
@@ -95,30 +103,39 @@ export class StateManager {
   }
 
   getState(path = null) {
-    if (!path) return { ...this.#state, cart: { ...this.#state.cart, totals: this.#calculateCartTotals() } };
-    if (path === 'cart') return { ...this.#state.cart, totals: this.#calculateCartTotals() };
-    if (path === 'cart.totals' || path.startsWith('cart.totals.')) return this.#calculateCartTotals();
-
+    if (!path) return this.#state;
     return path.split('.').reduce((obj, key) => obj?.[key] ?? null, this.#state);
   }
 
   setState(path, value, notify = true) {
     let current = this.#state;
     const parts = path.split('.');
+    let parent = this.#state;
+    let finalPart = parts[0];
+
     for (const [i, part] of parts.entries()) {
       if (i === parts.length - 1) {
         current[part] = value;
+        finalPart = part;
       } else {
         current[part] ??= {};
+        parent = current;
         current = current[part];
       }
     }
 
-    if (path.startsWith('cart.items')) this.#recalculateCart(false);
-    this.#saveState();
-    if (notify) {
-      this.#notifySubscribers(path, value);
-      if (path.startsWith('cart.items')) this.#notifySubscribers('cart', this.getState('cart'));
+    const cartRelatedChange = path.startsWith('cart.items') || 
+                              path === 'cart.couponDetails' || 
+                              path === 'cart.couponCode' || 
+                              path.startsWith('cart.shippingMethod');
+
+    if (cartRelatedChange) {
+      this.#processCartUpdates(notify, path);
+    } else {
+      this.#saveState();
+      if (notify) {
+        this.#notifySubscribers(path, value);
+      }
     }
     return this;
   }
@@ -160,66 +177,57 @@ export class StateManager {
 
   addToCart(item) {
     if (!item?.id || !item.name || item.price === undefined) {
-      this.#logger.error('Invalid item:', item);
+      this.#logger.error('Invalid item for addToCart:', item);
       throw new Error('Invalid item. Must have id, name, and price.');
     }
-
     const cart = this.getState('cart');
     const packageData = this.#app.campaignData?.packages?.find(pkg => 
       pkg.ref_id.toString() === item.id.toString() || pkg.external_id?.toString() === item.id.toString()
     );
-
-    // Ensure package_id is set on the item, defaulting to item.id
-    // This makes it consistent for consumers like CartDisplayManager
     const itemPackageId = packageData?.ref_id?.toString() || item.id.toString();
+    const quantityToAdd = item.quantity || 1;
 
-    const enhancedItem = {
-      ...item, // Original item properties (includes item.id)
-      package_id: itemPackageId, // Explicitly set package_id
-      ...(packageData && {
-        name: packageData.name || item.name,
-        price: Number.parseFloat(packageData.price) || item.price,
-        price_total: Number.parseFloat(packageData.price_total) || item.price * (item.quantity || 1),
-        retail_price: Number.parseFloat(packageData.price_retail) ?? undefined,
-        retail_price_total: Number.parseFloat(packageData.price_retail_total) ?? undefined,
-        is_recurring: packageData.is_recurring ?? false,
-        price_recurring: packageData.price_recurring ? Number.parseFloat(packageData.price_recurring) : undefined,
-        price_recurring_total: packageData.price_recurring_total ? Number.parseFloat(packageData.price_recurring_total) : undefined,
-        interval: packageData.interval ?? undefined,
-        interval_count: packageData.interval_count ?? undefined,
-        image: packageData.image || item.image,
-        external_id: packageData.external_id ?? undefined
-        // Note: We ensure package_id is set above, based on item.id or packageData.ref_id
-      }),
-      quantity: item.quantity || 1
-    };
-    this.#logger.debugWithTime(`[StateManager] Enhanced item for cart: ${JSON.stringify(enhancedItem)}`);
+    const existingItemIndex = this.#state.cart.items.findIndex(i => i.id === item.id && i.package_id === itemPackageId);
 
-    const existingItemIndex = cart.items.findIndex(i => i.id === item.id);
-    const updatedItems = existingItemIndex >= 0
-      ? this.#updateExistingItem(cart.items, existingItemIndex, enhancedItem)
-      : [...cart.items, enhancedItem];
-
-    this.setState('cart.items', updatedItems);
-    this.#logger.info(`Item added to cart: ${enhancedItem.name}`);
-    this.#app.triggerEvent('cart.updated', { cart: this.getState('cart') });
+    let newItems;
+    if (existingItemIndex >= 0) {
+      newItems = this.#state.cart.items.map((cartItem, index) => {
+        if (index === existingItemIndex) {
+          const newQuantity = (cartItem.quantity || 1) + quantityToAdd;
+          return {
+            ...cartItem,
+            quantity: newQuantity,
+            price_total: (cartItem.price || 0) * newQuantity,
+            ...(cartItem.retail_price && { retail_price_total: (cartItem.retail_price || 0) * newQuantity }),
+            ...(cartItem.price_recurring && { price_recurring_total: (cartItem.price_recurring || 0) * newQuantity })
+          };
+        }
+        return cartItem;
+      });
+    } else {
+      const enhancedItem = {
+        ...item,
+        package_id: itemPackageId,
+        quantity: quantityToAdd,
+        price: Number.parseFloat(packageData?.price || item.price),
+        price_total: (Number.parseFloat(packageData?.price || item.price)) * quantityToAdd,
+        retail_price: Number.parseFloat(packageData?.price_retail) ?? undefined,
+        retail_price_total: packageData?.price_retail ? (Number.parseFloat(packageData.price_retail) * quantityToAdd) : undefined,
+        is_recurring: packageData?.is_recurring ?? false,
+        price_recurring: packageData?.price_recurring ? Number.parseFloat(packageData.price_recurring) : undefined,
+        price_recurring_total: packageData?.price_recurring ? (Number.parseFloat(packageData.price_recurring) * quantityToAdd) : undefined,
+        interval: packageData?.interval ?? undefined,
+        interval_count: packageData?.interval_count ?? undefined,
+        image: packageData?.image || item.image,
+        external_id: packageData?.external_id ?? undefined,
+        applied_coupon_discount_amount: '0.00'
+      };
+      newItems = [...this.#state.cart.items, enhancedItem];
+    }
+    
+    this.setState('cart.items', newItems);
+    this.#logger.info(`Item added/updated in cart: ${item.name}`);
     return this.getState('cart');
-  }
-
-  #updateExistingItem(items, index, newItem) {
-    const updatedItems = [...items];
-    updatedItems[index] = {
-      ...updatedItems[index],
-      quantity: (updatedItems[index].quantity || 1) + (newItem.quantity || 1),
-      price_total: updatedItems[index].price * (updatedItems[index].quantity || 1 + (newItem.quantity || 1)),
-      ...(updatedItems[index].retail_price && {
-        retail_price_total: updatedItems[index].retail_price * (updatedItems[index].quantity || 1 + (newItem.quantity || 1))
-      }),
-      ...(updatedItems[index].price_recurring && {
-        price_recurring_total: updatedItems[index].price_recurring * (updatedItems[index].quantity || 1 + (newItem.quantity || 1))
-      })
-    };
-    return updatedItems;
   }
 
   updateCartItem(itemId, updates) {
@@ -236,7 +244,6 @@ export class StateManager {
 
     this.setState('cart.items', updatedItems);
     this.#logger.info(`Cart item updated: ${itemId}`);
-    this.#app.triggerEvent('cart.updated', { cart: this.getState('cart') });
     return this.getState('cart');
   }
 
@@ -244,7 +251,6 @@ export class StateManager {
     const updatedItems = this.getState('cart').items.filter(item => item.id !== itemId);
     this.setState('cart.items', updatedItems);
     this.#logger.info(`Item removed from cart: ${itemId}`);
-    this.#app.triggerEvent('cart.updated', { cart: this.getState('cart') });
     return this.getState('cart');
   }
 
@@ -254,108 +260,141 @@ export class StateManager {
     this.setState('cart.couponDetails', null);
     this.setState('cart.shippingMethod', null);
     this.#logger.info('Cart cleared');
-    this.#app.triggerEvent('cart.updated', { cart: this.getState('cart') });
     return this.getState('cart');
   }
 
   setShippingMethod(shippingMethod) {
     this.setState('cart.shippingMethod', shippingMethod);
     this.#logger.info(`Shipping method set: ${shippingMethod.code}`);
-    this.#app.triggerEvent('cart.updated', { cart: this.getState('cart') });
     return this.getState('cart');
   }
 
-  applyCoupon(couponCode, discountType = 'percentage', discountValue = 0) {
-    this.setState('cart.couponCode', couponCode);
+  applyCoupon(couponCode, discountType = 'percentage', discountValue = 0, applicableProductIds = []) {
     this.setState('cart.couponDetails', {
       code: couponCode,
       type: discountType,
-      value: parseFloat(discountValue)
+      value: parseFloat(discountValue),
+      applicable_product_ids: applicableProductIds
     });
-    this.#logger.info(`Coupon applied: ${couponCode} (${discountType}: ${discountValue})`);
-    this.#recalculateCart(true);
-    this.#app.triggerEvent('cart.updated', { cart: this.getState('cart') });
+    this.setState('cart.couponCode', couponCode);
+    this.#logger.info(`Attempted to apply coupon: ${couponCode}`);
     return this.getState('cart');
   }
 
   removeCoupon() {
-    this.setState('cart.couponCode', null);
     this.setState('cart.couponDetails', null);
+    this.setState('cart.couponCode', null);
     this.#logger.info('Coupon removed');
-    this.#recalculateCart(true);
-    this.#app.triggerEvent('cart.updated', { cart: this.getState('cart') });
     return this.getState('cart');
   }
 
-  #calculateCartTotals() {
+  #processCartUpdates(notify = true, changedPath = 'cart') {
+    this.#logger.debug(`[StateManager] Processing cart updates triggered by: ${changedPath}`);
+    this.#updateItemAppliedDiscounts();
+    this.#recalculateCart();
+    this.#saveState();
+
+    if (notify) {
+      if (changedPath !== 'cart') { 
+          const changedValue = changedPath.split('.').reduce((obj, key) => obj?.[key] ?? null, this.#state);
+          this.#notifySubscribers(changedPath, changedValue);
+      }
+      this.#notifySubscribers('cart', this.getState('cart')); 
+    }
+  }
+
+  #updateItemAppliedDiscounts() {
+    const { items, couponDetails } = this.#state.cart;
+    if (!Array.isArray(items)) {
+      this.#logger.warn('[StateManager] #updateItemAppliedDiscounts: cart.items is not an array.');
+      return;
+    }
+
+    this.#state.cart.items = items.map(item => {
+      let itemDiscountAmount = 0;
+      const itemBasePricePerUnit = item.price || 0;
+      const quantity = item.quantity || 1;
+
+      if (couponDetails && couponDetails.code && this.#app.discount) {
+        let isItemApplicableForCoupon = false;
+        if (couponDetails.applicable_product_ids && couponDetails.applicable_product_ids.length > 0) {
+          if (couponDetails.applicable_product_ids.includes(item.package_id?.toString()) ||
+              couponDetails.applicable_product_ids.includes(item.id?.toString())) {
+            isItemApplicableForCoupon = true;
+          }
+        } else {
+          isItemApplicableForCoupon = true;
+        }
+
+        if (isItemApplicableForCoupon) {
+          if (couponDetails.type === 'percentage') {
+            itemDiscountAmount = (itemBasePricePerUnit * quantity) * (couponDetails.value / 100);
+          } else if (couponDetails.type === 'fixed') {
+            if (couponDetails.applicable_product_ids && couponDetails.applicable_product_ids.length > 0) {
+              itemDiscountAmount = Math.min((itemBasePricePerUnit * quantity), couponDetails.value);
+            } else {
+              itemDiscountAmount = 0; 
+            }
+          }
+        }
+      }
+      return {
+        ...item,
+        applied_coupon_discount_amount: parseFloat(itemDiscountAmount.toFixed(2)) 
+      };
+    });
+    this.#logger.debug('[StateManager] Updated per-item applied_coupon_discount_amount.');
+  }
+
+  #recalculateCart() {
     const { items, shippingMethod, couponDetails } = this.#state.cart;
-    
-    // Use price_total if available, otherwise calculate from price * quantity
-    const subtotal = items.reduce((acc, item) => 
+    const currentItems = Array.isArray(items) ? items : [];
+
+    const subtotalPreDiscount = currentItems.reduce((acc, item) => 
       acc + (item.price_total ?? (item.price * (item.quantity || 1))), 0);
-    
-    // Calculate discount if coupon is set
-    let discountAmount = 0;
-    if (couponDetails && this.#app.discount) {
-      discountAmount = this.#app.discount.calculateDiscount(couponDetails, subtotal);
+
+    let totalDiscountFromCoupon = 0;
+    if (couponDetails && couponDetails.code && this.#app.discount) {
+        totalDiscountFromCoupon = this.#app.discount.calculateDiscount(couponDetails, subtotalPreDiscount, currentItems);
     }
     
-    // Apply the discount to get the final subtotal
-    const discountedSubtotal = subtotal - discountAmount;
+    const subtotalAfterDiscount = subtotalPreDiscount - totalDiscountFromCoupon;
     
-    // Use retail_price_total if available, otherwise calculate from retail_price * quantity
-    const retailSubtotal = items.reduce((acc, item) => 
+    const retailSubtotal = currentItems.reduce((acc, item) => 
       acc + (item.retail_price_total ?? ((item.retail_price ?? item.price) * (item.quantity || 1))), 0);
     
-    // Calculate savings (including discount)
-    const savings = retailSubtotal - discountedSubtotal;
+    const savings = retailSubtotal - subtotalAfterDiscount;
     const savingsPercentage = retailSubtotal > 0 ? (savings / retailSubtotal) * 100 : 0;
-    
-    // Calculate recurring total
-    const recurringTotal = items.reduce((acc, item) => 
+    const recurringTotal = currentItems.reduce((acc, item) => 
       acc + (item.is_recurring && item.price_recurring ? item.price_recurring * (item.quantity || 1) : 0), 0);
     
-    // Calculate shipping (adjust for free shipping coupon)
     let shipping = shippingMethod?.price ? Number.parseFloat(shippingMethod.price) : 0;
     if (couponDetails && couponDetails.type === 'free_shipping') {
       shipping = 0;
     }
     
-    // Placeholder for real tax logic - would typically be calculated on the discounted subtotal
     const tax = 0;
-    
-    // Calculate the new total including discount
-    const total = discountedSubtotal + shipping + tax;
+    const finalTotal = subtotalAfterDiscount + shipping + tax;
 
     const currency = this.#app.campaignData?.currency ?? 'USD';
     const currencySymbol = { USD: '$', EUR: '€', GBP: '£' }[currency] ?? '$';
 
-    return {
-      subtotal: discountedSubtotal, // This is now the discounted subtotal
-      original_subtotal: subtotal, // Keep the original subtotal for reference
+    this.#state.cart.totals = {
+      subtotal: subtotalAfterDiscount,
+      original_subtotal: subtotalPreDiscount,
       retail_subtotal: retailSubtotal,
       savings,
       savings_percentage: savingsPercentage,
       shipping,
       tax,
-      total,
+      total: finalTotal,
       recurring_total: recurringTotal,
-      discount: discountAmount,
-      coupon_savings: discountAmount,
+      discount: totalDiscountFromCoupon,
+      coupon_savings: totalDiscountFromCoupon,
       currency,
       currency_symbol: currencySymbol
     };
-  }
-
-  #recalculateCart(notify = true) {
-    const totals = this.#calculateCartTotals();
-    this.#state.cart.totals = totals;
-    this.#logger.debug('Cart totals recalculated');
-    if (notify) {
-      this.#notifySubscribers('cart.totals', totals);
-      this.#notifySubscribers('cart', this.getState('cart'));
-    }
-    return totals;
+    this.#logger.debug('[StateManager] Cart totals recalculated.');
   }
 
   isItemInCart(itemId) {
@@ -366,18 +405,15 @@ export class StateManager {
     const { items, shippingMethod, couponCode, couponDetails, attribution } = this.getState('cart');
     const { email, firstName, lastName, phone } = this.getState('user');
     
-    // Create properly formatted vouchers array if coupon is applied
     let vouchers = [];
     if (couponCode) {
       if (couponDetails && couponDetails.type && couponDetails.value !== undefined) {
-        // Enhanced format with coupon details
         vouchers.push({
           code: couponCode,
           type: couponDetails.type,
           value: couponDetails.value
         });
       } else {
-        // Simple string format for backward compatibility
         vouchers.push(couponCode);
       }
     }

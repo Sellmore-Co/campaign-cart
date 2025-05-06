@@ -263,12 +263,17 @@ export class CartDisplayManager {
       return;
     }
 
-    this.#elements.lineDisplays.forEach(lineDisplay => {
-      lineDisplay.innerHTML = '';
+    this.#elements.lineDisplays.forEach(lineDisplayElement => {
+      lineDisplayElement.innerHTML = '';
+      // Determine if this specific line-display wants to show item-level discounts
+      const showDiscountedPriceOnLineItem = lineDisplayElement.dataset.osShowItemDiscount === 'true';
+      this.#logger.debugWithTime(`[#updateLineItems] lineDisplay ${lineDisplayElement.classList} showDiscountedPriceOnLineItem: ${showDiscountedPriceOnLineItem}`);
+
       if (items && items.length > 0) {
         items.forEach(item => {
-          const lineItemElement = this.#createLineItemElement(item);
-          lineDisplay.appendChild(lineItemElement);
+          // Pass the flag to #createLineItemElement
+          const lineItemElement = this.#createLineItemElement(item, showDiscountedPriceOnLineItem);
+          lineDisplayElement.appendChild(lineItemElement);
         });
       }
     });
@@ -281,7 +286,9 @@ export class CartDisplayManager {
       });
     }
 
-    // Keep Direct DOM Update as a fallback, but log at debug level
+    // Direct DOM update fallback - this also needs to be aware of the flag if it were to modify prices
+    // For now, its main job is overrides from #config, which is fine.
+    // If it were to reflect item.applied_coupon_discount_amount, it would need to check the parent flag too.
     setTimeout(() => {
       this.#logger.debugWithTime(`[Direct DOM Update] Attempting...`);
       const allFrequencyElements = document.querySelectorAll('[data-os-cart-summary="line-frequency"]');
@@ -330,9 +337,10 @@ export class CartDisplayManager {
   /**
    * Create a line item element
    * @param {Object} item - Cart item
+   * @param {boolean} showDiscountedPriceOnLineItem - Flag indicating if this item should show a discounted price
    * @returns {HTMLElement} Line item element
    */
-  #createLineItemElement(item) {
+  #createLineItemElement(item, showDiscountedPriceOnLineItem = false) {
     if (!item) {
       this.#logger.warnWithTime('[#createLineItemElement] Item is null or undefined. Skipping.');
       return document.createElement('div');
@@ -348,10 +356,20 @@ export class CartDisplayManager {
                               ? item.package_id.toString()
                               : 'undefined'; 
 
-    this.#logger.debugWithTime(`[#createLineItemElement] For item: "${item.name}", package_id: "${itemPackageIdString}"`);
+    this.#logger.debugWithTime(`[#createLineItemElement] For item: "${item.name}", package_id: "${itemPackageIdString}", showDiscounted: ${showDiscountedPriceOnLineItem}`);
 
     const lineItem = this.#lineItemTemplate.cloneNode(true);
-    
+    if (itemPackageIdString !== 'undefined') {
+      lineItem.dataset.osPackageId = itemPackageIdString;
+    }
+
+    // Add item type attribute based on item.is_upsell
+    if (item.is_upsell === true) {
+      lineItem.dataset.osItemType = 'upsell';
+    } else {
+      lineItem.dataset.osItemType = 'standard'; // Default type if not an upsell
+    }
+
     const titleElement = lineItem.querySelector('[data-os-cart-summary="line-title"]');
     if (titleElement) titleElement.textContent = item.name;
 
@@ -383,39 +401,83 @@ export class CartDisplayManager {
       }
     }
     
-    const comparePrice = lineItem.querySelector('[data-os-cart-summary="line-compare"]');
-    const salePrice = lineItem.querySelector('[data-os-cart-summary="line-sale"]');
+    const comparePriceEl = lineItem.querySelector('[data-os-cart-summary="line-compare"]');
+    const salePriceEl = lineItem.querySelector('[data-os-cart-summary="line-sale"]');
     
-    if (comparePrice && item.retail_price && this.#config.showComparePricing) {
-      comparePrice.textContent = this.#formatPrice(item.retail_price * (item.quantity || 1));
-      comparePrice.classList.remove('hide');
-    } else if (comparePrice) {
-      comparePrice.classList.add('hide');
+    let itemPriceForDisplay = item.price;
+    if (itemPackageIdString !== 'undefined' && this.#config.priceOverrides && this.#config.priceOverrides[itemPackageIdString] !== undefined) {
+      itemPriceForDisplay = this.#config.priceOverrides[itemPackageIdString];
+      this.#logger.debugWithTime(`[#createLineItemElement] Using config price override ("${itemPackageIdString}"). Price for display: ${itemPriceForDisplay}`);
+    }
+
+    let finalSalePrice = itemPriceForDisplay;
+    if (showDiscountedPriceOnLineItem && item.applied_coupon_discount_amount && typeof item.applied_coupon_discount_amount === 'number' && item.applied_coupon_discount_amount > 0) {
+      const perItemTotalDiscount = item.applied_coupon_discount_amount;
+      const perUnitDiscount = perItemTotalDiscount / (item.quantity || 1);
+      finalSalePrice = Math.max(0, itemPriceForDisplay - perUnitDiscount);
+      this.#logger.debugWithTime(`[#createLineItemElement] Applied item coupon discount. Original: ${itemPriceForDisplay}, Per-unit discount: ${perUnitDiscount.toFixed(2)}, New sale price (per unit): ${finalSalePrice.toFixed(2)} for package_id "${itemPackageIdString}"`);
+      if (salePriceEl) salePriceEl.classList.add('price--coupon-applied'); 
+    } else {
+      if (salePriceEl) salePriceEl.classList.remove('price--coupon-applied');
     }
     
-    if (salePrice) {
-      let displayPrice = item.price;
-      if (itemPackageIdString !== 'undefined' && this.#config.priceOverrides && this.#config.priceOverrides[itemPackageIdString] !== undefined) {
-        displayPrice = this.#config.priceOverrides[itemPackageIdString];
-        this.#logger.debugWithTime(`[#createLineItemElement] Using price override for package_id "${itemPackageIdString}"`);
-      }
-      salePrice.textContent = this.#formatPrice(displayPrice * (item.quantity || 1));
+    if (salePriceEl) {
+      salePriceEl.textContent = this.#formatPrice(finalSalePrice * (item.quantity || 1));
+    }
+
+    if (item.retail_price && this.#config.showComparePricing) {
+        if(comparePriceEl) {
+            const basePriceForCompare = itemPriceForDisplay;
+            if (item.retail_price > basePriceForCompare) {
+                comparePriceEl.textContent = this.#formatPrice(item.retail_price * (item.quantity || 1));
+                comparePriceEl.classList.remove('hide');
+            } else {
+                comparePriceEl.classList.add('hide');
+            }
+        }
+    } else if (comparePriceEl) {
+        comparePriceEl.classList.add('hide');
     }
     
     const savingsPercentElement = lineItem.querySelector('[data-os-cart-summary="line-saving-percent"]');
     if (savingsPercentElement && item.retail_price) {
-      const savingsPercent = Math.round((1 - (item.price / item.retail_price)) * 100);
-      if (savingsPercent > 0) {
-        const format = savingsPercentElement.dataset.osFormat || 'default';
-        let savingsText = `${savingsPercent}% OFF`;
-        if (format === 'parenthesis') savingsText = `(${savingsPercent}% OFF)`;
-        savingsPercentElement.textContent = savingsText;
-        savingsPercentElement.classList.remove('hide');
+      const retailTotal = item.retail_price * (item.quantity || 1);
+      const saleTotal = finalSalePrice * (item.quantity || 1);
+      if (retailTotal > saleTotal) {
+        const savingsPercent = Math.round((1 - (saleTotal / retailTotal)) * 100);
+        if (savingsPercent > 0) {
+            const format = savingsPercentElement.dataset.osFormat || 'default';
+            let savingsText = `${savingsPercent}% OFF`;
+            if (format === 'parenthesis') savingsText = `(${savingsPercent}% OFF)`;
+            savingsPercentElement.textContent = savingsText;
+            savingsPercentElement.classList.remove('hide');
+        } else {
+            savingsPercentElement.classList.add('hide');
+        }
       } else {
         savingsPercentElement.classList.add('hide');
       }
     } else if (savingsPercentElement) {
       savingsPercentElement.classList.add('hide');
+    }
+
+    const removeButton = lineItem.querySelector('[data-os-cart-summary="remove-line"]');
+    if (removeButton) {
+      removeButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        // Use item.id for removal as StateManager.removeFromCart uses item.id
+        const itemIdToRemove = item.id?.toString(); 
+        this.#logger.infoWithTime(`Remove button clicked for item id: ${itemIdToRemove} (package_id: ${itemPackageIdString})`);
+        if (itemIdToRemove && itemIdToRemove !== 'undefined' && this.#app.cart) {
+          try {
+            this.#app.cart.removeFromCart(itemIdToRemove); 
+          } catch (error) {
+            this.#logger.errorWithTime(`Error removing item id ${itemIdToRemove} from cart:`, error);
+          }
+        } else {
+          this.#logger.warnWithTime(`Cannot remove item: item.id is undefined or cart manager not available.`);
+        }
+      });
     }
     
     return lineItem;

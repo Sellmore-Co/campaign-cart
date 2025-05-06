@@ -237,9 +237,10 @@ export class CartManager {
     }
   }
 
-  applyCoupon(couponCode, discountType = 'percentage', discountValue = 0) {
+  applyCoupon(couponCode, discountType = 'percentage', discountValue = 0, applicableProductIds = []) {
     try {
-      const result = this.#stateManager.applyCoupon(couponCode, discountType, discountValue);
+      // Pass applicableProductIds to StateManager
+      const result = this.#stateManager.applyCoupon(couponCode, discountType, discountValue, applicableProductIds);
       
       // Refresh unit pricing calculations if SelectorManager is available
       if (this.#app.selector && typeof this.#app.selector.refreshUnitPricing === 'function') {

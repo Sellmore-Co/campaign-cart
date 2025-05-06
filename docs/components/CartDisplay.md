@@ -9,22 +9,24 @@ The Cart Display system allows you to display cart information anywhere on your 
 | Attribute | Description | Example Display |
 |-----------|-------------|-----------------|
 | `data-os-cart-summary="grand-total"` | Displays the final total (subtotal + shipping + tax) | $285.00 |
-| `data-os-cart-summary="subtotal"` | Displays the cart subtotal | $285.00 |
-| `data-os-cart-summary="compare-total"` | Displays the original/retail price total | $354.00 |
-| `data-os-cart-summary="savings-amount"` | Displays the amount saved | $69.00 |
-| `data-os-cart-summary="savings-percentage"` | Displays the percentage saved | 20% OFF |
+| `data-os-cart-summary="subtotal"` | Displays the cart subtotal (after overall coupon discounts) | $285.00 |
+| `data-os-cart-summary="compare-total"` | Displays the original/retail price total (or pre-coupon subtotal if coupon is active) | $354.00 |
+| `data-os-cart-summary="savings-amount"` | Displays the amount saved (based on retail vs. final total) | $69.00 |
+| `data-os-cart-summary="savings-percentage"` | Displays the percentage saved (based on retail vs. final total) | 20% OFF |
 
 ### Line Items and Cart Contents
 
 | Attribute | Description |
 |-----------|-------------|
-| `data-os-cart-summary="line-display"` | Container for displaying line items |
-| `data-os-cart-summary="line-item"` | Template for a single line item |
+| `data-os-cart-summary="line-display"` | Container for displaying line items. Can have `data-os-show-item-discount="true"`. |
+| `data-os-cart-summary="line-item"` | Template for a single line item. Will have `data-os-package-id` and `data-os-item-type` (e.g., "standard", "upsell") attributes added dynamically. |
 | `data-os-cart-summary="line-title"` | Displays the item name |
 | `data-os-cart-summary="line-image"` | Displays the item image |
-| `data-os-cart-summary="line-compare"` | Displays the original/retail price for a line item |
-| `data-os-cart-summary="line-sale"` | Displays the current price for a line item |
-| `data-os-cart-summary="line-saving-percent"` | Displays the savings percentage for a line item |
+| `data-os-cart-summary="line-compare"` | Displays the original/retail price for a line item. |
+| `data-os-cart-summary="line-sale"` | Displays the current price for a line item. Can be adjusted by coupons if `data-os-show-item-discount="true"` is set on parent `line-display`. |
+| `data-os-cart-summary="line-saving-percent"` | Displays the savings percentage for a line item (based on its retail vs. its displayed sale price). |
+| `data-os-cart-summary="line-frequency"` | Displays the item's subscription frequency. Can be overridden by `frequencyOverrides` config. |
+| `data-os-cart-summary="remove-line"` | Clickable element within a line item to remove that item from the cart. |
 
 ### Shipping Information
 
@@ -55,14 +57,40 @@ The Cart Display system allows you to display cart information anywhere on your 
 
 ## Configuration Attributes
 
-You can configure the CartDisplayManager's behavior by adding these data attributes to elements with `data-os-cart="summary"`:
+### For `data-os-cart="summary"` Container:
 
 | Configuration Attribute | Description | Default |
 |-------------------------|-------------|---------|
-| `data-show-compare-pricing` | Whether to show compare prices | `true` |
+| `data-show-compare-pricing` | Whether to show compare prices at the line item level | `true` |
 | `data-show-product-images` | Whether to show product images | `true` |
 | `data-show-tax-pending-message` | Whether to show tax calculation pending message | `true` |
 | `data-currency-symbol` | Currency symbol to use | `$` |
+
+### For `data-os-cart-summary="line-display"` Container:
+
+| Configuration Attribute | Description | Default |
+|------------------------------------|-------------|---------|
+| `data-os-show-item-discount`       | If set to `"true"`, the `line-sale` price for items within this container will reflect any per-item coupon discounts calculated by `StateManager`. If `false` or absent, `line-sale` shows the pre-coupon price (or configured `priceOverride`). | `false` |
+
+## Overriding Display via `window.osConfig.cartDisplayConfig`
+
+The `CartDisplayManager` also supports global display overrides via `window.osConfig.cartDisplayConfig`:
+
+```javascript
+window.osConfig.cartDisplayConfig = {
+  frequencyOverrides: {
+    "package_id_1": "Custom Frequency Text for Package 1"
+  },
+  priceOverrides: {
+    // This overrides the item.price for display BEFORE any coupon logic
+    "package_id_2": 19.99 
+  }
+};
+```
+- **`frequencyOverrides`**: Customize the subscription frequency text for specific `package_id`s.
+- **`priceOverrides`**: Customize the displayed sale price for specific `package_id`s. This price is used as the base if `data-os-show-item-discount="true"` is also active and a coupon applies to the item.
+
+These configurations allow for targeted display changes without altering core product data.
 
 ## Line Item Savings Format
 
