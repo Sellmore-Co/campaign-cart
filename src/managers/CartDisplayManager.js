@@ -352,23 +352,13 @@ export class CartDisplayManager {
       return el;
     }
 
-    const itemPackageIdString = (item.package_id !== undefined && item.package_id !== null)
-                              ? item.package_id.toString()
-                              : 'undefined'; 
-
-    this.#logger.debugWithTime(`[#createLineItemElement] For item: "${item.name}", package_id: "${itemPackageIdString}", showDiscounted: ${showDiscountedPriceOnLineItem}`);
+    const itemPackageIdString = (item.package_id?.toString()) || (item.id?.toString()) || 'undefined';
+    this.#logger.debugWithTime(`[#createLineItemElement] For "${item.name}", pkgId:"${itemPackageIdString}", showDiscountedFlag:${showDiscountedPriceOnLineItem}, item.applied_coupon_discount_amount: ${item.applied_coupon_discount_amount}`);
 
     const lineItem = this.#lineItemTemplate.cloneNode(true);
-    if (itemPackageIdString !== 'undefined') {
-      lineItem.dataset.osPackageId = itemPackageIdString;
-    }
-
-    // Add item type attribute based on item.is_upsell
-    if (item.is_upsell === true) {
-      lineItem.dataset.osItemType = 'upsell';
-    } else {
-      lineItem.dataset.osItemType = 'standard'; // Default type if not an upsell
-    }
+    if (itemPackageIdString !== 'undefined') lineItem.dataset.osPackageId = itemPackageIdString;
+    if (item.is_upsell === true) lineItem.dataset.osItemType = 'upsell';
+    else lineItem.dataset.osItemType = 'standard';
 
     const titleElement = lineItem.querySelector('[data-os-cart-summary="line-title"]');
     if (titleElement) titleElement.textContent = item.name;
@@ -389,7 +379,6 @@ export class CartDisplayManager {
       let frequencyText = null;
       if (itemPackageIdString !== 'undefined' && this.#config.frequencyOverrides && this.#config.frequencyOverrides[itemPackageIdString]) {
         frequencyText = this.#config.frequencyOverrides[itemPackageIdString];
-        this.#logger.debugWithTime(`[#createLineItemElement] Using frequency override for package_id "${itemPackageIdString}"`);
       } else if (item.subscription_frequency) {
         frequencyText = `Schedule: Every ${item.subscription_frequency} Days`;
       }
@@ -403,48 +392,52 @@ export class CartDisplayManager {
     
     const comparePriceEl = lineItem.querySelector('[data-os-cart-summary="line-compare"]');
     const salePriceEl = lineItem.querySelector('[data-os-cart-summary="line-sale"]');
-    
-    let itemPriceForDisplay = item.price;
+
+    // Determine the base price for this line item (total for its quantity)
+    // This is before CartDisplayManager's own priceOverrides and before coupon display adjustments.
+    let baseLinePrice = (item.price_total != null) ? item.price_total : (item.price || 0) * (item.quantity || 1);
+
+    // Apply CartDisplayManager's specific display priceOverride if it exists.
+    // This override is per-unit, so multiply by quantity.
     if (itemPackageIdString !== 'undefined' && this.#config.priceOverrides && this.#config.priceOverrides[itemPackageIdString] !== undefined) {
-      itemPriceForDisplay = this.#config.priceOverrides[itemPackageIdString];
-      this.#logger.debugWithTime(`[#createLineItemElement] Using config price override ("${itemPackageIdString}"). Price for display: ${itemPriceForDisplay}`);
+      baseLinePrice = this.#config.priceOverrides[itemPackageIdString] * (item.quantity || 1);
+      this.#logger.debugWithTime(`[#createLineItemElement] Using CDM config price override for "${itemPackageIdString}". New baseLinePrice: ${baseLinePrice}`);
     }
 
-    let finalSalePrice = itemPriceForDisplay;
+    let finalSalePriceForLine = baseLinePrice;
+
+    // If flagged to show item discount, and item has an applied coupon discount from StateManager
     if (showDiscountedPriceOnLineItem && item.applied_coupon_discount_amount && typeof item.applied_coupon_discount_amount === 'number' && item.applied_coupon_discount_amount > 0) {
-      const perItemTotalDiscount = item.applied_coupon_discount_amount;
-      const perUnitDiscount = perItemTotalDiscount / (item.quantity || 1);
-      finalSalePrice = Math.max(0, itemPriceForDisplay - perUnitDiscount);
-      this.#logger.debugWithTime(`[#createLineItemElement] Applied item coupon discount. Original: ${itemPriceForDisplay}, Per-unit discount: ${perUnitDiscount.toFixed(2)}, New sale price (per unit): ${finalSalePrice.toFixed(2)} for package_id "${itemPackageIdString}"`);
-      if (salePriceEl) salePriceEl.classList.add('price--coupon-applied'); 
+      const itemLineDiscount = item.applied_coupon_discount_amount; // This is total discount for this line
+      finalSalePriceForLine = Math.max(0, baseLinePrice - itemLineDiscount);
+      this.#logger.debugWithTime(`[#createLineItemElement] Item "${item.name}" (pkgId:"${itemPackageIdString}") applying item coupon discount. BaseLinePrice: ${baseLinePrice}, ItemLineDiscount: ${itemLineDiscount}, FinalSalePriceForLine: ${finalSalePriceForLine}`);
+      if (salePriceEl) salePriceEl.classList.add('price--coupon-applied');
     } else {
       if (salePriceEl) salePriceEl.classList.remove('price--coupon-applied');
     }
     
     if (salePriceEl) {
-      salePriceEl.textContent = this.#formatPrice(finalSalePrice * (item.quantity || 1));
+      salePriceEl.textContent = this.#formatPrice(finalSalePriceForLine);
     }
 
-    if (item.retail_price && this.#config.showComparePricing) {
-        if(comparePriceEl) {
-            const basePriceForCompare = itemPriceForDisplay;
-            if (item.retail_price > basePriceForCompare) {
-                comparePriceEl.textContent = this.#formatPrice(item.retail_price * (item.quantity || 1));
-                comparePriceEl.classList.remove('hide');
-            } else {
-                comparePriceEl.classList.add('hide');
-            }
+    // Compare price logic: should be based on item.retail_price_total vs. baseLinePrice (pre-coupon)
+    const retailTotalForLine = (item.retail_price_total != null) ? item.retail_price_total : (item.retail_price || 0) * (item.quantity || 1);
+    if (comparePriceEl && retailTotalForLine > 0 && this.#config.showComparePricing) {
+        if (retailTotalForLine > baseLinePrice) { // Compare retail against the price before coupon display adjustment
+            comparePriceEl.textContent = this.#formatPrice(retailTotalForLine);
+            comparePriceEl.classList.remove('hide');
+        } else {
+            comparePriceEl.classList.add('hide');
         }
     } else if (comparePriceEl) {
         comparePriceEl.classList.add('hide');
     }
     
+    // Savings percentage: retailTotalForLine vs finalSalePriceForLine
     const savingsPercentElement = lineItem.querySelector('[data-os-cart-summary="line-saving-percent"]');
-    if (savingsPercentElement && item.retail_price) {
-      const retailTotal = item.retail_price * (item.quantity || 1);
-      const saleTotal = finalSalePrice * (item.quantity || 1);
-      if (retailTotal > saleTotal) {
-        const savingsPercent = Math.round((1 - (saleTotal / retailTotal)) * 100);
+    if (savingsPercentElement && retailTotalForLine > 0) {
+      if (retailTotalForLine > finalSalePriceForLine) {
+        const savingsPercent = Math.round((1 - (finalSalePriceForLine / retailTotalForLine)) * 100);
         if (savingsPercent > 0) {
             const format = savingsPercentElement.dataset.osFormat || 'default';
             let savingsText = `${savingsPercent}% OFF`;
@@ -460,12 +453,11 @@ export class CartDisplayManager {
     } else if (savingsPercentElement) {
       savingsPercentElement.classList.add('hide');
     }
-
+    
     const removeButton = lineItem.querySelector('[data-os-cart-summary="remove-line"]');
     if (removeButton) {
       removeButton.addEventListener('click', (event) => {
         event.preventDefault();
-        // Use item.id for removal as StateManager.removeFromCart uses item.id
         const itemIdToRemove = item.id?.toString(); 
         this.#logger.infoWithTime(`Remove button clicked for item id: ${itemIdToRemove} (package_id: ${itemPackageIdString})`);
         if (itemIdToRemove && itemIdToRemove !== 'undefined' && this.#app.cart) {
