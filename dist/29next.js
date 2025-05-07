@@ -7001,88 +7001,106 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/ToggleManager.js
-  var _toggleItems, _app12, _logger17, _isDebugMode3, _initToggleItems, initToggleItems_fn, _initToggleItem, initToggleItem_fn, _addDebugOverlay, addDebugOverlay_fn, _toggleItem, toggleItem_fn, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn, _updateToggleItemUI, updateToggleItemUI_fn, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn, _isItemInCart, isItemInCart_fn, _addItemToCart2, addItemToCart_fn2, _removeItemFromCart2, removeItemFromCart_fn2;
+  var _packageToggles, _app12, _logger17, _isDebugMode3, _initAndRegisterToggleElements, initAndRegisterToggleElements_fn, _registerToggleElement, registerToggleElement_fn, _addDebugOverlay, addDebugOverlay_fn, _processToggleAction, processToggleAction_fn, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn, _updateAllToggleUIs, updateAllToggleUIs_fn, _updateUIForPackage, updateUIForPackage_fn, _isItemInCart, isItemInCart_fn, _addItemToCart2, addItemToCart_fn2, _removeItemFromCart2, removeItemFromCart_fn2;
   var ToggleManager = class {
     constructor(app) {
-      __privateAdd(this, _initToggleItems);
-      __privateAdd(this, _initToggleItem);
+      __privateAdd(this, _initAndRegisterToggleElements);
+      __privateAdd(this, _registerToggleElement);
+      // Note: Removed toggleId parameter as it's not the primary key anymore
       __privateAdd(this, _addDebugOverlay);
-      __privateAdd(this, _toggleItem);
+      // Renamed from #toggleItem, takes packageId and the specific element clicked
+      __privateAdd(this, _processToggleAction);
       __privateAdd(this, _getPackageDataFromCampaign);
-      __privateAdd(this, _updateToggleItemUI);
-      __privateAdd(this, _updateAllToggleItemsUI);
+      // Renamed from #updateAllToggleItemsUI
+      __privateAdd(this, _updateAllToggleUIs);
+      // New method to update all elements for a given package
+      __privateAdd(this, _updateUIForPackage);
       __privateAdd(this, _isItemInCart);
       __privateAdd(this, _addItemToCart2);
       __privateAdd(this, _removeItemFromCart2);
-      __privateAdd(this, _toggleItems, {});
+      __privateAdd(this, _packageToggles, {});
+      // Renamed and restructured: Key is packageId
       __privateAdd(this, _app12, void 0);
       __privateAdd(this, _logger17, void 0);
       __privateAdd(this, _isDebugMode3, false);
       __privateSet(this, _app12, app);
       __privateSet(this, _logger17, app.logger.createModuleLogger("TOGGLE"));
       __privateSet(this, _isDebugMode3, DebugUtils.initDebugMode());
-      __privateMethod(this, _initToggleItems, initToggleItems_fn).call(this);
-      __privateGet(this, _app12).state.subscribe("cart", () => __privateMethod(this, _updateAllToggleItemsUI, updateAllToggleItemsUI_fn).call(this));
+      __privateMethod(this, _initAndRegisterToggleElements, initAndRegisterToggleElements_fn).call(this);
+      __privateGet(this, _app12).state.subscribe("cart", () => __privateMethod(this, _updateAllToggleUIs, updateAllToggleUIs_fn).call(this));
       __privateGet(this, _logger17).info("ToggleManager initialized");
       if (__privateGet(this, _isDebugMode3)) {
         __privateGet(this, _logger17).info("Debug mode enabled for toggle items");
       }
     }
   };
-  _toggleItems = new WeakMap();
+  _packageToggles = new WeakMap();
   _app12 = new WeakMap();
   _logger17 = new WeakMap();
   _isDebugMode3 = new WeakMap();
-  _initToggleItems = new WeakSet();
-  initToggleItems_fn = function() {
+  _initAndRegisterToggleElements = new WeakSet();
+  initAndRegisterToggleElements_fn = function() {
     const toggleElements = document.querySelectorAll('[data-os-action="toggle-item"]');
     if (!toggleElements.length) {
-      __privateGet(this, _logger17).debug("No toggle item buttons found in the DOM");
+      __privateGet(this, _logger17).debug("No toggle item buttons found.");
       return;
     }
-    __privateGet(this, _logger17).info(`Found ${toggleElements.length} toggle item buttons`);
-    toggleElements.forEach((element) => __privateMethod(this, _initToggleItem, initToggleItem_fn).call(this, element));
+    __privateGet(this, _logger17).info(`Found ${toggleElements.length} toggle item button elements.`);
+    toggleElements.forEach((element) => __privateMethod(this, _registerToggleElement, registerToggleElement_fn).call(this, element));
+    __privateMethod(this, _updateAllToggleUIs, updateAllToggleUIs_fn).call(this);
   };
-  _initToggleItem = new WeakSet();
-  initToggleItem_fn = function(toggleElement) {
+  _registerToggleElement = new WeakSet();
+  registerToggleElement_fn = function(toggleElement) {
     const packageId = toggleElement.getAttribute("data-os-package");
     if (!packageId) {
-      __privateGet(this, _logger17).warn("Toggle item missing data-os-package attribute", toggleElement);
+      __privateGet(this, _logger17).warn("Toggle element missing data-os-package attribute", toggleElement);
       return;
     }
     const quantity = Number.parseInt(toggleElement.getAttribute("data-os-quantity") ?? "1", 10);
-    const toggleId = toggleElement.getAttribute("data-os-id") ?? `toggle-${packageId}`;
-    __privateGet(this, _toggleItems)[toggleId] = { element: toggleElement, packageId, quantity };
-    __privateMethod(this, _updateToggleItemUI, updateToggleItemUI_fn).call(this, toggleElement, packageId);
+    if (!__privateGet(this, _packageToggles)[packageId]) {
+      __privateGet(this, _packageToggles)[packageId] = {
+        packageId,
+        quantity,
+        // Assume quantity is consistent for the package
+        elements: []
+        // Array to hold all DOM elements for this package
+      };
+      __privateGet(this, _logger17).debug(`[INIT] Creating new toggle registration for packageId: ${packageId}`);
+    } else {
+      if (__privateGet(this, _packageToggles)[packageId].quantity !== quantity) {
+        __privateGet(this, _logger17).warn(`Toggle button for package ${packageId} has different quantity (${quantity}) than previously registered (${__privateGet(this, _packageToggles)[packageId].quantity}). Using first quantity found.`);
+      }
+    }
+    __privateGet(this, _packageToggles)[packageId].elements.push(toggleElement);
+    __privateGet(this, _logger17).debugWithTime(`[INIT] Registered element for packageId: ${packageId}. Total elements for this package: ${__privateGet(this, _packageToggles)[packageId].elements.length}`);
     toggleElement.addEventListener("click", (event) => {
       event.preventDefault();
-      __privateMethod(this, _toggleItem, toggleItem_fn).call(this, toggleId);
+      __privateMethod(this, _processToggleAction, processToggleAction_fn).call(this, packageId, toggleElement);
     });
     if (__privateGet(this, _isDebugMode3)) {
-      __privateMethod(this, _addDebugOverlay, addDebugOverlay_fn).call(this, toggleElement, toggleId, packageId, quantity);
+      __privateMethod(this, _addDebugOverlay, addDebugOverlay_fn).call(this, toggleElement, packageId, quantity);
     }
-    __privateGet(this, _logger17).debug(`Initialized toggle item ${toggleId} for package ${packageId}`);
   };
   _addDebugOverlay = new WeakSet();
-  addDebugOverlay_fn = function(element, toggleId, packageId, quantity) {
+  addDebugOverlay_fn = function(element, packageId, quantity) {
     const packageData = __privateMethod(this, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn).call(this, packageId);
     const price = packageData ? packageData.price : "N/A";
     const isUpsell = element.hasAttribute("data-os-upsell") ? element.getAttribute("data-os-upsell") === "true" : element.closest("[data-os-upsell-section]") !== null;
-    DebugUtils.addDebugOverlay(element, toggleId, "toggle", {
+    DebugUtils.addDebugOverlay(element, `toggle-${packageId}-${__privateGet(this, _packageToggles)[packageId]?.elements.length || 0}`, "toggle", {
       "Package": packageId,
       "Qty": quantity,
       "Price": price,
       "Upsell": isUpsell ? "Yes" : "No"
     });
   };
-  _toggleItem = new WeakSet();
-  toggleItem_fn = function(toggleId) {
-    const toggleItem = __privateGet(this, _toggleItems)[toggleId];
-    if (!toggleItem) {
-      __privateGet(this, _logger17).error(`Toggle item ${toggleId} not found`);
+  _processToggleAction = new WeakSet();
+  processToggleAction_fn = function(packageId, clickedElement) {
+    const packageInfo = __privateGet(this, _packageToggles)[packageId];
+    if (!packageInfo) {
+      __privateGet(this, _logger17).error(`Toggle package info for packageId ${packageId} not found`);
       return;
     }
-    const { packageId, quantity, element } = toggleItem;
+    const { quantity } = packageInfo;
     const isInCart = __privateMethod(this, _isItemInCart, isItemInCart_fn).call(this, packageId);
     if (isInCart) {
       __privateMethod(this, _removeItemFromCart2, removeItemFromCart_fn2).call(this, packageId);
@@ -7093,8 +7111,9 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger17).error(`Package ${packageId} not found in campaign data`);
         return;
       }
-      const isUpsell = element.hasAttribute("data-os-upsell") ? element.getAttribute("data-os-upsell") === "true" : element.closest("[data-os-upsell-section]") !== null;
+      const isUpsell = clickedElement.hasAttribute("data-os-upsell") ? clickedElement.getAttribute("data-os-upsell") === "true" : clickedElement.closest("[data-os-upsell-section]") !== null;
       __privateMethod(this, _addItemToCart2, addItemToCart_fn2).call(this, {
+        // Use packageId consistently for ID unless your cart expects something else
         id: packageId,
         name: packageData.name,
         price: Number.parseFloat(packageData.price),
@@ -7104,8 +7123,7 @@ var TwentyNineNext = (() => {
       });
       __privateGet(this, _logger17).info(`Toggled ON item ${packageId}${isUpsell ? " (upsell)" : ""}`);
     }
-    __privateMethod(this, _updateToggleItemUI, updateToggleItemUI_fn).call(this, element, packageId);
-    __privateGet(this, _app12).triggerEvent("toggle.changed", { toggleId, packageId, isActive: !isInCart });
+    __privateGet(this, _app12).triggerEvent("toggle.changed", { packageId, isActive: !isInCart });
   };
   _getPackageDataFromCampaign = new WeakSet();
   getPackageDataFromCampaign_fn = function(packageId) {
@@ -7113,29 +7131,40 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger17).error("Campaign data not available");
       return null;
     }
-    return __privateGet(this, _app12).campaignData.packages.find((pkg) => pkg.ref_id.toString() === packageId.toString()) ?? null;
+    return __privateGet(this, _app12).campaignData.packages.find((pkg) => pkg.ref_id?.toString() === packageId?.toString() || pkg.id?.toString() === packageId?.toString()) ?? null;
   };
-  _updateToggleItemUI = new WeakSet();
-  updateToggleItemUI_fn = function(element, packageId) {
+  _updateAllToggleUIs = new WeakSet();
+  updateAllToggleUIs_fn = function() {
+    __privateGet(this, _logger17).debugWithTime(`[UPDATE_ALL] Cart state changed. Updating ALL package toggle UIs.`);
+    Object.values(__privateGet(this, _packageToggles)).forEach((packageInfo) => {
+      __privateMethod(this, _updateUIForPackage, updateUIForPackage_fn).call(this, packageInfo);
+    });
+  };
+  _updateUIForPackage = new WeakSet();
+  updateUIForPackage_fn = function(packageInfo) {
+    const { packageId, elements } = packageInfo;
+    if (!elements || elements.length === 0)
+      return;
     const isInCart = __privateMethod(this, _isItemInCart, isItemInCart_fn).call(this, packageId);
-    element.classList.toggle("os--active", isInCart);
-    element.setAttribute("data-os-active", isInCart.toString());
-    const wrapper = element.closest("[data-os-toggle-wrapper]");
-    if (wrapper) {
-      wrapper.classList.toggle("os--active", isInCart);
-      __privateGet(this, _logger17).debug(`Toggled os--active class on wrapper for package ${packageId} to ${isInCart}`);
-    } else {
-    }
-  };
-  _updateAllToggleItemsUI = new WeakSet();
-  updateAllToggleItemsUI_fn = function() {
-    Object.values(__privateGet(this, _toggleItems)).forEach(
-      ({ element, packageId }) => __privateMethod(this, _updateToggleItemUI, updateToggleItemUI_fn).call(this, element, packageId)
-    );
+    __privateGet(this, _logger17).debugWithTime(`[UPDATE_PKG_UI] Updating UI for package ${packageId}. IsInCart: ${isInCart}. Element count: ${elements.length}`);
+    elements.forEach((element) => {
+      element.classList.toggle("os--active", isInCart);
+      element.setAttribute("data-os-active", isInCart.toString());
+      const wrapper = element.closest("[data-os-toggle-wrapper]");
+      if (wrapper) {
+        wrapper.classList.toggle("os--active", isInCart);
+        __privateGet(this, _logger17).debugWithTime(`  > Toggled wrapper class for element of package ${packageId}`);
+      } else {
+        __privateGet(this, _logger17).debugWithTime(`  > No wrapper found via closest() for element of package ${packageId}`);
+      }
+    });
   };
   _isItemInCart = new WeakSet();
   isItemInCart_fn = function(itemId) {
-    return __privateGet(this, _app12).state.getState("cart").items.some((item) => item.id === itemId);
+    const items = __privateGet(this, _app12).state.getState("cart")?.items || [];
+    const found = items.some((item) => item.package_id?.toString() === itemId?.toString());
+    __privateGet(this, _logger17).debugWithTime(`[isItemInCart] Checking for packageId: "${itemId}". Found: ${found}`);
+    return found;
   };
   _addItemToCart2 = new WeakSet();
   addItemToCart_fn2 = function(item) {
@@ -7146,12 +7175,12 @@ var TwentyNineNext = (() => {
     __privateGet(this, _app12).cart.addToCart(item);
   };
   _removeItemFromCart2 = new WeakSet();
-  removeItemFromCart_fn2 = function(itemId) {
+  removeItemFromCart_fn2 = function(packageIdToRemove) {
     if (!__privateGet(this, _app12).cart) {
       __privateGet(this, _logger17).error("Cart manager not available");
       return;
     }
-    __privateGet(this, _app12).cart.removeFromCart(itemId);
+    __privateGet(this, _app12).cart.removeFromCart(packageIdToRemove);
   };
 
   // src/managers/DebugManager.js
@@ -12054,3 +12083,4 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
+//# sourceMappingURL=29next.js.map
