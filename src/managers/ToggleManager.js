@@ -7,7 +7,7 @@
 import { DebugUtils } from '../utils/DebugUtils.js';
 
 export class ToggleManager {
-  #toggleItems = {};
+  #packageToggles = {}; // Renamed and restructured: Key is packageId
   #app;
   #logger;
   #isDebugMode = false;
@@ -16,61 +16,75 @@ export class ToggleManager {
     this.#app = app;
     this.#logger = app.logger.createModuleLogger('TOGGLE');
     this.#isDebugMode = DebugUtils.initDebugMode();
-    this.#initToggleItems();
-    this.#app.state.subscribe('cart', () => this.#updateAllToggleItemsUI());
+    this.#initAndRegisterToggleElements();
+    this.#app.state.subscribe('cart', () => this.#updateAllToggleUIs()); // Changed method name
     this.#logger.info('ToggleManager initialized');
     if (this.#isDebugMode) {
       this.#logger.info('Debug mode enabled for toggle items');
     }
   }
 
-  #initToggleItems() {
+  #initAndRegisterToggleElements() {
     const toggleElements = document.querySelectorAll('[data-os-action="toggle-item"]');
-    
     if (!toggleElements.length) {
-      this.#logger.debug('No toggle item buttons found in the DOM');
+      this.#logger.debug('No toggle item buttons found.');
       return;
     }
-    
-    this.#logger.info(`Found ${toggleElements.length} toggle item buttons`);
-    toggleElements.forEach(element => this.#initToggleItem(element));
+    this.#logger.info(`Found ${toggleElements.length} toggle item button elements.`);
+    toggleElements.forEach(element => this.#registerToggleElement(element));
+    this.#updateAllToggleUIs(); // Initial UI update based on loaded cart state
   }
 
-  #initToggleItem(toggleElement) {
+  #registerToggleElement(toggleElement) {
     const packageId = toggleElement.getAttribute('data-os-package');
     if (!packageId) {
-      this.#logger.warn('Toggle item missing data-os-package attribute', toggleElement);
+      this.#logger.warn('Toggle element missing data-os-package attribute', toggleElement);
       return;
     }
 
     const quantity = Number.parseInt(toggleElement.getAttribute('data-os-quantity') ?? '1', 10);
-    const toggleId = toggleElement.getAttribute('data-os-id') ?? `toggle-${packageId}`;
 
-    this.#toggleItems[toggleId] = { element: toggleElement, packageId, quantity };
-    this.#updateToggleItemUI(toggleElement, packageId);
-
-    toggleElement.addEventListener('click', event => {
-      event.preventDefault();
-      this.#toggleItem(toggleId);
-    });
-
-    if (this.#isDebugMode) {
-      this.#addDebugOverlay(toggleElement, toggleId, packageId, quantity);
+    // If this packageId hasn't been seen, initialize its entry
+    if (!this.#packageToggles[packageId]) {
+      this.#packageToggles[packageId] = {
+        packageId: packageId,
+        quantity: quantity, // Assume quantity is consistent for the package
+        elements: [] // Array to hold all DOM elements for this package
+      };
+      this.#logger.debug(`[INIT] Creating new toggle registration for packageId: ${packageId}`);
+    } else {
+       // Optional: Warn if quantity differs between buttons for the same package
+       if (this.#packageToggles[packageId].quantity !== quantity) {
+           this.#logger.warn(`Toggle button for package ${packageId} has different quantity (${quantity}) than previously registered (${this.#packageToggles[packageId].quantity}). Using first quantity found.`);
+       }
     }
 
-    this.#logger.debug(`Initialized toggle item ${toggleId} for package ${packageId}`);
+    // Add the current DOM element to the list for this packageId
+    this.#packageToggles[packageId].elements.push(toggleElement);
+    this.#logger.debugWithTime(`[INIT] Registered element for packageId: ${packageId}. Total elements for this package: ${this.#packageToggles[packageId].elements.length}`);
+
+    // Add event listener to this specific element
+    toggleElement.addEventListener('click', event => {
+      event.preventDefault();
+      this.#processToggleAction(packageId, toggleElement); // Pass packageId and the clicked element
+    });
+
+    // Add debug overlay if needed
+    if (this.#isDebugMode) {
+      this.#addDebugOverlay(toggleElement, packageId, quantity);
+    }
   }
 
-  #addDebugOverlay(element, toggleId, packageId, quantity) {
+  // Note: Removed toggleId parameter as it's not the primary key anymore
+  #addDebugOverlay(element, packageId, quantity) { 
     const packageData = this.#getPackageDataFromCampaign(packageId);
     const price = packageData ? packageData.price : 'N/A';
-    
-    // Check if this is an upsell toggle
     const isUpsell = element.hasAttribute('data-os-upsell') ? 
       element.getAttribute('data-os-upsell') === 'true' : 
       (element.closest('[data-os-upsell-section]') !== null);
     
-    DebugUtils.addDebugOverlay(element, toggleId, 'toggle', {
+    // Use packageId or a unique element identifier if needed for the DebugUtils key
+    DebugUtils.addDebugOverlay(element, `toggle-${packageId}-${this.#packageToggles[packageId]?.elements.length || 0}`, 'toggle', {
       'Package': packageId,
       'Qty': quantity,
       'Price': price,
@@ -78,14 +92,15 @@ export class ToggleManager {
     });
   }
 
-  #toggleItem(toggleId) {
-    const toggleItem = this.#toggleItems[toggleId];
-    if (!toggleItem) {
-      this.#logger.error(`Toggle item ${toggleId} not found`);
+  // Renamed from #toggleItem, takes packageId and the specific element clicked
+  #processToggleAction(packageId, clickedElement) {
+    const packageInfo = this.#packageToggles[packageId];
+    if (!packageInfo) {
+      this.#logger.error(`Toggle package info for packageId ${packageId} not found`);
       return;
     }
 
-    const { packageId, quantity, element } = toggleItem;
+    const { quantity } = packageInfo; // Use quantity from registered package info
     const isInCart = this.#isItemInCart(packageId);
 
     if (isInCart) {
@@ -98,13 +113,14 @@ export class ToggleManager {
         return;
       }
 
-      // Check if this is an upsell toggle
-      const isUpsell = element.hasAttribute('data-os-upsell') ? 
-        element.getAttribute('data-os-upsell') === 'true' : 
-        (element.closest('[data-os-upsell-section]') !== null);
+      // Check if THIS SPECIFIC clicked element represents an upsell
+      const isUpsell = clickedElement.hasAttribute('data-os-upsell') ? 
+        clickedElement.getAttribute('data-os-upsell') === 'true' : 
+        (clickedElement.closest('[data-os-upsell-section]') !== null);
 
       this.#addItemToCart({
-        id: packageId,
+        // Use packageId consistently for ID unless your cart expects something else
+        id: packageId, 
         name: packageData.name,
         price: Number.parseFloat(packageData.price),
         quantity,
@@ -115,8 +131,11 @@ export class ToggleManager {
       this.#logger.info(`Toggled ON item ${packageId}${isUpsell ? ' (upsell)' : ''}`);
     }
 
-    this.#updateToggleItemUI(element, packageId);
-    this.#app.triggerEvent('toggle.changed', { toggleId, packageId, isActive: !isInCart });
+    // UI update is now handled centrally by the state subscription calling #updateAllToggleUIs
+    // No need to call #updateToggleItemUI directly here.
+
+    // Trigger event with packageId and new state
+    this.#app.triggerEvent('toggle.changed', { packageId, isActive: !isInCart });
   }
 
   #getPackageDataFromCampaign(packageId) {
@@ -124,34 +143,45 @@ export class ToggleManager {
       this.#logger.error('Campaign data not available');
       return null;
     }
+    return this.#app.campaignData.packages.find(pkg => pkg.ref_id?.toString() === packageId?.toString() || pkg.id?.toString() === packageId?.toString()) ?? null;
+  }
+  
+  // Renamed from #updateAllToggleItemsUI
+  #updateAllToggleUIs() {
+    this.#logger.debugWithTime(`[UPDATE_ALL] Cart state changed. Updating ALL package toggle UIs.`);
+    Object.values(this.#packageToggles).forEach(packageInfo => { 
+        this.#updateUIForPackage(packageInfo);
+    });
+  }
+
+  // New method to update all elements for a given package
+  #updateUIForPackage(packageInfo) {
+      const { packageId, elements } = packageInfo;
+      if (!elements || elements.length === 0) return;
+      
+      const isInCart = this.#isItemInCart(packageId);
+      this.#logger.debugWithTime(`[UPDATE_PKG_UI] Updating UI for package ${packageId}. IsInCart: ${isInCart}. Element count: ${elements.length}`);
+      
+      elements.forEach(element => {
+        element.classList.toggle('os--active', isInCart);
+        element.setAttribute('data-os-active', isInCart.toString());
     
-    return this.#app.campaignData.packages.find(pkg => pkg.ref_id.toString() === packageId.toString()) ?? null;
-  }
-
-  #updateToggleItemUI(element, packageId) {
-    const isInCart = this.#isItemInCart(packageId);
-    element.classList.toggle('os--active', isInCart);
-    element.setAttribute('data-os-active', isInCart.toString());
-
-    // Find the parent wrapper and toggle its class as well
-    const wrapper = element.closest('[data-os-toggle-wrapper]');
-    if (wrapper) {
-      wrapper.classList.toggle('os--active', isInCart);
-      this.#logger.debug(`Toggled os--active class on wrapper for package ${packageId} to ${isInCart}`);
-    } else {
-      // Optional: Log if a wrapper isn't found, for debugging purposes
-      // this.#logger.debug(`No [data-os-toggle-wrapper] found for toggle item of package ${packageId}`);
-    }
-  }
-
-  #updateAllToggleItemsUI() {
-    Object.values(this.#toggleItems).forEach(({ element, packageId }) => 
-      this.#updateToggleItemUI(element, packageId)
-    );
+        const wrapper = element.closest('[data-os-toggle-wrapper]');
+        if (wrapper) {
+          wrapper.classList.toggle('os--active', isInCart);
+          this.#logger.debugWithTime(`  > Toggled wrapper class for element of package ${packageId}`);
+        } else {
+          this.#logger.debugWithTime(`  > No wrapper found via closest() for element of package ${packageId}`);
+        }
+      });
   }
 
   #isItemInCart(itemId) {
-    return this.#app.state.getState('cart').items.some(item => item.id === itemId);
+    // Use item.package_id now that StateManager provides it reliably
+    const items = this.#app.state.getState('cart')?.items || [];
+    const found = items.some(item => item.package_id?.toString() === itemId?.toString());
+    this.#logger.debugWithTime(`[isItemInCart] Checking for packageId: "${itemId}". Found: ${found}`);
+    return found; 
   }
 
   #addItemToCart(item) {
@@ -162,11 +192,12 @@ export class ToggleManager {
     this.#app.cart.addToCart(item);
   }
 
-  #removeItemFromCart(itemId) {
+  #removeItemFromCart(packageIdToRemove) { // Renamed param for clarity
     if (!this.#app.cart) {
       this.#logger.error('Cart manager not available');
       return;
     }
-    this.#app.cart.removeFromCart(itemId);
+    // Assuming CartManager.removeFromCart expects the packageId/ID used in the cart items
+    this.#app.cart.removeFromCart(packageIdToRemove);
   }
 }
