@@ -204,6 +204,37 @@ export class CartManager {
     return this.#addToCart(item);
   }
 
+  addToCartByRefId(refId, quantity = 1) {
+    try {
+      // Find the package by ref_id ONLY - do not match by external_id
+      const packageData = this.#app.campaignData?.packages?.find(pkg => 
+        pkg.ref_id.toString() === refId.toString()
+      );
+      
+      if (!packageData) {
+        this.#logger.error(`Package with ref_id ${refId} not found in campaign data`);
+        throw new Error(`Package with ref_id ${refId} not found`);
+      }
+      
+      // Create item object with explicitly matching to ref_id
+      const item = {
+        id: packageData.ref_id.toString(), // Use ref_id for id to prevent external_id matching
+        ref_id: packageData.ref_id.toString(), // Add ref_id explicitly 
+        name: packageData.name,
+        price: parseFloat(packageData.price),
+        quantity: quantity,
+        type: 'package',
+        // Flag to indicate this item should only be matched by ref_id
+        match_by_ref_id_only: true
+      };
+      
+      return this.#addToCart(item);
+    } catch (error) {
+      this.#logger.error(`Error adding item by ref_id ${refId}:`, error);
+      throw error;
+    }
+  }
+
   removeFromCart(itemId) {
     return this.#removeFromCart(itemId);
   }

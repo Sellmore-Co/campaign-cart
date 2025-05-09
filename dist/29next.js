@@ -5511,15 +5511,34 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger14).info("State cleared");
     }
     addToCart(item) {
-      if (!item?.id || !item.name || item.price === void 0) {
+      if (!item?.id) {
         __privateGet(this, _logger14).error("Invalid item for addToCart:", item);
-        throw new Error("Invalid item. Must have id, name, and price.");
+        throw new Error("Invalid item. Must have id.");
       }
       __privateGet(this, _logger14).debugWithTime(`[StateManager] addToCart: Input item: ${JSON.stringify(item)}`);
-      const packageData = __privateGet(this, _app9).campaignData?.packages?.find(
-        (pkg) => pkg.ref_id.toString() === item.id.toString() || pkg.external_id?.toString() === item.id.toString()
+      let packageData = __privateGet(this, _app9).campaignData?.packages?.find(
+        (pkg) => pkg.ref_id.toString() === item.id.toString()
       );
+      if (!packageData && !item.match_by_ref_id_only) {
+        packageData = __privateGet(this, _app9).campaignData?.packages?.find(
+          (pkg) => pkg.external_id?.toString() === item.id.toString()
+        );
+        if (packageData) {
+          __privateGet(this, _logger14).debugWithTime(`[StateManager] No ref_id match found, falling back to external_id match for: ${item.id}`);
+        }
+      }
       __privateGet(this, _logger14).debugWithTime(`[StateManager] addToCart: Found packageData: ${JSON.stringify(packageData)}`);
+      if (packageData && (!item.name || item.price === void 0)) {
+        item = {
+          ...item,
+          name: packageData.name,
+          price: parseFloat(packageData.price)
+        };
+        __privateGet(this, _logger14).debugWithTime(`[StateManager] Auto-populated item from packageData: ${JSON.stringify(item)}`);
+      } else if (!item.name || item.price === void 0) {
+        __privateGet(this, _logger14).error("Invalid item for addToCart and no matching package found:", item);
+        throw new Error("Invalid item. Must have id, name, and price, or a valid package id.");
+      }
       const itemPackageId = packageData?.ref_id?.toString() || item.id.toString();
       const inputQuantity = item.quantity || 1;
       let finalItemData;
@@ -5947,6 +5966,33 @@ var TwentyNineNext = (() => {
     }
     addToCart(item) {
       return __privateMethod(this, _addToCart, addToCart_fn).call(this, item);
+    }
+    addToCartByRefId(refId, quantity = 1) {
+      try {
+        const packageData = __privateGet(this, _app10).campaignData?.packages?.find(
+          (pkg) => pkg.ref_id.toString() === refId.toString()
+        );
+        if (!packageData) {
+          __privateGet(this, _logger15).error(`Package with ref_id ${refId} not found in campaign data`);
+          throw new Error(`Package with ref_id ${refId} not found`);
+        }
+        const item = {
+          id: packageData.ref_id.toString(),
+          // Use ref_id for id to prevent external_id matching
+          ref_id: packageData.ref_id.toString(),
+          // Add ref_id explicitly 
+          name: packageData.name,
+          price: parseFloat(packageData.price),
+          quantity,
+          type: "package",
+          // Flag to indicate this item should only be matched by ref_id
+          match_by_ref_id_only: true
+        };
+        return __privateMethod(this, _addToCart, addToCart_fn).call(this, item);
+      } catch (error) {
+        __privateGet(this, _logger15).error(`Error adding item by ref_id ${refId}:`, error);
+        throw error;
+      }
     }
     removeFromCart(itemId) {
       return __privateMethod(this, _removeFromCart, removeFromCart_fn).call(this, itemId);
@@ -12083,4 +12129,3 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
-//# sourceMappingURL=29next.js.map
