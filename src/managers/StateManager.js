@@ -180,16 +180,41 @@ export class StateManager {
   }
 
   addToCart(item) {
-    if (!item?.id || !item.name || item.price === undefined) {
+    if (!item?.id) {
       this.#logger.error('Invalid item for addToCart:', item);
-      throw new Error('Invalid item. Must have id, name, and price.');
+      throw new Error('Invalid item. Must have id.');
     }
     this.#logger.debugWithTime(`[StateManager] addToCart: Input item: ${JSON.stringify(item)}`);
 
-    const packageData = this.#app.campaignData?.packages?.find(pkg => 
-      pkg.ref_id.toString() === item.id.toString() || pkg.external_id?.toString() === item.id.toString()
+    // Always try to match by ref_id first
+    let packageData = this.#app.campaignData?.packages?.find(pkg => 
+      pkg.ref_id.toString() === item.id.toString()
     );
+    
+    // If no match by ref_id and not explicitly restricted to ref_id only, try by external_id as fallback
+    if (!packageData && !item.match_by_ref_id_only) {
+      packageData = this.#app.campaignData?.packages?.find(pkg => 
+        pkg.external_id?.toString() === item.id.toString()
+      );
+      if (packageData) {
+        this.#logger.debugWithTime(`[StateManager] No ref_id match found, falling back to external_id match for: ${item.id}`);
+      }
+    }
+    
     this.#logger.debugWithTime(`[StateManager] addToCart: Found packageData: ${JSON.stringify(packageData)}`);
+
+    // If we only have id but no name/price, and package data exists, use package data
+    if (packageData && (!item.name || item.price === undefined)) {
+      item = {
+        ...item,
+        name: packageData.name,
+        price: parseFloat(packageData.price)
+      };
+      this.#logger.debugWithTime(`[StateManager] Auto-populated item from packageData: ${JSON.stringify(item)}`);
+    } else if (!item.name || item.price === undefined) {
+      this.#logger.error('Invalid item for addToCart and no matching package found:', item);
+      throw new Error('Invalid item. Must have id, name, and price, or a valid package id.');
+    }
 
     const itemPackageId = packageData?.ref_id?.toString() || item.id.toString();
     const inputQuantity = item.quantity || 1;
