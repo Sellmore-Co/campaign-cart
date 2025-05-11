@@ -2347,7 +2347,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/PaymentHandler.js
-  var _apiClient, _logger5, _app3, _form3, _spreedlyManager, _formValidator, _paymentMethod, _isProcessing, _debugMode3, _testCards, _expressCheckoutButtons, _deviceSupport, _getCheckoutForm, getCheckoutForm_fn, _setupFormPrevention, setupFormPrevention_fn, _preventFormSubmission, preventFormSubmission_fn, _convertSubmitButtons, convertSubmitButtons_fn, _setupCheckoutButton, setupCheckoutButton_fn, _safeLog2, safeLog_fn2, _initPaymentMethods, initPaymentMethods_fn, _setupPaymentMethodListeners, setupPaymentMethodListeners_fn, _initSpreedly, initSpreedly_fn, _setupSpreedlyCallbacks, setupSpreedlyCallbacks_fn, _formatSpreedlyErrors, formatSpreedlyErrors_fn, _initializeExpirationFields, initializeExpirationFields_fn, _getExpirationElements, getExpirationElements_fn, _populateExpirationOptions, populateExpirationOptions_fn, _isTestMode, isTestMode_fn, _enforceFormPrevention, enforceFormPrevention_fn, _showProcessingState, showProcessingState_fn, _hideProcessingState, hideProcessingState_fn, _processCreditCard, processCreditCard_fn, _getCreditCardFields, getCreditCardFields_fn, _isDebugTestCardMode, isDebugTestCardMode_fn, _processTestCard, processTestCard_fn, _processPaypal, processPaypal_fn, _getPackageIdFromUrl, getPackageIdFromUrl_fn, _getOrderData, getOrderData_fn, _getAddressData, getAddressData_fn, _formatAddress, formatAddress_fn, _getShippingMethod, getShippingMethod_fn, _getCartLines, getCartLines_fn, _createOrder, createOrder_fn, _formatOrderData, formatOrderData_fn, _formatErrorMessage, formatErrorMessage_fn, _formatPaymentErrorMessage, formatPaymentErrorMessage_fn, _handlePaymentError, handlePaymentError_fn, _displayCreditCardError, displayCreditCardError_fn, _clearPaymentErrors, clearPaymentErrors_fn, _handleOrderSuccess, handleOrderSuccess_fn, _getRedirectUrl, getRedirectUrl_fn, _initExpressCheckout, initExpressCheckout_fn, _detectDeviceSupport, detectDeviceSupport_fn, _hasActiveExpressButtons, hasActiveExpressButtons_fn, _setExpressButtonProcessing, setExpressButtonProcessing_fn, _handleExpressCheckoutError, handleExpressCheckoutError_fn, _checkForPaymentFailedParameters, checkForPaymentFailedParameters_fn, _displayTopBannerError, displayTopBannerError_fn;
+  var _apiClient, _logger5, _app3, _form3, _spreedlyManager, _formValidator, _paymentMethod, _isProcessing, _debugMode3, _testCards, _expressCheckoutButtons, _deviceSupport, _getCheckoutForm, getCheckoutForm_fn, _setupFormPrevention, setupFormPrevention_fn, _preventFormSubmission, preventFormSubmission_fn, _convertSubmitButtons, convertSubmitButtons_fn, _setupCheckoutButton, setupCheckoutButton_fn, _safeLog2, safeLog_fn2, _initPaymentMethods, initPaymentMethods_fn, _setupPaymentMethodListeners, setupPaymentMethodListeners_fn, _initSpreedly, initSpreedly_fn, _setupSpreedlyCallbacks, setupSpreedlyCallbacks_fn, _formatSpreedlyErrors, formatSpreedlyErrors_fn, _initializeExpirationFields, initializeExpirationFields_fn, _getExpirationElements, getExpirationElements_fn, _populateExpirationOptions, populateExpirationOptions_fn, _isTestMode, isTestMode_fn, _enforceFormPrevention, enforceFormPrevention_fn, _showProcessingState, showProcessingState_fn, _hideProcessingState, hideProcessingState_fn, _processCreditCard, processCreditCard_fn, _getCreditCardFields, getCreditCardFields_fn, _isDebugTestCardMode, isDebugTestCardMode_fn, _processTestCard, processTestCard_fn, _processPaypal, processPaypal_fn, _getPackageIdFromUrl, getPackageIdFromUrl_fn, _getOrderData, getOrderData_fn, _getAddressData, getAddressData_fn, _formatAddress, formatAddress_fn, _getShippingMethod, getShippingMethod_fn, _getCartLines, getCartLines_fn, _createOrder, createOrder_fn, _formatOrderData, formatOrderData_fn, _formatErrorMessage, formatErrorMessage_fn, _formatErrorKey, formatErrorKey_fn, _formatPaymentErrorMessage, formatPaymentErrorMessage_fn, _handlePaymentError, handlePaymentError_fn, _displayCreditCardError, displayCreditCardError_fn, _clearPaymentErrors, clearPaymentErrors_fn, _handleOrderSuccess, handleOrderSuccess_fn, _getRedirectUrl, getRedirectUrl_fn, _initExpressCheckout, initExpressCheckout_fn, _detectDeviceSupport, detectDeviceSupport_fn, _hasActiveExpressButtons, hasActiveExpressButtons_fn, _setExpressButtonProcessing, setExpressButtonProcessing_fn, _handleExpressCheckoutError, handleExpressCheckoutError_fn, _checkForPaymentFailedParameters, checkForPaymentFailedParameters_fn, _displayTopBannerError, displayTopBannerError_fn;
   var PaymentHandler = class {
     constructor(apiClient, logger, app) {
       __privateAdd(this, _getCheckoutForm);
@@ -2382,6 +2382,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _createOrder);
       __privateAdd(this, _formatOrderData);
       __privateAdd(this, _formatErrorMessage);
+      __privateAdd(this, _formatErrorKey);
       __privateAdd(this, _formatPaymentErrorMessage);
       __privateAdd(this, _handlePaymentError);
       __privateAdd(this, _displayCreditCardError);
@@ -3168,13 +3169,37 @@ var TwentyNineNext = (() => {
       if (errorData?.payment_details) {
         return __privateMethod(this, _formatPaymentErrorMessage, formatPaymentErrorMessage_fn).call(this, errorData);
       }
-      if (errorData?.message) {
-        return `Order creation failed: ${Array.isArray(errorData.message) ? errorData.message.map((e) => Object.entries(e).map(([k, v]) => `${k}: ${v}`).join(", ")).join(", ") : Object.entries(errorData.message).map(([k, v]) => `${k}: ${v}`).join(", ")}`;
+      if (typeof errorData?.voucher === "string") {
+        return errorData.voucher;
       }
-    } catch {
-      return error.message || "Unknown error";
+      if (errorData?.message) {
+        if (typeof errorData.message === "string") {
+          return `Order creation failed: ${errorData.message}`;
+        }
+        const formattedMessage = Array.isArray(errorData.message) ? errorData.message.map((e) => typeof e === "object" ? Object.entries(e).map(([k, v]) => `${k}: ${v}`).join(", ") : String(e)).join("; ") : typeof errorData.message === "object" ? Object.entries(errorData.message).map(([k, v]) => `${k}: ${v}`).join(", ") : String(errorData.message);
+        return `Order creation failed: ${formattedMessage}`;
+      }
+      let generalErrorMessage = "";
+      for (const key in errorData) {
+        if (Object.prototype.hasOwnProperty.call(errorData, key) && key !== "ref_id" && key !== "payment_details" && key !== "message" && typeof errorData[key] === "string") {
+          generalErrorMessage += (generalErrorMessage ? "; " : "") + `${__privateMethod(this, _formatErrorKey, formatErrorKey_fn).call(this, key)}: ${errorData[key]}`;
+        }
+      }
+      if (generalErrorMessage) {
+        return generalErrorMessage;
+      }
+    } catch (e) {
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "warn", `Error parsing or formatting API error message: ${e.message}`, error.message);
+      if (typeof error.message === "string" && !error.message.startsWith("{") && !error.message.startsWith("[")) {
+        return error.message;
+      }
+      return "An error occurred while processing your request. Please check the details and try again.";
     }
-    return "Order creation failed";
+    return "Order creation failed. Please contact support if the issue persists.";
+  };
+  _formatErrorKey = new WeakSet();
+  formatErrorKey_fn = function(key) {
+    return key.replace(/_/g, " ").replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
   };
   _formatPaymentErrorMessage = new WeakSet();
   formatPaymentErrorMessage_fn = function(errorData) {
