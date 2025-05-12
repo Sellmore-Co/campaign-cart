@@ -757,23 +757,68 @@ export class PaymentHandler {
   #formatErrorMessage(error) {
     try {
       const errorData = JSON.parse(error.message);
-      
-      // Handle specific payment errors
+
+      // 1. Handle specific payment_details errors (existing)
       if (errorData?.payment_details) {
         return this.#formatPaymentErrorMessage(errorData);
       }
-      
-      if (errorData?.message) {
-        return `Order creation failed: ${
-          Array.isArray(errorData.message) ? 
-            errorData.message.map(e => Object.entries(e).map(([k, v]) => `${k}: ${v}`).join(', ')).join(', ') :
-            Object.entries(errorData.message).map(([k, v]) => `${k}: ${v}`).join(', ')
-        }`;
+
+      // 2. Handle specific known error keys directly (e.g., voucher)
+      if (typeof errorData?.voucher === 'string') {
+        return errorData.voucher; // Return the voucher message directly
       }
-    } catch {
-      return error.message || 'Unknown error';
+      // Example for adding other specific keys:
+      // if (typeof errorData?.another_specific_key === 'string') {
+      //   return errorData.another_specific_key;
+      // }
+
+      // 3. Handle generic errorData.message if present
+      if (errorData?.message) {
+        if (typeof errorData.message === 'string') {
+          // If errorData.message is just a string, use it.
+          // Prefixing with "Order creation failed: " to maintain some consistency
+          // with how it might have behaved for other errors hitting this path.
+          return `Order creation failed: ${errorData.message}`;
+        }
+        // If errorData.message is an object or array, format it (existing logic improved)
+        const formattedMessage = Array.isArray(errorData.message) ?
+          errorData.message.map(e => typeof e === 'object' ? Object.entries(e).map(([k, v]) => `${k}: ${v}`).join(', ') : String(e)).join('; ') :
+          (typeof errorData.message === 'object' ? Object.entries(errorData.message).map(([k, v]) => `${k}: ${v}`).join(', ') : String(errorData.message));
+        return `Order creation failed: ${formattedMessage}`;
+      }
+
+      // 4. Fallback: If no specific handlers matched, try to extract a general message from other keys
+      // Exclude 'ref_id' or other purely informational fields.
+      let generalErrorMessage = '';
+      for (const key in errorData) {
+        if (Object.prototype.hasOwnProperty.call(errorData, key) &&
+            key !== 'ref_id' && key !== 'payment_details' && key !== 'message' &&
+            typeof errorData[key] === 'string') {
+          generalErrorMessage += (generalErrorMessage ? '; ' : '') + `${this.#formatErrorKey(key)}: ${errorData[key]}`;
+        }
+      }
+      if (generalErrorMessage) {
+        return generalErrorMessage;
+      }
+
+    } catch (e) {
+      this.#safeLog('warn', `Error parsing or formatting API error message: ${e.message}`, error.message);
+      // error.message is the original string passed to the function.
+      // If it's a simple string (not JSON), it might be a direct message.
+      if (typeof error.message === 'string' && !error.message.startsWith('{') && !error.message.startsWith('[')) {
+          return error.message;
+      }
+      // Default for parsing failure or complex unhandled structures
+      return 'An error occurred while processing your request. Please check the details and try again.';
     }
-    return 'Order creation failed';
+
+    // Final, ultimate fallback if nothing above returned a message
+    return 'Order creation failed. Please contact support if the issue persists.';
+  }
+
+  #formatErrorKey(key) {
+    // Converts "some_key" to "Some key" for better display
+    return key.replace(/_/g, ' ').replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
   }
 
   #formatPaymentErrorMessage(errorData) {
