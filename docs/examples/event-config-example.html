@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Configuration Example</title>
+  
+  <!-- Initialize configuration before any scripts load -->
+  <script>
+    // Initialize required global objects
+    window.dataLayer = window.dataLayer || [];
+    window.osConfig = window.osConfig || {};
+    
+    // Configure which events to disable
+    // Option 1: Using an array format
+    window.osConfig.disabledEvents = [
+      'purchase',                // Disable all purchase events across all platforms
+      'fbPixel:add_to_cart',     // Disable only Facebook Pixel add_to_cart events
+      'gtm:begin_checkout'       // Disable only GTM begin_checkout events
+    ];
+    
+    // Option 2: Using an object format (alternative)
+    // window.osConfig.disabledEvents = {
+    //   'purchase': true,           // Disable all purchase events
+    //   'fbPixel:add_to_cart': true, // Disable FB Pixel add_to_cart
+    //   'view_item': false          // Explicitly enable view_item (default is enabled)
+    // };
+    
+    // You can also selectively disable entire platforms
+    // window.osConfig.disabledPlatforms = {
+    //   'fbPixel': true  // Disable all Facebook Pixel events
+    // };
+  </script>
+  
+  <!-- Load your application scripts after the configuration -->
+  <script src="/path/to/your/app.js" defer></script>
+</head>
+<body>
+  <!-- Your page content here -->
+</body>
+</html> 
