@@ -18,6 +18,7 @@ export class EventManager {
   #debugMode = false;
   #processedOrderIds = new Set(); // Track processed order IDs to prevent duplicates
   #viewItemListFired = false; // Track if view_item_list has been fired
+  #disabledEvents = new Set(); // Track which events are disabled
 
   constructor(app) {
     this.#app = app;
@@ -37,6 +38,9 @@ export class EventManager {
     // Detect available platforms
     this.#detectPlatforms();
     
+    // Load disabled events configuration
+    this.#loadDisabledEventsConfig();
+    
     // Subscribe to relevant app events
     this.#setupEventListeners();
     
@@ -45,6 +49,69 @@ export class EventManager {
     
     this.#isInitialized = true;
     this.#logger.info('EventManager initialized');
+  }
+
+  /**
+   * Load disabled events from global configuration
+   */
+  #loadDisabledEventsConfig() {
+    // Check for window.osConfig.disabledEvents
+    if (window.osConfig && window.osConfig.disabledEvents) {
+      // Clear existing set
+      this.#disabledEvents.clear();
+      
+      // Parse disabled events array or object
+      if (Array.isArray(window.osConfig.disabledEvents)) {
+        // Handle array format: ['view_item', 'purchase', etc.]
+        window.osConfig.disabledEvents.forEach(eventName => {
+          this.#disabledEvents.add(eventName);
+        });
+      } else if (typeof window.osConfig.disabledEvents === 'object') {
+        // Handle object format: {view_item: true, purchase: true, etc.}
+        Object.entries(window.osConfig.disabledEvents).forEach(([eventName, isDisabled]) => {
+          if (isDisabled) {
+            this.#disabledEvents.add(eventName);
+          }
+        });
+      }
+      
+      if (this.#disabledEvents.size > 0) {
+        this.#logger.info(`Loaded disabled events configuration: ${Array.from(this.#disabledEvents).join(', ')}`);
+      }
+    }
+    
+    // Check for disabled platforms
+    if (window.osConfig && window.osConfig.disabledPlatforms) {
+      Object.entries(window.osConfig.disabledPlatforms).forEach(([platform, isDisabled]) => {
+        if (isDisabled && this.#platforms[platform]) {
+          this.#platforms[platform].enabled = false;
+          this.#logger.info(`Platform ${platform} disabled via configuration`);
+        }
+      });
+    }
+  }
+
+  /**
+   * Check if an event is disabled
+   * @param {string} eventName - The name of the event to check
+   * @returns {boolean} - Whether the event is disabled
+   */
+  #isEventDisabled(eventName) {
+    // Check for platform-specific events
+    // Format: 'platform:event' (e.g., 'fbPixel:purchase')
+    if (eventName.includes(':')) {
+      const [platform, event] = eventName.split(':');
+      
+      // Check if the platform itself is disabled
+      if (this.#platforms[platform] && !this.#platforms[platform].enabled) {
+        return true;
+      }
+      
+      return this.#disabledEvents.has(eventName);
+    }
+    
+    // Check for general event disabling (affects all platforms)
+    return this.#disabledEvents.has(eventName);
   }
 
   /**
@@ -387,10 +454,16 @@ export class EventManager {
    * @param {Object} eventData - The event data
    */
   #fireEvent(eventName, eventData) {
+    // Check if this event is globally disabled
+    if (this.#isEventDisabled(eventName)) {
+      this.#logger.info(`Event ${eventName} is disabled by configuration, not firing`);
+      return;
+    }
+
     this.#logger.debug(`Firing ${eventName} event`, eventData);
 
     // Clear previous ecommerce data for GTM
-    if (this.#platforms.gtm.enabled) {
+    if (this.#platforms.gtm.enabled && !this.#isEventDisabled(`gtm:${eventName}`)) {
       window.dataLayer = window.dataLayer || [];
       this.#logger.debug('Clearing previous ecommerce data in dataLayer');
       window.dataLayer.push({ ecommerce: null });
@@ -403,6 +476,8 @@ export class EventManager {
       
 
       this.#logger.debug(`${eventName} event fired to Google Tag Manager`);
+    } else if (this.#platforms.gtm.enabled) {
+      this.#logger.info(`GTM event ${eventName} is disabled by configuration, not firing to GTM`);
     } else {
       this.#logger.warn(`Cannot fire ${eventName} event to GTM: GTM not enabled`);
       
@@ -414,7 +489,7 @@ export class EventManager {
     }
 
     // Fire event to Facebook Pixel
-    if (this.#platforms.fbPixel.enabled) {
+    if (this.#platforms.fbPixel.enabled && !this.#isEventDisabled(`fbPixel:${eventName}`)) {
       switch (eventName) {
         case 'view_item_list':
           window.fbq('track', 'ViewContent', {
@@ -441,19 +516,23 @@ export class EventManager {
           break;
       }
       this.#logger.debug(`${eventName} event fired to Facebook Pixel`);
+    } else if (this.#platforms.fbPixel.enabled) {
+      this.#logger.info(`Facebook Pixel event ${eventName} is disabled by configuration, not firing to FB Pixel`);
     }
 
     // Fire event to Google Analytics 4
-    if (this.#platforms.ga4.enabled) {
+    if (this.#platforms.ga4.enabled && !this.#isEventDisabled(`ga4:${eventName}`)) {
       window.gtag('event', eventName, {
         currency: eventData.ecommerce.currency,
         value: eventData.ecommerce.value,
         items: eventData.ecommerce.items
       });
       this.#logger.debug(`${eventName} event fired to Google Analytics 4`);
+    } else if (this.#platforms.ga4.enabled) {
+      this.#logger.info(`GA4 event ${eventName} is disabled by configuration, not firing to GA4`);
     }
 
-    // Dispatch a DOM event for custom handlers
+    // Dispatch a DOM event for custom handlers (this always fires regardless of disabled status)
     const customEvent = new CustomEvent(`os:${eventName}`, {
       bubbles: true,
       detail: eventData
@@ -590,11 +669,36 @@ export class EventManager {
   }
   
   /**
+   * Manually disable a specific event or platform-specific event
+   * @param {string} eventName - The event name to disable (can be format 'event' or 'platform:event')
+   */
+  disableEvent(eventName) {
+    this.#disabledEvents.add(eventName);
+    this.#logger.info(`Event ${eventName} has been disabled`);
+  }
+
+  /**
+   * Manually enable a previously disabled event
+   * @param {string} eventName - The event name to enable
+   */
+  enableEvent(eventName) {
+    this.#disabledEvents.delete(eventName);
+    this.#logger.info(`Event ${eventName} has been enabled`);
+  }
+
+  /**
+   * Get all currently disabled events
+   * @returns {string[]} - Array of disabled event names
+   */
+  getDisabledEvents() {
+    return Array.from(this.#disabledEvents);
+  }
+
+  /**
    * Check if the EventManager is fully initialized
    * @returns {boolean} - Whether the EventManager is initialized
    */
   get isInitialized() {
     return this.#isInitialized;
   }
-
 } 

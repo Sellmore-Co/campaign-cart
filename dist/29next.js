@@ -9141,10 +9141,20 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/EventManager.js
-  var _app18, _logger23, _isInitialized, _platforms, _debugMode4, _processedOrderIds, _viewItemListFired2, _loadProcessedOrderIds, loadProcessedOrderIds_fn, _saveProcessedOrderIds, saveProcessedOrderIds_fn, _detectPlatforms, detectPlatforms_fn, _setupEventListeners5, setupEventListeners_fn5, _getUserDataForTracking, getUserDataForTracking_fn, _hashString, hashString_fn, _fireEvent, fireEvent_fn;
+  var _app18, _logger23, _isInitialized, _platforms, _debugMode4, _processedOrderIds, _viewItemListFired2, _disabledEvents, _loadDisabledEventsConfig, loadDisabledEventsConfig_fn, _isEventDisabled, isEventDisabled_fn, _loadProcessedOrderIds, loadProcessedOrderIds_fn, _saveProcessedOrderIds, saveProcessedOrderIds_fn, _detectPlatforms, detectPlatforms_fn, _setupEventListeners5, setupEventListeners_fn5, _getUserDataForTracking, getUserDataForTracking_fn, _hashString, hashString_fn, _fireEvent, fireEvent_fn;
   var EventManager = class {
-    // Track if view_item_list has been fired
+    // Track which events are disabled
     constructor(app) {
+      /**
+       * Load disabled events from global configuration
+       */
+      __privateAdd(this, _loadDisabledEventsConfig);
+      /**
+       * Check if an event is disabled
+       * @param {string} eventName - The name of the event to check
+       * @returns {boolean} - Whether the event is disabled
+       */
+      __privateAdd(this, _isEventDisabled);
       /**
        * Load processed order IDs from sessionStorage
        */
@@ -9191,6 +9201,8 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _processedOrderIds, /* @__PURE__ */ new Set());
       // Track processed order IDs to prevent duplicates
       __privateAdd(this, _viewItemListFired2, false);
+      // Track if view_item_list has been fired
+      __privateAdd(this, _disabledEvents, /* @__PURE__ */ new Set());
       __privateSet(this, _app18, app);
       __privateSet(this, _logger23, app.logger.createModuleLogger("EVENT"));
       __privateSet(this, _debugMode4, app.options?.debug || false);
@@ -9202,6 +9214,7 @@ var TwentyNineNext = (() => {
     init() {
       __privateGet(this, _logger23).info("Initializing EventManager");
       __privateMethod(this, _detectPlatforms, detectPlatforms_fn).call(this);
+      __privateMethod(this, _loadDisabledEventsConfig, loadDisabledEventsConfig_fn).call(this);
       __privateMethod(this, _setupEventListeners5, setupEventListeners_fn5).call(this);
       __privateMethod(this, _loadProcessedOrderIds, loadProcessedOrderIds_fn).call(this);
       __privateSet(this, _isInitialized, true);
@@ -9441,6 +9454,29 @@ var TwentyNineNext = (() => {
       return { ...__privateGet(this, _platforms) };
     }
     /**
+     * Manually disable a specific event or platform-specific event
+     * @param {string} eventName - The event name to disable (can be format 'event' or 'platform:event')
+     */
+    disableEvent(eventName) {
+      __privateGet(this, _disabledEvents).add(eventName);
+      __privateGet(this, _logger23).info(`Event ${eventName} has been disabled`);
+    }
+    /**
+     * Manually enable a previously disabled event
+     * @param {string} eventName - The event name to enable
+     */
+    enableEvent(eventName) {
+      __privateGet(this, _disabledEvents).delete(eventName);
+      __privateGet(this, _logger23).info(`Event ${eventName} has been enabled`);
+    }
+    /**
+     * Get all currently disabled events
+     * @returns {string[]} - Array of disabled event names
+     */
+    getDisabledEvents() {
+      return Array.from(__privateGet(this, _disabledEvents));
+    }
+    /**
      * Check if the EventManager is fully initialized
      * @returns {boolean} - Whether the EventManager is initialized
      */
@@ -9455,6 +9491,46 @@ var TwentyNineNext = (() => {
   _debugMode4 = new WeakMap();
   _processedOrderIds = new WeakMap();
   _viewItemListFired2 = new WeakMap();
+  _disabledEvents = new WeakMap();
+  _loadDisabledEventsConfig = new WeakSet();
+  loadDisabledEventsConfig_fn = function() {
+    if (window.osConfig && window.osConfig.disabledEvents) {
+      __privateGet(this, _disabledEvents).clear();
+      if (Array.isArray(window.osConfig.disabledEvents)) {
+        window.osConfig.disabledEvents.forEach((eventName) => {
+          __privateGet(this, _disabledEvents).add(eventName);
+        });
+      } else if (typeof window.osConfig.disabledEvents === "object") {
+        Object.entries(window.osConfig.disabledEvents).forEach(([eventName, isDisabled]) => {
+          if (isDisabled) {
+            __privateGet(this, _disabledEvents).add(eventName);
+          }
+        });
+      }
+      if (__privateGet(this, _disabledEvents).size > 0) {
+        __privateGet(this, _logger23).info(`Loaded disabled events configuration: ${Array.from(__privateGet(this, _disabledEvents)).join(", ")}`);
+      }
+    }
+    if (window.osConfig && window.osConfig.disabledPlatforms) {
+      Object.entries(window.osConfig.disabledPlatforms).forEach(([platform2, isDisabled]) => {
+        if (isDisabled && __privateGet(this, _platforms)[platform2]) {
+          __privateGet(this, _platforms)[platform2].enabled = false;
+          __privateGet(this, _logger23).info(`Platform ${platform2} disabled via configuration`);
+        }
+      });
+    }
+  };
+  _isEventDisabled = new WeakSet();
+  isEventDisabled_fn = function(eventName) {
+    if (eventName.includes(":")) {
+      const [platform2, event] = eventName.split(":");
+      if (__privateGet(this, _platforms)[platform2] && !__privateGet(this, _platforms)[platform2].enabled) {
+        return true;
+      }
+      return __privateGet(this, _disabledEvents).has(eventName);
+    }
+    return __privateGet(this, _disabledEvents).has(eventName);
+  };
   _loadProcessedOrderIds = new WeakSet();
   loadProcessedOrderIds_fn = function() {
     try {
@@ -9576,14 +9652,20 @@ var TwentyNineNext = (() => {
   };
   _fireEvent = new WeakSet();
   fireEvent_fn = function(eventName, eventData) {
+    if (__privateMethod(this, _isEventDisabled, isEventDisabled_fn).call(this, eventName)) {
+      __privateGet(this, _logger23).info(`Event ${eventName} is disabled by configuration, not firing`);
+      return;
+    }
     __privateGet(this, _logger23).debug(`Firing ${eventName} event`, eventData);
-    if (__privateGet(this, _platforms).gtm.enabled) {
+    if (__privateGet(this, _platforms).gtm.enabled && !__privateMethod(this, _isEventDisabled, isEventDisabled_fn).call(this, `gtm:${eventName}`)) {
       window.dataLayer = window.dataLayer || [];
       __privateGet(this, _logger23).debug("Clearing previous ecommerce data in dataLayer");
       window.dataLayer.push({ ecommerce: null });
       /* @__PURE__ */ console.log(`🔥 Firing ${eventName} event to dataLayer`);
       window.dataLayer.push(eventData);
       __privateGet(this, _logger23).debug(`${eventName} event fired to Google Tag Manager`);
+    } else if (__privateGet(this, _platforms).gtm.enabled) {
+      __privateGet(this, _logger23).info(`GTM event ${eventName} is disabled by configuration, not firing to GTM`);
     } else {
       __privateGet(this, _logger23).warn(`Cannot fire ${eventName} event to GTM: GTM not enabled`);
       /* @__PURE__ */ console.log("GTM not detected, initializing dataLayer and pushing event");
@@ -9591,7 +9673,7 @@ var TwentyNineNext = (() => {
       window.dataLayer.push({ ecommerce: null });
       window.dataLayer.push(eventData);
     }
-    if (__privateGet(this, _platforms).fbPixel.enabled) {
+    if (__privateGet(this, _platforms).fbPixel.enabled && !__privateMethod(this, _isEventDisabled, isEventDisabled_fn).call(this, `fbPixel:${eventName}`)) {
       switch (eventName) {
         case "view_item_list":
           window.fbq("track", "ViewContent", {
@@ -9618,14 +9700,18 @@ var TwentyNineNext = (() => {
           break;
       }
       __privateGet(this, _logger23).debug(`${eventName} event fired to Facebook Pixel`);
+    } else if (__privateGet(this, _platforms).fbPixel.enabled) {
+      __privateGet(this, _logger23).info(`Facebook Pixel event ${eventName} is disabled by configuration, not firing to FB Pixel`);
     }
-    if (__privateGet(this, _platforms).ga4.enabled) {
+    if (__privateGet(this, _platforms).ga4.enabled && !__privateMethod(this, _isEventDisabled, isEventDisabled_fn).call(this, `ga4:${eventName}`)) {
       window.gtag("event", eventName, {
         currency: eventData.ecommerce.currency,
         value: eventData.ecommerce.value,
         items: eventData.ecommerce.items
       });
       __privateGet(this, _logger23).debug(`${eventName} event fired to Google Analytics 4`);
+    } else if (__privateGet(this, _platforms).ga4.enabled) {
+      __privateGet(this, _logger23).info(`GA4 event ${eventName} is disabled by configuration, not firing to GA4`);
     }
     const customEvent = new CustomEvent(`os:${eventName}`, {
       bubbles: true,
