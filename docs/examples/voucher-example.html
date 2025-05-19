@@ -1,0 +1,580 @@
+<!-- Campaign Analytics -->
+<script async src="https://campaigns.apps.29next.com/js/v1/campaign/"></script>
+<script>
+    window.addEventListener('load', function () {
+        nextCampaign.config({
+            apiKey: "wozspBAqeuop0EsIMqEZsSE4hXg03CtqcvTlpFDB",
+        })
+        nextCampaign.event('page_view', {
+            title: document.title,
+            url: window.location.href
+        });
+    });
+</script>
+<!-- End Campaign Analytics -->
+
+<script>
+// Initialize the array
+window.on29NextReady = window.on29NextReady || [];
+
+// Add a callback
+window.on29NextReady.push(function(client) {
+  console.log("29next client is ready!");
+  
+  // No need for error handling or checking campaign data
+  // It's guaranteed to be ready here
+  const campaignData = client.getCampaignData();
+  const packageData = campaignData.packages.find(pkg => pkg.ref_id == 4);
+  
+  if (packageData) {
+    client.events.viewItem(packageData);
+  } else {
+    console.warn("Package with ref_id 5 not found");
+  }
+});
+</script>
+
+
+<script>
+// Wait for 29Next to be ready before initializing
+window.on29NextReady = window.on29NextReady || [];
+window.on29NextReady.push(function(client) {
+  console.log("29next client is ready!");
+  initializeScript();
+});
+
+function initializeScript() {
+  // Get the elements
+  const subscriptionCard = document.querySelector('[os-custom-mode="subscription"]');
+  const oneTimeCard = document.querySelector('[os-custom-mode="one-time"]');
+  const quantityCards = document.querySelectorAll('[data-os-package]');
+
+  // Get specific price elements for one-time card
+  const oneTimeCurrentPrice = document.querySelector('[os-compare-price="current-one-time"].pb--current');
+  const oneTimeComparePrice = document.querySelector('[os-compare-price="current-one-time"].pb--compare');
+
+  // Set up event listeners
+  if (subscriptionCard) {
+    subscriptionCard.addEventListener('click', function() {
+      // Toggle active class on controller cards
+      subscriptionCard.classList.add('os--active');
+      oneTimeCard.classList.remove('os--active');
+      
+      // Handle subscription selection
+      handleSubscriptionSelection();
+    });
+  }
+
+  if (oneTimeCard) {
+    oneTimeCard.addEventListener('click', function() {
+      // Toggle active class on controller cards
+      oneTimeCard.classList.add('os--active');
+      subscriptionCard.classList.remove('os--active');
+      
+      // Handle one-time selection
+      handleOneTimeSelection();
+    });
+  }
+
+  // Initial setup - since subscription is active by default
+  if (subscriptionCard && subscriptionCard.classList.contains('os--active')) {
+    handleSubscriptionSelection();
+  }
+
+  // Functions to handle selections
+  function handleSubscriptionSelection() {
+    // First clear the cart
+    clearCart();
+    
+    // Disable packages 2 and 3
+    quantityCards.forEach(card => {
+      const packageId = card.getAttribute('data-os-package');
+      if (packageId === '2' || packageId === '3') {
+        card.classList.add('os--inactive');
+      }
+    });
+    
+    // Select the first package by default
+    if (quantityCards.length > 0) {
+      quantityCards.forEach(card => {
+        card.classList.remove('os--selected', 'os--active');
+        card.setAttribute('data-os-selected', 'false');
+        card.setAttribute('data-os-active', 'false');
+      });
+      
+      quantityCards[0].classList.add('os--selected', 'os--active');
+      quantityCards[0].setAttribute('data-os-selected', 'true');
+      quantityCards[0].setAttribute('data-os-active', 'true');
+    }
+    
+    // Get subscription package from campaign data and add to cart
+    const campaignData = window.twentyNineNext.getCampaignData();
+    const subscriptionPackage = campaignData.packages.find(pkg => pkg.ref_id === 4);
+    const oneTimePackage = campaignData.packages.find(pkg => pkg.ref_id === 1);
+    
+    if (subscriptionPackage) {
+      // Add main subscription package
+      window.twentyNineNext.cart.addToCart({
+        id: subscriptionPackage.ref_id,
+        name: subscriptionPackage.name,
+        price: subscriptionPackage.price,
+        quantity: 1,
+        type: 'package'
+      });
+
+      // Explicitly define the ref_ids of the eBooks you want to add
+      const ebookRefIds = [16, 17, 18]; // Replace with your actual ref_ids
+
+      // Add each eBook directly by ref_id
+      ebookRefIds.forEach(refId => {
+        window.twentyNineNext.cart.addToCartByRefId(refId.toString());
+        console.log(`Added eBook to cart with ref_id: ${refId}`);
+      });
+      
+      // Update one-time card price displays with the regular one-time price
+      if (oneTimeCurrentPrice && oneTimeComparePrice && oneTimePackage) {
+        oneTimeCurrentPrice.textContent = `$${oneTimePackage.price}`;
+        oneTimeComparePrice.textContent = `$${oneTimePackage.price_retail}`;
+      }
+      
+      // Update package card prices for subscription mode
+      updatePackageCardsForSubscription();
+    }
+    
+    // Set shipping method to 2 for subscription
+    window.twentyNineNext.cart.setShippingMethod('2');
+    
+    // Apply the subscription coupon code
+    applySubscriptionCoupon();
+  }
+
+  function handleOneTimeSelection() {
+    // First clear the cart
+    clearCart();
+    
+    // Enable all package cards
+    quantityCards.forEach(card => {
+      card.classList.remove('os--inactive');
+    });
+    
+    // Get the currently selected quantity card or select the first one
+    let selectedCard = document.querySelector('[data-os-package][data-os-selected="true"]');
+    
+    // If no card is selected or if the selected card was inactive, select the first card
+    if (!selectedCard || selectedCard.classList.contains('os--inactive')) {
+      quantityCards.forEach(card => {
+        card.classList.remove('os--selected', 'os--active');
+        card.setAttribute('data-os-selected', 'false');
+        card.setAttribute('data-os-active', 'false');
+      });
+      
+      selectedCard = quantityCards[0];
+      selectedCard.classList.add('os--selected', 'os--active');
+      selectedCard.setAttribute('data-os-selected', 'true');
+      selectedCard.setAttribute('data-os-active', 'true');
+    }
+    
+    const packageId = selectedCard.getAttribute('data-os-package');
+    
+    // Get selected package from campaign data and add to cart
+    const campaignData = window.twentyNineNext.getCampaignData();
+    const selectedPackage = campaignData.packages.find(pkg => pkg.ref_id === parseInt(packageId));
+    
+    if (selectedPackage) {
+      window.twentyNineNext.cart.addToCart({
+        id: selectedPackage.ref_id,
+        name: selectedPackage.name,
+        price: selectedPackage.price,
+        quantity: 1,
+        type: 'package'
+      });
+      
+      // Update one-time card price displays with the selected package price
+      if (oneTimeCurrentPrice && oneTimeComparePrice) {
+        oneTimeCurrentPrice.textContent = `$${selectedPackage.price}`;
+        oneTimeComparePrice.textContent = `$${selectedPackage.price_retail}`;
+      }
+    }
+    
+    // Set shipping method to 2 for one-time purchase
+    window.twentyNineNext.cart.setShippingMethod('3');
+    
+    // Remove any coupon that might be applied
+    removeCoupon();
+    
+    // Update all package prices
+    updateAllPackagePrices();
+  }
+
+  // Add quantity card selection handling
+  quantityCards.forEach(card => {
+    card.addEventListener('click', function() {
+      // Only handle clicks if we're in one-time purchase mode and the card isn't inactive
+      if (oneTimeCard.classList.contains('os--active') && !this.classList.contains('os--inactive')) {
+        // Update selected state
+        quantityCards.forEach(c => {
+          c.classList.remove('os--selected', 'os--active');
+          c.setAttribute('data-os-selected', 'false');
+          c.setAttribute('data-os-active', 'false');
+        });
+        
+        this.classList.add('os--selected', 'os--active');
+        this.setAttribute('data-os-selected', 'true');
+        this.setAttribute('data-os-active', 'true');
+        
+        // Clear cart and add selected package
+        clearCart();
+        
+        const packageId = this.getAttribute('data-os-package');
+        const campaignData = window.twentyNineNext.getCampaignData();
+        const selectedPackage = campaignData.packages.find(pkg => pkg.ref_id === parseInt(packageId));
+        
+        if (selectedPackage) {
+          window.twentyNineNext.cart.addToCart({
+            id: selectedPackage.ref_id,
+            name: selectedPackage.name,
+            price: selectedPackage.price,
+            quantity: 1,
+            type: 'package'
+          });
+          
+          // Update one-time card price displays with the selected package price
+          if (oneTimeCurrentPrice && oneTimeComparePrice) {
+            oneTimeCurrentPrice.textContent = `$${selectedPackage.price}`;
+            oneTimeComparePrice.textContent = `$${selectedPackage.price_retail}`;
+          }
+        }
+      }
+    });
+  });
+
+  // Function to update all package prices for one-time purchase
+  function updateAllPackagePrices() {
+    const campaignData = window.twentyNineNext.getCampaignData();
+    
+    quantityCards.forEach(card => {
+      const packageId = parseInt(card.getAttribute('data-os-package'));
+      const packageData = campaignData.packages.find(pkg => pkg.ref_id === packageId);
+      
+      if (packageData) {
+        updatePackageCardPrices(card, packageData);
+      }
+    });
+  }
+
+  // Function to update package card prices for subscription mode
+  function updatePackageCardsForSubscription() {
+    const campaignData = window.twentyNineNext.getCampaignData();
+    const oneTimePackage = campaignData.packages.find(pkg => pkg.ref_id === 1);
+    
+    quantityCards.forEach(card => {
+      const packageId = parseInt(card.getAttribute('data-os-package'));
+      
+      if (packageId === 1) {
+        // For the first package card, show 75% off ($14.95) instead of $0.00
+        const comparePrice = card.querySelector('.pb-quantity__price.pb--compare');
+        const currentPrice = card.querySelector('.pb-quantity__price.pb--current');
+        const eachPriceSpan = card.querySelector('span[pb-price="each"]');
+        const savingsEl = card.querySelector('.qs11_card__shipping');
+        const pricePerDayEl = card.querySelector('[data-price-custom="day"]');
+        
+        if (comparePrice && oneTimePackage) {
+          comparePrice.textContent = `$${oneTimePackage.price}`;
+        }
+        
+        // Set the subscription price to $14.95 (75% off)
+        if (currentPrice) {
+          currentPrice.textContent = '$14.95';
+        }
+        
+        // Update the "each price" span for subscription
+        if (eachPriceSpan) {
+          eachPriceSpan.textContent = '$14.95';
+        }
+        
+        if (savingsEl) {
+          savingsEl.textContent = 'save 75%';
+        }
+        
+        // Override the price per day to be exactly $1.27 for subscription
+        if (pricePerDayEl) {
+          pricePerDayEl.textContent = '$1.27';
+        }
+      } else {
+        // For other package cards, show their normal prices even though they're inactive
+        const packageData = campaignData.packages.find(pkg => pkg.ref_id === packageId);
+        if (packageData) {
+          updatePackageCardPrices(card, packageData);
+        }
+      }
+    });
+  }
+
+  // Function to update a single package card's prices
+  function updatePackageCardPrices(card, packageData) {
+    // Get price elements within this card
+    const comparePrice = card.querySelector('.pb-quantity__price.pb--compare');
+    const eachPriceSpan = card.querySelector('span[pb-price="each"]');
+    const savingsEl = card.querySelector('.qs11_card__shipping');
+    const pricePerDayEl = card.querySelector('[data-price-custom="day"]');
+    
+    if (comparePrice) {
+      comparePrice.textContent = `$${packageData.price_retail}`;
+    }
+    
+    // Update the "each price" span
+    if (eachPriceSpan) {
+      const packageId = parseInt(card.getAttribute('data-os-package'));
+      let bottleCount = 1;
+      
+      // Determine bottle count based on package ID
+      if (packageId === 1) bottleCount = 1;
+      else if (packageId === 2) bottleCount = 3;
+      else if (packageId === 3) bottleCount = 6;
+      
+      // Calculate price per bottle
+      const pricePerBottle = (parseFloat(packageData.price) / bottleCount).toFixed(2);
+      eachPriceSpan.textContent = `$${pricePerBottle}`;
+      
+      // Update price per day if it exists (30 servings per bottle)
+      if (pricePerDayEl) {
+        const pricePerDay = (pricePerBottle / 30).toFixed(2);
+        pricePerDayEl.textContent = `$${pricePerDay}`;
+      }
+    }
+    
+    if (savingsEl) {
+      const savings = ((parseFloat(packageData.price_retail) - parseFloat(packageData.price)) / parseFloat(packageData.price_retail) * 100).toFixed(0);
+      savingsEl.textContent = `save ${savings}%`;
+    }
+  }
+
+  // Utility functions
+  function clearCart() {
+    // Clear the cart once, no need to loop through packages
+    window.twentyNineNext.cart.clearCart();
+  }
+
+  // Function to apply subscription coupon
+  function applySubscriptionCoupon() {
+    if (window.twentyNineNext && window.twentyNineNext.cart) {
+      // First remove any existing coupon
+      removeCoupon();
+      
+      // Then apply the subscription coupon (now 75% off instead of 100%)
+      setTimeout(() => {
+        window.twentyNineNext.cart.applyCoupon('SUBSAVE1', 'percentage', 75, ["4"]); // Changed from 100 to 75
+        console.log('Applied subscription coupon: SUBSAVE1 (75% off)');
+        
+        // Update voucher pill visibility
+        setTimeout(updateVoucherPillVisibility, 100);
+      }, 300); // Small delay to ensure cart is cleared first
+    } else {
+      console.warn('twentyNineNext.cart is not available for coupon application.');
+    }
+  }
+
+  // Function to remove any applied coupon
+  function removeCoupon() {
+    if (window.twentyNineNext && window.twentyNineNext.cart) {
+      const couponDetails = window.twentyNineNext.cart.getCouponDetails();
+      if (couponDetails && couponDetails.code) {
+        window.twentyNineNext.cart.removeCoupon();
+        console.log('Removed coupon:', couponDetails.code);
+        
+        // Update voucher pill visibility
+        setTimeout(updateVoucherPillVisibility, 100);
+      }
+    }
+  }
+
+  // Function to update voucher pill visibility
+  function updateVoucherPillVisibility() {
+    const voucherPillElements = document.querySelectorAll('[os-component="voucher-pill"]');
+    if (!voucherPillElements.length) return;
+    
+    if (window.twentyNineNext && window.twentyNineNext.cart) {
+      const couponDetails = window.twentyNineNext.cart.getCouponDetails();
+      
+      if (couponDetails && couponDetails.code) {
+        // Coupon exists, show all pills
+        voucherPillElements.forEach(pill => {
+          pill.style.display = 'flex';
+        });
+        console.log('Voucher detected:', couponDetails.code);
+      } else {
+        // No coupon, hide all pills
+        voucherPillElements.forEach(pill => {
+          pill.style.display = 'none';
+        });
+        console.log('No voucher detected');
+      }
+    } else {
+      console.warn('twentyNineNext.cart is not available for voucher check.');
+      voucherPillElements.forEach(pill => {
+        pill.style.display = 'none';
+      });
+    }
+  }
+}
+</script>
+
+
+<!-- Sticky ATC -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const stickyBtn = document.querySelector('[data-btn="sticky-atc"]');
+    if (!stickyBtn) return;
+
+    function handleScroll() {
+      const scrollPercent = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+
+      if (scrollPercent > 20) {
+        stickyBtn.classList.add("is-active");
+      } else {
+        stickyBtn.classList.remove("is-active");
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+  });
+</script>
+
+
+
+<script>
+class PBAccordion {
+  constructor() {
+    this.cleanupInitialState();
+    this.init();
+  }
+
+  cleanupInitialState() {
+    document.querySelectorAll('[pb-component="accordion"]').forEach(accordion => {
+      const group = accordion.querySelector('[pb-accordion-element="group"]');
+      if (!group) return;
+
+      const items = group.querySelectorAll('[pb-accordion-element="accordion"]');
+      items.forEach(item => {
+        const content = item.querySelector('[pb-accordion-element="content"]');
+        const trigger = item.querySelector('[pb-accordion-element="trigger"]');
+        const arrow = item.querySelector('[pb-accordion-element="arrow"]');
+        const plus = item.querySelector('[pb-accordion-element="plus"]');
+        
+        if (content) {
+          content.style.maxHeight = '0';
+          content.style.opacity = '0';
+          content.style.visibility = 'hidden';
+          content.style.display = 'none';
+        }
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        
+        item.classList.remove('is-active-accordion');
+        content?.classList.remove('is-active-accordion');
+        if (arrow) arrow.classList.remove('is-active-accordion');
+        if (plus) plus.classList.remove('is-active-accordion');
+      });
+
+      const initial = group.getAttribute('pb-accordion-initial');
+      if (initial && initial !== 'none') {
+        const initialItem = items[parseInt(initial) - 1];
+        if (initialItem) {
+          this.openAccordion(initialItem);
+        }
+      }
+    });
+  }
+
+  init() {
+    document.querySelectorAll('[pb-component="accordion"]').forEach(accordion => {
+      const group = accordion.querySelector('[pb-accordion-element="group"]');
+      if (!group) return;
+      group.addEventListener('click', (e) => this.handleClick(e, group));
+    });
+  }
+
+  handleClick(event, group) {
+    const accordionItem = event.target.closest('[pb-accordion-element="accordion"]');
+    if (!accordionItem) return;
+
+    const isOpen = accordionItem.classList.contains('is-active-accordion');
+    const isSingle = group.getAttribute('pb-accordion-single') === 'true';
+
+    if (isSingle) {
+      group.querySelectorAll('[pb-accordion-element="accordion"]').forEach(item => {
+        if (item !== accordionItem && item.classList.contains('is-active-accordion')) {
+          this.closeAccordion(item);
+        }
+      });
+    }
+
+    if (isOpen) {
+      this.closeAccordion(accordionItem);
+    } else {
+      this.openAccordion(accordionItem);
+    }
+  }
+
+  openAccordion(item) {
+    const trigger = item.querySelector('[pb-accordion-element="trigger"]');
+    const content = item.querySelector('[pb-accordion-element="content"]');
+    const arrow = item.querySelector('[pb-accordion-element="arrow"]');
+    const plus = item.querySelector('[pb-accordion-element="plus"]');
+
+    content.style.visibility = 'visible';
+    content.style.display = 'block';
+    
+    content.offsetHeight;
+
+    const contentHeight = content.scrollHeight;
+    
+    requestAnimationFrame(() => {
+      content.style.maxHeight = `${contentHeight}px`;
+      content.style.opacity = '1';
+      trigger.setAttribute('aria-expanded', 'true');
+      item.classList.add('is-active-accordion');
+      content.classList.add('is-active-accordion');
+      if (arrow) arrow.classList.add('is-active-accordion');
+      if (plus) plus.classList.add('is-active-accordion');
+    });
+
+    content.addEventListener('transitionend', () => {
+      if (item.classList.contains('is-active-accordion')) {
+        content.style.maxHeight = 'none';
+      }
+    }, { once: true });
+  }
+
+  closeAccordion(item) {
+    const trigger = item.querySelector('[pb-accordion-element="trigger"]');
+    const content = item.querySelector('[pb-accordion-element="content"]');
+    const arrow = item.querySelector('[pb-accordion-element="arrow"]');
+    const plus = item.querySelector('[pb-accordion-element="plus"]');
+
+    content.style.maxHeight = `${content.scrollHeight}px`;
+    content.style.display = 'block';
+
+    content.offsetHeight;
+
+    requestAnimationFrame(() => {
+      content.style.maxHeight = '0';
+      content.style.opacity = '0';
+      trigger.setAttribute('aria-expanded', 'false');
+      item.classList.remove('is-active-accordion');
+      content.classList.remove('is-active-accordion');
+      if (arrow) arrow.classList.remove('is-active-accordion');
+      if (plus) plus.classList.remove('is-active-accordion');
+    });
+
+    content.addEventListener('transitionend', () => {
+      if (!item.classList.contains('is-active-accordion')) {
+        content.style.visibility = 'hidden';
+        content.style.display = 'none';
+      }
+    }, { once: true });
+  }
+}
+
+// Initialize
+new PBAccordion();
+</script>

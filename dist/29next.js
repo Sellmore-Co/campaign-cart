@@ -2588,7 +2588,7 @@ var TwentyNineNext = (() => {
             payment_method: method
           },
           attribution: __privateGet(this, _app3).attribution?.getAttributionData() || cart.attribution || {},
-          shipping_method: (cart.shippingMethod?.id || 1).toString()
+          shipping_method: __privateMethod(this, _getShippingMethod, getShippingMethod_fn).call(this, __privateGet(this, _app3).state.getState())
         };
         if (__privateGet(this, _apiClient)) {
           const nextPageUrl = __privateGet(this, _apiClient).getNextPageUrlFromMeta();
@@ -4763,19 +4763,9 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger10).warn("Invalid phone number format - sending cart without phone number");
     }
     if (cartData.shippingMethod) {
-      prospectCartData.shipping_method = cartData.shippingMethod.code || cartData.shippingMethod.id;
+      prospectCartData.shipping_method = cartData.shippingMethod.ref_id || (cartData.shippingMethod.id ? parseInt(cartData.shippingMethod.id, 10) : 1);
     }
-    const addressData = __privateMethod(this, _getValidAddressData, getValidAddressData_fn).call(this);
-    if (addressData && Object.keys(addressData).length > 0) {
-      if (__privateMethod(this, _isAddressValid, isAddressValid_fn).call(this, addressData)) {
-        __privateGet(this, _logger10).debug("Adding valid address data to cart");
-        prospectCartData.address = addressData;
-      } else {
-        __privateGet(this, _logger10).info("Address data is incomplete or invalid - sending cart with user info only");
-      }
-    } else {
-      __privateGet(this, _logger10).debug("No address data available - sending cart with user info only");
-    }
+    __privateGet(this, _logger10).debug("Omitting address data for prospect cart creation");
     __privateMethod(this, _createCartViaApi, createCartViaApi_fn).call(this, prospectCartData);
   };
   _updateUserState = new WeakSet();
@@ -12240,3 +12230,4 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
+//# sourceMappingURL=29next.js.map

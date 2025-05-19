@@ -365,22 +365,12 @@ export class ProspectCartHandler {
     
     // Add shipping method if available
     if (cartData.shippingMethod) {
-      prospectCartData.shipping_method = cartData.shippingMethod.code || cartData.shippingMethod.id;
+      prospectCartData.shipping_method = cartData.shippingMethod.ref_id || (cartData.shippingMethod.id ? parseInt(cartData.shippingMethod.id, 10) : 1);
     }
     
-    // Only add address data if it's complete and valid
-    const addressData = this.#getValidAddressData();
-    if (addressData && Object.keys(addressData).length > 0) {
-      // Check if we have a valid address (with valid postal code if country is provided)
-      if (this.#isAddressValid(addressData)) {
-        this.#logger.debug('Adding valid address data to cart');
-        prospectCartData.address = addressData;
-      } else {
-        this.#logger.info('Address data is incomplete or invalid - sending cart with user info only');
-      }
-    } else {
-      this.#logger.debug('No address data available - sending cart with user info only');
-    }
+    // IMPORTANT FIX: Don't include address data for prospect cart creation
+    // This is the key change to fix the validation errors
+    this.#logger.debug('Omitting address data for prospect cart creation');
     
     // Create the cart via API
     this.#createCartViaApi(prospectCartData);
@@ -653,4 +643,4 @@ export class ProspectCartHandler {
     this.#logger.debug('Reset beginCheckout flag');
     return true;
   }
-} 
+}
