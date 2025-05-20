@@ -1147,7 +1147,7 @@ export class PaymentHandler {
           payment_method: method
         },
         attribution: this.#app.attribution?.getAttributionData() || cart.attribution || {},
-        shipping_method: (cart.shippingMethod?.id || 1).toString()
+        shipping_method: this.#getShippingMethod(this.#app.state.getState())
       };
 
       // Get success_url from meta tag using ApiClient
