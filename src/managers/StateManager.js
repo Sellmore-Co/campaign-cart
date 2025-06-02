@@ -17,7 +17,44 @@ export class StateManager {
     this.#logger = app.logger.createModuleLogger('STATE');
     this.#state = this.#initDefaultState();
     this.#loadState();
+    
+    // Listen for country changes
+    this.#setupCountryChangeListener();
+    
     this.#logger.info('StateManager initialized (core state loaded)');
+  }
+
+  /**
+   * Setup listener for country changes
+   */
+  #setupCountryChangeListener() {
+    document.addEventListener('os:country.changed', (event) => {
+      const { country, campaignData, previousCountry } = event.detail;
+      this.#logger.info(`Country changed from ${previousCountry} to ${country}, recalculating cart`);
+      
+      // Update currency in cart totals
+      if (campaignData?.currency) {
+        this.setState('cart.totals.currency', campaignData.currency, false);
+        this.setState('cart.totals.currency_symbol', this.#getCurrencySymbol(campaignData.currency), false);
+      }
+      
+      // Recalculate cart totals with new campaign data
+      this.#processCartUpdates(true, 'country.changed');
+    });
+  }
+
+  /**
+   * Get currency symbol for a currency code
+   */
+  #getCurrencySymbol(currencyCode) {
+    const symbols = {
+      'USD': '$',
+      'CAD': 'C$',
+      'GBP': '£',
+      'EUR': '€',
+      'AUD': 'A$'
+    };
+    return symbols[currencyCode] || '$';
   }
 
   finalizeInitializationAndRecalculate() {

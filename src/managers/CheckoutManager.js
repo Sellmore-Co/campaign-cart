@@ -92,6 +92,9 @@ export class CheckoutPage {
       // First, fix the billing form by duplicating shipping form fields
       this.#injectBillingFormFields();
       
+      // Initialize CountryCampaignManager if not already initialized
+      this.#initCountryCampaignManager();
+      
       // Initialize components one by one with proper error handling
       this.#initAddressHandler();
       this.#initBillingAddressHandler();
@@ -272,6 +275,25 @@ export class CheckoutPage {
       }
     } catch (error) {
       this.#logger.error('Error initializing ProspectCartHandler', error);
+    }
+  }
+
+  /**
+   * Initialize CountryCampaignManager if not already done
+   */
+  #initCountryCampaignManager() {
+    try {
+      // Make sure CountryCampaignManager is available and initialized
+      if (this.#app.countryCampaign && !this.#app.countryCampaign.isInitialized) {
+        this.#logger.info('CountryCampaignManager not initialized, initializing now...');
+        // Note: This is async but we'll continue with initialization
+        // The country campaign system should have been initialized in TwentyNineNext.init()
+        this.#app.countryCampaign.init().catch(error => {
+          this.#logger.error('Failed to initialize CountryCampaignManager in CheckoutManager:', error);
+        });
+      }
+    } catch (error) {
+      this.#logger.error('Error initializing CountryCampaignManager:', error);
     }
   }
 

@@ -18,7 +18,23 @@ export class DisplayManager {
     // Subscribe to cart updates to refresh display elements
     this.#app.state.subscribe('cart', () => this.refreshDisplayElements());
     
+    // Listen for country changes
+    this.#setupCountryChangeListener();
+    
     this.#logger.infoWithTime('DisplayManager initialized');
+  }
+
+  /**
+   * Setup listener for country changes
+   */
+  #setupCountryChangeListener() {
+    document.addEventListener('os:country.changed', (event) => {
+      const { country, campaignData } = event.detail;
+      this.#logger.infoWithTime(`Country changed to ${country}, refreshing display elements`);
+      
+      // Refresh display elements as package IDs might have changed
+      this.refreshDisplayElements();
+    });
   }
 
   /**

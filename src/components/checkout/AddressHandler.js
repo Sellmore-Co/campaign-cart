@@ -200,6 +200,9 @@ export class AddressHandler {
           
           // Update phone input country if PhoneInputHandler is available
           this.#updatePhoneInputCountry(country, selectedCountryCode);
+          
+          // Trigger country campaign change if CountryCampaignManager is available
+          this.#triggerCountryCampaignChange(selectedCountryCode);
         } else {
           // Reset to default labels when no country selected
           this.#resetFormLabels();
@@ -225,10 +228,10 @@ export class AddressHandler {
 
     try {
       const states = this.#states[countryCode] || await this.#loadStates(countryCode);
-      if (isPriority) await states;
+    if (isPriority) await states;
       
       this.#populateStateSelect(stateSelect, states, countryCode);
-      this.#logger.debug(`State select updated for ${countryCode}`);
+    this.#logger.debug(`State select updated for ${countryCode}`);
     } catch (error) {
       this.#logger.error(`Failed to update state select for ${countryCode}:`, error);
       stateSelect.innerHTML = '<option value="">Error loading states</option>';
@@ -703,6 +706,42 @@ export class AddressHandler {
       this.#logger.debug(`Updated phone input country: ${phoneFieldType} → ${countryCode}`);
     } catch (error) {
       this.#logger.error('Error updating phone input country:', error);
+    }
+  }
+
+  /**
+   * Trigger country campaign change when address country changes
+   * @param {string} countryCode - The new country code
+   */
+  #triggerCountryCampaignChange(countryCode) {
+    // Check if CountryCampaignManager is available globally
+    const countryCampaignManager = window.osCountryCampaignManager;
+    
+    if (!countryCampaignManager || typeof countryCampaignManager.switchCountry !== 'function') {
+      this.#logger.debug('CountryCampaignManager not available for country campaign switching');
+      return;
+    }
+
+    // Only switch if it's a different country
+    const currentCountry = countryCampaignManager.getCurrentCountry();
+    if (currentCountry === countryCode.toUpperCase()) {
+      this.#logger.debug(`Country is already ${countryCode}, no switch needed`);
+      return;
+    }
+
+    try {
+      this.#logger.info(`Triggering country campaign switch to: ${countryCode}`);
+      
+      // Switch country campaign
+      countryCampaignManager.switchCountry(countryCode).then(result => {
+        if (result && result.success) {
+          this.#logger.info(`Successfully switched country campaign from ${result.previousCountry} to ${result.newCountry}`);
+        }
+      }).catch(error => {
+        this.#logger.error('Error switching country campaign:', error);
+      });
+    } catch (error) {
+      this.#logger.error('Error triggering country campaign change:', error);
     }
   }
 }

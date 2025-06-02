@@ -41,7 +41,42 @@ export class CartDisplayManager {
     // Subscribe to cart updates
     this.#app.state.subscribe('cart', () => this.updateCartDisplay());
     
+    // Listen for country changes
+    this.#setupCountryChangeListener();
+    
     this.#logger.infoWithTime('CartDisplayManager initialized');
+  }
+
+  /**
+   * Setup listener for country changes
+   */
+  #setupCountryChangeListener() {
+    document.addEventListener('os:country.changed', (event) => {
+      const { country, campaignData } = event.detail;
+      this.#logger.infoWithTime(`Country changed to ${country}, updating cart display`);
+      
+      // Update currency symbol if campaign data has it
+      if (campaignData?.currency) {
+        this.#config.currencySymbol = this.#getCurrencySymbol(campaignData.currency);
+      }
+      
+      // Refresh cart display with new currency/prices
+      this.updateCartDisplay();
+    });
+  }
+
+  /**
+   * Get currency symbol for a currency code
+   */
+  #getCurrencySymbol(currencyCode) {
+    const symbols = {
+      'USD': '$',
+      'CAD': 'C$',
+      'GBP': '£',
+      'EUR': '€',
+      'AUD': 'A$'
+    };
+    return symbols[currencyCode] || '$';
   }
 
   /**

@@ -27,11 +27,29 @@ export class SelectorManager {
     setTimeout(() => this.#syncWithCart(), 0);
     this.#app.state?.subscribe('cart', () => this.#syncWithCart());
     
+    // Listen for country changes
+    this.#setupCountryChangeListener();
+    
     // Initialize unit pricing for all selectors
     this.initUnitPricing();
     
     // Trigger view_item_list event for visible packages after initialization
     setTimeout(() => this.triggerViewItemList(), 100);
+  }
+
+  /**
+   * Setup listener for country changes
+   */
+  #setupCountryChangeListener() {
+    document.addEventListener('os:country.changed', (event) => {
+      const { country, campaignData } = event.detail;
+      this.#logger.info(`Country changed to ${country}, refreshing selector unit pricing`);
+      
+      // Refresh unit pricing with new campaign data
+      setTimeout(() => {
+        this.refreshUnitPricing();
+      }, 100);
+    });
   }
 
   #initSelector(selectorElement) {

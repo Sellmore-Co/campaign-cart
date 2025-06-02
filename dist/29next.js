@@ -63,7 +63,7 @@ var TwentyNineNext = (() => {
   __export(ReceiptManager_exports, {
     ReceiptPage: () => ReceiptPage
   });
-  var _apiClient3, _logger27, _app22, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError3, showError_fn3, ReceiptPage;
+  var _apiClient3, _logger28, _app23, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError3, showError_fn3, ReceiptPage;
   var init_ReceiptManager = __esm({
     "src/managers/ReceiptManager.js"() {
       "use strict";
@@ -145,8 +145,8 @@ var TwentyNineNext = (() => {
            */
           __privateAdd(this, _showError3);
           __privateAdd(this, _apiClient3, void 0);
-          __privateAdd(this, _logger27, void 0);
-          __privateAdd(this, _app22, void 0);
+          __privateAdd(this, _logger28, void 0);
+          __privateAdd(this, _app23, void 0);
           __privateAdd(this, _orderData, null);
           __privateAdd(this, _orderFetched, false);
           // Flag to prevent duplicate API calls
@@ -154,8 +154,8 @@ var TwentyNineNext = (() => {
           // Flag to prevent duplicate initialization
           __privateAdd(this, _debugMode5, false);
           __privateSet(this, _apiClient3, apiClient);
-          __privateSet(this, _logger27, logger);
-          __privateSet(this, _app22, app);
+          __privateSet(this, _logger28, logger);
+          __privateSet(this, _app23, app);
           const debugMeta = document.querySelector('meta[name="os-debug"]');
           __privateSet(this, _debugMode5, debugMeta?.getAttribute("content") === "true");
           __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "info", "ReceiptPage component created");
@@ -189,8 +189,8 @@ var TwentyNineNext = (() => {
         }
       };
       _apiClient3 = new WeakMap();
-      _logger27 = new WeakMap();
-      _app22 = new WeakMap();
+      _logger28 = new WeakMap();
+      _app23 = new WeakMap();
       _orderData = new WeakMap();
       _orderFetched = new WeakMap();
       _initialized4 = new WeakMap();
@@ -198,8 +198,8 @@ var TwentyNineNext = (() => {
       _safeLog3 = new WeakSet();
       safeLog_fn3 = function(level, message, ...args) {
         try {
-          if (__privateGet(this, _logger27) && typeof __privateGet(this, _logger27)[level] === "function") {
-            __privateGet(this, _logger27)[level](message, ...args);
+          if (__privateGet(this, _logger28) && typeof __privateGet(this, _logger28)[level] === "function") {
+            __privateGet(this, _logger28)[level](message, ...args);
           } else if (console[level]) {
             console[level](message, ...args);
           } else {
@@ -483,14 +483,20 @@ var TwentyNineNext = (() => {
     init() {
       __privateGet(this, _logger).info("Initializing ApiClient");
       __privateMethod(this, _checkForCampaignIdInUrl, checkForCampaignIdInUrl_fn).call(this);
-      __privateSet(this, _campaignId, __privateMethod(this, _getCampaignId, getCampaignId_fn).call(this));
-      if (__privateGet(this, _campaignId)) {
+      if (__privateGet(this, _app).countryCampaign?.getCurrentCampaignId()) {
+        __privateSet(this, _campaignId, __privateGet(this, _app).countryCampaign.getCurrentCampaignId());
         __privateSet(this, _apiKey, __privateGet(this, _campaignId));
-        __privateGet(this, _logger).info(`Using campaign ID as API key: ${__privateGet(this, _apiKey)}`);
+        __privateGet(this, _logger).info(`Using campaign ID from CountryCampaignManager: ${__privateGet(this, _apiKey)}`);
       } else {
-        const apiKeyMeta = document.querySelector('meta[name="os-api-key"]');
-        __privateSet(this, _apiKey, apiKeyMeta?.getAttribute("content"));
-        __privateGet(this, _logger).info(__privateGet(this, _apiKey) ? "API key retrieved from meta tag" : "API key is not set");
+        __privateSet(this, _campaignId, __privateMethod(this, _getCampaignId, getCampaignId_fn).call(this));
+        if (__privateGet(this, _campaignId)) {
+          __privateSet(this, _apiKey, __privateGet(this, _campaignId));
+          __privateGet(this, _logger).info(`Using campaign ID as API key: ${__privateGet(this, _apiKey)}`);
+        } else {
+          const apiKeyMeta = document.querySelector('meta[name="os-api-key"]');
+          __privateSet(this, _apiKey, apiKeyMeta?.getAttribute("content"));
+          __privateGet(this, _logger).info(__privateGet(this, _apiKey) ? "API key retrieved from meta tag" : "API key is not set");
+        }
       }
       const proxyMeta = document.querySelector('meta[name="os-proxy-url"]');
       const proxyUrl = proxyMeta?.getAttribute("content");
@@ -525,6 +531,15 @@ var TwentyNineNext = (() => {
      */
     getCampaignId() {
       return __privateGet(this, _campaignId);
+    }
+    /**
+     * Update the campaign ID and API key
+     * @param {string} campaignId - The new campaign ID
+     */
+    updateCampaignId(campaignId) {
+      __privateSet(this, _campaignId, campaignId);
+      __privateSet(this, _apiKey, campaignId);
+      __privateGet(this, _logger).info(`Campaign ID updated to: ${campaignId}`);
     }
     /**
      * Create a cart via the API
@@ -936,28 +951,64 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/AddressHandler.js
-  var _form, _logger2, _addressConfig, _countries, _states, _elements, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStates, loadCountriesAndStates_fn, _loadStates, loadStates_fn, _detectUserCountry, detectUserCountry_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn;
+  var _form, _logger2, _addressConfig, _countries, _states, _countryConfigs, _elements, _workerBaseUrl, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _loadCountriesAndInitialState, loadCountriesAndInitialState_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadStates, loadStates_fn, _applyCountryConfig, applyCountryConfig_fn, _updateFormLabels, updateFormLabels_fn, _resetFormLabels, resetFormLabels_fn, _updatePostcodeValidation, updatePostcodeValidation_fn, _setupPostcodeValidation, setupPostcodeValidation_fn, _validatePostcodeField, validatePostcodeField_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStatesFallback, loadCountriesAndStatesFallback_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn, _checkForForcedCountry, checkForForcedCountry_fn, _handleForcedCountry, handleForcedCountry_fn, _loadStatesForForcedCountry, loadStatesForForcedCountry_fn, _updatePhoneInputCountry, updatePhoneInputCountry_fn, _triggerCountryCampaignChange, triggerCountryCampaignChange_fn;
   var AddressHandler = class {
     constructor(form, logger) {
       __privateAdd(this, _init);
       __privateAdd(this, _getAddressConfig);
+      __privateAdd(this, _loadCountriesAndInitialState);
       __privateAdd(this, _initCountrySelect);
       __privateAdd(this, _setupCountryChangeListeners);
       __privateAdd(this, _updateStateSelect);
       __privateAdd(this, _populateStateSelect);
+      __privateAdd(this, _loadStates);
+      __privateAdd(this, _applyCountryConfig);
+      __privateAdd(this, _updateFormLabels);
+      __privateAdd(this, _resetFormLabels);
+      __privateAdd(this, _updatePostcodeValidation);
+      __privateAdd(this, _setupPostcodeValidation);
+      __privateAdd(this, _validatePostcodeField);
       __privateAdd(this, _loadCachedData);
       __privateAdd(this, _saveCache);
-      __privateAdd(this, _loadCountriesAndStates);
-      __privateAdd(this, _loadStates);
-      __privateAdd(this, _detectUserCountry);
+      // Fallback method for loading countries/states from old API
+      __privateAdd(this, _loadCountriesAndStatesFallback);
       __privateAdd(this, _setupAutocompleteDetection);
       __privateAdd(this, _preloadCommonStates);
+      /**
+       * Check URL parameters for forced country override
+       * @returns {string|null} The forced country code or null
+       */
+      __privateAdd(this, _checkForForcedCountry);
+      /**
+       * Handle forced country when we already have cached data
+       * @param {string} forcedCountry - The forced country code
+       */
+      __privateAdd(this, _handleForcedCountry);
+      /**
+       * Load states for a forced country from the Worker API
+       * @param {string} countryCode - The country code to load states for
+       */
+      __privateAdd(this, _loadStatesForForcedCountry);
+      /**
+       * Update phone input country when address country changes
+       * @param {HTMLSelectElement} countrySelect - The country select element that changed
+       * @param {string} countryCode - The new country code
+       */
+      __privateAdd(this, _updatePhoneInputCountry);
+      /**
+       * Trigger country campaign change when address country changes
+       * @param {string} countryCode - The new country code
+       */
+      __privateAdd(this, _triggerCountryCampaignChange);
       __privateAdd(this, _form, void 0);
       __privateAdd(this, _logger2, void 0);
       __privateAdd(this, _addressConfig, void 0);
       __privateAdd(this, _countries, []);
       __privateAdd(this, _states, {});
+      __privateAdd(this, _countryConfigs, {});
+      // Store country-specific configurations
       __privateAdd(this, _elements, void 0);
+      __privateAdd(this, _workerBaseUrl, "https://cdn-countries.muddy-wind-c7ca.workers.dev");
       __privateSet(this, _form, form);
       __privateSet(this, _logger2, logger);
       __privateSet(this, _addressConfig, __privateMethod(this, _getAddressConfig, getAddressConfig_fn).call(this));
@@ -965,15 +1016,45 @@ var TwentyNineNext = (() => {
         shippingCountry: document.querySelector('[os-checkout-field="country"]'),
         shippingState: document.querySelector('[os-checkout-field="province"]'),
         billingCountry: document.querySelector('[os-checkout-field="billing-country"]'),
-        billingState: document.querySelector('[os-checkout-field="billing-province"]')
+        billingState: document.querySelector('[os-checkout-field="billing-province"]'),
+        // Get form field labels for dynamic updates
+        shippingStateLabel: document.querySelector('label[for*="province"], label[for*="state"]'),
+        billingStateLabel: document.querySelector('label[for*="billing-province"], label[for*="billing-state"]'),
+        postcodeLabel: document.querySelector('label[for*="postal"], label[for*="zip"]'),
+        billingPostcodeLabel: document.querySelector('label[for*="billing-postal"], label[for*="billing-zip"]'),
+        // Get postcode input fields for validation
+        postcodeField: document.querySelector('[os-checkout-field="postal"]'),
+        billingPostcodeField: document.querySelector('[os-checkout-field="billing-postal"]')
       });
       __privateMethod(this, _loadCachedData, loadCachedData_fn).call(this);
       if (__privateGet(this, _elements).shippingCountry || __privateGet(this, _elements).billingCountry) {
-        __privateGet(this, _logger2).info("AddressHandler initialized");
+        __privateGet(this, _logger2).info("AddressHandler initialized with Cloudflare Worker integration");
         __privateMethod(this, _init, init_fn).call(this);
       } else {
         __privateGet(this, _logger2).warn("No country selects found");
       }
+    }
+    // Public methods for external access
+    getCountryConfig(countryCode) {
+      return __privateGet(this, _countryConfigs)[countryCode] || null;
+    }
+    async refreshCountryData(countryCode) {
+      delete __privateGet(this, _states)[countryCode];
+      delete __privateGet(this, _countryConfigs)[countryCode];
+      return await __privateMethod(this, _loadStates, loadStates_fn).call(this, countryCode);
+    }
+    getAvailableCountries() {
+      return [...__privateGet(this, _countries)];
+    }
+    getStatesForCountry(countryCode) {
+      return __privateGet(this, _states)[countryCode] || [];
+    }
+    /**
+     * Get the currently forced country from URL parameters
+     * @returns {string|null} The forced country code or null
+     */
+    getForcedCountry() {
+      return __privateMethod(this, _checkForForcedCountry, checkForForcedCountry_fn).call(this);
     }
   };
   _form = new WeakMap();
@@ -981,17 +1062,19 @@ var TwentyNineNext = (() => {
   _addressConfig = new WeakMap();
   _countries = new WeakMap();
   _states = new WeakMap();
+  _countryConfigs = new WeakMap();
   _elements = new WeakMap();
+  _workerBaseUrl = new WeakMap();
   _init = new WeakSet();
   init_fn = async function() {
-    await __privateMethod(this, _loadCountriesAndStates, loadCountriesAndStates_fn).call(this);
+    await __privateMethod(this, _loadCountriesAndInitialState, loadCountriesAndInitialState_fn).call(this);
     await Promise.all([
       __privateGet(this, _elements).shippingCountry && __privateMethod(this, _initCountrySelect, initCountrySelect_fn).call(this, __privateGet(this, _elements).shippingCountry, __privateGet(this, _elements).shippingState),
       __privateGet(this, _elements).billingCountry && __privateMethod(this, _initCountrySelect, initCountrySelect_fn).call(this, __privateGet(this, _elements).billingCountry, __privateGet(this, _elements).billingState)
     ]);
     __privateMethod(this, _setupCountryChangeListeners, setupCountryChangeListeners_fn).call(this);
-    __privateMethod(this, _detectUserCountry, detectUserCountry_fn).call(this);
     __privateMethod(this, _setupAutocompleteDetection, setupAutocompleteDetection_fn).call(this);
+    __privateMethod(this, _setupPostcodeValidation, setupPostcodeValidation_fn).call(this);
   };
   _getAddressConfig = new WeakSet();
   getAddressConfig_fn = function() {
@@ -1002,13 +1085,87 @@ var TwentyNineNext = (() => {
       countries: window.osConfig?.addressConfig?.countries ?? []
     };
   };
+  _loadCountriesAndInitialState = new WeakSet();
+  loadCountriesAndInitialState_fn = async function() {
+    if (__privateGet(this, _countries).length && Object.keys(__privateGet(this, _states)).length > 0) {
+      __privateGet(this, _logger2).debug("Using cached countries and states data");
+      const forcedCountry = __privateMethod(this, _checkForForcedCountry, checkForForcedCountry_fn).call(this);
+      if (forcedCountry) {
+        await __privateMethod(this, _handleForcedCountry, handleForcedCountry_fn).call(this, forcedCountry);
+      }
+      return;
+    }
+    try {
+      __privateGet(this, _logger2).info("Loading countries and initial state data from Cloudflare Worker");
+      const response = await fetch(`${__privateGet(this, _workerBaseUrl)}/location`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      __privateGet(this, _logger2).debug("Received location data from Worker:", data);
+      if (data.countries && Array.isArray(data.countries)) {
+        __privateSet(this, _countries, data.countries.filter((country) => {
+          if (__privateGet(this, _addressConfig).showCountries.length > 0) {
+            return __privateGet(this, _addressConfig).showCountries.includes(country.code);
+          }
+          return true;
+        }).map((country) => ({
+          iso2: country.code,
+          name: country.name,
+          phonecode: country.phonecode,
+          currency: country.currency,
+          currencySymbol: country.currencySymbol
+        })).sort((a, b) => a.name.localeCompare(b.name)));
+        __privateGet(this, _logger2).info(`Loaded ${__privateGet(this, _countries).length} countries from Worker`);
+      }
+      const forcedCountry = __privateMethod(this, _checkForForcedCountry, checkForForcedCountry_fn).call(this);
+      let effectiveCountryCode = data.detectedCountryCode;
+      if (forcedCountry) {
+        const countryExists = __privateGet(this, _countries).some((country) => country.iso2 === forcedCountry);
+        if (countryExists) {
+          effectiveCountryCode = forcedCountry;
+          __privateGet(this, _logger2).info(`🔧 Forced country override: ${forcedCountry} (detected: ${data.detectedCountryCode})`);
+          await __privateMethod(this, _loadStatesForForcedCountry, loadStatesForForcedCountry_fn).call(this, forcedCountry);
+        } else {
+          __privateGet(this, _logger2).warn(`⚠️ Invalid forced country code: ${forcedCountry} - not found in available countries`);
+        }
+      } else {
+        if (data.detectedCountryCode && data.detectedStates) {
+          __privateGet(this, _states)[data.detectedCountryCode] = data.detectedStates.filter((state) => !__privateGet(this, _addressConfig).dontShowStates.includes(state.code)).map((state) => ({
+            iso2: state.code,
+            name: state.name
+          })).sort((a, b) => a.name.localeCompare(b.name));
+          __privateGet(this, _logger2).debug(`Loaded ${__privateGet(this, _states)[data.detectedCountryCode].length} states for detected country: ${data.detectedCountryCode}`);
+        }
+        if (data.detectedCountryCode && data.detectedCountryConfig) {
+          __privateGet(this, _countryConfigs)[data.detectedCountryCode] = data.detectedCountryConfig;
+          __privateGet(this, _logger2).debug(`Stored config for detected country: ${data.detectedCountryCode}`, data.detectedCountryConfig);
+        }
+      }
+      if (effectiveCountryCode) {
+        __privateGet(this, _addressConfig).defaultCountry = effectiveCountryCode;
+        __privateGet(this, _logger2).info(`Set default country to: ${effectiveCountryCode}${forcedCountry ? " (forced)" : " (detected)"}`);
+      }
+      __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_countries_cache", { countries: __privateGet(this, _countries) });
+      __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_states_cache", { states: __privateGet(this, _states) });
+      __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_country_configs_cache", { configs: __privateGet(this, _countryConfigs) });
+    } catch (error) {
+      __privateGet(this, _logger2).error("Failed to load data from Cloudflare Worker:", error);
+      await __privateMethod(this, _loadCountriesAndStatesFallback, loadCountriesAndStatesFallback_fn).call(this);
+    }
+  };
   _initCountrySelect = new WeakSet();
   initCountrySelect_fn = async function(countrySelect, stateSelect) {
     countrySelect.innerHTML = '<option value="">Select Country</option>' + __privateGet(this, _countries).map((c) => `<option value="${c.iso2}">${c.name}</option>`).join("");
-    countrySelect.value = __privateGet(this, _addressConfig).defaultCountry;
-    if (stateSelect && countrySelect.value)
-      await __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, stateSelect, countrySelect.value);
-    __privateGet(this, _logger2).debug(`Country select initialized with default ${__privateGet(this, _addressConfig).defaultCountry}`);
+    const defaultCountry = __privateGet(this, _addressConfig).defaultCountry;
+    if (defaultCountry) {
+      countrySelect.value = defaultCountry;
+      await __privateMethod(this, _applyCountryConfig, applyCountryConfig_fn).call(this, defaultCountry);
+      if (stateSelect) {
+        await __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, stateSelect, defaultCountry);
+      }
+    }
+    __privateGet(this, _logger2).debug(`Country select initialized with default ${defaultCountry}`);
   };
   _setupCountryChangeListeners = new WeakSet();
   setupCountryChangeListeners_fn = function() {
@@ -1017,26 +1174,220 @@ var TwentyNineNext = (() => {
       [__privateGet(this, _elements).billingCountry, __privateGet(this, _elements).billingState]
     ];
     pairs.forEach(([country, state]) => {
-      country?.addEventListener("change", () => state && __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, state, country.value));
+      country?.addEventListener("change", async (event) => {
+        const selectedCountryCode = event.target.value;
+        __privateGet(this, _logger2).debug(`Country changed to: ${selectedCountryCode}`);
+        if (selectedCountryCode) {
+          await __privateMethod(this, _applyCountryConfig, applyCountryConfig_fn).call(this, selectedCountryCode);
+          if (state) {
+            await __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, state, selectedCountryCode);
+          }
+          __privateMethod(this, _updatePhoneInputCountry, updatePhoneInputCountry_fn).call(this, country, selectedCountryCode);
+          __privateMethod(this, _triggerCountryCampaignChange, triggerCountryCampaignChange_fn).call(this, selectedCountryCode);
+        } else {
+          __privateMethod(this, _resetFormLabels, resetFormLabels_fn).call(this);
+          if (state) {
+            state.innerHTML = '<option value="">Select State/Province</option>';
+            state.parentElement.style.display = "none";
+          }
+        }
+      });
     });
   };
   _updateStateSelect = new WeakSet();
   updateStateSelect_fn = async function(stateSelect, countryCode, isPriority = false) {
-    if (!countryCode)
-      return stateSelect.innerHTML = '<option value="">Select State/Province</option>';
-    const states = __privateGet(this, _states)[countryCode] || await __privateMethod(this, _loadStates, loadStates_fn).call(this, countryCode);
-    if (isPriority)
-      await states;
-    __privateMethod(this, _populateStateSelect, populateStateSelect_fn).call(this, stateSelect, states);
-    __privateGet(this, _logger2).debug(`State select updated for ${countryCode}`);
+    if (!countryCode) {
+      stateSelect.innerHTML = '<option value="">Select State/Province</option>';
+      stateSelect.parentElement.style.display = "none";
+      return;
+    }
+    stateSelect.innerHTML = '<option value="">Loading States...</option>';
+    stateSelect.disabled = true;
+    try {
+      const states = __privateGet(this, _states)[countryCode] || await __privateMethod(this, _loadStates, loadStates_fn).call(this, countryCode);
+      if (isPriority)
+        await states;
+      __privateMethod(this, _populateStateSelect, populateStateSelect_fn).call(this, stateSelect, states, countryCode);
+      __privateGet(this, _logger2).debug(`State select updated for ${countryCode}`);
+    } catch (error) {
+      __privateGet(this, _logger2).error(`Failed to update state select for ${countryCode}:`, error);
+      stateSelect.innerHTML = '<option value="">Error loading states</option>';
+    } finally {
+      stateSelect.disabled = false;
+    }
   };
   _populateStateSelect = new WeakSet();
-  populateStateSelect_fn = function(stateSelect, states) {
+  populateStateSelect_fn = function(stateSelect, states, countryCode) {
     const currentValue = stateSelect.value || stateSelect.getAttribute("data-pending-state") || "";
-    stateSelect.innerHTML = '<option value="">Select State/Province</option>' + states.map((s) => `<option value="${s.iso2}">${s.name}</option>`).join("");
-    stateSelect.parentElement.style.display = states.length ? "" : "none";
-    if (currentValue && Array.from(stateSelect.options).some((o) => o.value === currentValue))
+    const config = __privateGet(this, _countryConfigs)[countryCode];
+    const stateLabel = config?.stateLabel || "State/Province";
+    stateSelect.innerHTML = `<option value="">Select ${stateLabel}</option>` + states.map((s) => `<option value="${s.iso2}">${s.name}</option>`).join("");
+    const shouldShow = states.length > 0 && config?.stateRequired !== false;
+    stateSelect.parentElement.style.display = shouldShow ? "" : "none";
+    if (config?.stateRequired !== void 0) {
+      if (config.stateRequired) {
+        stateSelect.setAttribute("required", "required");
+        stateSelect.setAttribute("os-checkout-validate", "required");
+      } else {
+        stateSelect.removeAttribute("required");
+        stateSelect.removeAttribute("os-checkout-validate");
+      }
+    }
+    if (currentValue && Array.from(stateSelect.options).some((o) => o.value === currentValue)) {
       stateSelect.value = currentValue;
+    }
+  };
+  _loadStates = new WeakSet();
+  loadStates_fn = async function(countryCode) {
+    if (__privateGet(this, _states)[countryCode])
+      return __privateGet(this, _states)[countryCode];
+    try {
+      __privateGet(this, _logger2).debug(`Loading states for ${countryCode} from Worker`);
+      const response = await fetch(`${__privateGet(this, _workerBaseUrl)}/countries/${countryCode}/states`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      __privateGet(this, _logger2).debug(`Received states data for ${countryCode}:`, data);
+      let states = [];
+      if (data.states && Array.isArray(data.states)) {
+        states = data.states.filter((state) => !__privateGet(this, _addressConfig).dontShowStates.includes(state.code)).map((state) => ({
+          iso2: state.code,
+          name: state.name
+        })).sort((a, b) => a.name.localeCompare(b.name));
+      }
+      if (data.countryConfig) {
+        __privateGet(this, _countryConfigs)[countryCode] = data.countryConfig;
+        __privateGet(this, _logger2).debug(`Stored config for ${countryCode}:`, data.countryConfig);
+      }
+      __privateGet(this, _states)[countryCode] = states;
+      __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_states_cache", { states: __privateGet(this, _states) });
+      __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_country_configs_cache", { configs: __privateGet(this, _countryConfigs) });
+      __privateGet(this, _logger2).debug(`Loaded and cached ${states.length} states for ${countryCode}`);
+      return states;
+    } catch (error) {
+      __privateGet(this, _logger2).error(`Failed to load states for ${countryCode}:`, error);
+      __privateGet(this, _states)[countryCode] = [];
+      return [];
+    }
+  };
+  _applyCountryConfig = new WeakSet();
+  applyCountryConfig_fn = async function(countryCode) {
+    try {
+      let config = __privateGet(this, _countryConfigs)[countryCode];
+      if (!config) {
+        await __privateMethod(this, _loadStates, loadStates_fn).call(this, countryCode);
+        config = __privateGet(this, _countryConfigs)[countryCode];
+      }
+      if (config) {
+        __privateGet(this, _logger2).debug(`Applying config for ${countryCode}:`, config);
+        __privateMethod(this, _updateFormLabels, updateFormLabels_fn).call(this, config);
+        __privateMethod(this, _updatePostcodeValidation, updatePostcodeValidation_fn).call(this, config);
+        __privateGet(this, _logger2).debug(`Applied country configuration for ${countryCode}`);
+      } else {
+        __privateGet(this, _logger2).debug(`No specific configuration found for ${countryCode}, using defaults`);
+        __privateMethod(this, _resetFormLabels, resetFormLabels_fn).call(this);
+      }
+    } catch (error) {
+      __privateGet(this, _logger2).error(`Failed to apply country config for ${countryCode}:`, error);
+    }
+  };
+  _updateFormLabels = new WeakSet();
+  updateFormLabels_fn = function(config) {
+    if (config.stateLabel) {
+      [__privateGet(this, _elements).shippingStateLabel, __privateGet(this, _elements).billingStateLabel].forEach((label) => {
+        if (label) {
+          label.textContent = config.stateLabel;
+        }
+      });
+    }
+    if (config.postcodeLabel) {
+      [__privateGet(this, _elements).postcodeLabel, __privateGet(this, _elements).billingPostcodeLabel].forEach((label) => {
+        if (label) {
+          label.textContent = config.postcodeLabel;
+        }
+      });
+    }
+    [__privateGet(this, _elements).postcodeField, __privateGet(this, _elements).billingPostcodeField].forEach((field) => {
+      if (field && config.postcodeExample) {
+        field.setAttribute("placeholder", config.postcodeExample);
+        field.setAttribute("title", `Format: ${config.postcodeExample}`);
+      }
+    });
+  };
+  _resetFormLabels = new WeakSet();
+  resetFormLabels_fn = function() {
+    [__privateGet(this, _elements).shippingStateLabel, __privateGet(this, _elements).billingStateLabel].forEach((label) => {
+      if (label) {
+        label.textContent = "State/Province";
+      }
+    });
+    [__privateGet(this, _elements).postcodeLabel, __privateGet(this, _elements).billingPostcodeLabel].forEach((label) => {
+      if (label) {
+        label.textContent = "Postal Code";
+      }
+    });
+    [__privateGet(this, _elements).postcodeField, __privateGet(this, _elements).billingPostcodeField].forEach((field) => {
+      if (field) {
+        field.setAttribute("placeholder", "Postal Code");
+        field.removeAttribute("title");
+      }
+    });
+  };
+  _updatePostcodeValidation = new WeakSet();
+  updatePostcodeValidation_fn = function(config) {
+    [__privateGet(this, _elements).postcodeField, __privateGet(this, _elements).billingPostcodeField].forEach((field) => {
+      if (field) {
+        if (config.postcodeRegex) {
+          field.setAttribute("pattern", config.postcodeRegex);
+        } else {
+          field.removeAttribute("pattern");
+        }
+        if (config.postcodeMinLength) {
+          field.setAttribute("minlength", config.postcodeMinLength);
+        } else {
+          field.removeAttribute("minlength");
+        }
+        if (config.postcodeMaxLength) {
+          field.setAttribute("maxlength", config.postcodeMaxLength);
+        } else {
+          field.removeAttribute("maxlength");
+        }
+      }
+    });
+  };
+  _setupPostcodeValidation = new WeakSet();
+  setupPostcodeValidation_fn = function() {
+    [__privateGet(this, _elements).postcodeField, __privateGet(this, _elements).billingPostcodeField].forEach((field) => {
+      if (field) {
+        field.addEventListener("input", (event) => {
+          __privateMethod(this, _validatePostcodeField, validatePostcodeField_fn).call(this, event.target);
+        });
+        field.addEventListener("blur", (event) => {
+          __privateMethod(this, _validatePostcodeField, validatePostcodeField_fn).call(this, event.target);
+        });
+      }
+    });
+  };
+  _validatePostcodeField = new WeakSet();
+  validatePostcodeField_fn = function(field) {
+    if (!field.value)
+      return;
+    const countryField = field.getAttribute("os-checkout-field") === "postal" ? __privateGet(this, _elements).shippingCountry : __privateGet(this, _elements).billingCountry;
+    if (!countryField || !countryField.value)
+      return;
+    const config = __privateGet(this, _countryConfigs)[countryField.value];
+    if (!config || !config.postcodeRegex)
+      return;
+    const regex = new RegExp(config.postcodeRegex);
+    const isValid = regex.test(field.value);
+    field.classList.toggle("invalid", !isValid);
+    field.classList.toggle("valid", isValid);
+    if (!isValid && config.postcodeExample) {
+      field.setCustomValidity(`Please enter a valid ${config.postcodeLabel || "postcode"}. Example: ${config.postcodeExample}`);
+    } else {
+      field.setCustomValidity("");
+    }
   };
   _loadCachedData = new WeakSet();
   loadCachedData_fn = function() {
@@ -1044,73 +1395,58 @@ var TwentyNineNext = (() => {
       const data = JSON.parse(localStorage.getItem(key) ?? "{}");
       return Date.now() - (data.timestamp ?? 0) < 24 * 60 * 60 * 1e3 ? data : {};
     };
-    __privateSet(this, _countries, loadCache("os_countries_cache").countries ?? []);
+    const countriesCache = loadCache("os_countries_cache");
+    __privateSet(this, _countries, countriesCache.countries ?? []);
     if (__privateGet(this, _countries).length && __privateGet(this, _addressConfig).showCountries.length) {
       __privateSet(this, _countries, __privateGet(this, _countries).filter((c) => __privateGet(this, _addressConfig).showCountries.includes(c.iso2)));
       __privateGet(this, _logger2).debug(`Filtered cached countries to: ${__privateGet(this, _addressConfig).showCountries.join(", ")}`);
     }
-    __privateSet(this, _states, loadCache("os_states_cache").states ?? {});
-    __privateGet(this, _logger2).debug(`Loaded cached data: ${__privateGet(this, _countries).length} countries, ${Object.keys(__privateGet(this, _states)).length} state sets`);
+    const statesCache = loadCache("os_states_cache");
+    __privateSet(this, _states, statesCache.states ?? {});
+    const configsCache = loadCache("os_country_configs_cache");
+    __privateSet(this, _countryConfigs, configsCache.configs ?? {});
+    __privateGet(this, _logger2).debug(`Loaded cached data: ${__privateGet(this, _countries).length} countries, ${Object.keys(__privateGet(this, _states)).length} state sets, ${Object.keys(__privateGet(this, _countryConfigs)).length} country configs`);
   };
   _saveCache = new WeakSet();
   saveCache_fn = function(key, data) {
     localStorage.setItem(key, JSON.stringify({ ...data, timestamp: Date.now() }));
   };
-  _loadCountriesAndStates = new WeakSet();
-  loadCountriesAndStates_fn = async function() {
+  _loadCountriesAndStatesFallback = new WeakSet();
+  loadCountriesAndStatesFallback_fn = async function() {
     if (__privateGet(this, _countries).length)
       return;
-    __privateSet(this, _countries, __privateGet(this, _addressConfig).countries.length ? __privateGet(this, _addressConfig).countries.map((c) => ({ iso2: c.iso2 || c.code, name: c.name })) : (await (await fetch("https://api.countrystatecity.in/v1/countries", {
-      headers: { "X-CSCAPI-KEY": "c2R3MzNhYmpvYUJPdmhkUlE5TUJWYUtJUGs2TTlNU3cyRmxmVW9wVQ==" }
-    })).json()).filter((c) => !__privateGet(this, _addressConfig).showCountries.length || __privateGet(this, _addressConfig).showCountries.includes(c.iso2)));
+    __privateGet(this, _logger2).warn("Using fallback method for loading countries");
+    __privateSet(this, _countries, __privateGet(this, _addressConfig).countries.length ? __privateGet(this, _addressConfig).countries.map((c) => ({ iso2: c.iso2 || c.code, name: c.name })) : []);
+    if (__privateGet(this, _countries).length === 0) {
+      __privateSet(this, _countries, [
+        { iso2: "US", name: "United States" },
+        { iso2: "CA", name: "Canada" },
+        { iso2: "GB", name: "United Kingdom" },
+        { iso2: "AU", name: "Australia" }
+      ]);
+    }
     __privateGet(this, _countries).sort((a, b) => a.name.localeCompare(b.name));
     __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_countries_cache", { countries: __privateGet(this, _countries) });
-    __privateGet(this, _logger2).info(`Loaded ${__privateGet(this, _countries).length} countries`);
-  };
-  _loadStates = new WeakSet();
-  loadStates_fn = async function(countryCode) {
-    if (__privateGet(this, _states)[countryCode])
-      return __privateGet(this, _states)[countryCode];
-    try {
-      let states = (await (await fetch(`https://api.countrystatecity.in/v1/countries/${countryCode}/states`, {
-        headers: { "X-CSCAPI-KEY": "c2R3MzNhYmpvYUJPdmhkUlE5TUJWYUtJUGs2TTlNU3cyRmxmVW9wVQ==" }
-      })).json()).filter((s) => !__privateGet(this, _addressConfig).dontShowStates.includes(s.iso2));
-      states.sort((a, b) => a.name.localeCompare(b.name));
-      __privateGet(this, _states)[countryCode] = states;
-      __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_states_cache", { states: __privateGet(this, _states) });
-      __privateGet(this, _logger2).debug(`Loaded and sorted ${states.length} states for ${countryCode}`);
-      return states;
-    } catch (error) {
-      __privateGet(this, _logger2).error(`Failed to load states for ${countryCode}:`, error);
-      __privateGet(this, _states)[countryCode] = countryCode === "US" ? (
-        /* US states list */
-        []
-      ) : [];
-      return __privateGet(this, _states)[countryCode];
-    }
-  };
-  _detectUserCountry = new WeakSet();
-  detectUserCountry_fn = async function() {
-    if (__privateGet(this, _elements).shippingCountry?.value || __privateGet(this, _elements).billingCountry?.value)
-      return;
-    const countryCode = __privateGet(this, _addressConfig).defaultCountry || (await Promise.any(["https://ipapi.co/json/", "https://ipinfo.io/json"].map((u) => fetch(u).then((r) => r.json()))))?.country_code;
-    [__privateGet(this, _elements).shippingCountry, __privateGet(this, _elements).billingCountry].forEach((c) => {
-      if (c) {
-        c.value = countryCode;
-        c.dispatchEvent(new Event("change"));
-      }
-    });
-    __privateGet(this, _logger2).debug(`User country detected/set to ${countryCode}`);
+    __privateGet(this, _logger2).info(`Loaded ${__privateGet(this, _countries).length} countries from fallback`);
   };
   _setupAutocompleteDetection = new WeakSet();
   setupAutocompleteDetection_fn = function() {
-    const fields = Object.values(__privateGet(this, _elements)).filter(Boolean);
+    const fields = Object.values(__privateGet(this, _elements)).filter(
+      (field) => field && (field.tagName === "SELECT" || field.tagName === "INPUT")
+    );
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((m) => {
         if (m.attributeName === "value" && m.target.value) {
-          const state = m.target === __privateGet(this, _elements).shippingCountry ? __privateGet(this, _elements).shippingState : __privateGet(this, _elements).billingState;
-          state && __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, state, m.target.value, true);
-          __privateGet(this, _logger2).debug(`Autocomplete detected on ${m.target.getAttribute("os-checkout-field")}`);
+          const isCountryField = m.target === __privateGet(this, _elements).shippingCountry || m.target === __privateGet(this, _elements).billingCountry;
+          const isStateField = m.target === __privateGet(this, _elements).shippingState || m.target === __privateGet(this, _elements).billingState;
+          if (isCountryField) {
+            const stateField = m.target === __privateGet(this, _elements).shippingCountry ? __privateGet(this, _elements).shippingState : __privateGet(this, _elements).billingState;
+            if (stateField) {
+              __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, stateField, m.target.value, true);
+            }
+            __privateMethod(this, _applyCountryConfig, applyCountryConfig_fn).call(this, m.target.value);
+          }
+          __privateGet(this, _logger2).debug(`Autocomplete detected on ${m.target.getAttribute("os-checkout-field") || "field"}`);
         }
       });
     });
@@ -1120,13 +1456,119 @@ var TwentyNineNext = (() => {
   };
   _preloadCommonStates = new WeakSet();
   preloadCommonStates_fn = function() {
-    const countries = __privateGet(this, _addressConfig).showCountries.length ? __privateGet(this, _addressConfig).showCountries : ["US", "CA", "GB", "AU"];
-    countries.forEach((c) => !__privateGet(this, _states)[c] && __privateMethod(this, _loadStates, loadStates_fn).call(this, c));
+    const countries = __privateGet(this, _addressConfig).showCountries.length ? __privateGet(this, _addressConfig).showCountries : ["US", "CA", "GB", "AU", "DE", "FR", "BR"];
+    countries.forEach((countryCode) => {
+      if (!__privateGet(this, _states)[countryCode]) {
+        __privateMethod(this, _loadStates, loadStates_fn).call(this, countryCode).catch((error) => {
+          __privateGet(this, _logger2).debug(`Failed to preload states for ${countryCode}:`, error);
+        });
+      }
+    });
     __privateGet(this, _logger2).debug(`Preloading states for ${countries.join(", ")}`);
+  };
+  _checkForForcedCountry = new WeakSet();
+  checkForForcedCountry_fn = function() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const forcedCountry = urlParams.get("forceCountry");
+      if (forcedCountry) {
+        const normalizedCountry = forcedCountry.toUpperCase();
+        __privateGet(this, _logger2).debug(`🔧 Found forceCountry parameter: ${normalizedCountry}`);
+        return normalizedCountry;
+      }
+      return null;
+    } catch (error) {
+      __privateGet(this, _logger2).error("Error checking for forced country parameter:", error);
+      return null;
+    }
+  };
+  _handleForcedCountry = new WeakSet();
+  handleForcedCountry_fn = async function(forcedCountry) {
+    const countryExists = __privateGet(this, _countries).some((country) => country.iso2 === forcedCountry);
+    if (countryExists) {
+      __privateGet(this, _logger2).info(`🔧 Applying forced country override: ${forcedCountry}`);
+      __privateGet(this, _addressConfig).defaultCountry = forcedCountry;
+      if (!__privateGet(this, _states)[forcedCountry]) {
+        await __privateMethod(this, _loadStates, loadStates_fn).call(this, forcedCountry);
+      }
+    } else {
+      __privateGet(this, _logger2).warn(`⚠️ Invalid forced country code: ${forcedCountry} - not found in available countries`);
+    }
+  };
+  _loadStatesForForcedCountry = new WeakSet();
+  loadStatesForForcedCountry_fn = async function(countryCode) {
+    try {
+      __privateGet(this, _logger2).debug(`Loading states for forced country: ${countryCode}`);
+      const response = await fetch(`${__privateGet(this, _workerBaseUrl)}/countries/${countryCode}/states`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      __privateGet(this, _logger2).debug(`Received states data for forced country ${countryCode}:`, data);
+      let states = [];
+      if (data.states && Array.isArray(data.states)) {
+        states = data.states.filter((state) => !__privateGet(this, _addressConfig).dontShowStates.includes(state.code)).map((state) => ({
+          iso2: state.code,
+          name: state.name
+        })).sort((a, b) => a.name.localeCompare(b.name));
+      }
+      if (data.countryConfig) {
+        __privateGet(this, _countryConfigs)[countryCode] = data.countryConfig;
+        __privateGet(this, _logger2).debug(`Stored config for forced country ${countryCode}:`, data.countryConfig);
+      }
+      __privateGet(this, _states)[countryCode] = states;
+      __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_states_cache", { states: __privateGet(this, _states) });
+      __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_country_configs_cache", { configs: __privateGet(this, _countryConfigs) });
+      __privateGet(this, _logger2).info(`✅ Loaded and cached ${states.length} states for forced country: ${countryCode}`);
+    } catch (error) {
+      __privateGet(this, _logger2).error(`Failed to load states for forced country ${countryCode}:`, error);
+      __privateGet(this, _states)[countryCode] = [];
+    }
+  };
+  _updatePhoneInputCountry = new WeakSet();
+  updatePhoneInputCountry_fn = function(countrySelect, countryCode) {
+    const phoneHandler = window.osPhoneInputHandler;
+    if (!phoneHandler || typeof phoneHandler.updatePhoneCountry !== "function") {
+      __privateGet(this, _logger2).debug("PhoneInputHandler not available for country sync");
+      return;
+    }
+    try {
+      const fieldType = countrySelect.getAttribute("os-checkout-field");
+      const phoneFieldType = fieldType === "country" ? "phone" : "billing-phone";
+      phoneHandler.updatePhoneCountry(phoneFieldType, countryCode);
+      __privateGet(this, _logger2).debug(`Updated phone input country: ${phoneFieldType} → ${countryCode}`);
+    } catch (error) {
+      __privateGet(this, _logger2).error("Error updating phone input country:", error);
+    }
+  };
+  _triggerCountryCampaignChange = new WeakSet();
+  triggerCountryCampaignChange_fn = function(countryCode) {
+    const countryCampaignManager = window.osCountryCampaignManager;
+    if (!countryCampaignManager || typeof countryCampaignManager.switchCountry !== "function") {
+      __privateGet(this, _logger2).debug("CountryCampaignManager not available for country campaign switching");
+      return;
+    }
+    const currentCountry = countryCampaignManager.getCurrentCountry();
+    if (currentCountry === countryCode.toUpperCase()) {
+      __privateGet(this, _logger2).debug(`Country is already ${countryCode}, no switch needed`);
+      return;
+    }
+    try {
+      __privateGet(this, _logger2).info(`Triggering country campaign switch to: ${countryCode}`);
+      countryCampaignManager.switchCountry(countryCode).then((result) => {
+        if (result && result.success) {
+          __privateGet(this, _logger2).info(`Successfully switched country campaign from ${result.previousCountry} to ${result.newCountry}`);
+        }
+      }).catch((error) => {
+        __privateGet(this, _logger2).error("Error switching country campaign:", error);
+      });
+    } catch (error) {
+      __privateGet(this, _logger2).error("Error triggering country campaign change:", error);
+    }
   };
 
   // src/components/checkout/FormValidator.js
-  var _logger3, _form2, _validationErrors, _debugMode, _spreedlyEnabled, _spreedlyFieldsValid, _spreedlyReady, _getFormElement, getFormElement_fn, _safeLog, safeLog_fn, _setupListeners, setupListeners_fn, _setupSpreedlyListeners, setupSpreedlyListeners_fn, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn, _handleSpreedlyError, handleSpreedlyError_fn, _handleSubmit, handleSubmit_fn, _logValidationStart, logValidationStart_fn, _validateFields, validateFields_fn, _shouldSkipField, shouldSkipField_fn, _validateCreditCardExpiryFields, validateCreditCardExpiryFields_fn, _getExpiryFields, getExpiryFields_fn, _validateExpiryField, validateExpiryField_fn, _clearSpreedlyErrors, clearSpreedlyErrors_fn, _validateField, validateField_fn, _getReadableFieldLabel, getReadableFieldLabel_fn, _getFieldValidation, getFieldValidation_fn, _validateCity, validateCity_fn, _validateZipCode, validateZipCode_fn, _showError, showError_fn, _getOrCreateErrorElement, getOrCreateErrorElement_fn, _scrollToError, scrollToError_fn, _isValidEmail, isValidEmail_fn, _validatePhoneFields, validatePhoneFields_fn, _setupZipCodeFormatting, setupZipCodeFormatting_fn, _formatZipCode, formatZipCode_fn;
+  var _logger3, _form2, _validationErrors, _debugMode, _spreedlyEnabled, _spreedlyFieldsValid, _spreedlyReady, _getFormElement, getFormElement_fn, _safeLog, safeLog_fn, _setupListeners, setupListeners_fn, _setupSpreedlyListeners, setupSpreedlyListeners_fn, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn, _handleSpreedlyError, handleSpreedlyError_fn, _handleSubmit, handleSubmit_fn, _logValidationStart, logValidationStart_fn, _validateFields, validateFields_fn, _shouldSkipField, shouldSkipField_fn, _validateCreditCardExpiryFields, validateCreditCardExpiryFields_fn, _getExpiryFields, getExpiryFields_fn, _validateExpiryField, validateExpiryField_fn, _clearSpreedlyErrors, clearSpreedlyErrors_fn, _validateField, validateField_fn, _getReadableFieldLabel, getReadableFieldLabel_fn, _getFieldValidation, getFieldValidation_fn, _validateCity, validateCity_fn, _validatePostcodeWithCountryRules, validatePostcodeWithCountryRules_fn, _validatePostcodeByCountry, validatePostcodeByCountry_fn, _validateZipCode, validateZipCode_fn, _showError, showError_fn, _getOrCreateErrorElement, getOrCreateErrorElement_fn, _scrollToError, scrollToError_fn, _isValidEmail, isValidEmail_fn, _validatePhoneFields, validatePhoneFields_fn, _setupZipCodeFormatting, setupZipCodeFormatting_fn, _formatZipCode, formatZipCode_fn;
   var FormValidator = class {
     constructor(options = {}) {
       __privateAdd(this, _getFormElement);
@@ -1148,7 +1590,23 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _getFieldValidation);
       __privateAdd(this, _validateCity);
       /**
-       * Validate a US ZIP code (5 digits or ZIP+4 format)
+       * Validate postcode using country-specific rules from AddressHandler
+       * @param {HTMLElement} field - The postcode field
+       * @param {string} value - Postcode value to validate
+       * @param {string} fieldName - Name of the field for error message
+       * @returns {Object} Validation result with isValid and errorMessage
+       */
+      __privateAdd(this, _validatePostcodeWithCountryRules);
+      /**
+       * Built-in country-specific postcode validation (fallback)
+       * @param {string} value - Postcode value to validate
+       * @param {string} countryCode - Country code
+       * @param {string} fieldName - Name of the field for error message
+       * @returns {Object} Validation result with isValid and errorMessage
+       */
+      __privateAdd(this, _validatePostcodeByCountry);
+      /**
+       * Legacy US ZIP code validation (kept for compatibility)
        * @param {string} value - ZIP code to validate
        * @param {string} fieldName - Name of the field for error message
        * @returns {Object} Validation result with isValid and errorMessage
@@ -1533,7 +1991,7 @@ var TwentyNineNext = (() => {
       return __privateMethod(this, _validateCity, validateCity_fn).call(this, value, label);
     }
     if (fieldName && (fieldName.includes("zip") || fieldName.includes("postal") || fieldName.endsWith("-zip"))) {
-      return __privateMethod(this, _validateZipCode, validateZipCode_fn).call(this, value, fieldName);
+      return __privateMethod(this, _validatePostcodeWithCountryRules, validatePostcodeWithCountryRules_fn).call(this, field, value, fieldName);
     }
     if (field.type === "email")
       return {
@@ -1548,6 +2006,108 @@ var TwentyNineNext = (() => {
     return {
       isValid: cityRegex.test(value),
       errorMessage: `Please enter a valid city name (2-24 letters, no numbers or special characters)`
+    };
+  };
+  _validatePostcodeWithCountryRules = new WeakSet();
+  validatePostcodeWithCountryRules_fn = function(field, value, fieldName) {
+    const isShippingPostcode = fieldName === "postal" || fieldName === "zip";
+    const countryField = isShippingPostcode ? document.querySelector('[os-checkout-field="country"]') : document.querySelector('[os-checkout-field="billing-country"]');
+    if (!countryField || !countryField.value) {
+      return __privateMethod(this, _validateZipCode, validateZipCode_fn).call(this, value, fieldName);
+    }
+    const countryCode = countryField.value;
+    if (window.osAddressHandler && typeof window.osAddressHandler.getCountryConfig === "function") {
+      const config = window.osAddressHandler.getCountryConfig(countryCode);
+      if (config && config.postcodeRegex) {
+        try {
+          const regex = new RegExp(config.postcodeRegex);
+          const isValid = regex.test(value);
+          return {
+            isValid,
+            errorMessage: isValid ? "" : `Please enter a valid ${config.postcodeLabel || "postcode"}${config.postcodeExample ? `. Example: ${config.postcodeExample}` : ""}`
+          };
+        } catch (error) {
+          __privateGet(this, _logger3)?.warn("Invalid postcode regex from country config:", config.postcodeRegex);
+        }
+      }
+    }
+    return __privateMethod(this, _validatePostcodeByCountry, validatePostcodeByCountry_fn).call(this, value, countryCode, fieldName);
+  };
+  _validatePostcodeByCountry = new WeakSet();
+  validatePostcodeByCountry_fn = function(value, countryCode, fieldName) {
+    let pattern, label, example;
+    switch (countryCode.toUpperCase()) {
+      case "US":
+        pattern = /^(\d{5}|\d{5}-\d{4})$/;
+        label = "ZIP Code";
+        example = "12345 or 12345-6789";
+        break;
+      case "CA":
+        pattern = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
+        label = "Postal Code";
+        example = "K1A 0A6";
+        break;
+      case "GB":
+      case "UK":
+        pattern = /^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i;
+        label = "Postcode";
+        example = "SW1A 0AA";
+        break;
+      case "AU":
+        pattern = /^\d{4}$/;
+        label = "Postcode";
+        example = "2000";
+        break;
+      case "DE":
+        pattern = /^\d{5}$/;
+        label = "Postleitzahl";
+        example = "10115";
+        break;
+      case "FR":
+        pattern = /^\d{5}$/;
+        label = "Code Postal";
+        example = "75001";
+        break;
+      case "NL":
+        pattern = /^\d{4} ?[A-Z]{2}$/i;
+        label = "Postcode";
+        example = "1012 JS";
+        break;
+      case "ES":
+        pattern = /^\d{5}$/;
+        label = "Código Postal";
+        example = "28001";
+        break;
+      case "IT":
+        pattern = /^\d{5}$/;
+        label = "Codice Postale";
+        example = "00118";
+        break;
+      case "BR":
+        pattern = /^\d{5}-?\d{3}$/;
+        label = "CEP";
+        example = "01310-100";
+        break;
+      case "JP":
+        pattern = /^\d{3}-?\d{4}$/;
+        label = "Postal Code";
+        example = "100-0005";
+        break;
+      case "IN":
+        pattern = /^\d{6}$/;
+        label = "PIN Code";
+        example = "110001";
+        break;
+      default:
+        return {
+          isValid: value.trim().length > 0,
+          errorMessage: value.trim().length > 0 ? "" : "Please enter a postal code"
+        };
+    }
+    const isValid = pattern.test(value);
+    return {
+      isValid,
+      errorMessage: isValid ? "" : `Please enter a valid ${label}. Example: ${example}`
     };
   };
   _validateZipCode = new WeakSet();
@@ -4179,12 +4739,33 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/PhoneInputHandler.js
-  var _logger9, _intlTelInputAvailable, _loadIntlTelInput, loadIntlTelInput_fn, _initPhoneInputs, initPhoneInputs_fn, _initializePhoneInput, initializePhoneInput_fn, _showError2, showError_fn2, _clearError, clearError_fn, _getNumberTypeName, getNumberTypeName_fn, _setupPhoneInputSync, setupPhoneInputSync_fn, _setupPhoneValidation, setupPhoneValidation_fn;
+  var _logger9, _intlTelInputAvailable, _phoneInstances, _loadIntlTelInput, loadIntlTelInput_fn, _initPhoneInputs, initPhoneInputs_fn, _initializePhoneInput, initializePhoneInput_fn, _getInitialCountry, getInitialCountry_fn, _setupAddressHandlerIntegration, setupAddressHandlerIntegration_fn, _setupCountrySelectionSync, setupCountrySelectionSync_fn, _setupCountryChangeListener, setupCountryChangeListener_fn, _updatePhoneCountry, updatePhoneCountry_fn, _showError2, showError_fn2, _clearError, clearError_fn, _getNumberTypeName, getNumberTypeName_fn, _setupPhoneInputSync, setupPhoneInputSync_fn, _setupPhoneValidation, setupPhoneValidation_fn;
   var PhoneInputHandler = class {
+    // Store phone input instances for sync
     constructor(logger) {
       __privateAdd(this, _loadIntlTelInput);
       __privateAdd(this, _initPhoneInputs);
       __privateAdd(this, _initializePhoneInput);
+      /**
+       * Get the initial country for phone input from AddressHandler or URL params
+       */
+      __privateAdd(this, _getInitialCountry);
+      /**
+       * Setup integration with AddressHandler to sync country changes
+       */
+      __privateAdd(this, _setupAddressHandlerIntegration);
+      /**
+       * Setup synchronization with country select fields
+       */
+      __privateAdd(this, _setupCountrySelectionSync);
+      /**
+       * Setup listener for when user changes country in phone input dropdown
+       */
+      __privateAdd(this, _setupCountryChangeListener);
+      /**
+       * Update phone input country programmatically
+       */
+      __privateAdd(this, _updatePhoneCountry);
       __privateAdd(this, _showError2);
       __privateAdd(this, _clearError);
       // Helper method to convert number type to readable name
@@ -4193,6 +4774,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _setupPhoneValidation);
       __privateAdd(this, _logger9, void 0);
       __privateAdd(this, _intlTelInputAvailable, !!window.intlTelInput);
+      __privateAdd(this, _phoneInstances, /* @__PURE__ */ new Map());
       __privateSet(this, _logger9, logger);
       if (!__privateGet(this, _intlTelInputAvailable)) {
         __privateGet(this, _logger9).warn("intlTelInput not found, loading dynamically");
@@ -4202,9 +4784,32 @@ var TwentyNineNext = (() => {
         __privateMethod(this, _initPhoneInputs, initPhoneInputs_fn).call(this);
       }
     }
+    // Public methods for external integration
+    /**
+     * Manually update phone country for a specific field
+     * @param {string} fieldType - 'phone' or 'billing-phone'
+     * @param {string} countryCode - Country code (e.g., 'US', 'GB')
+     */
+    updatePhoneCountry(fieldType, countryCode) {
+      const phoneInstance = __privateGet(this, _phoneInstances).get(fieldType);
+      if (phoneInstance) {
+        __privateMethod(this, _updatePhoneCountry, updatePhoneCountry_fn).call(this, phoneInstance.iti, countryCode);
+        __privateGet(this, _logger9).info(`Updated ${fieldType} country to ${countryCode}`);
+      } else {
+        __privateGet(this, _logger9).warn(`Phone instance not found for ${fieldType}`);
+      }
+    }
+    /**
+     * Get all phone instances
+     * @returns {Map} Map of phone instances
+     */
+    getPhoneInstances() {
+      return __privateGet(this, _phoneInstances);
+    }
   };
   _logger9 = new WeakMap();
   _intlTelInputAvailable = new WeakMap();
+  _phoneInstances = new WeakMap();
   _loadIntlTelInput = new WeakSet();
   loadIntlTelInput_fn = async function() {
     const resources = [
@@ -4228,71 +4833,53 @@ var TwentyNineNext = (() => {
     const phoneInputs = document.querySelectorAll('input[type="tel"]');
     __privateGet(this, _logger9).info(`Found ${phoneInputs.length} phone inputs`);
     phoneInputs.forEach((input, i) => __privateMethod(this, _initializePhoneInput, initializePhoneInput_fn).call(this, input, i + 1));
+    __privateMethod(this, _setupAddressHandlerIntegration, setupAddressHandlerIntegration_fn).call(this);
   };
   _initializePhoneInput = new WeakSet();
   initializePhoneInput_fn = function(input, index) {
     try {
+      const initialCountry = __privateMethod(this, _getInitialCountry, getInitialCountry_fn).call(this, input);
       const iti = window.intlTelInput(input, {
         utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js",
         separateDialCode: true,
-        onlyCountries: ["us"],
-        initialCountry: "us",
-        allowDropdown: false,
+        initialCountry,
+        allowDropdown: true,
+        // Enable country dropdown
+        preferredCountries: ["us", "ca", "gb", "au"],
+        // Common countries at top
         dropdownContainer: document.body,
-        useFullscreenPopup: true,
+        useFullscreenPopup: false,
+        // Better for desktop
         formatOnDisplay: true,
         autoPlaceholder: "aggressive",
         customContainer: "iti-tel-input",
         autoFormat: true,
-        nationalMode: true
+        nationalMode: false,
+        // Use international mode for better validation
+        geoIpLookup: null
+        // Disable GeoIP since we get country from AddressHandler
       });
       input.iti = iti;
-      __privateGet(this, _logger9).debug(`Phone input ${index} (${input.getAttribute("os-checkout-field") ?? "unknown"}) initialized`);
+      const fieldAttr = input.getAttribute("os-checkout-field");
+      __privateGet(this, _phoneInstances).set(fieldAttr, { input, iti });
+      __privateGet(this, _logger9).debug(`Phone input ${index} (${fieldAttr ?? "unknown"}) initialized with country: ${initialCountry}`);
       __privateMethod(this, _setupPhoneInputSync, setupPhoneInputSync_fn).call(this, input, iti);
       __privateMethod(this, _setupPhoneValidation, setupPhoneValidation_fn).call(this, input, iti);
+      __privateMethod(this, _setupCountryChangeListener, setupCountryChangeListener_fn).call(this, input, iti);
       input.addEventListener("input", () => {
         const number = input.value.trim();
-        if (number) {
-          const numericValue = number.replace(/\D/g, "");
-          let formattedNumber = "";
-          if (numericValue.length > 0) {
-            if (numericValue.length <= 3) {
-              formattedNumber = `(${numericValue}`;
-            } else if (numericValue.length <= 6) {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3)}`;
-            } else {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
-            }
-          }
-          if (input.value !== formattedNumber) {
-            const cursorPos = input.selectionStart;
-            const oldLength = input.value.length;
-            input.value = formattedNumber;
-            if (cursorPos !== null) {
-              const newLength = formattedNumber.length;
-              const cursorOffset = newLength - oldLength;
-              input.setSelectionRange(cursorPos + cursorOffset, cursorPos + cursorOffset);
-            }
-          }
-        }
-        const isValid = iti.isValidNumber();
-        const numberType = iti.getNumberType();
-        const validationError = iti.getValidationError();
         if (!number) {
           __privateMethod(this, _clearError, clearError_fn).call(this, input);
           return;
         }
-        console.group("Phone Number Validation");
-        /* @__PURE__ */ console.log("Number:", number);
-        /* @__PURE__ */ console.log("Is Valid:", isValid);
-        /* @__PURE__ */ console.log("Formatted Number:", iti.getNumber());
-        /* @__PURE__ */ console.log("Number Type:", __privateMethod(this, _getNumberTypeName, getNumberTypeName_fn).call(this, numberType));
-        /* @__PURE__ */ console.log("Validation Error:", validationError);
-        console.groupEnd();
+        const isValid = iti.isValidNumber();
+        const numberType = iti.getNumberType();
+        const validationError = iti.getValidationError();
         __privateGet(this, _logger9).debug("Phone validation:", {
           number,
           isValid,
           formattedNumber: iti.getNumber(),
+          country: iti.getSelectedCountryData().iso2,
           type: __privateMethod(this, _getNumberTypeName, getNumberTypeName_fn).call(this, numberType),
           error: validationError
         });
@@ -4301,16 +4888,16 @@ var TwentyNineNext = (() => {
         const number = input.value.trim();
         if (number) {
           const isValid = iti.isValidNumber();
-          if (isValid) {
-            input.value = iti.getNumber(intlTelInputUtils.numberFormat.NATIONAL);
-          }
-          /* @__PURE__ */ console.log("Phone field blur - Final validation:", {
+          const countryData = iti.getSelectedCountryData();
+          __privateGet(this, _logger9).debug("Phone field blur - Final validation:", {
             number,
             isValid,
+            country: countryData.iso2,
             formattedNumber: iti.getNumber()
           });
           if (!isValid) {
-            __privateMethod(this, _showError2, showError_fn2).call(this, input, "Please enter a valid US phone number (e.g. 555-555-5555)");
+            const countryName = countryData.name || "selected country";
+            __privateMethod(this, _showError2, showError_fn2).call(this, input, `Please enter a valid ${countryName} phone number`);
           } else {
             __privateMethod(this, _clearError, clearError_fn).call(this, input);
           }
@@ -4318,6 +4905,88 @@ var TwentyNineNext = (() => {
       });
     } catch (error) {
       __privateGet(this, _logger9).error(`Error initializing phone input ${index}:`, error);
+    }
+  };
+  _getInitialCountry = new WeakSet();
+  getInitialCountry_fn = function(input) {
+    if (window.osAddressHandler && typeof window.osAddressHandler.getForcedCountry === "function") {
+      const forcedCountry = window.osAddressHandler.getForcedCountry();
+      if (forcedCountry) {
+        __privateGet(this, _logger9).debug(`Using forced country for phone input: ${forcedCountry}`);
+        return forcedCountry.toLowerCase();
+      }
+    }
+    const fieldAttr = input.getAttribute("os-checkout-field");
+    const countrySelect = document.querySelector(
+      fieldAttr === "phone" ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
+    );
+    if (countrySelect && countrySelect.value) {
+      __privateGet(this, _logger9).debug(`Using country from select for phone input: ${countrySelect.value}`);
+      return countrySelect.value.toLowerCase();
+    }
+    return "us";
+  };
+  _setupAddressHandlerIntegration = new WeakSet();
+  setupAddressHandlerIntegration_fn = function() {
+    if (window.osAddressHandler) {
+      __privateMethod(this, _setupCountrySelectionSync, setupCountrySelectionSync_fn).call(this);
+    } else {
+      const checkInterval = setInterval(() => {
+        if (window.osAddressHandler) {
+          clearInterval(checkInterval);
+          __privateMethod(this, _setupCountrySelectionSync, setupCountrySelectionSync_fn).call(this);
+        }
+      }, 100);
+      setTimeout(() => clearInterval(checkInterval), 1e4);
+    }
+  };
+  _setupCountrySelectionSync = new WeakSet();
+  setupCountrySelectionSync_fn = function() {
+    const countrySelects = [
+      document.querySelector('[os-checkout-field="country"]'),
+      document.querySelector('[os-checkout-field="billing-country"]')
+    ];
+    countrySelects.forEach((countrySelect) => {
+      if (!countrySelect)
+        return;
+      countrySelect.addEventListener("change", (e) => {
+        const selectedCountry = e.target.value;
+        if (!selectedCountry)
+          return;
+        const fieldType = e.target.getAttribute("os-checkout-field");
+        const phoneFieldType = fieldType === "country" ? "phone" : "billing-phone";
+        const phoneInstance = __privateGet(this, _phoneInstances).get(phoneFieldType);
+        if (phoneInstance) {
+          __privateMethod(this, _updatePhoneCountry, updatePhoneCountry_fn).call(this, phoneInstance.iti, selectedCountry);
+          __privateGet(this, _logger9).debug(`Updated phone country to ${selectedCountry} for ${phoneFieldType}`);
+        }
+      });
+    });
+    __privateGet(this, _logger9).debug("Country selection sync setup complete");
+  };
+  _setupCountryChangeListener = new WeakSet();
+  setupCountryChangeListener_fn = function(input, iti) {
+    input.addEventListener("countrychange", () => {
+      const selectedCountryData = iti.getSelectedCountryData();
+      const countryCode = selectedCountryData.iso2.toUpperCase();
+      __privateGet(this, _logger9).debug(`Phone country changed to: ${countryCode}`);
+      const fieldAttr = input.getAttribute("os-checkout-field");
+      const countrySelect = document.querySelector(
+        fieldAttr === "phone" ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
+      );
+      if (countrySelect && countrySelect.value !== countryCode) {
+        __privateGet(this, _logger9).debug(`Syncing country select to: ${countryCode}`);
+        countrySelect.value = countryCode;
+        countrySelect.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+  };
+  _updatePhoneCountry = new WeakSet();
+  updatePhoneCountry_fn = function(iti, countryCode) {
+    try {
+      iti.setCountry(countryCode.toLowerCase());
+    } catch (error) {
+      __privateGet(this, _logger9).warn(`Failed to set phone country to ${countryCode}:`, error);
     }
   };
   _showError2 = new WeakSet();
@@ -4328,7 +4997,7 @@ var TwentyNineNext = (() => {
       itiContainer.classList.add("error");
       itiContainer.style.border = "1px solid red";
     }
-    const wrapper = input.closest(".frm-flds") || input.closest(".form-group");
+    const wrapper = input.closest(".frm-flds") || input.closest(".form-group") || input.parentElement;
     let errorElement = wrapper.querySelector(".pb-input-error");
     if (!errorElement) {
       errorElement = document.createElement("div");
@@ -4353,7 +5022,7 @@ var TwentyNineNext = (() => {
       itiContainer.classList.remove("error");
       itiContainer.style.border = "";
     }
-    const wrapper = input.closest(".frm-flds") || input.closest(".form-group");
+    const wrapper = input.closest(".frm-flds") || input.closest(".form-group") || input.parentElement;
     const errorElement = wrapper.querySelector(".pb-input-error");
     if (errorElement) {
       errorElement.remove();
@@ -4383,18 +5052,8 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger9).warn("Phone input missing os-checkout-field attribute");
       return;
     }
-    const countrySelect = document.querySelector(
-      fieldAttr === "phone" ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
-    );
-    if (!countrySelect) {
-      __privateGet(this, _logger9).warn(`Country select not found for ${fieldAttr}`);
-      return;
-    }
-    if (countrySelect.value !== "US") {
-      countrySelect.value = "US";
-      countrySelect.dispatchEvent(new Event("change", { bubbles: true }));
-      __privateGet(this, _logger9).debug("Country select updated to US");
-    }
+    const initialCountry = __privateMethod(this, _getInitialCountry, getInitialCountry_fn).call(this, input);
+    __privateMethod(this, _updatePhoneCountry, updatePhoneCountry_fn).call(this, iti, initialCountry);
   };
   _setupPhoneValidation = new WeakSet();
   setupPhoneValidation_fn = function(input, iti) {
@@ -4841,6 +5500,17 @@ var TwentyNineNext = (() => {
     if (!postalCode || !country) {
       return true;
     }
+    if (window.osAddressHandler && typeof window.osAddressHandler.getCountryConfig === "function") {
+      const config = window.osAddressHandler.getCountryConfig(country);
+      if (config && config.postcodeRegex) {
+        try {
+          const regex = new RegExp(config.postcodeRegex);
+          return regex.test(postalCode);
+        } catch (error) {
+          __privateGet(this, _logger10).warn("Invalid postcode regex from AddressHandler config:", config.postcodeRegex);
+        }
+      }
+    }
     switch (country.toUpperCase()) {
       case "US":
         return /^\d{5}(-\d{4})?$/.test(postalCode);
@@ -4856,6 +5526,18 @@ var TwentyNineNext = (() => {
       case "DE":
         return /^\d{5}$/.test(postalCode);
       case "FR":
+        return /^\d{5}$/.test(postalCode);
+      case "BR":
+        return /^\d{5}-?\d{3}$/.test(postalCode);
+      case "JP":
+        return /^\d{3}-?\d{4}$/.test(postalCode);
+      case "IN":
+        return /^\d{6}$/.test(postalCode);
+      case "NL":
+        return /^\d{4} ?[A-Z]{2}$/i.test(postalCode);
+      case "ES":
+        return /^\d{5}$/.test(postalCode);
+      case "IT":
         return /^\d{5}$/.test(postalCode);
       default:
         return postalCode.trim().length > 0;
@@ -4993,7 +5675,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CheckoutManager.js
-  var _apiClient2, _logger12, _form4, _app7, _konamiCodeHandler, _initializeComponents, initializeComponents_fn, _initKonamiCodeHandler, initKonamiCodeHandler_fn, _triggerKonamiCodeEasterEgg, triggerKonamiCodeEasterEgg_fn, _initAddressHandler, initAddressHandler_fn, _initBillingAddressHandler, initBillingAddressHandler_fn, _initPaymentSelector, initPaymentSelector_fn, _initFormValidator, initFormValidator_fn, _initPaymentHandler, initPaymentHandler_fn, _initShippingSelector, initShippingSelector_fn, _initAddressAutocomplete, initAddressAutocomplete_fn, _initPhoneInputHandler, initPhoneInputHandler_fn, _initProspectCartHandler, initProspectCartHandler_fn, _injectBillingFormFields, injectBillingFormFields_fn, _setupEventListeners3, setupEventListeners_fn3, _handleSubmit2, handleSubmit_fn2, _disableSubmitButtons, disableSubmitButtons_fn;
+  var _apiClient2, _logger12, _form4, _app7, _konamiCodeHandler, _initializeComponents, initializeComponents_fn, _initKonamiCodeHandler, initKonamiCodeHandler_fn, _triggerKonamiCodeEasterEgg, triggerKonamiCodeEasterEgg_fn, _initAddressHandler, initAddressHandler_fn, _initBillingAddressHandler, initBillingAddressHandler_fn, _initPaymentSelector, initPaymentSelector_fn, _initFormValidator, initFormValidator_fn, _initPaymentHandler, initPaymentHandler_fn, _initShippingSelector, initShippingSelector_fn, _initAddressAutocomplete, initAddressAutocomplete_fn, _initPhoneInputHandler, initPhoneInputHandler_fn, _initProspectCartHandler, initProspectCartHandler_fn, _initCountryCampaignManager, initCountryCampaignManager_fn, _injectBillingFormFields, injectBillingFormFields_fn, _setupEventListeners3, setupEventListeners_fn3, _handleSubmit2, handleSubmit_fn2, _disableSubmitButtons, disableSubmitButtons_fn;
   var CheckoutPage = class {
     constructor(apiClient, logger, app) {
       __privateAdd(this, _initializeComponents);
@@ -5014,6 +5696,10 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _initAddressAutocomplete);
       __privateAdd(this, _initPhoneInputHandler);
       __privateAdd(this, _initProspectCartHandler);
+      /**
+       * Initialize CountryCampaignManager if not already done
+       */
+      __privateAdd(this, _initCountryCampaignManager);
       /**
        * Fix billing form by duplicating shipping form fields
        * This ensures the billing form has the correct field attributes
@@ -5083,6 +5769,7 @@ var TwentyNineNext = (() => {
   initializeComponents_fn = function() {
     try {
       __privateMethod(this, _injectBillingFormFields, injectBillingFormFields_fn).call(this);
+      __privateMethod(this, _initCountryCampaignManager, initCountryCampaignManager_fn).call(this);
       __privateMethod(this, _initAddressHandler, initAddressHandler_fn).call(this);
       __privateMethod(this, _initBillingAddressHandler, initBillingAddressHandler_fn).call(this);
       __privateMethod(this, _initPaymentSelector, initPaymentSelector_fn).call(this);
@@ -5137,6 +5824,10 @@ var TwentyNineNext = (() => {
   initAddressHandler_fn = function() {
     try {
       this.addressHandler = new AddressHandler(__privateGet(this, _form4), __privateGet(this, _logger12));
+      if (this.addressHandler) {
+        window.osAddressHandler = this.addressHandler;
+        __privateGet(this, _logger12).debug("AddressHandler made globally accessible via window.osAddressHandler");
+      }
     } catch (error) {
       __privateGet(this, _logger12).error("Error initializing AddressHandler", error);
     }
@@ -5207,6 +5898,10 @@ var TwentyNineNext = (() => {
   initPhoneInputHandler_fn = function() {
     try {
       this.phoneInputHandler = new PhoneInputHandler(__privateGet(this, _logger12));
+      if (this.phoneInputHandler) {
+        window.osPhoneInputHandler = this.phoneInputHandler;
+        __privateGet(this, _logger12).debug("PhoneInputHandler made globally accessible via window.osPhoneInputHandler");
+      }
     } catch (error) {
       __privateGet(this, _logger12).error("Error initializing PhoneInputHandler", error);
     }
@@ -5222,6 +5917,19 @@ var TwentyNineNext = (() => {
       }
     } catch (error) {
       __privateGet(this, _logger12).error("Error initializing ProspectCartHandler", error);
+    }
+  };
+  _initCountryCampaignManager = new WeakSet();
+  initCountryCampaignManager_fn = function() {
+    try {
+      if (__privateGet(this, _app7).countryCampaign && !__privateGet(this, _app7).countryCampaign.isInitialized) {
+        __privateGet(this, _logger12).info("CountryCampaignManager not initialized, initializing now...");
+        __privateGet(this, _app7).countryCampaign.init().catch((error) => {
+          __privateGet(this, _logger12).error("Failed to initialize CountryCampaignManager in CheckoutManager:", error);
+        });
+      }
+    } catch (error) {
+      __privateGet(this, _logger12).error("Error initializing CountryCampaignManager:", error);
     }
   };
   _injectBillingFormFields = new WeakSet();
@@ -5453,9 +6161,17 @@ var TwentyNineNext = (() => {
   _viewItemListFired = new WeakMap();
 
   // src/managers/StateManager.js
-  var _app9, _logger14, _state, _subscribers, _initDefaultState, initDefaultState_fn, _loadState, loadState_fn, _saveState, saveState_fn, _notifySubscribers, notifySubscribers_fn, _processCartUpdates, processCartUpdates_fn, _updateItemAppliedDiscounts, updateItemAppliedDiscounts_fn, _recalculateCart, recalculateCart_fn;
+  var _app9, _logger14, _state, _subscribers, _setupCountryChangeListener2, setupCountryChangeListener_fn2, _getCurrencySymbol, getCurrencySymbol_fn, _initDefaultState, initDefaultState_fn, _loadState, loadState_fn, _saveState, saveState_fn, _notifySubscribers, notifySubscribers_fn, _processCartUpdates, processCartUpdates_fn, _updateItemAppliedDiscounts, updateItemAppliedDiscounts_fn, _recalculateCart, recalculateCart_fn;
   var StateManager = class {
     constructor(app) {
+      /**
+       * Setup listener for country changes
+       */
+      __privateAdd(this, _setupCountryChangeListener2);
+      /**
+       * Get currency symbol for a currency code
+       */
+      __privateAdd(this, _getCurrencySymbol);
       __privateAdd(this, _initDefaultState);
       __privateAdd(this, _loadState);
       __privateAdd(this, _saveState);
@@ -5471,6 +6187,7 @@ var TwentyNineNext = (() => {
       __privateSet(this, _logger14, app.logger.createModuleLogger("STATE"));
       __privateSet(this, _state, __privateMethod(this, _initDefaultState, initDefaultState_fn).call(this));
       __privateMethod(this, _loadState, loadState_fn).call(this);
+      __privateMethod(this, _setupCountryChangeListener2, setupCountryChangeListener_fn2).call(this);
       __privateGet(this, _logger14).info("StateManager initialized (core state loaded)");
     }
     finalizeInitializationAndRecalculate() {
@@ -5728,6 +6445,29 @@ var TwentyNineNext = (() => {
   _logger14 = new WeakMap();
   _state = new WeakMap();
   _subscribers = new WeakMap();
+  _setupCountryChangeListener2 = new WeakSet();
+  setupCountryChangeListener_fn2 = function() {
+    document.addEventListener("os:country.changed", (event) => {
+      const { country, campaignData, previousCountry } = event.detail;
+      __privateGet(this, _logger14).info(`Country changed from ${previousCountry} to ${country}, recalculating cart`);
+      if (campaignData?.currency) {
+        this.setState("cart.totals.currency", campaignData.currency, false);
+        this.setState("cart.totals.currency_symbol", __privateMethod(this, _getCurrencySymbol, getCurrencySymbol_fn).call(this, campaignData.currency), false);
+      }
+      __privateMethod(this, _processCartUpdates, processCartUpdates_fn).call(this, true, "country.changed");
+    });
+  };
+  _getCurrencySymbol = new WeakSet();
+  getCurrencySymbol_fn = function(currencyCode) {
+    const symbols = {
+      "USD": "$",
+      "CAD": "C$",
+      "GBP": "£",
+      "EUR": "€",
+      "AUD": "A$"
+    };
+    return symbols[currencyCode] || "$";
+  };
   _initDefaultState = new WeakSet();
   initDefaultState_fn = function() {
     return {
@@ -6551,10 +7291,14 @@ var TwentyNineNext = (() => {
   __privateAdd(DebugUtils, _overlays, []);
 
   // src/managers/SelectorManager.js
-  var _app11, _logger16, _selectors2, _selectedItems, _isDebugMode2, _initSelectors, initSelectors_fn, _initSelector, initSelector_fn, _initCard, initCard_fn, _handleClick, handleClick_fn, _selectItem, selectItem_fn, _updateCart, updateCart_fn, _addItemToCart, addItemToCart_fn, _removeItemFromCart, removeItemFromCart_fn, _syncWithCart, syncWithCart_fn, _initUnitPricingForSelector, initUnitPricingForSelector_fn, _updateUnitPricingForCard, updateUnitPricingForCard_fn, _formatPrice, formatPrice_fn, _updatePriceElement, updatePriceElement_fn;
+  var _app11, _logger16, _selectors2, _selectedItems, _isDebugMode2, _initSelectors, initSelectors_fn, _setupCountryChangeListener3, setupCountryChangeListener_fn3, _initSelector, initSelector_fn, _initCard, initCard_fn, _handleClick, handleClick_fn, _selectItem, selectItem_fn, _updateCart, updateCart_fn, _addItemToCart, addItemToCart_fn, _removeItemFromCart, removeItemFromCart_fn, _syncWithCart, syncWithCart_fn, _initUnitPricingForSelector, initUnitPricingForSelector_fn, _updateUnitPricingForCard, updateUnitPricingForCard_fn, _formatPrice, formatPrice_fn, _updatePriceElement, updatePriceElement_fn;
   var SelectorManager = class {
     constructor(app) {
       __privateAdd(this, _initSelectors);
+      /**
+       * Setup listener for country changes
+       */
+      __privateAdd(this, _setupCountryChangeListener3);
       __privateAdd(this, _initSelector);
       __privateAdd(this, _initCard);
       __privateAdd(this, _handleClick);
@@ -6678,8 +7422,19 @@ var TwentyNineNext = (() => {
     document.querySelectorAll('[data-os-component="selector"][data-os-selection-mode="swap"]').forEach((selector) => __privateMethod(this, _initSelector, initSelector_fn).call(this, selector));
     setTimeout(() => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this), 0);
     __privateGet(this, _app11).state?.subscribe("cart", () => __privateMethod(this, _syncWithCart, syncWithCart_fn).call(this));
+    __privateMethod(this, _setupCountryChangeListener3, setupCountryChangeListener_fn3).call(this);
     this.initUnitPricing();
     setTimeout(() => this.triggerViewItemList(), 100);
+  };
+  _setupCountryChangeListener3 = new WeakSet();
+  setupCountryChangeListener_fn3 = function() {
+    document.addEventListener("os:country.changed", (event) => {
+      const { country, campaignData } = event.detail;
+      __privateGet(this, _logger16).info(`Country changed to ${country}, refreshing selector unit pricing`);
+      setTimeout(() => {
+        this.refreshUnitPricing();
+      }, 100);
+    });
   };
   _initSelector = new WeakSet();
   initSelector_fn = function(selectorElement) {
@@ -7062,15 +7817,25 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/ToggleManager.js
-  var _packageToggles, _app12, _logger17, _isDebugMode3, _initAndRegisterToggleElements, initAndRegisterToggleElements_fn, _registerToggleElement, registerToggleElement_fn, _addDebugOverlay, addDebugOverlay_fn, _processToggleAction, processToggleAction_fn, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn, _updateAllToggleUIs, updateAllToggleUIs_fn, _updateUIForPackage, updateUIForPackage_fn, _isItemInCart, isItemInCart_fn, _addItemToCart2, addItemToCart_fn2, _removeItemFromCart2, removeItemFromCart_fn2;
+  var _packageToggles, _app12, _logger17, _isDebugMode3, _initAndRegisterToggleElements, initAndRegisterToggleElements_fn, _setupCountryChangeListener4, setupCountryChangeListener_fn4, _registerToggleElement, registerToggleElement_fn, _addDebugOverlay, addDebugOverlay_fn, _processToggleAction, processToggleAction_fn, _translatePackageId, translatePackageId_fn, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn, _updateAllToggleUIs, updateAllToggleUIs_fn, _updateUIForPackage, updateUIForPackage_fn, _isItemInCart, isItemInCart_fn, _addItemToCart2, addItemToCart_fn2, _removeItemFromCart2, removeItemFromCart_fn2;
   var ToggleManager = class {
     constructor(app) {
       __privateAdd(this, _initAndRegisterToggleElements);
+      /**
+       * Setup listener for country changes
+       */
+      __privateAdd(this, _setupCountryChangeListener4);
       __privateAdd(this, _registerToggleElement);
       // Note: Removed toggleId parameter as it's not the primary key anymore
       __privateAdd(this, _addDebugOverlay);
       // Renamed from #toggleItem, takes packageId and the specific element clicked
       __privateAdd(this, _processToggleAction);
+      /**
+       * Translate package ID using CountryCampaignManager if available
+       * @param {string} originalPackageId - The original package ID from the HTML data attribute
+       * @returns {string} - The translated package ID for the current country
+       */
+      __privateAdd(this, _translatePackageId);
       __privateAdd(this, _getPackageDataFromCampaign);
       // Renamed from #updateAllToggleItemsUI
       __privateAdd(this, _updateAllToggleUIs);
@@ -7089,6 +7854,7 @@ var TwentyNineNext = (() => {
       __privateSet(this, _isDebugMode3, DebugUtils.initDebugMode());
       __privateMethod(this, _initAndRegisterToggleElements, initAndRegisterToggleElements_fn).call(this);
       __privateGet(this, _app12).state.subscribe("cart", () => __privateMethod(this, _updateAllToggleUIs, updateAllToggleUIs_fn).call(this));
+      __privateMethod(this, _setupCountryChangeListener4, setupCountryChangeListener_fn4).call(this);
       __privateGet(this, _logger17).info("ToggleManager initialized");
       if (__privateGet(this, _isDebugMode3)) {
         __privateGet(this, _logger17).info("Debug mode enabled for toggle items");
@@ -7109,6 +7875,14 @@ var TwentyNineNext = (() => {
     __privateGet(this, _logger17).info(`Found ${toggleElements.length} toggle item button elements.`);
     toggleElements.forEach((element) => __privateMethod(this, _registerToggleElement, registerToggleElement_fn).call(this, element));
     __privateMethod(this, _updateAllToggleUIs, updateAllToggleUIs_fn).call(this);
+  };
+  _setupCountryChangeListener4 = new WeakSet();
+  setupCountryChangeListener_fn4 = function() {
+    document.addEventListener("os:country.changed", (event) => {
+      const { country, previousCountry } = event.detail;
+      __privateGet(this, _logger17).info(`Country changed from ${previousCountry} to ${country}, updating toggle UI`);
+      __privateMethod(this, _updateAllToggleUIs, updateAllToggleUIs_fn).call(this);
+    });
   };
   _registerToggleElement = new WeakSet();
   registerToggleElement_fn = function(toggleElement) {
@@ -7161,30 +7935,58 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger17).error(`Toggle package info for packageId ${packageId} not found`);
       return;
     }
+    const translatedPackageId = __privateMethod(this, _translatePackageId, translatePackageId_fn).call(this, packageId);
     const { quantity } = packageInfo;
-    const isInCart = __privateMethod(this, _isItemInCart, isItemInCart_fn).call(this, packageId);
+    const isInCart = __privateMethod(this, _isItemInCart, isItemInCart_fn).call(this, translatedPackageId);
     if (isInCart) {
-      __privateMethod(this, _removeItemFromCart2, removeItemFromCart_fn2).call(this, packageId);
-      __privateGet(this, _logger17).info(`Toggled OFF item ${packageId}`);
+      __privateMethod(this, _removeItemFromCart2, removeItemFromCart_fn2).call(this, translatedPackageId);
+      __privateGet(this, _logger17).info(`Toggled OFF item ${packageId} (translated to ${translatedPackageId})`);
     } else {
-      const packageData = __privateMethod(this, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn).call(this, packageId);
+      const packageData = __privateMethod(this, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn).call(this, translatedPackageId);
       if (!packageData) {
-        __privateGet(this, _logger17).error(`Package ${packageId} not found in campaign data`);
+        __privateGet(this, _logger17).error(`Package ${translatedPackageId} (original: ${packageId}) not found in campaign data`);
         return;
       }
       const isUpsell = clickedElement.hasAttribute("data-os-upsell") ? clickedElement.getAttribute("data-os-upsell") === "true" : clickedElement.closest("[data-os-upsell-section]") !== null;
       __privateMethod(this, _addItemToCart2, addItemToCart_fn2).call(this, {
-        // Use packageId consistently for ID unless your cart expects something else
-        id: packageId,
+        // Use translated package ID for the cart
+        id: translatedPackageId,
         name: packageData.name,
         price: Number.parseFloat(packageData.price),
         quantity,
         type: "package",
         is_upsell: isUpsell
       });
-      __privateGet(this, _logger17).info(`Toggled ON item ${packageId}${isUpsell ? " (upsell)" : ""}`);
+      __privateGet(this, _logger17).info(`Toggled ON item ${packageId} (translated to ${translatedPackageId})${isUpsell ? " (upsell)" : ""}`);
     }
-    __privateGet(this, _app12).triggerEvent("toggle.changed", { packageId, isActive: !isInCart });
+    __privateGet(this, _app12).triggerEvent("toggle.changed", { packageId, translatedPackageId, isActive: !isInCart });
+  };
+  _translatePackageId = new WeakSet();
+  translatePackageId_fn = function(originalPackageId) {
+    const countryCampaignManager = __privateGet(this, _app12).countryCampaign;
+    if (!countryCampaignManager || !countryCampaignManager.getCurrentCountry()) {
+      __privateGet(this, _logger17).debug(`CountryCampaignManager not available or no current country, using original package ID: ${originalPackageId}`);
+      return originalPackageId;
+    }
+    try {
+      const currentCountry = countryCampaignManager.getCurrentCountry();
+      const config = window.osConfig?.countryCampaigns?.packageMaps?.[currentCountry];
+      if (!config) {
+        __privateGet(this, _logger17).debug(`No package mapping found for country ${currentCountry}, using original package ID: ${originalPackageId}`);
+        return originalPackageId;
+      }
+      const translatedId = config[originalPackageId];
+      if (translatedId !== void 0) {
+        __privateGet(this, _logger17).debug(`Translated package ID: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
+        return translatedId.toString();
+      } else {
+        __privateGet(this, _logger17).debug(`No translation found for package ${originalPackageId} in country ${currentCountry}, using original ID`);
+        return originalPackageId;
+      }
+    } catch (error) {
+      __privateGet(this, _logger17).error("Error translating package ID:", error);
+      return originalPackageId;
+    }
   };
   _getPackageDataFromCampaign = new WeakSet();
   getPackageDataFromCampaign_fn = function(packageId) {
@@ -7206,8 +8008,9 @@ var TwentyNineNext = (() => {
     const { packageId, elements } = packageInfo;
     if (!elements || elements.length === 0)
       return;
-    const isInCart = __privateMethod(this, _isItemInCart, isItemInCart_fn).call(this, packageId);
-    __privateGet(this, _logger17).debugWithTime(`[UPDATE_PKG_UI] Updating UI for package ${packageId}. IsInCart: ${isInCart}. Element count: ${elements.length}`);
+    const translatedPackageId = __privateMethod(this, _translatePackageId, translatePackageId_fn).call(this, packageId);
+    const isInCart = __privateMethod(this, _isItemInCart, isItemInCart_fn).call(this, translatedPackageId);
+    __privateGet(this, _logger17).debugWithTime(`[UPDATE_PKG_UI] Updating UI for package ${packageId} (translated: ${translatedPackageId}). IsInCart: ${isInCart}. Element count: ${elements.length}`);
     elements.forEach((element) => {
       element.classList.toggle("os--active", isInCart);
       element.setAttribute("data-os-active", isInCart.toString());
@@ -7833,9 +8636,13 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/DisplayManager.js
-  var _app15, _logger20, _displayElements, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn;
+  var _app15, _logger20, _displayElements, _setupCountryChangeListener5, setupCountryChangeListener_fn5, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn;
   var DisplayManager = class {
     constructor(app) {
+      /**
+       * Setup listener for country changes
+       */
+      __privateAdd(this, _setupCountryChangeListener5);
       /**
        * Initialize all display elements on the page
        */
@@ -7861,6 +8668,7 @@ var TwentyNineNext = (() => {
       __privateSet(this, _logger20, app.logger.createModuleLogger("DISPLAY"));
       __privateMethod(this, _initDisplayElements, initDisplayElements_fn).call(this);
       __privateGet(this, _app15).state.subscribe("cart", () => this.refreshDisplayElements());
+      __privateMethod(this, _setupCountryChangeListener5, setupCountryChangeListener_fn5).call(this);
       __privateGet(this, _logger20).infoWithTime("DisplayManager initialized");
     }
     /**
@@ -7887,6 +8695,14 @@ var TwentyNineNext = (() => {
   _app15 = new WeakMap();
   _logger20 = new WeakMap();
   _displayElements = new WeakMap();
+  _setupCountryChangeListener5 = new WeakSet();
+  setupCountryChangeListener_fn5 = function() {
+    document.addEventListener("os:country.changed", (event) => {
+      const { country, campaignData } = event.detail;
+      __privateGet(this, _logger20).infoWithTime(`Country changed to ${country}, refreshing display elements`);
+      this.refreshDisplayElements();
+    });
+  };
   _initDisplayElements = new WeakSet();
   initDisplayElements_fn = function() {
     __privateGet(this, _logger20).infoWithTime("Initializing display elements");
@@ -7948,9 +8764,17 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/CartDisplayManager.js
-  var _app16, _logger21, _elements3, _config2, _lineItemTemplate, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice2, formatPrice_fn2, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
+  var _app16, _logger21, _elements3, _config2, _lineItemTemplate, _setupCountryChangeListener6, setupCountryChangeListener_fn6, _getCurrencySymbol2, getCurrencySymbol_fn2, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice2, formatPrice_fn2, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
   var CartDisplayManager = class {
     constructor(app) {
+      /**
+       * Setup listener for country changes
+       */
+      __privateAdd(this, _setupCountryChangeListener6);
+      /**
+       * Get currency symbol for a currency code
+       */
+      __privateAdd(this, _getCurrencySymbol2);
       /**
        * Initialize the cart display elements
        */
@@ -8063,6 +8887,7 @@ var TwentyNineNext = (() => {
       __privateSet(this, _logger21, app.logger.createModuleLogger("CART_DISPLAY"));
       __privateMethod(this, _initCartDisplay, initCartDisplay_fn).call(this);
       __privateGet(this, _app16).state.subscribe("cart", () => this.updateCartDisplay());
+      __privateMethod(this, _setupCountryChangeListener6, setupCountryChangeListener_fn6).call(this);
       __privateGet(this, _logger21).infoWithTime("CartDisplayManager initialized");
     }
     /**
@@ -8102,6 +8927,28 @@ var TwentyNineNext = (() => {
   _elements3 = new WeakMap();
   _config2 = new WeakMap();
   _lineItemTemplate = new WeakMap();
+  _setupCountryChangeListener6 = new WeakSet();
+  setupCountryChangeListener_fn6 = function() {
+    document.addEventListener("os:country.changed", (event) => {
+      const { country, campaignData } = event.detail;
+      __privateGet(this, _logger21).infoWithTime(`Country changed to ${country}, updating cart display`);
+      if (campaignData?.currency) {
+        __privateGet(this, _config2).currencySymbol = __privateMethod(this, _getCurrencySymbol2, getCurrencySymbol_fn2).call(this, campaignData.currency);
+      }
+      this.updateCartDisplay();
+    });
+  };
+  _getCurrencySymbol2 = new WeakSet();
+  getCurrencySymbol_fn2 = function(currencyCode) {
+    const symbols = {
+      "USD": "$",
+      "CAD": "C$",
+      "GBP": "£",
+      "EUR": "€",
+      "AUD": "A$"
+    };
+    return symbols[currencyCode] || "$";
+  };
   _initCartDisplay = new WeakSet();
   initCartDisplay_fn = function() {
     __privateGet(this, _logger21).infoWithTime("[INIT] Initializing cart display");
@@ -11455,6 +12302,343 @@ var TwentyNineNext = (() => {
   _app21 = new WeakMap();
   _logger26 = new WeakMap();
 
+  // src/managers/CountryCampaignManager.js
+  var _app22, _logger27, _currentCountry, _cachedCampaigns, _config3, _isInitialized2, _loadConfig2, loadConfig_fn2, _detectUserCountry, detectUserCountry_fn, _getCampaignIdForCountry, getCampaignIdForCountry_fn, _updateApiClientCampaign, updateApiClientCampaign_fn, _updateCartForNewCountry, updateCartForNewCountry_fn, _triggerCountryChangedEvent, triggerCountryChangedEvent_fn;
+  var CountryCampaignManager = class {
+    constructor(app) {
+      /**
+       * Load configuration from window.osConfig
+       */
+      __privateAdd(this, _loadConfig2);
+      /**
+       * Detect user's country using the location endpoint
+       */
+      __privateAdd(this, _detectUserCountry);
+      /**
+       * Get campaign ID for a specific country
+       */
+      __privateAdd(this, _getCampaignIdForCountry);
+      /**
+       * Update the API client to use a specific campaign ID
+       */
+      __privateAdd(this, _updateApiClientCampaign);
+      /**
+       * Update cart items when switching countries
+       */
+      __privateAdd(this, _updateCartForNewCountry);
+      /**
+       * Trigger country changed event
+       */
+      __privateAdd(this, _triggerCountryChangedEvent);
+      __privateAdd(this, _app22, void 0);
+      __privateAdd(this, _logger27, void 0);
+      __privateAdd(this, _currentCountry, null);
+      __privateAdd(this, _cachedCampaigns, /* @__PURE__ */ new Map());
+      // Map of country -> campaign data
+      __privateAdd(this, _config3, {
+        campaignIds: {},
+        packageMaps: {}
+      });
+      __privateAdd(this, _isInitialized2, false);
+      __privateSet(this, _app22, app);
+      __privateSet(this, _logger27, app.logger.createModuleLogger("COUNTRY_CAMPAIGN"));
+      __privateMethod(this, _loadConfig2, loadConfig_fn2).call(this);
+      __privateGet(this, _logger27).info("CountryCampaignManager initialized");
+    }
+    /**
+     * Initialize the country campaign system
+     */
+    async init() {
+      __privateGet(this, _logger27).info("Initializing country campaign system");
+      try {
+        const detectedCountry = await __privateMethod(this, _detectUserCountry, detectUserCountry_fn).call(this);
+        const campaignId = __privateMethod(this, _getCampaignIdForCountry, getCampaignIdForCountry_fn).call(this, detectedCountry);
+        __privateMethod(this, _updateApiClientCampaign, updateApiClientCampaign_fn).call(this, campaignId);
+        __privateSet(this, _currentCountry, detectedCountry);
+        __privateSet(this, _isInitialized2, true);
+        __privateGet(this, _logger27).info(`Country campaign system initialized for country: ${detectedCountry}, campaign: ${campaignId}`);
+        return {
+          country: detectedCountry,
+          campaignId
+        };
+      } catch (error) {
+        __privateGet(this, _logger27).error("Failed to initialize country campaign system:", error);
+        __privateSet(this, _isInitialized2, true);
+        return null;
+      }
+    }
+    /**
+     * Switch to a different country
+     */
+    async switchCountry(newCountryCode) {
+      if (!newCountryCode) {
+        __privateGet(this, _logger27).error("Cannot switch country: no country code provided");
+        return;
+      }
+      const upperCountryCode = newCountryCode.toUpperCase();
+      __privateGet(this, _logger27).info(`Switching country to: ${upperCountryCode}`);
+      try {
+        const newCampaignId = __privateMethod(this, _getCampaignIdForCountry, getCampaignIdForCountry_fn).call(this, upperCountryCode);
+        if (!newCampaignId) {
+          throw new Error(`No campaign found for country: ${upperCountryCode}`);
+        }
+        let campaignData = __privateGet(this, _cachedCampaigns).get(upperCountryCode);
+        if (!campaignData) {
+          __privateGet(this, _logger27).info(`Fetching campaign data for ${upperCountryCode}: ${newCampaignId}`);
+          const originalCampaignId = __privateGet(this, _app22).api._campaignId;
+          __privateMethod(this, _updateApiClientCampaign, updateApiClientCampaign_fn).call(this, newCampaignId);
+          try {
+            campaignData = await __privateGet(this, _app22).api.getCampaign();
+            __privateGet(this, _cachedCampaigns).set(upperCountryCode, campaignData);
+            __privateGet(this, _logger27).debug(`Cached campaign data for ${upperCountryCode}`);
+          } catch (error) {
+            __privateMethod(this, _updateApiClientCampaign, updateApiClientCampaign_fn).call(this, originalCampaignId);
+            throw error;
+          }
+        } else {
+          __privateGet(this, _logger27).debug(`Using cached campaign data for ${upperCountryCode}`);
+          __privateMethod(this, _updateApiClientCampaign, updateApiClientCampaign_fn).call(this, newCampaignId);
+        }
+        await __privateMethod(this, _updateCartForNewCountry, updateCartForNewCountry_fn).call(this, __privateGet(this, _currentCountry), upperCountryCode, campaignData);
+        const previousCountry = __privateGet(this, _currentCountry);
+        __privateSet(this, _currentCountry, upperCountryCode);
+        __privateGet(this, _app22).campaignData = campaignData;
+        if (window.osConfig) {
+          window.osConfig.campaign = campaignData;
+        }
+        __privateMethod(this, _triggerCountryChangedEvent, triggerCountryChangedEvent_fn).call(this, upperCountryCode, campaignData, previousCountry);
+        __privateGet(this, _logger27).info(`Successfully switched country from ${previousCountry} to ${upperCountryCode}`);
+        return {
+          success: true,
+          previousCountry,
+          newCountry: upperCountryCode,
+          campaignData
+        };
+      } catch (error) {
+        __privateGet(this, _logger27).error(`Failed to switch country to ${upperCountryCode}:`, error);
+        throw error;
+      }
+    }
+    /**
+     * Get current country code
+     */
+    getCurrentCountry() {
+      return __privateGet(this, _currentCountry);
+    }
+    /**
+     * Get current campaign ID
+     */
+    getCurrentCampaignId() {
+      if (!__privateGet(this, _currentCountry)) {
+        return null;
+      }
+      return __privateMethod(this, _getCampaignIdForCountry, getCampaignIdForCountry_fn).call(this, __privateGet(this, _currentCountry));
+    }
+    /**
+     * Get current campaign data
+     */
+    getCurrentCampaignData() {
+      if (!__privateGet(this, _currentCountry)) {
+        return null;
+      }
+      return __privateGet(this, _cachedCampaigns).get(__privateGet(this, _currentCountry)) || __privateGet(this, _app22).campaignData;
+    }
+    /**
+     * Get cached campaigns
+     */
+    getCachedCampaigns() {
+      const cached = {};
+      __privateGet(this, _cachedCampaigns).forEach((data, country) => {
+        cached[country] = {
+          name: data.name,
+          currency: data.currency,
+          packages: data.packages?.length || 0
+        };
+      });
+      return cached;
+    }
+    /**
+     * Check if manager is initialized
+     */
+    get isInitialized() {
+      return __privateGet(this, _isInitialized2);
+    }
+    /**
+     * Get available countries from configuration
+     */
+    getAvailableCountries() {
+      return Object.keys(__privateGet(this, _config3).campaignIds);
+    }
+    /**
+     * Check if a country is supported
+     */
+    isCountrySupported(countryCode) {
+      return !!__privateGet(this, _config3).campaignIds[countryCode?.toUpperCase()];
+    }
+    /**
+     * Translate package ID from one country to another
+     */
+    translatePackageId(packageId, fromCountry, toCountry) {
+      const fromMap = __privateGet(this, _config3).packageMaps[fromCountry] || {};
+      const toMap = __privateGet(this, _config3).packageMaps[toCountry] || {};
+      const externalId = Object.entries(fromMap).find(
+        ([external, internal]) => internal === packageId.toString()
+      )?.[0] || packageId.toString();
+      return toMap[externalId] || packageId;
+    }
+  };
+  _app22 = new WeakMap();
+  _logger27 = new WeakMap();
+  _currentCountry = new WeakMap();
+  _cachedCampaigns = new WeakMap();
+  _config3 = new WeakMap();
+  _isInitialized2 = new WeakMap();
+  _loadConfig2 = new WeakSet();
+  loadConfig_fn2 = function() {
+    if (window.osConfig?.countryCampaigns) {
+      __privateGet(this, _config3).campaignIds = window.osConfig.countryCampaigns.campaignIds || {};
+      __privateGet(this, _config3).packageMaps = window.osConfig.countryCampaigns.packageMaps || {};
+      __privateGet(this, _logger27).info("Loaded country campaigns configuration:", {
+        countries: Object.keys(__privateGet(this, _config3).campaignIds),
+        packageMaps: Object.keys(__privateGet(this, _config3).packageMaps)
+      });
+    } else {
+      __privateGet(this, _logger27).warn("No countryCampaigns configuration found in window.osConfig");
+    }
+  };
+  _detectUserCountry = new WeakSet();
+  detectUserCountry_fn = async function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceCountry = urlParams.get("forceCountry");
+    if (forceCountry) {
+      __privateGet(this, _logger27).info(`Using forced country from URL parameter: ${forceCountry}`);
+      return forceCountry.toUpperCase();
+    }
+    try {
+      const response = await fetch("/location", {
+        method: "GET",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Location API returned ${response.status}`);
+      }
+      const locationData = await response.json();
+      const detectedCountry = locationData.detectedCountryCode || "US";
+      __privateGet(this, _logger27).info(`Detected country from location API: ${detectedCountry}`);
+      return detectedCountry;
+    } catch (error) {
+      __privateGet(this, _logger27).warn("Failed to detect country from location API, falling back to US:", error);
+      return "US";
+    }
+  };
+  _getCampaignIdForCountry = new WeakSet();
+  getCampaignIdForCountry_fn = function(countryCode) {
+    const campaignId = __privateGet(this, _config3).campaignIds[countryCode];
+    if (campaignId) {
+      __privateGet(this, _logger27).debug(`Found campaign ID for ${countryCode}: ${campaignId}`);
+      return campaignId;
+    }
+    const fallbackCampaignId = __privateGet(this, _config3).campaignIds["US"] || Object.values(__privateGet(this, _config3).campaignIds)[0];
+    if (fallbackCampaignId) {
+      __privateGet(this, _logger27).warn(`No campaign found for ${countryCode}, using fallback: ${fallbackCampaignId}`);
+      return fallbackCampaignId;
+    }
+    __privateGet(this, _logger27).error(`No campaign configuration found for ${countryCode} and no fallback available`);
+    return null;
+  };
+  _updateApiClientCampaign = new WeakSet();
+  updateApiClientCampaign_fn = function(campaignId) {
+    if (!campaignId) {
+      __privateGet(this, _logger27).warn("Cannot update API client: no campaign ID provided");
+      return;
+    }
+    sessionStorage.setItem("os-campaign-id", campaignId);
+    __privateGet(this, _logger27).debug(`Updated session storage with campaign ID: ${campaignId}`);
+    if (__privateGet(this, _app22).api && typeof __privateGet(this, _app22).api.updateCampaignId === "function") {
+      __privateGet(this, _app22).api.updateCampaignId(campaignId);
+      __privateGet(this, _logger27).debug(`Updated API client to use campaign: ${campaignId}`);
+    } else {
+      __privateGet(this, _logger27).warn("API client updateCampaignId method not available");
+    }
+  };
+  _updateCartForNewCountry = new WeakSet();
+  updateCartForNewCountry_fn = async function(fromCountry, toCountry, newCampaignData) {
+    if (!__privateGet(this, _app22).state) {
+      __privateGet(this, _logger27).warn("State manager not available, cannot update cart");
+      return;
+    }
+    const cart = __privateGet(this, _app22).state.getState("cart");
+    if (!cart?.items?.length) {
+      __privateGet(this, _logger27).debug("No cart items to update");
+      return;
+    }
+    __privateGet(this, _logger27).info(`Updating ${cart.items.length} cart items for country switch: ${fromCountry} -> ${toCountry}`);
+    const fromPackageMap = __privateGet(this, _config3).packageMaps[fromCountry] || {};
+    const toPackageMap = __privateGet(this, _config3).packageMaps[toCountry] || {};
+    const newPackages = newCampaignData.packages || [];
+    const reverseFromMap = {};
+    Object.entries(fromPackageMap).forEach(([external, internal]) => {
+      reverseFromMap[internal] = external;
+    });
+    const updatedItems = [];
+    for (const item of cart.items) {
+      try {
+        const currentInternalId = item.package_id?.toString() || item.id?.toString();
+        const externalId = reverseFromMap[currentInternalId] || currentInternalId;
+        const newInternalId = toPackageMap[externalId] || externalId;
+        const newPackageData = newPackages.find(
+          (pkg) => pkg.ref_id?.toString() === newInternalId || pkg.external_id?.toString() === externalId
+        );
+        if (!newPackageData) {
+          __privateGet(this, _logger27).warn(`Package not found in new campaign: external=${externalId}, internal=${newInternalId}`);
+          continue;
+        }
+        const updatedItem = {
+          ...item,
+          id: newPackageData.ref_id?.toString() || newInternalId,
+          package_id: newPackageData.ref_id,
+          name: newPackageData.name,
+          price: parseFloat(newPackageData.price) || item.price,
+          price_total: parseFloat(newPackageData.price) * (item.quantity || 1),
+          retail_price: parseFloat(newPackageData.price_retail) || parseFloat(newPackageData.price),
+          retail_price_total: parseFloat(newPackageData.price_retail || newPackageData.price) * (item.quantity || 1),
+          currency: newCampaignData.currency || "USD",
+          image: newPackageData.image || item.image
+        };
+        updatedItems.push(updatedItem);
+        __privateGet(this, _logger27).debug(`Mapped item: ${externalId} (${fromCountry}:${currentInternalId}) -> (${toCountry}:${newInternalId})`);
+      } catch (error) {
+        __privateGet(this, _logger27).error(`Error updating cart item:`, error, item);
+      }
+    }
+    if (updatedItems.length > 0) {
+      __privateGet(this, _app22).state.setState("cart.items", updatedItems, false);
+      const updatedCart = __privateGet(this, _app22).state.getState("cart");
+      __privateGet(this, _app22).state.setState("cart", updatedCart, true);
+      __privateGet(this, _logger27).info(`Updated ${updatedItems.length} cart items for new country`);
+    }
+  };
+  _triggerCountryChangedEvent = new WeakSet();
+  triggerCountryChangedEvent_fn = function(newCountry, campaignData, previousCountry) {
+    const eventDetail = {
+      country: newCountry,
+      previousCountry,
+      campaignData,
+      manager: this
+    };
+    if (__privateGet(this, _app22).triggerEvent) {
+      __privateGet(this, _app22).triggerEvent("country.changed", eventDetail);
+    }
+    const event = new CustomEvent("os:country.changed", {
+      bubbles: true,
+      detail: eventDetail
+    });
+    document.dispatchEvent(event);
+    __privateGet(this, _logger27).debug(`Triggered country changed event: ${previousCountry} -> ${newCountry}`);
+  };
+
   // src/utils/PBAccordion.js
   var PBAccordion = class {
     constructor() {
@@ -11704,16 +12888,20 @@ var TwentyNineNext = (() => {
   };
 
   // src/core/TwentyNineNext.js
-  var _isInitialized2, _isCheckoutPage, _campaignData, _loadConfig2, loadConfig_fn2, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn;
+  var _isInitialized3, _isCheckoutPage, _campaignData, _loadConfig3, loadConfig_fn3, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _initCountryCampaignSystem, initCountryCampaignSystem_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn;
   var TwentyNineNext = class {
     constructor(options = {}) {
-      __privateAdd(this, _loadConfig2);
+      __privateAdd(this, _loadConfig3);
       /**
        * Initialize Spreedly configuration from global config
        * This allows users to customize Spreedly iframe behavior
        */
       __privateAdd(this, _initSpreedlyConfig);
       __privateAdd(this, _loadGoogleMapsApi);
+      /**
+       * Initialize the country campaign system
+       */
+      __privateAdd(this, _initCountryCampaignSystem);
       __privateAdd(this, _fetchCampaignData);
       __privateAdd(this, _initializeManagers);
       __privateAdd(this, _finalizeInitialization);
@@ -11732,7 +12920,7 @@ var TwentyNineNext = (() => {
        * This runs on EVERY page load regardless of page type
        */
       __privateAdd(this, _checkForPendingUpsellPurchase);
-      __privateAdd(this, _isInitialized2, false);
+      __privateAdd(this, _isInitialized3, false);
       __privateAdd(this, _isCheckoutPage, false);
       __privateAdd(this, _campaignData, null);
       const googleMapsConfig = window.osConfig?.googleMaps || {};
@@ -11747,7 +12935,8 @@ var TwentyNineNext = (() => {
       this.logger = new Logger(this.options.debug);
       this.coreLogger = this.logger.createModuleLogger("CORE");
       this.api = new ApiClient(this);
-      this.config = __privateMethod(this, _loadConfig2, loadConfig_fn2).call(this);
+      this.config = __privateMethod(this, _loadConfig3, loadConfig_fn3).call(this);
+      this.countryCampaign = new CountryCampaignManager(this);
       this.state = new StateManager(this);
       this.attribution = new AttributionManager(this);
       this.discount = new DiscountManager(this);
@@ -11800,6 +12989,7 @@ var TwentyNineNext = (() => {
     }
     async init() {
       this.coreLogger.info("Initializing 29next client (async init phase)");
+      await __privateMethod(this, _initCountryCampaignSystem, initCountryCampaignSystem_fn).call(this);
       this.api.init();
       if (typeof window.on29NextReady !== "undefined" && !Array.isArray(window.on29NextReady)) {
         this.coreLogger.warn("window.on29NextReady is not an array, resetting it");
@@ -11814,7 +13004,7 @@ var TwentyNineNext = (() => {
         __privateMethod(this, _initCheckoutPage, initCheckoutPage_fn).call(this);
       __privateMethod(this, _initUIUtilities, initUIUtilities_fn).call(this);
       await __privateMethod(this, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn).call(this);
-      __privateSet(this, _isInitialized2, true);
+      __privateSet(this, _isInitialized3, true);
       this.triggerEvent("initialized", { client: this });
       await __privateMethod(this, _finalizeInitialization, finalizeInitialization_fn).call(this);
     }
@@ -11832,7 +13022,7 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _campaignData);
     }
     get isInitialized() {
-      return __privateGet(this, _isInitialized2);
+      return __privateGet(this, _isInitialized3);
     }
     get isCheckoutPage() {
       return __privateGet(this, _isCheckoutPage);
@@ -11854,7 +13044,7 @@ var TwentyNineNext = (() => {
       return { success: true, message: "view_item_list event triggered", campaignData: __privateGet(this, _campaignData) };
     }
     isReady() {
-      return __privateGet(this, _isInitialized2) && __privateGet(this, _campaignData) !== null && Array.isArray(__privateGet(this, _campaignData).packages);
+      return __privateGet(this, _isInitialized3) && __privateGet(this, _campaignData) !== null && Array.isArray(__privateGet(this, _campaignData).packages);
     }
     onReady(callback) {
       if (!callback || typeof callback !== "function")
@@ -11874,11 +13064,11 @@ var TwentyNineNext = (() => {
       return this;
     }
   };
-  _isInitialized2 = new WeakMap();
+  _isInitialized3 = new WeakMap();
   _isCheckoutPage = new WeakMap();
   _campaignData = new WeakMap();
-  _loadConfig2 = new WeakSet();
-  loadConfig_fn2 = function() {
+  _loadConfig3 = new WeakSet();
+  loadConfig_fn3 = function() {
     const config = { apiKey: null, campaignId: null, debug: this.options.debug };
     const urlParams = new URLSearchParams(window.location.search);
     const urlCampaignId = urlParams.get("campaignId");
@@ -11964,6 +13154,21 @@ var TwentyNineNext = (() => {
       };
       document.head.appendChild(script);
     });
+  };
+  _initCountryCampaignSystem = new WeakSet();
+  initCountryCampaignSystem_fn = async function() {
+    try {
+      this.coreLogger.info("Initializing country campaign system...");
+      const result = await this.countryCampaign.init();
+      if (result) {
+        this.coreLogger.info(`Country campaign system initialized: ${result.country} -> ${result.campaignId}`);
+        window.osCountryCampaignManager = this.countryCampaign;
+      } else {
+        this.coreLogger.warn("Country campaign system initialization returned null, using fallback");
+      }
+    } catch (error) {
+      this.coreLogger.error("Failed to initialize country campaign system:", error);
+    }
   };
   _fetchCampaignData = new WeakSet();
   fetchCampaignData_fn = async function() {

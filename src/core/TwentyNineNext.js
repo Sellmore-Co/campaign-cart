@@ -21,6 +21,7 @@ import { EventManager } from '../managers/EventManager.js';
 import { TooltipManager } from '../managers/TooltipManager.js';
 import { UpsellManager } from '../managers/UpsellManager.js';
 import { DiscountManager } from '../managers/DiscountManager.js';
+import { CountryCampaignManager } from '../managers/CountryCampaignManager.js';
 import { initPBAccordion } from '../utils/PBAccordion.js';
 import { initUtmTransfer } from '../utils/UtmTransfer.js';
 
@@ -45,6 +46,10 @@ export class TwentyNineNext {
     this.coreLogger = this.logger.createModuleLogger('CORE');
     this.api = new ApiClient(this);
     this.config = this.#loadConfig();
+    
+    // Initialize country campaign manager first (before other managers)
+    this.countryCampaign = new CountryCampaignManager(this);
+    
     this.state = new StateManager(this);
     this.attribution = new AttributionManager(this);
     this.discount = new DiscountManager(this);
@@ -214,6 +219,10 @@ export class TwentyNineNext {
 
   async init() {
     this.coreLogger.info('Initializing 29next client (async init phase)');
+    
+    // Initialize country campaign system FIRST (before API init)
+    await this.#initCountryCampaignSystem();
+    
     this.api.init();
 
     // Ensure window.on29NextReady is an array
@@ -242,6 +251,30 @@ export class TwentyNineNext {
     this.#isInitialized = true;
     this.triggerEvent('initialized', { client: this });
     await this.#finalizeInitialization();
+  }
+
+  /**
+   * Initialize the country campaign system
+   */
+  async #initCountryCampaignSystem() {
+    try {
+      this.coreLogger.info('Initializing country campaign system...');
+      
+      // Initialize the country campaign manager
+      const result = await this.countryCampaign.init();
+      
+      if (result) {
+        this.coreLogger.info(`Country campaign system initialized: ${result.country} -> ${result.campaignId}`);
+        
+        // Make country campaign manager globally accessible
+        window.osCountryCampaignManager = this.countryCampaign;
+      } else {
+        this.coreLogger.warn('Country campaign system initialization returned null, using fallback');
+      }
+    } catch (error) {
+      this.coreLogger.error('Failed to initialize country campaign system:', error);
+      // Continue with normal initialization as fallback
+    }
   }
 
   async #fetchCampaignData() {

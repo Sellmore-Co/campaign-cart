@@ -18,6 +18,10 @@ export class ToggleManager {
     this.#isDebugMode = DebugUtils.initDebugMode();
     this.#initAndRegisterToggleElements();
     this.#app.state.subscribe('cart', () => this.#updateAllToggleUIs()); // Changed method name
+    
+    // Listen for country changes to update toggle UI
+    this.#setupCountryChangeListener();
+    
     this.#logger.info('ToggleManager initialized');
     if (this.#isDebugMode) {
       this.#logger.info('Debug mode enabled for toggle items');
@@ -33,6 +37,19 @@ export class ToggleManager {
     this.#logger.info(`Found ${toggleElements.length} toggle item button elements.`);
     toggleElements.forEach(element => this.#registerToggleElement(element));
     this.#updateAllToggleUIs(); // Initial UI update based on loaded cart state
+  }
+
+  /**
+   * Setup listener for country changes
+   */
+  #setupCountryChangeListener() {
+    document.addEventListener('os:country.changed', (event) => {
+      const { country, previousCountry } = event.detail;
+      this.#logger.info(`Country changed from ${previousCountry} to ${country}, updating toggle UI`);
+      
+      // Update all toggle UI to reflect new package mappings
+      this.#updateAllToggleUIs();
+    });
   }
 
   #registerToggleElement(toggleElement) {
@@ -100,16 +117,18 @@ export class ToggleManager {
       return;
     }
 
+    // Translate the package ID using CountryCampaignManager if available
+    const translatedPackageId = this.#translatePackageId(packageId);
     const { quantity } = packageInfo; // Use quantity from registered package info
-    const isInCart = this.#isItemInCart(packageId);
+    const isInCart = this.#isItemInCart(translatedPackageId);
 
     if (isInCart) {
-      this.#removeItemFromCart(packageId);
-      this.#logger.info(`Toggled OFF item ${packageId}`);
+      this.#removeItemFromCart(translatedPackageId);
+      this.#logger.info(`Toggled OFF item ${packageId} (translated to ${translatedPackageId})`);
     } else {
-      const packageData = this.#getPackageDataFromCampaign(packageId);
+      const packageData = this.#getPackageDataFromCampaign(translatedPackageId);
       if (!packageData) {
-        this.#logger.error(`Package ${packageId} not found in campaign data`);
+        this.#logger.error(`Package ${translatedPackageId} (original: ${packageId}) not found in campaign data`);
         return;
       }
 
@@ -119,8 +138,8 @@ export class ToggleManager {
         (clickedElement.closest('[data-os-upsell-section]') !== null);
 
       this.#addItemToCart({
-        // Use packageId consistently for ID unless your cart expects something else
-        id: packageId, 
+        // Use translated package ID for the cart
+        id: translatedPackageId, 
         name: packageData.name,
         price: Number.parseFloat(packageData.price),
         quantity,
@@ -128,14 +147,51 @@ export class ToggleManager {
         is_upsell: isUpsell
       });
       
-      this.#logger.info(`Toggled ON item ${packageId}${isUpsell ? ' (upsell)' : ''}`);
+      this.#logger.info(`Toggled ON item ${packageId} (translated to ${translatedPackageId})${isUpsell ? ' (upsell)' : ''}`);
     }
 
     // UI update is now handled centrally by the state subscription calling #updateAllToggleUIs
     // No need to call #updateToggleItemUI directly here.
 
-    // Trigger event with packageId and new state
-    this.#app.triggerEvent('toggle.changed', { packageId, isActive: !isInCart });
+    // Trigger event with original packageId and new state
+    this.#app.triggerEvent('toggle.changed', { packageId, translatedPackageId, isActive: !isInCart });
+  }
+
+  /**
+   * Translate package ID using CountryCampaignManager if available
+   * @param {string} originalPackageId - The original package ID from the HTML data attribute
+   * @returns {string} - The translated package ID for the current country
+   */
+  #translatePackageId(originalPackageId) {
+    // Check if CountryCampaignManager is available
+    const countryCampaignManager = this.#app.countryCampaign;
+    
+    if (!countryCampaignManager || !countryCampaignManager.getCurrentCountry()) {
+      this.#logger.debug(`CountryCampaignManager not available or no current country, using original package ID: ${originalPackageId}`);
+      return originalPackageId;
+    }
+
+    try {
+      const currentCountry = countryCampaignManager.getCurrentCountry();
+      const config = window.osConfig?.countryCampaigns?.packageMaps?.[currentCountry];
+      
+      if (!config) {
+        this.#logger.debug(`No package mapping found for country ${currentCountry}, using original package ID: ${originalPackageId}`);
+        return originalPackageId;
+      }
+
+      const translatedId = config[originalPackageId];
+      if (translatedId !== undefined) {
+        this.#logger.debug(`Translated package ID: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
+        return translatedId.toString();
+      } else {
+        this.#logger.debug(`No translation found for package ${originalPackageId} in country ${currentCountry}, using original ID`);
+        return originalPackageId;
+      }
+    } catch (error) {
+      this.#logger.error('Error translating package ID:', error);
+      return originalPackageId;
+    }
   }
 
   #getPackageDataFromCampaign(packageId) {
@@ -159,8 +215,10 @@ export class ToggleManager {
       const { packageId, elements } = packageInfo;
       if (!elements || elements.length === 0) return;
       
-      const isInCart = this.#isItemInCart(packageId);
-      this.#logger.debugWithTime(`[UPDATE_PKG_UI] Updating UI for package ${packageId}. IsInCart: ${isInCart}. Element count: ${elements.length}`);
+      // Translate the package ID to check against the cart
+      const translatedPackageId = this.#translatePackageId(packageId);
+      const isInCart = this.#isItemInCart(translatedPackageId);
+      this.#logger.debugWithTime(`[UPDATE_PKG_UI] Updating UI for package ${packageId} (translated: ${translatedPackageId}). IsInCart: ${isInCart}. Element count: ${elements.length}`);
       
       elements.forEach(element => {
         element.classList.toggle('os--active', isInCart);
