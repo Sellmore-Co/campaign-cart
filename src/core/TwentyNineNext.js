@@ -22,6 +22,7 @@ import { TooltipManager } from '../managers/TooltipManager.js';
 import { UpsellManager } from '../managers/UpsellManager.js';
 import { DiscountManager } from '../managers/DiscountManager.js';
 import { CountryCampaignManager } from '../managers/CountryCampaignManager.js';
+import { ProductProfileManager } from '../managers/ProductProfileManager.js';
 import { initPBAccordion } from '../utils/PBAccordion.js';
 import { initUtmTransfer } from '../utils/UtmTransfer.js';
 
@@ -49,6 +50,9 @@ export class TwentyNineNext {
     
     // Initialize country campaign manager first (before other managers)
     this.countryCampaign = new CountryCampaignManager(this);
+    
+    // Initialize product profile manager (after country campaign manager)
+    this.profiles = new ProductProfileManager(this);
     
     this.state = new StateManager(this);
     this.attribution = new AttributionManager(this);

@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Profile System - Example</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+        }
+        
+        .system-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        
+        .system-section {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .system-section h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        
+        .old-system {
+            background-color: #fff3cd;
+            border-color: #ffd700;
+        }
+        
+        .new-system {
+            background-color: #d4edda;
+            border-color: #28a745;
+        }
+        
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .product-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            background: white;
+        }
+        
+        .product-card h4 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .price-display {
+            margin: 15px 0;
+        }
+        
+        .current-price {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #e91e63;
+        }
+        
+        .original-price {
+            text-decoration: line-through;
+            color: #999;
+            margin-left: 10px;
+        }
+        
+        .savings {
+            color: #4caf50;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .per-item {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .cart-status {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+        }
+        
+        .demo-section {
+            margin: 40px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .country-switcher {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+        
+        .country-switcher select {
+            padding: 5px 10px;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Product Profile System Example</h1>
+    
+    <div class="country-switcher">
+        <strong>Current Country:</strong> <span id="current-country">US</span>
+        <select id="country-selector">
+            <option value="US">🇺🇸 United States (USD)</option>
+            <option value="CA">🇨🇦 Canada (CAD)</option>
+            <option value="GB">🇬🇧 United Kingdom (GBP)</option>
+        </select>
+        <button class="btn" onclick="switchCountry()">Switch Country</button>
+    </div>
+
+    <div class="system-comparison">
+        <div class="system-section old-system">
+            <h3>📦 Legacy Package System (Still Works!)</h3>
+            <p>Direct package ID usage with manual country mapping:</p>
+            
+            <div class="product-card">
+                <h4>Package 12 - Starter Kit</h4>
+                <div class="price-display">
+                    <span class="current-price" data-os-package-price="total-sale" data-os-package-id="12">$89</span>
+                    <span class="original-price" data-os-package-price="total-regular" data-os-package-id="12">$118</span>
+                </div>
+                <div class="savings">
+                    Save <span data-os-package-price="total-saving-amount" data-os-package-id="12">$29</span>
+                </div>
+                <button class="btn" onclick="addPackageToCart('12')">Add Package to Cart</button>
+            </div>
+        </div>
+
+        <div class="system-section new-system">
+            <h3>🎯 New Profile System (Recommended!)</h3>
+            <p>Business-friendly profile IDs with automatic country handling:</p>
+            
+            <div class="product-card">
+                <h4>Starter Kit Profile</h4>
+                <div class="price-display">
+                    <span class="current-price" data-os-profile-price="total-sale" data-os-profile-id="starter-kit">$89</span>
+                    <span class="original-price" data-os-profile-price="total-regular" data-os-profile-id="starter-kit">$118</span>
+                </div>
+                <div class="savings">
+                    Save <span data-os-profile-price="total-saving-amount" data-os-profile-id="starter-kit">$29</span>
+                </div>
+                <button class="btn btn-success" onclick="addProfileToCart('starter-kit')">Add Profile to Cart</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h3>🛒 Cart Operations Demo</h3>
+        
+        <div class="cart-status" id="cart-status">
+            Cart is empty
+        </div>
+        
+        <div class="product-grid">
+            <div class="product-card">
+                <h4>Starter Kit</h4>
+                <div class="price-display">
+                    <span class="current-price" data-os-profile-price="total-sale" data-os-profile-id="starter-kit" data-os-show-decimals="true">$89.00</span>
+                    <span class="original-price" data-os-profile-price="total-regular" data-os-profile-id="starter-kit">$118</span>
+                </div>
+                <div class="per-item">
+                    Only <span data-os-profile-price="unit-sale" data-os-profile-id="starter-kit" data-os-divide-by="4">$22.25</span> per facial
+                </div>
+                <button class="btn btn-success" onclick="addProfileToCart('starter-kit')">Add to Cart</button>
+                <button class="btn btn-danger" onclick="removeProfileFromCart('starter-kit')">Remove</button>
+            </div>
+
+            <div class="product-card">
+                <h4>Monthly Subscription</h4>
+                <div class="price-display">
+                    <span class="current-price" data-os-profile-price="total-sale" data-os-profile-id="monthly-subscription">$65</span>
+                    <span class="original-price" data-os-profile-price="total-regular" data-os-profile-id="monthly-subscription">$89</span>
+                </div>
+                <div class="savings">
+                    <span data-os-profile-price="total-saving-percentage" data-os-profile-id="monthly-subscription">27% OFF</span>
+                </div>
+                <button class="btn btn-success" onclick="addProfileToCart('monthly-subscription')">Add to Cart</button>
+                <button class="btn btn-danger" onclick="removeProfileFromCart('monthly-subscription')">Remove</button>
+            </div>
+
+            <div class="product-card">
+                <h4>Ultimate Bundle</h4>
+                <div class="price-display">
+                    <span class="current-price" data-os-profile-price="total-sale" data-os-profile-id="ultimate-bundle">$199</span>
+                    <span class="original-price" data-os-profile-price="total-regular" data-os-profile-id="ultimate-bundle">$299</span>
+                </div>
+                <div class="savings">
+                    Save <span data-os-profile-price="total-saving-amount" data-os-profile-id="ultimate-bundle">$100</span>
+                </div>
+                <p><small>Contains multiple packages</small></p>
+                <button class="btn btn-success" onclick="addProfileToCart('ultimate-bundle')">Add to Cart</button>
+                <button class="btn btn-danger" onclick="removeProfileFromCart('ultimate-bundle')">Remove</button>
+            </div>
+        </div>
+        
+        <button class="btn btn-danger" onclick="clearAllProfiles()">Clear All Profiles</button>
+        <button class="btn" onclick="showCartDetails()">Show Cart Details</button>
+    </div>
+
+    <div class="demo-section">
+        <h3>📊 Profile Management Demo</h3>
+        
+        <button class="btn" onclick="showAllProfiles()">Show All Profiles</button>
+        <button class="btn" onclick="showFeaturedProfiles()">Show Featured</button>
+        <button class="btn" onclick="showKitProfiles()">Show Kits Category</button>
+        <button class="btn" onclick="showPricingDemo()">Pricing Demo</button>
+        
+        <div id="profile-info" class="code-block" style="margin-top: 15px; min-height: 50px;">
+            Click buttons above to explore profiles
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h3>💻 Code Examples</h3>
+        
+        <h4>Configuration:</h4>
+        <div class="code-block">
+window.osConfig = {
+  // Existing package mappings (unchanged)
+  countryCampaigns: {
+    campaignIds: {
+      'US': 'us-campaign-id',
+      'CA': 'ca-campaign-id',
+      'GB': 'gb-campaign-id'
+    },
+    packageMaps: {
+      'US': { '12': '12' },
+      'CA': { '12': '1' },
+      'GB': { '12': '5' }
+    }
+  },
+  
+  // New product profiles
+  productProfiles: {
+    'starter-kit': {
+      name: 'Starter Facial Kit',
+      campaignMappings: {
+        'US': { packageId: '12', quantity: 1 },
+        'CA': { packageId: '1', quantity: 1 },
+        'GB': { packageId: '5', quantity: 1 }
+      },
+      metadata: { category: 'kits', featured: true }
+    }
+  }
+};
+        </div>
+        
+        <h4>Usage:</h4>
+        <div class="code-block">
+// Easy cart operations
+await client.profiles.addToCart('starter-kit');
+await client.profiles.removeFromCart('starter-kit');
+
+// Get pricing
+const price = client.profiles.getPrice('starter-kit', 'total-sale');
+const formatted = client.profiles.getFormattedPrice('starter-kit', 'total-sale');
+
+// Check cart status
+const isInCart = client.profiles.isInCart('starter-kit');
+const cartProfiles = client.profiles.getCartProfiles();
+        </div>
+    </div>
+
+    <!-- Include your 29next SDK -->
+    <script src="path/to/your/twentynine-next.js"></script>
+    
+    <script>
+        // Configuration
+        window.osConfig = {
+            countryCampaigns: {
+                campaignIds: {
+                    'US': 'us-campaign-id-here',
+                    'CA': 'ca-campaign-id-here', 
+                    'GB': 'gb-campaign-id-here'
+                },
+                packageMaps: {
+                    'US': { '12': '12' },
+                    'CA': { '12': '1' },  
+                    'GB': { '12': '5' }
+                }
+            },
+            
+            // New Product Profiles
+            productProfiles: {
+                'starter-kit': {
+                    name: 'Starter Facial Kit',
+                    description: 'Perfect for first-time users',
+                    campaignMappings: {
+                        'US': { packageId: '12', quantity: 1 },
+                        'CA': { packageId: '1', quantity: 1 },
+                        'GB': { packageId: '5', quantity: 1 }
+                    },
+                    metadata: {
+                        category: 'kits',
+                        featured: true,
+                        tags: ['beginner', 'popular']
+                    }
+                },
+                
+                'monthly-subscription': {
+                    name: 'Monthly Subscription',
+                    description: 'Auto-delivery every month',
+                    campaignMappings: {
+                        'US': { packageId: '6', quantity: 1 },
+                        'CA': { packageId: '3', quantity: 1 },
+                        'GB': { packageId: '8', quantity: 1 }
+                    },
+                    metadata: {
+                        category: 'subscriptions',
+                        recurring: true,
+                        tags: ['subscription', 'savings']
+                    }
+                },
+                
+                'ultimate-bundle': {
+                    name: 'Ultimate Bundle',
+                    description: 'Everything you need',
+                    campaignMappings: {
+                        'US': [
+                            { packageId: '12', quantity: 1 },
+                            { packageId: '8', quantity: 2 }
+                        ],
+                        'CA': [
+                            { packageId: '1', quantity: 1 },
+                            { packageId: '4', quantity: 2 }
+                        ],
+                        'GB': [
+                            { packageId: '5', quantity: 1 },
+                            { packageId: '9', quantity: 2 }
+                        ]
+                    },
+                    metadata: {
+                        category: 'bundles',
+                        bestValue: true,
+                        tags: ['comprehensive', 'savings']
+                    }
+                }
+            }
+        };
+
+        // Wait for 29next to be ready
+        window.on29NextReady = window.on29NextReady || [];
+        window.on29NextReady.push(function(client) {
+            console.log("29next client with Product Profiles is ready!");
+            
+            // Set global reference for demo functions
+            window.osClient = client;
+            
+            // Initial cart status update
+            updateCartStatus();
+            
+            // Listen for profile events
+            document.addEventListener('os:profile.added', (event) => {
+                const { profileId, profile } = event.detail;
+                console.log(`✅ Added ${profile.name} to cart`);
+                updateCartStatus();
+            });
+            
+            document.addEventListener('os:profile.removed', (event) => {
+                const { profileId, itemsRemoved } = event.detail;
+                console.log(`❌ Removed profile ${profileId} (${itemsRemoved} items)`);
+                updateCartStatus();
+            });
+            
+            // Listen for country changes
+            document.addEventListener('os:country.changed', (event) => {
+                const { country } = event.detail;
+                document.getElementById('current-country').textContent = country;
+                document.getElementById('country-selector').value = country;
+                updateCartStatus();
+            });
+        });
+
+        // Demo Functions
+        async function addProfileToCart(profileId) {
+            if (!window.osClient) {
+                alert('29next client not ready yet');
+                return;
+            }
+            
+            const success = await window.osClient.profiles.addToCart(profileId);
+            if (success) {
+                console.log(`✅ Successfully added ${profileId} to cart`);
+            } else {
+                console.error(`❌ Failed to add ${profileId} to cart`);
+                alert(`Failed to add ${profileId} to cart`);
+            }
+        }
+
+        async function removeProfileFromCart(profileId) {
+            if (!window.osClient) return;
+            
+            const success = await window.osClient.profiles.removeFromCart(profileId);
+            if (success) {
+                console.log(`✅ Successfully removed ${profileId} from cart`);
+            }
+        }
+
+        async function addPackageToCart(packageId) {
+            if (!window.osClient) return;
+            
+            // Legacy package approach - still works!
+            try {
+                await window.osClient.cart.addToCart({
+                    id: packageId,
+                    name: 'Legacy Package',
+                    price: 89,
+                    quantity: 1,
+                    type: 'package'
+                });
+                console.log(`✅ Added legacy package ${packageId} to cart`);
+                updateCartStatus();
+            } catch (error) {
+                console.error('❌ Failed to add legacy package:', error);
+            }
+        }
+
+        async function clearAllProfiles() {
+            if (!window.osClient) return;
+            
+            const success = await window.osClient.profiles.clearProfilesFromCart();
+            if (success) {
+                console.log('✅ Cleared all profiles from cart');
+            }
+        }
+
+        function switchCountry() {
+            const country = document.getElementById('country-selector').value;
+            if (window.osClient && window.osClient.countryCampaign) {
+                window.osClient.countryCampaign.switchCountry(country);
+            }
+        }
+
+        function updateCartStatus() {
+            if (!window.osClient) return;
+            
+            const cartProfiles = window.osClient.profiles.getCartProfiles();
+            const cart = window.osClient.state.getState('cart');
+            const totalItems = cart.items.length;
+            
+            const statusEl = document.getElementById('cart-status');
+            if (cartProfiles.length === 0 && totalItems === 0) {
+                statusEl.innerHTML = 'Cart is empty';
+            } else {
+                statusEl.innerHTML = `
+                    <strong>Cart Status:</strong><br>
+                    Profiles in cart: ${cartProfiles.join(', ') || 'None'}<br>
+                    Total items: ${totalItems}<br>
+                    Total value: $${cart.totals.total.toFixed(2)}
+                `;
+            }
+        }
+
+        function showCartDetails() {
+            if (!window.osClient) return;
+            
+            const cart = window.osClient.state.getState('cart');
+            const cartProfiles = window.osClient.profiles.getCartProfiles();
+            
+            console.log('=== Cart Details ===');
+            console.log('Profiles:', cartProfiles);
+            console.log('Items:', cart.items);
+            console.log('Totals:', cart.totals);
+            
+            alert(`Cart has ${cart.items.length} items from ${cartProfiles.length} profiles. Check console for details.`);
+        }
+
+        function showAllProfiles() {
+            if (!window.osClient) return;
+            
+            const profiles = window.osClient.profiles.getProfiles();
+            const info = profiles.map(p => `${p.id}: ${p.name} (${p.metadata?.category || 'no category'})`).join('\n');
+            
+            document.getElementById('profile-info').textContent = `All Profiles:\n${info}`;
+        }
+
+        function showFeaturedProfiles() {
+            if (!window.osClient) return;
+            
+            const featured = window.osClient.profiles.getFeaturedProfiles();
+            const info = featured.map(p => `${p.id}: ${p.name}`).join('\n');
+            
+            document.getElementById('profile-info').textContent = `Featured Profiles:\n${info}`;
+        }
+
+        function showKitProfiles() {
+            if (!window.osClient) return;
+            
+            const kits = window.osClient.profiles.getProfilesByCategory('kits');
+            const info = kits.map(p => `${p.id}: ${p.name}`).join('\n');
+            
+            document.getElementById('profile-info').textContent = `Kit Profiles:\n${info}`;
+        }
+
+        function showPricingDemo() {
+            if (!window.osClient) return;
+            
+            const profileId = 'starter-kit';
+            const salePrice = window.osClient.profiles.getPrice(profileId, 'total-sale');
+            const regularPrice = window.osClient.profiles.getPrice(profileId, 'total-regular');
+            const savings = window.osClient.profiles.getPrice(profileId, 'total-saving-amount');
+            
+            const formatted = window.osClient.profiles.getFormattedPrice(profileId, 'total-sale');
+            const formattedWithDecimals = window.osClient.profiles.getFormattedPrice(profileId, 'total-sale', { showDecimals: true });
+            
+            const info = `Pricing for ${profileId}:
+Sale Price: ${salePrice} (formatted: ${formatted})
+Regular Price: ${regularPrice}
+Savings: ${savings}
+With decimals: ${formattedWithDecimals}`;
+            
+            document.getElementById('profile-info').textContent = info;
+        }
+    </script>
+</body>
+</html> 

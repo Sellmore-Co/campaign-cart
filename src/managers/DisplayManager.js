@@ -169,7 +169,7 @@ export class DisplayManager {
     this.#logger.infoWithTime('Initializing package pricing elements');
     
     // Find all package pricing elements
-    const priceElements = document.querySelectorAll('[data-os-package-price]');
+    const priceElements = document.querySelectorAll('[data-os-package-price], [data-os-profile-price]');
     
     if (priceElements.length === 0) {
       this.#logger.debugWithTime('No package pricing elements found on page');
@@ -178,36 +178,42 @@ export class DisplayManager {
     
     this.#logger.debugWithTime(`Found ${priceElements.length} package pricing elements`);
     
-    // Group elements by package ID for efficient processing
+    // Group elements by package ID or profile ID for efficient processing
     priceElements.forEach((element) => {
       const packageId = element.dataset.osPackageId;
-      const priceType = element.dataset.osPackagePrice;
+      const profileId = element.dataset.osProfileId;
+      const priceType = element.dataset.osPackagePrice || element.dataset.osProfilePrice;
+      const isProfile = !!element.dataset.osProfilePrice;
       
-      if (!packageId) {
-        this.#logger.warnWithTime('Package pricing element missing data-os-package-id attribute', element);
+      const elementId = isProfile ? profileId : packageId;
+      
+      if (!elementId) {
+        this.#logger.warnWithTime(`Pricing element missing ${isProfile ? 'data-os-profile-id' : 'data-os-package-id'} attribute`, element);
         return;
       }
       
       if (!priceType) {
-        this.#logger.warnWithTime('Package pricing element missing data-os-package-price attribute', element);
+        this.#logger.warnWithTime(`Pricing element missing ${isProfile ? 'data-os-profile-price' : 'data-os-package-price'} attribute`, element);
         return;
       }
       
       // Store element data for later processing
-      if (!this.#priceElements.has(packageId)) {
-        this.#priceElements.set(packageId, []);
+      if (!this.#priceElements.has(elementId)) {
+        this.#priceElements.set(elementId, []);
       }
       
-      this.#priceElements.get(packageId).push({
+      this.#priceElements.get(elementId).push({
         element,
         priceType,
+        isProfile,
         divideBy: element.dataset.osDivideBy ? parseInt(element.dataset.osDivideBy, 10) : null,
         format: element.dataset.osFormat || 'default',
         hideIfZero: element.dataset.osHideIfZero === 'true',
         showDecimals: element.dataset.osShowDecimals === 'true'
       });
       
-      this.#logger.debugWithTime(`Registered pricing element: Package ${packageId}, Type ${priceType}`);
+      const type = isProfile ? 'Profile' : 'Package';
+      this.#logger.debugWithTime(`Registered pricing element: ${type} ${elementId}, Type ${priceType}`);
     });
     
     // Initial update of all pricing elements
@@ -228,9 +234,16 @@ export class DisplayManager {
     // Get currency symbol from campaign data or default
     const currencySymbol = this.#getCurrencySymbol();
     
-    // Update each package's pricing elements
-    this.#priceElements.forEach((elements, packageId) => {
-      this.#updatePackagePricing(packageId, elements, currencySymbol);
+    // Update each package's and profile's pricing elements
+    this.#priceElements.forEach((elements, elementId) => {
+      // Check if this is a profile or package
+      const isProfile = elements[0]?.isProfile || false;
+      
+      if (isProfile) {
+        this.#updateProfilePricing(elementId, elements, currencySymbol);
+      } else {
+        this.#updatePackagePricing(elementId, elements, currencySymbol);
+      }
     });
   }
 
@@ -285,6 +298,62 @@ export class DisplayManager {
       element.textContent = displayValue;
       
       this.#logger.debugWithTime(`Updated pricing: Package ${packageId} -> ${translatedPackageId}, Type ${priceType}, Value: ${displayValue}`);
+    });
+  }
+
+  /**
+   * Update pricing elements for a specific profile
+   * @param {string} profileId - The profile ID
+   * @param {Array} elements - Array of element objects for this profile
+   * @param {string} currencySymbol - Currency symbol to use
+   */
+  #updateProfilePricing(profileId, elements, currencySymbol) {
+    // Get profile pricing using ProductProfileManager
+    if (!this.#app.profiles) {
+      this.#logger.warnWithTime('ProductProfileManager not available for profile pricing');
+      return;
+    }
+
+    const profile = this.#app.profiles.getProfile(profileId);
+    if (!profile) {
+      this.#logger.warnWithTime(`Profile not found: ${profileId}`);
+      // Hide elements if profile not found
+      elements.forEach(({ element, hideIfZero }) => {
+        if (hideIfZero) {
+          element.style.display = 'none';
+          const container = element.closest('[data-container="true"]');
+          if (container) container.style.display = 'none';
+        }
+      });
+      return;
+    }
+
+    // Update each element
+    elements.forEach(({ element, priceType, divideBy, format, hideIfZero, showDecimals }) => {
+      let value = this.#app.profiles.getPrice(profileId, priceType) || 0;
+      
+      // Apply divideBy if specified
+      if (divideBy && divideBy > 0) {
+        value = value / divideBy;
+      }
+      
+      // Handle hide if zero
+      if (hideIfZero && (value === 0 || value < 0)) {
+        element.style.display = 'none';
+        const container = element.closest('[data-container="true"]');
+        if (container) container.style.display = 'none';
+        return;
+      } else {
+        element.style.display = '';
+        const container = element.closest('[data-container="true"]');
+        if (container) container.style.display = '';
+      }
+      
+      // Format and display value
+      const displayValue = this.#formatPriceValue(value, priceType, format, currencySymbol, showDecimals);
+      element.textContent = displayValue;
+      
+      this.#logger.debugWithTime(`Updated profile pricing: ${profileId}, Type ${priceType}, Value: ${displayValue}`);
     });
   }
 

@@ -63,7 +63,7 @@ var TwentyNineNext = (() => {
   __export(ReceiptManager_exports, {
     ReceiptPage: () => ReceiptPage
   });
-  var _apiClient3, _logger28, _app23, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError3, showError_fn3, ReceiptPage;
+  var _apiClient3, _logger29, _app24, _orderData, _orderFetched, _initialized4, _debugMode5, _safeLog3, safeLog_fn3, _fetchOrderDetails, fetchOrderDetails_fn, _updateReceiptContent, updateReceiptContent_fn, _determinePaymentMethod, determinePaymentMethod_fn, _updateOrderLines, updateOrderLines_fn, _updateElement, updateElement_fn, _updateElementInNode, updateElementInNode_fn, _formatAddress2, formatAddress_fn2, _formatLocation, formatLocation_fn, _getCountryName, getCountryName_fn, _formatPaymentMethod, formatPaymentMethod_fn, _formatCurrency, formatCurrency_fn, _showError3, showError_fn3, ReceiptPage;
   var init_ReceiptManager = __esm({
     "src/managers/ReceiptManager.js"() {
       "use strict";
@@ -145,8 +145,8 @@ var TwentyNineNext = (() => {
            */
           __privateAdd(this, _showError3);
           __privateAdd(this, _apiClient3, void 0);
-          __privateAdd(this, _logger28, void 0);
-          __privateAdd(this, _app23, void 0);
+          __privateAdd(this, _logger29, void 0);
+          __privateAdd(this, _app24, void 0);
           __privateAdd(this, _orderData, null);
           __privateAdd(this, _orderFetched, false);
           // Flag to prevent duplicate API calls
@@ -154,8 +154,8 @@ var TwentyNineNext = (() => {
           // Flag to prevent duplicate initialization
           __privateAdd(this, _debugMode5, false);
           __privateSet(this, _apiClient3, apiClient);
-          __privateSet(this, _logger28, logger);
-          __privateSet(this, _app23, app);
+          __privateSet(this, _logger29, logger);
+          __privateSet(this, _app24, app);
           const debugMeta = document.querySelector('meta[name="os-debug"]');
           __privateSet(this, _debugMode5, debugMeta?.getAttribute("content") === "true");
           __privateMethod(this, _safeLog3, safeLog_fn3).call(this, "info", "ReceiptPage component created");
@@ -189,8 +189,8 @@ var TwentyNineNext = (() => {
         }
       };
       _apiClient3 = new WeakMap();
-      _logger28 = new WeakMap();
-      _app23 = new WeakMap();
+      _logger29 = new WeakMap();
+      _app24 = new WeakMap();
       _orderData = new WeakMap();
       _orderFetched = new WeakMap();
       _initialized4 = new WeakMap();
@@ -198,8 +198,8 @@ var TwentyNineNext = (() => {
       _safeLog3 = new WeakSet();
       safeLog_fn3 = function(level, message, ...args) {
         try {
-          if (__privateGet(this, _logger28) && typeof __privateGet(this, _logger28)[level] === "function") {
-            __privateGet(this, _logger28)[level](message, ...args);
+          if (__privateGet(this, _logger29) && typeof __privateGet(this, _logger29)[level] === "function") {
+            __privateGet(this, _logger29)[level](message, ...args);
           } else if (console[level]) {
             console[level](message, ...args);
           } else {
@@ -8636,7 +8636,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/DisplayManager.js
-  var _app15, _logger20, _displayElements, _priceElements, _setupCountryChangeListener5, setupCountryChangeListener_fn5, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn, _initPriceElements, initPriceElements_fn, _updatePackagePricing, updatePackagePricing_fn, _translatePackageId2, translatePackageId_fn2, _getPackageData, getPackageData_fn, _calculatePackagePricing, calculatePackagePricing_fn, _getPriceValue, getPriceValue_fn, _formatPriceValue, formatPriceValue_fn, _getCurrencySymbol2, getCurrencySymbol_fn2;
+  var _app15, _logger20, _displayElements, _priceElements, _setupCountryChangeListener5, setupCountryChangeListener_fn5, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn, _initPriceElements, initPriceElements_fn, _updatePackagePricing, updatePackagePricing_fn, _updateProfilePricing, updateProfilePricing_fn, _translatePackageId2, translatePackageId_fn2, _getPackageData, getPackageData_fn, _calculatePackagePricing, calculatePackagePricing_fn, _getPriceValue, getPriceValue_fn, _formatPriceValue, formatPriceValue_fn, _getCurrencySymbol2, getCurrencySymbol_fn2;
   var DisplayManager = class {
     // For standalone package pricing
     constructor(app) {
@@ -8673,6 +8673,13 @@ var TwentyNineNext = (() => {
        * @param {string} currencySymbol - Currency symbol to use
        */
       __privateAdd(this, _updatePackagePricing);
+      /**
+       * Update pricing elements for a specific profile
+       * @param {string} profileId - The profile ID
+       * @param {Array} elements - Array of element objects for this profile
+       * @param {string} currencySymbol - Currency symbol to use
+       */
+      __privateAdd(this, _updateProfilePricing);
       /**
        * Translate package ID using CountryCampaignManager if available
        * @param {string} originalPackageId - The original package ID from the HTML data attribute
@@ -8747,8 +8754,13 @@ var TwentyNineNext = (() => {
         return;
       }
       const currencySymbol = __privateMethod(this, _getCurrencySymbol2, getCurrencySymbol_fn2).call(this);
-      __privateGet(this, _priceElements).forEach((elements, packageId) => {
-        __privateMethod(this, _updatePackagePricing, updatePackagePricing_fn).call(this, packageId, elements, currencySymbol);
+      __privateGet(this, _priceElements).forEach((elements, elementId) => {
+        const isProfile = elements[0]?.isProfile || false;
+        if (isProfile) {
+          __privateMethod(this, _updateProfilePricing, updateProfilePricing_fn).call(this, elementId, elements, currencySymbol);
+        } else {
+          __privateMethod(this, _updatePackagePricing, updatePackagePricing_fn).call(this, elementId, elements, currencySymbol);
+        }
       });
     }
     /**
@@ -8838,7 +8850,7 @@ var TwentyNineNext = (() => {
   _initPriceElements = new WeakSet();
   initPriceElements_fn = function() {
     __privateGet(this, _logger20).infoWithTime("Initializing package pricing elements");
-    const priceElements = document.querySelectorAll("[data-os-package-price]");
+    const priceElements = document.querySelectorAll("[data-os-package-price], [data-os-profile-price]");
     if (priceElements.length === 0) {
       __privateGet(this, _logger20).debugWithTime("No package pricing elements found on page");
       return;
@@ -8846,27 +8858,32 @@ var TwentyNineNext = (() => {
     __privateGet(this, _logger20).debugWithTime(`Found ${priceElements.length} package pricing elements`);
     priceElements.forEach((element) => {
       const packageId = element.dataset.osPackageId;
-      const priceType = element.dataset.osPackagePrice;
-      if (!packageId) {
-        __privateGet(this, _logger20).warnWithTime("Package pricing element missing data-os-package-id attribute", element);
+      const profileId = element.dataset.osProfileId;
+      const priceType = element.dataset.osPackagePrice || element.dataset.osProfilePrice;
+      const isProfile = !!element.dataset.osProfilePrice;
+      const elementId = isProfile ? profileId : packageId;
+      if (!elementId) {
+        __privateGet(this, _logger20).warnWithTime(`Pricing element missing ${isProfile ? "data-os-profile-id" : "data-os-package-id"} attribute`, element);
         return;
       }
       if (!priceType) {
-        __privateGet(this, _logger20).warnWithTime("Package pricing element missing data-os-package-price attribute", element);
+        __privateGet(this, _logger20).warnWithTime(`Pricing element missing ${isProfile ? "data-os-profile-price" : "data-os-package-price"} attribute`, element);
         return;
       }
-      if (!__privateGet(this, _priceElements).has(packageId)) {
-        __privateGet(this, _priceElements).set(packageId, []);
+      if (!__privateGet(this, _priceElements).has(elementId)) {
+        __privateGet(this, _priceElements).set(elementId, []);
       }
-      __privateGet(this, _priceElements).get(packageId).push({
+      __privateGet(this, _priceElements).get(elementId).push({
         element,
         priceType,
+        isProfile,
         divideBy: element.dataset.osDivideBy ? parseInt(element.dataset.osDivideBy, 10) : null,
         format: element.dataset.osFormat || "default",
         hideIfZero: element.dataset.osHideIfZero === "true",
         showDecimals: element.dataset.osShowDecimals === "true"
       });
-      __privateGet(this, _logger20).debugWithTime(`Registered pricing element: Package ${packageId}, Type ${priceType}`);
+      const type = isProfile ? "Profile" : "Package";
+      __privateGet(this, _logger20).debugWithTime(`Registered pricing element: ${type} ${elementId}, Type ${priceType}`);
     });
     this.refreshPackagePricing();
   };
@@ -8904,6 +8921,47 @@ var TwentyNineNext = (() => {
       const displayValue = __privateMethod(this, _formatPriceValue, formatPriceValue_fn).call(this, value, priceType, format, currencySymbol, showDecimals);
       element.textContent = displayValue;
       __privateGet(this, _logger20).debugWithTime(`Updated pricing: Package ${packageId} -> ${translatedPackageId}, Type ${priceType}, Value: ${displayValue}`);
+    });
+  };
+  _updateProfilePricing = new WeakSet();
+  updateProfilePricing_fn = function(profileId, elements, currencySymbol) {
+    if (!__privateGet(this, _app15).profiles) {
+      __privateGet(this, _logger20).warnWithTime("ProductProfileManager not available for profile pricing");
+      return;
+    }
+    const profile = __privateGet(this, _app15).profiles.getProfile(profileId);
+    if (!profile) {
+      __privateGet(this, _logger20).warnWithTime(`Profile not found: ${profileId}`);
+      elements.forEach(({ element, hideIfZero }) => {
+        if (hideIfZero) {
+          element.style.display = "none";
+          const container = element.closest('[data-container="true"]');
+          if (container)
+            container.style.display = "none";
+        }
+      });
+      return;
+    }
+    elements.forEach(({ element, priceType, divideBy, format, hideIfZero, showDecimals }) => {
+      let value = __privateGet(this, _app15).profiles.getPrice(profileId, priceType) || 0;
+      if (divideBy && divideBy > 0) {
+        value = value / divideBy;
+      }
+      if (hideIfZero && (value === 0 || value < 0)) {
+        element.style.display = "none";
+        const container = element.closest('[data-container="true"]');
+        if (container)
+          container.style.display = "none";
+        return;
+      } else {
+        element.style.display = "";
+        const container = element.closest('[data-container="true"]');
+        if (container)
+          container.style.display = "";
+      }
+      const displayValue = __privateMethod(this, _formatPriceValue, formatPriceValue_fn).call(this, value, priceType, format, currencySymbol, showDecimals);
+      element.textContent = displayValue;
+      __privateGet(this, _logger20).debugWithTime(`Updated profile pricing: ${profileId}, Type ${priceType}, Value: ${displayValue}`);
     });
   };
   _translatePackageId2 = new WeakSet();
@@ -12897,6 +12955,406 @@ var TwentyNineNext = (() => {
     __privateGet(this, _logger27).debug(`Triggered country changed event: ${previousCountry} -> ${newCountry}`);
   };
 
+  // src/managers/ProductProfileManager.js
+  var _app23, _logger28, _profiles, _initializeProfiles, initializeProfiles_fn, _validateProfile, validateProfile_fn, _setupCountryChangeListener7, setupCountryChangeListener_fn7, _getCurrentCountry, getCurrentCountry_fn, _getPackageData2, getPackageData_fn2, _getPackageDataSync, getPackageDataSync_fn, _calculatePackagePricing2, calculatePackagePricing_fn2, _getCurrencySymbol4, getCurrencySymbol_fn4, _triggerProfileEvent, triggerProfileEvent_fn;
+  var ProductProfileManager = class {
+    constructor(app) {
+      /**
+       * Initialize product profiles from configuration
+       */
+      __privateAdd(this, _initializeProfiles);
+      /**
+       * Validate profile configuration
+       * @param {string} profileId - Profile ID
+       * @param {Object} profileData - Profile configuration
+       */
+      __privateAdd(this, _validateProfile);
+      /**
+       * Setup listener for country changes
+       */
+      __privateAdd(this, _setupCountryChangeListener7);
+      /**
+       * Get current country from CountryCampaignManager
+       * @returns {string} Current country code
+       */
+      __privateAdd(this, _getCurrentCountry);
+      /**
+       * Get package data from campaign
+       * @param {string} packageId - Package ID
+       * @returns {Promise<Object|null>} Package data
+       */
+      __privateAdd(this, _getPackageData2);
+      /**
+       * Get package data synchronously
+       * @param {string} packageId - Package ID
+       * @returns {Object|null} Package data
+       */
+      __privateAdd(this, _getPackageDataSync);
+      /**
+       * Calculate pricing values for a package
+       * @param {Object} packageData - Package data from campaign
+       * @returns {Object} Calculated pricing values
+       */
+      __privateAdd(this, _calculatePackagePricing2);
+      /**
+       * Get currency symbol
+       * @returns {string} Currency symbol
+       */
+      __privateAdd(this, _getCurrencySymbol4);
+      /**
+       * Trigger profile event
+       * @param {string} eventName - Event name
+       * @param {string} profileId - Profile ID
+       * @param {Object} detail - Event details
+       */
+      __privateAdd(this, _triggerProfileEvent);
+      __privateAdd(this, _app23, void 0);
+      __privateAdd(this, _logger28, void 0);
+      __privateAdd(this, _profiles, /* @__PURE__ */ new Map());
+      __privateSet(this, _app23, app);
+      __privateSet(this, _logger28, app.logger.createModuleLogger("PROFILE"));
+      __privateMethod(this, _initializeProfiles, initializeProfiles_fn).call(this);
+      __privateMethod(this, _setupCountryChangeListener7, setupCountryChangeListener_fn7).call(this);
+      __privateGet(this, _logger28).infoWithTime("ProductProfileManager initialized");
+    }
+    /**
+     * Get all available profiles
+     * @returns {Array} Array of profile objects
+     */
+    getProfiles() {
+      return Array.from(__privateGet(this, _profiles).values());
+    }
+    /**
+     * Get profiles by category
+     * @param {string} category - Category to filter by
+     * @returns {Array} Array of profile objects
+     */
+    getProfilesByCategory(category) {
+      return this.getProfiles().filter(
+        (profile) => profile.metadata?.category === category
+      );
+    }
+    /**
+     * Get featured profiles
+     * @returns {Array} Array of featured profile objects
+     */
+    getFeaturedProfiles() {
+      return this.getProfiles().filter(
+        (profile) => profile.metadata?.featured === true
+      );
+    }
+    /**
+     * Get a specific profile
+     * @param {string} profileId - Profile ID
+     * @returns {Object|null} Profile object or null if not found
+     */
+    getProfile(profileId) {
+      return __privateGet(this, _profiles).get(profileId) || null;
+    }
+    /**
+     * Get current country's package mapping for a profile
+     * @param {string} profileId - Profile ID
+     * @returns {Array|Object|null} Package mapping(s) for current country
+     */
+    getCurrentMapping(profileId) {
+      const profile = this.getProfile(profileId);
+      if (!profile) {
+        __privateGet(this, _logger28).warnWithTime(`Profile not found: ${profileId}`);
+        return null;
+      }
+      const currentCountry = __privateMethod(this, _getCurrentCountry, getCurrentCountry_fn).call(this);
+      const mapping = profile.campaignMappings[currentCountry];
+      if (!mapping) {
+        __privateGet(this, _logger28).warnWithTime(`No mapping found for profile ${profileId} in country ${currentCountry}`);
+        return null;
+      }
+      return mapping;
+    }
+    /**
+     * Add profile to cart
+     * @param {string} profileId - Profile ID to add
+     * @param {Object} options - Additional options
+     * @returns {Promise<boolean>} Success status
+     */
+    async addToCart(profileId, options = {}) {
+      try {
+        const mapping = this.getCurrentMapping(profileId);
+        if (!mapping) {
+          throw new Error(`Cannot add profile ${profileId} - no mapping for current country`);
+        }
+        const profile = this.getProfile(profileId);
+        const packages = Array.isArray(mapping) ? mapping : [mapping];
+        __privateGet(this, _logger28).infoWithTime(`Adding profile ${profileId} (${profile.name}) to cart`);
+        for (const pkg of packages) {
+          const packageData = await __privateMethod(this, _getPackageData2, getPackageData_fn2).call(this, pkg.packageId);
+          if (!packageData) {
+            throw new Error(`Package ${pkg.packageId} not found in campaign data`);
+          }
+          const quantity = (pkg.quantity || 1) * (options.quantity || 1);
+          await __privateGet(this, _app23).cart.addToCart({
+            id: packageData.ref_id || packageData.id,
+            name: packageData.name,
+            price: packageData.price,
+            quantity,
+            type: "package",
+            profileId,
+            // Add profile reference
+            profileName: profile.name
+          });
+          __privateGet(this, _logger28).debugWithTime(`Added package ${pkg.packageId} (qty: ${quantity}) from profile ${profileId}`);
+        }
+        __privateMethod(this, _triggerProfileEvent, triggerProfileEvent_fn).call(this, "added", profileId, { profile, mapping, options });
+        return true;
+      } catch (error) {
+        __privateGet(this, _logger28).errorWithTime(`Failed to add profile ${profileId} to cart:`, error);
+        return false;
+      }
+    }
+    /**
+     * Remove profile from cart
+     * @param {string} profileId - Profile ID to remove
+     * @returns {Promise<boolean>} Success status
+     */
+    async removeFromCart(profileId) {
+      try {
+        const cart = __privateGet(this, _app23).state.getState("cart");
+        const itemsToRemove = cart.items.filter((item) => item.profileId === profileId);
+        if (itemsToRemove.length === 0) {
+          __privateGet(this, _logger28).debugWithTime(`Profile ${profileId} not found in cart`);
+          return true;
+        }
+        __privateGet(this, _logger28).infoWithTime(`Removing profile ${profileId} from cart (${itemsToRemove.length} items)`);
+        for (const item of itemsToRemove) {
+          await __privateGet(this, _app23).cart.removeFromCart(item.id);
+        }
+        __privateMethod(this, _triggerProfileEvent, triggerProfileEvent_fn).call(this, "removed", profileId, { itemsRemoved: itemsToRemove.length });
+        return true;
+      } catch (error) {
+        __privateGet(this, _logger28).errorWithTime(`Failed to remove profile ${profileId} from cart:`, error);
+        return false;
+      }
+    }
+    /**
+     * Check if profile is in cart
+     * @param {string} profileId - Profile ID to check
+     * @returns {boolean} Whether profile is in cart
+     */
+    isInCart(profileId) {
+      const cart = __privateGet(this, _app23).state.getState("cart");
+      return cart.items.some((item) => item.profileId === profileId);
+    }
+    /**
+     * Get profile pricing information
+     * @param {string} profileId - Profile ID
+     * @param {string} priceType - Type of price (total-sale, unit-sale, etc.)
+     * @returns {number|null} Price value or null if not available
+     */
+    getPrice(profileId, priceType = "total-sale") {
+      const mapping = this.getCurrentMapping(profileId);
+      if (!mapping)
+        return null;
+      const packages = Array.isArray(mapping) ? mapping : [mapping];
+      let totalPrice = 0;
+      for (const pkg of packages) {
+        const packageData = __privateMethod(this, _getPackageDataSync, getPackageDataSync_fn).call(this, pkg.packageId);
+        if (!packageData)
+          continue;
+        const pricing = __privateMethod(this, _calculatePackagePricing2, calculatePackagePricing_fn2).call(this, packageData);
+        const quantity = pkg.quantity || 1;
+        let packagePrice = pricing[priceType] || 0;
+        totalPrice += packagePrice * quantity;
+      }
+      return totalPrice > 0 ? totalPrice : null;
+    }
+    /**
+     * Get formatted price string for profile
+     * @param {string} profileId - Profile ID
+     * @param {string} priceType - Type of price
+     * @param {Object} options - Formatting options
+     * @returns {string} Formatted price string
+     */
+    getFormattedPrice(profileId, priceType = "total-sale", options = {}) {
+      const price = this.getPrice(profileId, priceType);
+      if (price === null)
+        return "";
+      const currencySymbol = __privateMethod(this, _getCurrencySymbol4, getCurrencySymbol_fn4).call(this);
+      const showDecimals = options.showDecimals || false;
+      let formattedValue;
+      if (showDecimals) {
+        formattedValue = price.toFixed(2);
+      } else {
+        formattedValue = parseFloat(price.toFixed(2)).toString();
+      }
+      return `${currencySymbol}${formattedValue}`;
+    }
+    /**
+     * Get profiles that are currently in cart
+     * @returns {Array} Array of profile IDs in cart
+     */
+    getCartProfiles() {
+      const cart = __privateGet(this, _app23).state.getState("cart");
+      const profileIds = /* @__PURE__ */ new Set();
+      cart.items.forEach((item) => {
+        if (item.profileId) {
+          profileIds.add(item.profileId);
+        }
+      });
+      return Array.from(profileIds);
+    }
+    /**
+     * Clear all profiles from cart
+     * @returns {Promise<boolean>} Success status
+     */
+    async clearProfilesFromCart() {
+      try {
+        const profileIds = this.getCartProfiles();
+        for (const profileId of profileIds) {
+          await this.removeFromCart(profileId);
+        }
+        __privateGet(this, _logger28).infoWithTime(`Cleared ${profileIds.length} profiles from cart`);
+        return true;
+      } catch (error) {
+        __privateGet(this, _logger28).errorWithTime("Failed to clear profiles from cart:", error);
+        return false;
+      }
+    }
+  };
+  _app23 = new WeakMap();
+  _logger28 = new WeakMap();
+  _profiles = new WeakMap();
+  _initializeProfiles = new WeakSet();
+  initializeProfiles_fn = function() {
+    const profilesConfig = window.osConfig?.productProfiles;
+    if (!profilesConfig) {
+      __privateGet(this, _logger28).debugWithTime("No product profiles configuration found");
+      return;
+    }
+    Object.entries(profilesConfig).forEach(([profileId, profileData]) => {
+      try {
+        __privateMethod(this, _validateProfile, validateProfile_fn).call(this, profileId, profileData);
+        __privateGet(this, _profiles).set(profileId, {
+          ...profileData,
+          id: profileId
+        });
+        __privateGet(this, _logger28).debugWithTime(`Loaded profile: ${profileId} - ${profileData.name}`);
+      } catch (error) {
+        __privateGet(this, _logger28).warnWithTime(`Invalid profile configuration for ${profileId}:`, error.message);
+      }
+    });
+    __privateGet(this, _logger28).infoWithTime(`Loaded ${__privateGet(this, _profiles).size} product profiles`);
+  };
+  _validateProfile = new WeakSet();
+  validateProfile_fn = function(profileId, profileData) {
+    if (!profileData.name) {
+      throw new Error("Profile must have a name");
+    }
+    if (!profileData.campaignMappings || typeof profileData.campaignMappings !== "object") {
+      throw new Error("Profile must have campaignMappings object");
+    }
+    Object.entries(profileData.campaignMappings).forEach(([country, mapping]) => {
+      if (Array.isArray(mapping)) {
+        mapping.forEach((pkg, index) => {
+          if (!pkg.packageId) {
+            throw new Error(`Package ${index} in ${country} mapping must have packageId`);
+          }
+        });
+      } else {
+        if (!mapping.packageId) {
+          throw new Error(`${country} mapping must have packageId`);
+        }
+      }
+    });
+  };
+  _setupCountryChangeListener7 = new WeakSet();
+  setupCountryChangeListener_fn7 = function() {
+    document.addEventListener("os:country.changed", (event) => {
+      const { country } = event.detail;
+      __privateGet(this, _logger28).debugWithTime(`Country changed to ${country}, profile mappings updated`);
+    });
+  };
+  _getCurrentCountry = new WeakSet();
+  getCurrentCountry_fn = function() {
+    if (__privateGet(this, _app23).countryCampaign) {
+      return __privateGet(this, _app23).countryCampaign.getCurrentCountry();
+    }
+    return "US";
+  };
+  _getPackageData2 = new WeakSet();
+  getPackageData_fn2 = async function(packageId) {
+    if (!__privateGet(this, _app23).campaignData?.packages) {
+      await new Promise((resolve) => {
+        const checkData = () => {
+          if (__privateGet(this, _app23).campaignData?.packages) {
+            resolve();
+          } else {
+            setTimeout(checkData, 100);
+          }
+        };
+        checkData();
+      });
+    }
+    return __privateMethod(this, _getPackageDataSync, getPackageDataSync_fn).call(this, packageId);
+  };
+  _getPackageDataSync = new WeakSet();
+  getPackageDataSync_fn = function(packageId) {
+    if (!__privateGet(this, _app23).campaignData?.packages)
+      return null;
+    return __privateGet(this, _app23).campaignData.packages.find(
+      (pkg) => pkg.ref_id?.toString() === packageId?.toString() || pkg.id?.toString() === packageId?.toString()
+    ) || null;
+  };
+  _calculatePackagePricing2 = new WeakSet();
+  calculatePackagePricing_fn2 = function(packageData) {
+    const qty = parseInt(packageData.qty || 1, 10);
+    const totalSale = parseFloat(packageData.price_total || packageData.price || 0);
+    const totalRegular = parseFloat(packageData.price_retail_total || packageData.price_retail || totalSale);
+    const unitSale = qty > 0 ? totalSale / qty : totalSale;
+    const unitRegular = qty > 0 ? totalRegular / qty : totalRegular;
+    const totalSavings = totalRegular - totalSale;
+    const unitSavings = unitRegular - unitSale;
+    const totalSavingsPercent = totalRegular > 0 ? totalSavings / totalRegular * 100 : 0;
+    const unitSavingsPercent = unitRegular > 0 ? unitSavings / unitRegular * 100 : 0;
+    return {
+      "total-sale": totalSale,
+      "total-regular": totalRegular,
+      "total-saving-amount": totalSavings,
+      "total-saving-percentage": totalSavingsPercent,
+      "unit-sale": unitSale,
+      "unit-regular": unitRegular,
+      "unit-saving-amount": unitSavings,
+      "unit-saving-percentage": unitSavingsPercent
+    };
+  };
+  _getCurrencySymbol4 = new WeakSet();
+  getCurrencySymbol_fn4 = function() {
+    if (__privateGet(this, _app23).campaignData?.currency) {
+      const symbols = {
+        "USD": "$",
+        "CAD": "C$",
+        "GBP": "£",
+        "EUR": "€",
+        "AUD": "A$"
+      };
+      return symbols[__privateGet(this, _app23).campaignData.currency] || "$";
+    }
+    return "$";
+  };
+  _triggerProfileEvent = new WeakSet();
+  triggerProfileEvent_fn = function(eventName, profileId, detail = {}) {
+    const event = new CustomEvent(`os:profile.${eventName}`, {
+      bubbles: true,
+      cancelable: true,
+      detail: {
+        profileId,
+        profile: this.getProfile(profileId),
+        ...detail,
+        manager: this
+      }
+    });
+    document.dispatchEvent(event);
+    __privateGet(this, _logger28).debugWithTime(`Profile event triggered: ${eventName} for ${profileId}`);
+  };
+
   // src/utils/PBAccordion.js
   var PBAccordion = class {
     constructor() {
@@ -13195,6 +13653,7 @@ var TwentyNineNext = (() => {
       this.api = new ApiClient(this);
       this.config = __privateMethod(this, _loadConfig3, loadConfig_fn3).call(this);
       this.countryCampaign = new CountryCampaignManager(this);
+      this.profiles = new ProductProfileManager(this);
       this.state = new StateManager(this);
       this.attribution = new AttributionManager(this);
       this.discount = new DiscountManager(this);
