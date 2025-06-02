@@ -1,19 +1,22 @@
 /**
- * DisplayManager - Manages conditional display of elements based on cart contents
+ * DisplayManager - Manages conditional display of elements based on cart contents and package pricing
  * 
- * This class handles showing/hiding elements based on what's in the cart,
- * using data-os-in-cart attributes.
+ * This class handles:
+ * - Showing/hiding elements based on what's in the cart (data-os-in-cart attributes)
+ * - Displaying standalone package pricing information (data-os-package-price attributes)
  */
 
 export class DisplayManager {
   #app;
   #logger;
   #displayElements = new Map();
+  #priceElements = new Map(); // For standalone package pricing
 
   constructor(app) {
     this.#app = app;
     this.#logger = app.logger.createModuleLogger('DISPLAY');
     this.#initDisplayElements();
+    this.#initPriceElements();
     
     // Subscribe to cart updates to refresh display elements
     this.#app.state.subscribe('cart', () => this.refreshDisplayElements());
@@ -30,10 +33,13 @@ export class DisplayManager {
   #setupCountryChangeListener() {
     document.addEventListener('os:country.changed', (event) => {
       const { country, campaignData } = event.detail;
-      this.#logger.infoWithTime(`Country changed to ${country}, refreshing display elements`);
+      this.#logger.infoWithTime(`Country changed to ${country}, refreshing display elements and pricing`);
       
       // Refresh display elements as package IDs might have changed
       this.refreshDisplayElements();
+      
+      // Refresh package pricing as prices and currency might have changed
+      this.refreshPackagePricing();
     });
   }
 
@@ -157,12 +163,319 @@ export class DisplayManager {
   }
 
   /**
-   * Manually refresh display elements
+   * Initialize all package pricing elements on the page
+   */
+  #initPriceElements() {
+    this.#logger.infoWithTime('Initializing package pricing elements');
+    
+    // Find all package pricing elements
+    const priceElements = document.querySelectorAll('[data-os-package-price]');
+    
+    if (priceElements.length === 0) {
+      this.#logger.debugWithTime('No package pricing elements found on page');
+      return;
+    }
+    
+    this.#logger.debugWithTime(`Found ${priceElements.length} package pricing elements`);
+    
+    // Group elements by package ID for efficient processing
+    priceElements.forEach((element) => {
+      const packageId = element.dataset.osPackageId;
+      const priceType = element.dataset.osPackagePrice;
+      
+      if (!packageId) {
+        this.#logger.warnWithTime('Package pricing element missing data-os-package-id attribute', element);
+        return;
+      }
+      
+      if (!priceType) {
+        this.#logger.warnWithTime('Package pricing element missing data-os-package-price attribute', element);
+        return;
+      }
+      
+      // Store element data for later processing
+      if (!this.#priceElements.has(packageId)) {
+        this.#priceElements.set(packageId, []);
+      }
+      
+      this.#priceElements.get(packageId).push({
+        element,
+        priceType,
+        divideBy: element.dataset.osDivideBy ? parseInt(element.dataset.osDivideBy, 10) : null,
+        format: element.dataset.osFormat || 'default',
+        hideIfZero: element.dataset.osHideIfZero === 'true',
+        showDecimals: element.dataset.osShowDecimals === 'true'
+      });
+      
+      this.#logger.debugWithTime(`Registered pricing element: Package ${packageId}, Type ${priceType}`);
+    });
+    
+    // Initial update of all pricing elements
+    this.refreshPackagePricing();
+  }
+
+  /**
+   * Refresh all package pricing elements with current campaign data
+   */
+  refreshPackagePricing() {
+    this.#logger.debugWithTime('Refreshing package pricing elements');
+    
+    if (!this.#app.campaignData?.packages) {
+      this.#logger.warnWithTime('Campaign data not available for pricing refresh');
+      return;
+    }
+    
+    // Get currency symbol from campaign data or default
+    const currencySymbol = this.#getCurrencySymbol();
+    
+    // Update each package's pricing elements
+    this.#priceElements.forEach((elements, packageId) => {
+      this.#updatePackagePricing(packageId, elements, currencySymbol);
+    });
+  }
+
+  /**
+   * Update pricing elements for a specific package
+   * @param {string} packageId - The package ID (original from HTML)
+   * @param {Array} elements - Array of element objects for this package
+   * @param {string} currencySymbol - Currency symbol to use
+   */
+  #updatePackagePricing(packageId, elements, currencySymbol) {
+    // Translate package ID using CountryCampaignManager if available
+    const translatedPackageId = this.#translatePackageId(packageId);
+    
+    // Get package data from campaign using translated ID
+    const packageData = this.#getPackageData(translatedPackageId);
+    
+    if (!packageData) {
+      this.#logger.warnWithTime(`Package data not found for ID: ${translatedPackageId} (original: ${packageId})`);
+      // Hide elements if package not found
+      elements.forEach(({ element, hideIfZero }) => {
+        if (hideIfZero) {
+          element.style.display = 'none';
+          // Hide container if it has data-container attribute
+          const container = element.closest('[data-container="true"]');
+          if (container) container.style.display = 'none';
+        }
+      });
+      return;
+    }
+    
+    // Calculate pricing values
+    const pricing = this.#calculatePackagePricing(packageData);
+    
+    // Update each element
+    elements.forEach(({ element, priceType, divideBy, format, hideIfZero, showDecimals }) => {
+      let value = this.#getPriceValue(pricing, priceType, divideBy);
+      
+      // Handle hide if zero
+      if (hideIfZero && (value === 0 || value < 0)) {
+        element.style.display = 'none';
+        const container = element.closest('[data-container="true"]');
+        if (container) container.style.display = 'none';
+        return;
+      } else {
+        element.style.display = '';
+        const container = element.closest('[data-container="true"]');
+        if (container) container.style.display = '';
+      }
+      
+      // Format and display value
+      const displayValue = this.#formatPriceValue(value, priceType, format, currencySymbol, showDecimals);
+      element.textContent = displayValue;
+      
+      this.#logger.debugWithTime(`Updated pricing: Package ${packageId} -> ${translatedPackageId}, Type ${priceType}, Value: ${displayValue}`);
+    });
+  }
+
+  /**
+   * Translate package ID using CountryCampaignManager if available
+   * @param {string} originalPackageId - The original package ID from the HTML data attribute
+   * @returns {string} - The translated package ID for the current country
+   */
+  #translatePackageId(originalPackageId) {
+    // Check if CountryCampaignManager is available
+    const countryCampaignManager = this.#app.countryCampaign;
+    
+    if (!countryCampaignManager || !countryCampaignManager.getCurrentCountry()) {
+      this.#logger.debug(`CountryCampaignManager not available or no current country, using original package ID: ${originalPackageId}`);
+      return originalPackageId;
+    }
+
+    try {
+      const currentCountry = countryCampaignManager.getCurrentCountry();
+      const config = window.osConfig?.countryCampaigns?.packageMaps?.[currentCountry];
+      
+      if (!config) {
+        this.#logger.debug(`No package mapping found for country ${currentCountry}, using original package ID: ${originalPackageId}`);
+        return originalPackageId;
+      }
+
+      const translatedId = config[originalPackageId];
+      if (translatedId !== undefined) {
+        this.#logger.debug(`Translated package ID: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
+        return translatedId.toString();
+      } else {
+        this.#logger.debug(`No translation found for package ${originalPackageId} in country ${currentCountry}, using original ID`);
+        return originalPackageId;
+      }
+    } catch (error) {
+      this.#logger.error('Error translating package ID:', error);
+      return originalPackageId;
+    }
+  }
+
+  /**
+   * Get package data from campaign data
+   * @param {string} packageId - The package ID to find
+   * @returns {Object|null} Package data or null if not found
+   */
+  #getPackageData(packageId) {
+    return this.#app.campaignData.packages.find(pkg => 
+      pkg.ref_id?.toString() === packageId?.toString() || 
+      pkg.id?.toString() === packageId?.toString()
+    ) || null;
+  }
+
+  /**
+   * Calculate pricing values for a package
+   * @param {Object} packageData - Package data from campaign
+   * @returns {Object} Calculated pricing values
+   */
+  #calculatePackagePricing(packageData) {
+    const qty = parseInt(packageData.qty || 1, 10);
+    
+    // Total prices
+    const totalSale = parseFloat(packageData.price_total || packageData.price || 0);
+    const totalRegular = parseFloat(packageData.price_retail_total || packageData.price_retail || totalSale);
+    
+    // Unit prices
+    const unitSale = qty > 0 ? totalSale / qty : totalSale;
+    const unitRegular = qty > 0 ? totalRegular / qty : totalRegular;
+    
+    // Savings
+    const totalSavings = totalRegular - totalSale;
+    const unitSavings = unitRegular - unitSale;
+    const totalSavingsPercent = totalRegular > 0 ? ((totalSavings / totalRegular) * 100) : 0;
+    const unitSavingsPercent = unitRegular > 0 ? ((unitSavings / unitRegular) * 100) : 0;
+    
+    return {
+      // Total pricing
+      'total-sale': totalSale,
+      'total-regular': totalRegular,
+      'total-saving-amount': totalSavings,
+      'total-saving-percentage': totalSavingsPercent,
+      
+      // Unit pricing
+      'unit-sale': unitSale,
+      'unit-regular': unitRegular,
+      'unit-saving-amount': unitSavings,
+      'unit-saving-percentage': unitSavingsPercent,
+      
+      // Aliases for consistency with selector pricing
+      'each-sale': unitSale,
+      'each-regular': unitRegular,
+      'saving-amount': unitSavings,
+      'saving-percentage': unitSavingsPercent,
+      
+      // Meta data
+      'quantity': qty
+    };
+  }
+
+  /**
+   * Get price value for a specific type
+   * @param {Object} pricing - Calculated pricing object
+   * @param {string} priceType - Type of price to get
+   * @param {number|null} divideBy - Optional divisor for per-subunit pricing
+   * @returns {number} Price value
+   */
+  #getPriceValue(pricing, priceType, divideBy) {
+    let value = pricing[priceType] || 0;
+    
+    // Apply divideBy if specified
+    if (divideBy && divideBy > 0) {
+      value = value / divideBy;
+    }
+    
+    return value;
+  }
+
+  /**
+   * Format price value for display
+   * @param {number} value - Raw price value
+   * @param {string} priceType - Type of price
+   * @param {string} format - Format style
+   * @param {string} currencySymbol - Currency symbol
+   * @param {boolean} showDecimals - Whether to show decimal places
+   * @returns {string} Formatted price string
+   */
+  #formatPriceValue(value, priceType, format, currencySymbol, showDecimals = false) {
+    // Handle percentage types
+    if (priceType.includes('percentage')) {
+      const percentValue = Math.round(value);
+      if (percentValue <= 0) return '';
+      
+      switch (format) {
+        case 'parenthesis':
+          return `(${percentValue}% OFF)`;
+        case 'simple':
+          return `${percentValue}%`;
+        default:
+          return `${percentValue}% OFF`;
+      }
+    }
+    
+    // Handle monetary values
+    if (value <= 0) return '';
+    
+    // Format the number based on showDecimals setting
+    let formattedValue;
+    if (showDecimals) {
+      // Always show 2 decimal places
+      formattedValue = value.toFixed(2);
+    } else {
+      // Remove trailing zeros (current behavior)
+      formattedValue = parseFloat(value.toFixed(2)).toString();
+    }
+    
+    return `${currencySymbol}${formattedValue}`;
+  }
+
+  /**
+   * Get currency symbol from campaign data or configuration
+   * @returns {string} Currency symbol
+   */
+  #getCurrencySymbol() {
+    // Try to get from campaign data
+    if (this.#app.campaignData?.currency) {
+      const symbols = {
+        'USD': '$',
+        'CAD': 'C$',
+        'GBP': '£',
+        'EUR': '€',
+        'AUD': 'A$'
+      };
+      return symbols[this.#app.campaignData.currency] || '$';
+    }
+    
+    // Try to get from page configuration
+    const configSymbol = document.querySelector('[data-os-cart="summary"]')?.dataset.currencySymbol;
+    if (configSymbol) return configSymbol;
+    
+    // Default
+    return '$';
+  }
+
+  /**
+   * Manually refresh display elements and pricing
    * This can be called after dynamic content is loaded
    */
   refresh() {
-    this.#logger.infoWithTime('Manually refreshing display elements');
+    this.#logger.infoWithTime('Manually refreshing display elements and pricing');
     this.#displayElements.clear();
+    this.#priceElements.clear();
     this.#initDisplayElements();
+    this.#initPriceElements();
   }
 } 

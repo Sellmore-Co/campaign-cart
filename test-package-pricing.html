@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standalone Package Pricing Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #e91e63;
+            padding-bottom: 10px;
+        }
+        
+        /* Hero Section Styles */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            padding: 60px 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        .hero h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        .cta-price {
+            font-size: 1.8em;
+            margin: 20px 0;
+        }
+        .cta-amount {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #FFD700;
+        }
+        .value-prop {
+            font-size: 1.2em;
+            margin-top: 30px;
+        }
+        
+        /* Product Card Styles */
+        .product-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .product-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 25px;
+            background: white;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .product-card:hover {
+            border-color: #e91e63;
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .product-card h4 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .price-main {
+            margin: 20px 0;
+        }
+        .price-current {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #e91e63;
+            display: block;
+        }
+        .price-original {
+            font-size: 1.2em;
+            text-decoration: line-through;
+            color: #999;
+            margin-left: 10px;
+        }
+        .savings-badge {
+            background: #4caf50;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 25px;
+            display: inline-block;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .per-set-price, .per-facial-price {
+            font-size: 1.1em;
+            margin: 10px 0;
+            color: #666;
+        }
+        
+        /* Pricing Table Styles */
+        .pricing-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .pricing-table th {
+            background: #333;
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+        .pricing-table td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .pricing-table tr:hover {
+            background: #f9f9f9;
+        }
+        .pricing-table [data-os-package-price*="sale"] {
+            font-weight: bold;
+            color: #e91e63;
+            font-size: 1.1em;
+        }
+        .pricing-table [data-os-package-price*="saving"] {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        /* Before/After Styles */
+        .before-after {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        .before, .after {
+            text-align: center;
+            padding: 30px;
+            border-radius: 12px;
+        }
+        .before {
+            background: #ffebee;
+            border: 2px solid #f44336;
+        }
+        .after {
+            background: #e8f5e8;
+            border: 2px solid #4caf50;
+        }
+        .big-price {
+            font-size: 3em;
+            font-weight: bold;
+            display: block;
+            margin: 15px 0;
+        }
+        .before .big-price {
+            color: #f44336;
+        }
+        .after .big-price {
+            color: #4caf50;
+        }
+        
+        /* Global Pricing Styles */
+        [data-os-package-price*="sale"] {
+            font-weight: bold;
+            color: #e91e63;
+        }
+        [data-os-package-price*="regular"] {
+            text-decoration: line-through;
+            color: #999;
+        }
+        [data-os-package-price*="saving"] {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        /* Status Display */
+        .status {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #e91e63;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Standalone Package Pricing System Test</h1>
+        
+        <div class="status">
+            <strong>System Status:</strong> <span id="system-status">Initializing...</span><br>
+            <strong>Campaign Data:</strong> <span id="campaign-status">Loading...</span><br>
+            <strong>Currency:</strong> <span id="currency-status">$</span>
+        </div>
+
+        <!-- Hero Section Example -->
+        <section class="hero">
+            <h1>The All-In-One Facial® System</h1>
+            <div class="cta-price">
+                <span class="cta-text">Starting at just</span>
+                <span class="cta-amount" 
+                      data-os-package-price="unit-sale" 
+                      data-os-package-id="1" 
+                      data-os-divide-by="4"><span class="loading"></span></span>
+                <span class="cta-text">per facial</span>
+            </div>
+            
+            <div class="value-prop" data-container="true">
+                <span>Save up to </span>
+                <span data-os-package-price="total-saving-percentage" 
+                      data-os-package-id="6" 
+                      data-os-hide-if-zero="true"><span class="loading"></span></span>
+                <span> with our 3-month package</span>
+            </div>
+        </section>
+
+        <!-- Product Cards Example -->
+        <div class="test-section">
+            <h3>Product Cards with Comprehensive Pricing</h3>
+            
+            <div class="product-cards">
+                <!-- 1-Month Package -->
+                <div class="product-card">
+                    <h4>1-Month Supply</h4>
+                    <p>The All-In-One Facial® Set<br>(4 Facials + 1 Brush)</p>
+                    
+                    <div class="price-main">
+                        <span class="price-current" 
+                              data-os-package-price="total-sale" 
+                              data-os-package-id="1"><span class="loading"></span></span>
+                    </div>
+                    
+                    <div class="per-facial-price">
+                        <span>Just </span>
+                        <span data-os-package-price="unit-sale" 
+                              data-os-package-id="1" 
+                              data-os-divide-by="4"><span class="loading"></span></span>
+                        <span> per facial</span>
+                    </div>
+                </div>
+
+                <!-- 2-Month Package -->
+                <div class="product-card">
+                    <h4>2-Month Supply</h4>
+                    <p>The All-In-One Facial® Set<br>(8 Facials + 2 Brushes)</p>
+                    
+                    <div class="price-main">
+                        <span class="price-current" 
+                              data-os-package-price="total-sale" 
+                              data-os-package-id="5"><span class="loading"></span></span>
+                        <span class="price-original" 
+                              data-os-package-price="total-regular" 
+                              data-os-package-id="5"><span class="loading"></span></span>
+                    </div>
+                    
+                    <div class="savings-badge" data-container="true">
+                        <span>Save </span>
+                        <span data-os-package-price="total-saving-percentage" 
+                              data-os-package-id="5" 
+                              data-os-hide-if-zero="true"><span class="loading"></span></span>
+                    </div>
+                    
+                    <div class="per-set-price">
+                        <span>$</span><span data-os-package-price="unit-sale" 
+                              data-os-package-id="5"><span class="loading"></span></span>
+                        <span> per month</span>
+                    </div>
+                    
+                    <div class="per-facial-price">
+                        <span>Only </span>
+                        <span data-os-package-price="unit-sale" 
+                              data-os-package-id="5" 
+                              data-os-divide-by="4"><span class="loading"></span></span>
+                        <span> per facial</span>
+                    </div>
+                </div>
+
+                <!-- 3-Month Package -->
+                <div class="product-card">
+                    <h4>3-Month Supply (Best Value)</h4>
+                    <p>The All-In-One Facial® Set<br>(12 Facials + 3 Brushes)</p>
+                    
+                    <div class="price-main">
+                        <span class="price-current" 
+                              data-os-package-price="total-sale" 
+                              data-os-package-id="6"><span class="loading"></span></span>
+                        <span class="price-original" 
+                              data-os-package-price="total-regular" 
+                              data-os-package-id="6"><span class="loading"></span></span>
+                    </div>
+                    
+                    <div class="savings-badge" data-container="true">
+                        <span>Save </span>
+                        <span data-os-package-price="total-saving-percentage" 
+                              data-os-package-id="6" 
+                              data-os-hide-if-zero="true"><span class="loading"></span></span>
+                    </div>
+                    
+                    <div class="per-set-price">
+                        <span>$</span><span data-os-package-price="unit-sale" 
+                              data-os-package-id="6"><span class="loading"></span></span>
+                        <span> per month</span>
+                    </div>
+                    
+                    <div class="per-facial-price">
+                        <span>Just </span>
+                        <span data-os-package-price="unit-sale" 
+                              data-os-package-id="6" 
+                              data-os-divide-by="4"><span class="loading"></span></span>
+                        <span> per facial (BEST VALUE)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison Table Example -->
+        <div class="test-section">
+            <h3>Pricing Comparison Table</h3>
+            
+            <table class="pricing-table">
+                <thead>
+                    <tr>
+                        <th>Package</th>
+                        <th>Total Price</th>
+                        <th>Per Monthly Set</th>
+                        <th>Per Facial</th>
+                        <th>Savings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>1-Month Supply</strong></td>
+                        <td data-os-package-price="total-sale" data-os-package-id="1"><span class="loading"></span></td>
+                        <td data-os-package-price="unit-sale" data-os-package-id="1"><span class="loading"></span></td>
+                        <td data-os-package-price="unit-sale" data-os-package-id="1" data-os-divide-by="4"><span class="loading"></span></td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td><strong>2-Month Supply</strong></td>
+                        <td data-os-package-price="total-sale" data-os-package-id="5"><span class="loading"></span></td>
+                        <td data-os-package-price="unit-sale" data-os-package-id="5"><span class="loading"></span></td>
+                        <td data-os-package-price="unit-sale" data-os-package-id="5" data-os-divide-by="4"><span class="loading"></span></td>
+                        <td data-os-package-price="total-saving-percentage" data-os-package-id="5"><span class="loading"></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>3-Month Supply</strong></td>
+                        <td data-os-package-price="total-sale" data-os-package-id="6"><span class="loading"></span></td>
+                        <td data-os-package-price="unit-sale" data-os-package-id="6"><span class="loading"></span></td>
+                        <td data-os-package-price="unit-sale" data-os-package-id="6" data-os-divide-by="4"><span class="loading"></span></td>
+                        <td data-os-package-price="total-saving-percentage" data-os-package-id="6"><span class="loading"></span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Before/After Example -->
+        <div class="test-section">
+            <h3>Before/After Price Comparison</h3>
+            
+            <div class="before-after">
+                <div class="before">
+                    <h4>🚫 Regular Price</h4>
+                    <span class="big-price" 
+                          data-os-package-price="total-regular" 
+                          data-os-package-id="6"><span class="loading"></span></span>
+                    <p>What you'd normally pay</p>
+                </div>
+                
+                <div class="after">
+                    <h4>✅ Your Price Today</h4>
+                    <span class="big-price" 
+                          data-os-package-price="total-sale" 
+                          data-os-package-id="6"><span class="loading"></span></span>
+                    <p>You save 
+                        <span data-os-package-price="total-saving-amount" 
+                              data-os-package-id="6"><span class="loading"></span></span>
+                        (<span data-os-package-price="total-saving-percentage" 
+                              data-os-package-id="6" 
+                              data-os-format="simple"><span class="loading"></span></span>)
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Format Testing -->
+        <div class="test-section">
+            <h3>Format Testing</h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <div style="background: white; padding: 15px; border-radius: 8px;">
+                    <h5>Default Format</h5>
+                    <div data-os-package-price="saving-percentage" 
+                         data-os-package-id="6"><span class="loading"></span></div>
+                </div>
+                
+                <div style="background: white; padding: 15px; border-radius: 8px;">
+                    <h5>Parenthesis Format</h5>
+                    <div data-os-package-price="saving-percentage" 
+                         data-os-package-id="6" 
+                         data-os-format="parenthesis"><span class="loading"></span></div>
+                </div>
+                
+                <div style="background: white; padding: 15px; border-radius: 8px;">
+                    <h5>Simple Format</h5>
+                    <div data-os-package-price="saving-percentage" 
+                         data-os-package-id="6" 
+                         data-os-format="simple"><span class="loading"></span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hide if Zero Testing -->
+        <div class="test-section">
+            <h3>Conditional Display Testing</h3>
+            
+            <div style="background: white; padding: 20px; border-radius: 8px;">
+                <p><strong>Package 1 Savings (should hide if zero):</strong></p>
+                <div data-container="true" style="padding: 10px; background: #f0f0f0; border-radius: 4px;">
+                    <span>You save: </span>
+                    <span data-os-package-price="saving-amount" 
+                          data-os-package-id="1" 
+                          data-os-hide-if-zero="true"><span class="loading"></span></span>
+                </div>
+                
+                <p style="margin-top: 20px;"><strong>Package 6 Savings (should show):</strong></p>
+                <div data-container="true" style="padding: 10px; background: #f0f0f0; border-radius: 4px;">
+                    <span>You save: </span>
+                    <span data-os-package-price="saving-amount" 
+                          data-os-package-id="6" 
+                          data-os-hide-if-zero="true"><span class="loading"></span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Scripts -->
+    <script>
+        // Status tracking
+        function updateStatus() {
+            // Update system status
+            if (window.osClient) {
+                document.getElementById('system-status').textContent = '✅ Ready';
+                
+                // Update campaign data status
+                if (window.osClient.campaignData) {
+                    const packageCount = window.osClient.campaignData.packages?.length || 0;
+                    document.getElementById('campaign-status').textContent = `✅ Loaded (${packageCount} packages)`;
+                    
+                    // Update currency
+                    const currency = window.osClient.campaignData.currency || 'USD';
+                    document.getElementById('currency-status').textContent = currency;
+                } else {
+                    document.getElementById('campaign-status').textContent = '⏳ Loading...';
+                }
+            } else {
+                document.getElementById('system-status').textContent = '⏳ Initializing...';
+            }
+        }
+
+        // Initial status check
+        updateStatus();
+        
+        // Check every second until ready
+        const statusInterval = setInterval(() => {
+            updateStatus();
+            if (window.osClient?.campaignData) {
+                clearInterval(statusInterval);
+            }
+        }, 1000);
+
+        // Wait for 29next to be ready
+        window.on29NextReady = window.on29NextReady || [];
+        window.on29NextReady.push(function(client) {
+            window.osClient = client;
+            console.log('29next client ready for pricing test');
+            
+            // Remove loading animations once pricing is loaded
+            setTimeout(() => {
+                document.querySelectorAll('.loading').forEach(loader => {
+                    loader.remove();
+                });
+            }, 2000);
+            
+            // Log pricing data for debugging
+            if (client.campaignData?.packages) {
+                console.log('Available packages for pricing:', client.campaignData.packages);
+            }
+            
+            updateStatus();
+        });
+
+        console.log('Package pricing test page loaded');
+    </script>
+
+    <!-- Load your 29next SDK here -->
+    <!-- <script src="path/to/your/29next.js"></script> -->
+</body>
+</html> 

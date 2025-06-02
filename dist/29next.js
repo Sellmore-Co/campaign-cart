@@ -8636,8 +8636,9 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/DisplayManager.js
-  var _app15, _logger20, _displayElements, _setupCountryChangeListener5, setupCountryChangeListener_fn5, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn;
+  var _app15, _logger20, _displayElements, _priceElements, _setupCountryChangeListener5, setupCountryChangeListener_fn5, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn, _initPriceElements, initPriceElements_fn, _updatePackagePricing, updatePackagePricing_fn, _translatePackageId2, translatePackageId_fn2, _getPackageData, getPackageData_fn, _calculatePackagePricing, calculatePackagePricing_fn, _getPriceValue, getPriceValue_fn, _formatPriceValue, formatPriceValue_fn, _getCurrencySymbol2, getCurrencySymbol_fn2;
   var DisplayManager = class {
+    // For standalone package pricing
     constructor(app) {
       /**
        * Setup listener for country changes
@@ -8661,12 +8662,66 @@ var TwentyNineNext = (() => {
        * @param {Object} detail - Event details
        */
       __privateAdd(this, _triggerDisplayEvent);
+      /**
+       * Initialize all package pricing elements on the page
+       */
+      __privateAdd(this, _initPriceElements);
+      /**
+       * Update pricing elements for a specific package
+       * @param {string} packageId - The package ID (original from HTML)
+       * @param {Array} elements - Array of element objects for this package
+       * @param {string} currencySymbol - Currency symbol to use
+       */
+      __privateAdd(this, _updatePackagePricing);
+      /**
+       * Translate package ID using CountryCampaignManager if available
+       * @param {string} originalPackageId - The original package ID from the HTML data attribute
+       * @returns {string} - The translated package ID for the current country
+       */
+      __privateAdd(this, _translatePackageId2);
+      /**
+       * Get package data from campaign data
+       * @param {string} packageId - The package ID to find
+       * @returns {Object|null} Package data or null if not found
+       */
+      __privateAdd(this, _getPackageData);
+      /**
+       * Calculate pricing values for a package
+       * @param {Object} packageData - Package data from campaign
+       * @returns {Object} Calculated pricing values
+       */
+      __privateAdd(this, _calculatePackagePricing);
+      /**
+       * Get price value for a specific type
+       * @param {Object} pricing - Calculated pricing object
+       * @param {string} priceType - Type of price to get
+       * @param {number|null} divideBy - Optional divisor for per-subunit pricing
+       * @returns {number} Price value
+       */
+      __privateAdd(this, _getPriceValue);
+      /**
+       * Format price value for display
+       * @param {number} value - Raw price value
+       * @param {string} priceType - Type of price
+       * @param {string} format - Format style
+       * @param {string} currencySymbol - Currency symbol
+       * @param {boolean} showDecimals - Whether to show decimal places
+       * @returns {string} Formatted price string
+       */
+      __privateAdd(this, _formatPriceValue);
+      /**
+       * Get currency symbol from campaign data or configuration
+       * @returns {string} Currency symbol
+       */
+      __privateAdd(this, _getCurrencySymbol2);
       __privateAdd(this, _app15, void 0);
       __privateAdd(this, _logger20, void 0);
       __privateAdd(this, _displayElements, /* @__PURE__ */ new Map());
+      __privateAdd(this, _priceElements, /* @__PURE__ */ new Map());
       __privateSet(this, _app15, app);
       __privateSet(this, _logger20, app.logger.createModuleLogger("DISPLAY"));
       __privateMethod(this, _initDisplayElements, initDisplayElements_fn).call(this);
+      __privateMethod(this, _initPriceElements, initPriceElements_fn).call(this);
       __privateGet(this, _app15).state.subscribe("cart", () => this.refreshDisplayElements());
       __privateMethod(this, _setupCountryChangeListener5, setupCountryChangeListener_fn5).call(this);
       __privateGet(this, _logger20).infoWithTime("DisplayManager initialized");
@@ -8683,24 +8738,42 @@ var TwentyNineNext = (() => {
       });
     }
     /**
-     * Manually refresh display elements
+     * Refresh all package pricing elements with current campaign data
+     */
+    refreshPackagePricing() {
+      __privateGet(this, _logger20).debugWithTime("Refreshing package pricing elements");
+      if (!__privateGet(this, _app15).campaignData?.packages) {
+        __privateGet(this, _logger20).warnWithTime("Campaign data not available for pricing refresh");
+        return;
+      }
+      const currencySymbol = __privateMethod(this, _getCurrencySymbol2, getCurrencySymbol_fn2).call(this);
+      __privateGet(this, _priceElements).forEach((elements, packageId) => {
+        __privateMethod(this, _updatePackagePricing, updatePackagePricing_fn).call(this, packageId, elements, currencySymbol);
+      });
+    }
+    /**
+     * Manually refresh display elements and pricing
      * This can be called after dynamic content is loaded
      */
     refresh() {
-      __privateGet(this, _logger20).infoWithTime("Manually refreshing display elements");
+      __privateGet(this, _logger20).infoWithTime("Manually refreshing display elements and pricing");
       __privateGet(this, _displayElements).clear();
+      __privateGet(this, _priceElements).clear();
       __privateMethod(this, _initDisplayElements, initDisplayElements_fn).call(this);
+      __privateMethod(this, _initPriceElements, initPriceElements_fn).call(this);
     }
   };
   _app15 = new WeakMap();
   _logger20 = new WeakMap();
   _displayElements = new WeakMap();
+  _priceElements = new WeakMap();
   _setupCountryChangeListener5 = new WeakSet();
   setupCountryChangeListener_fn5 = function() {
     document.addEventListener("os:country.changed", (event) => {
       const { country, campaignData } = event.detail;
-      __privateGet(this, _logger20).infoWithTime(`Country changed to ${country}, refreshing display elements`);
+      __privateGet(this, _logger20).infoWithTime(`Country changed to ${country}, refreshing display elements and pricing`);
       this.refreshDisplayElements();
+      this.refreshPackagePricing();
     });
   };
   _initDisplayElements = new WeakSet();
@@ -8762,9 +8835,194 @@ var TwentyNineNext = (() => {
     document.dispatchEvent(event);
     __privateGet(this, _logger20).debugWithTime(`Display event triggered: ${eventName}`);
   };
+  _initPriceElements = new WeakSet();
+  initPriceElements_fn = function() {
+    __privateGet(this, _logger20).infoWithTime("Initializing package pricing elements");
+    const priceElements = document.querySelectorAll("[data-os-package-price]");
+    if (priceElements.length === 0) {
+      __privateGet(this, _logger20).debugWithTime("No package pricing elements found on page");
+      return;
+    }
+    __privateGet(this, _logger20).debugWithTime(`Found ${priceElements.length} package pricing elements`);
+    priceElements.forEach((element) => {
+      const packageId = element.dataset.osPackageId;
+      const priceType = element.dataset.osPackagePrice;
+      if (!packageId) {
+        __privateGet(this, _logger20).warnWithTime("Package pricing element missing data-os-package-id attribute", element);
+        return;
+      }
+      if (!priceType) {
+        __privateGet(this, _logger20).warnWithTime("Package pricing element missing data-os-package-price attribute", element);
+        return;
+      }
+      if (!__privateGet(this, _priceElements).has(packageId)) {
+        __privateGet(this, _priceElements).set(packageId, []);
+      }
+      __privateGet(this, _priceElements).get(packageId).push({
+        element,
+        priceType,
+        divideBy: element.dataset.osDivideBy ? parseInt(element.dataset.osDivideBy, 10) : null,
+        format: element.dataset.osFormat || "default",
+        hideIfZero: element.dataset.osHideIfZero === "true",
+        showDecimals: element.dataset.osShowDecimals === "true"
+      });
+      __privateGet(this, _logger20).debugWithTime(`Registered pricing element: Package ${packageId}, Type ${priceType}`);
+    });
+    this.refreshPackagePricing();
+  };
+  _updatePackagePricing = new WeakSet();
+  updatePackagePricing_fn = function(packageId, elements, currencySymbol) {
+    const translatedPackageId = __privateMethod(this, _translatePackageId2, translatePackageId_fn2).call(this, packageId);
+    const packageData = __privateMethod(this, _getPackageData, getPackageData_fn).call(this, translatedPackageId);
+    if (!packageData) {
+      __privateGet(this, _logger20).warnWithTime(`Package data not found for ID: ${translatedPackageId} (original: ${packageId})`);
+      elements.forEach(({ element, hideIfZero }) => {
+        if (hideIfZero) {
+          element.style.display = "none";
+          const container = element.closest('[data-container="true"]');
+          if (container)
+            container.style.display = "none";
+        }
+      });
+      return;
+    }
+    const pricing = __privateMethod(this, _calculatePackagePricing, calculatePackagePricing_fn).call(this, packageData);
+    elements.forEach(({ element, priceType, divideBy, format, hideIfZero, showDecimals }) => {
+      let value = __privateMethod(this, _getPriceValue, getPriceValue_fn).call(this, pricing, priceType, divideBy);
+      if (hideIfZero && (value === 0 || value < 0)) {
+        element.style.display = "none";
+        const container = element.closest('[data-container="true"]');
+        if (container)
+          container.style.display = "none";
+        return;
+      } else {
+        element.style.display = "";
+        const container = element.closest('[data-container="true"]');
+        if (container)
+          container.style.display = "";
+      }
+      const displayValue = __privateMethod(this, _formatPriceValue, formatPriceValue_fn).call(this, value, priceType, format, currencySymbol, showDecimals);
+      element.textContent = displayValue;
+      __privateGet(this, _logger20).debugWithTime(`Updated pricing: Package ${packageId} -> ${translatedPackageId}, Type ${priceType}, Value: ${displayValue}`);
+    });
+  };
+  _translatePackageId2 = new WeakSet();
+  translatePackageId_fn2 = function(originalPackageId) {
+    const countryCampaignManager = __privateGet(this, _app15).countryCampaign;
+    if (!countryCampaignManager || !countryCampaignManager.getCurrentCountry()) {
+      __privateGet(this, _logger20).debug(`CountryCampaignManager not available or no current country, using original package ID: ${originalPackageId}`);
+      return originalPackageId;
+    }
+    try {
+      const currentCountry = countryCampaignManager.getCurrentCountry();
+      const config = window.osConfig?.countryCampaigns?.packageMaps?.[currentCountry];
+      if (!config) {
+        __privateGet(this, _logger20).debug(`No package mapping found for country ${currentCountry}, using original package ID: ${originalPackageId}`);
+        return originalPackageId;
+      }
+      const translatedId = config[originalPackageId];
+      if (translatedId !== void 0) {
+        __privateGet(this, _logger20).debug(`Translated package ID: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
+        return translatedId.toString();
+      } else {
+        __privateGet(this, _logger20).debug(`No translation found for package ${originalPackageId} in country ${currentCountry}, using original ID`);
+        return originalPackageId;
+      }
+    } catch (error) {
+      __privateGet(this, _logger20).error("Error translating package ID:", error);
+      return originalPackageId;
+    }
+  };
+  _getPackageData = new WeakSet();
+  getPackageData_fn = function(packageId) {
+    return __privateGet(this, _app15).campaignData.packages.find(
+      (pkg) => pkg.ref_id?.toString() === packageId?.toString() || pkg.id?.toString() === packageId?.toString()
+    ) || null;
+  };
+  _calculatePackagePricing = new WeakSet();
+  calculatePackagePricing_fn = function(packageData) {
+    const qty = parseInt(packageData.qty || 1, 10);
+    const totalSale = parseFloat(packageData.price_total || packageData.price || 0);
+    const totalRegular = parseFloat(packageData.price_retail_total || packageData.price_retail || totalSale);
+    const unitSale = qty > 0 ? totalSale / qty : totalSale;
+    const unitRegular = qty > 0 ? totalRegular / qty : totalRegular;
+    const totalSavings = totalRegular - totalSale;
+    const unitSavings = unitRegular - unitSale;
+    const totalSavingsPercent = totalRegular > 0 ? totalSavings / totalRegular * 100 : 0;
+    const unitSavingsPercent = unitRegular > 0 ? unitSavings / unitRegular * 100 : 0;
+    return {
+      // Total pricing
+      "total-sale": totalSale,
+      "total-regular": totalRegular,
+      "total-saving-amount": totalSavings,
+      "total-saving-percentage": totalSavingsPercent,
+      // Unit pricing
+      "unit-sale": unitSale,
+      "unit-regular": unitRegular,
+      "unit-saving-amount": unitSavings,
+      "unit-saving-percentage": unitSavingsPercent,
+      // Aliases for consistency with selector pricing
+      "each-sale": unitSale,
+      "each-regular": unitRegular,
+      "saving-amount": unitSavings,
+      "saving-percentage": unitSavingsPercent,
+      // Meta data
+      "quantity": qty
+    };
+  };
+  _getPriceValue = new WeakSet();
+  getPriceValue_fn = function(pricing, priceType, divideBy) {
+    let value = pricing[priceType] || 0;
+    if (divideBy && divideBy > 0) {
+      value = value / divideBy;
+    }
+    return value;
+  };
+  _formatPriceValue = new WeakSet();
+  formatPriceValue_fn = function(value, priceType, format, currencySymbol, showDecimals = false) {
+    if (priceType.includes("percentage")) {
+      const percentValue = Math.round(value);
+      if (percentValue <= 0)
+        return "";
+      switch (format) {
+        case "parenthesis":
+          return `(${percentValue}% OFF)`;
+        case "simple":
+          return `${percentValue}%`;
+        default:
+          return `${percentValue}% OFF`;
+      }
+    }
+    if (value <= 0)
+      return "";
+    let formattedValue;
+    if (showDecimals) {
+      formattedValue = value.toFixed(2);
+    } else {
+      formattedValue = parseFloat(value.toFixed(2)).toString();
+    }
+    return `${currencySymbol}${formattedValue}`;
+  };
+  _getCurrencySymbol2 = new WeakSet();
+  getCurrencySymbol_fn2 = function() {
+    if (__privateGet(this, _app15).campaignData?.currency) {
+      const symbols = {
+        "USD": "$",
+        "CAD": "C$",
+        "GBP": "£",
+        "EUR": "€",
+        "AUD": "A$"
+      };
+      return symbols[__privateGet(this, _app15).campaignData.currency] || "$";
+    }
+    const configSymbol = document.querySelector('[data-os-cart="summary"]')?.dataset.currencySymbol;
+    if (configSymbol)
+      return configSymbol;
+    return "$";
+  };
 
   // src/managers/CartDisplayManager.js
-  var _app16, _logger21, _elements3, _config2, _lineItemTemplate, _setupCountryChangeListener6, setupCountryChangeListener_fn6, _getCurrencySymbol2, getCurrencySymbol_fn2, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice2, formatPrice_fn2, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
+  var _app16, _logger21, _elements3, _config2, _lineItemTemplate, _setupCountryChangeListener6, setupCountryChangeListener_fn6, _getCurrencySymbol3, getCurrencySymbol_fn3, _initCartDisplay, initCartDisplay_fn, _initSummaryToggle, initSummaryToggle_fn, _toggleSummary, toggleSummary_fn, _updateLineItems, updateLineItems_fn, _createLineItemElement, createLineItemElement_fn, _updateSummary, updateSummary_fn, _updateShipping, updateShipping_fn, _updateSavings, updateSavings_fn, _updateGrandTotal, updateGrandTotal_fn, _formatPrice2, formatPrice_fn2, _debounce, debounce_fn, _updateCompareTotals, updateCompareTotals_fn, _findAllSummaryElements, findAllSummaryElements_fn;
   var CartDisplayManager = class {
     constructor(app) {
       /**
@@ -8774,7 +9032,7 @@ var TwentyNineNext = (() => {
       /**
        * Get currency symbol for a currency code
        */
-      __privateAdd(this, _getCurrencySymbol2);
+      __privateAdd(this, _getCurrencySymbol3);
       /**
        * Initialize the cart display elements
        */
@@ -8933,13 +9191,13 @@ var TwentyNineNext = (() => {
       const { country, campaignData } = event.detail;
       __privateGet(this, _logger21).infoWithTime(`Country changed to ${country}, updating cart display`);
       if (campaignData?.currency) {
-        __privateGet(this, _config2).currencySymbol = __privateMethod(this, _getCurrencySymbol2, getCurrencySymbol_fn2).call(this, campaignData.currency);
+        __privateGet(this, _config2).currencySymbol = __privateMethod(this, _getCurrencySymbol3, getCurrencySymbol_fn3).call(this, campaignData.currency);
       }
       this.updateCartDisplay();
     });
   };
-  _getCurrencySymbol2 = new WeakSet();
-  getCurrencySymbol_fn2 = function(currencyCode) {
+  _getCurrencySymbol3 = new WeakSet();
+  getCurrencySymbol_fn3 = function(currencyCode) {
     const symbols = {
       "USD": "$",
       "CAD": "C$",
