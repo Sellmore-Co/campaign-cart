@@ -21,6 +21,7 @@ import { EventManager } from '../managers/EventManager.js';
 import { TooltipManager } from '../managers/TooltipManager.js';
 import { UpsellManager } from '../managers/UpsellManager.js';
 import { DiscountManager } from '../managers/DiscountManager.js';
+import { CurrencyManager } from '../managers/CurrencyManager.js';
 import { initPBAccordion } from '../utils/PBAccordion.js';
 import { initUtmTransfer } from '../utils/UtmTransfer.js';
 
@@ -48,6 +49,7 @@ export class TwentyNineNext {
     this.state = new StateManager(this);
     this.attribution = new AttributionManager(this);
     this.discount = new DiscountManager(this);
+    this.currency = new CurrencyManager(this);
     this.cart = new CartManager(this);
     this.campaign = new CampaignHelper(this);
     this.upsell = new UpsellManager(this);

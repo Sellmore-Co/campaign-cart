@@ -68,7 +68,42 @@ export class StateManager {
         }
       },
       user: { email: null, firstName: null, lastName: null, phone: null },
-      ui: { loading: false, currentStep: 'cart', errors: {} }
+      ui: { loading: false, currentStep: 'cart', errors: {} },
+      location: {
+        countries: [],
+        statesByCountry: {},
+        configsByCountry: {},
+        detectedCountryCode: null,
+        selectedCountryCode: null,
+        allowedCountryCodes: [],
+        initialSelectedCountryCode: null,
+      },
+      currency: {
+        detected: {
+          code: 'USD',
+          symbol: '$',
+          name: 'US Dollar',
+          country: null
+        },
+        selected: {
+          code: 'USD',
+          symbol: '$',
+          name: 'US Dollar',
+          source: 'default'
+        },
+        rates: {
+          base: 'USD',
+          rates: {},
+          lastUpdated: null,
+          isFallback: false
+        },
+        formatting: {
+          decimal: '.',
+          thousands: ',',
+          precision: 2,
+          format: '%s%v'
+        }
+      }
     };
   }
 
@@ -547,5 +582,205 @@ export class StateManager {
     } finally {
       this.setState('ui.loading', false);
     }
+  }
+
+  /**
+   * Set initial location data fetched from the location worker
+   * @param {Object} data - The data object from the /location endpoint
+   */
+  setInitialLocationData(data) {
+    if (!data || typeof data !== 'object') {
+      this.#logger.error('setInitialLocationData received invalid data', data);
+      return;
+    }
+
+    this.#logger.info('Setting initial location data into state');
+    this.#logger.debug('Initial location data details:', data);
+
+    const newState = { ...this.#state };
+
+    newState.location = {
+      countries: data.countries || [],
+      statesByCountry: {},
+      configsByCountry: {},
+      detectedCountryCode: data.detectedCountryCode || null,
+      selectedCountryCode: data.detectedCountryCode || null,
+      allowedCountryCodes: [],
+      initialSelectedCountryCode: data.detectedCountryCode || null,
+    };
+
+    // If detected country data is present, store its states and config
+    if (data.detectedCountryCode) {
+      if (data.detectedStates) {
+        newState.location.statesByCountry[data.detectedCountryCode] = data.detectedStates;
+        this.#logger.debug(`Stored initial states for detected country: ${data.detectedCountryCode}`);
+      }
+      if (data.detectedCountryConfig) {
+        newState.location.configsByCountry[data.detectedCountryCode] = data.detectedCountryConfig;
+        this.#logger.debug(`Stored initial config for detected country: ${data.detectedCountryCode}`);
+      }
+    }
+
+    this.#state = newState;
+    this.#notifySubscribers('location', this.#state.location);
+    this.#logger.info('Initial location data stored in state');
+  }
+
+  /**
+   * Set states and config for a specific country, fetched dynamically
+   * @param {string} countryCode - The ISO country code
+   * @param {Object} data - The data object from the /countries/{code}/states endpoint
+   */
+  setCountryStatesAndConfig(countryCode, data) {
+    if (!countryCode || !data || typeof data !== 'object') {
+      this.#logger.error('setCountryStatesAndConfig received invalid parameters', { countryCode, data });
+      return;
+    }
+
+    this.#logger.info(`Storing states and config for country: ${countryCode}`);
+    this.#logger.debug(`States/Config data for ${countryCode}:`, data);
+
+    const newState = { ...this.#state };
+
+    // Ensure nested objects exist
+    newState.location = newState.location || {};
+    newState.location.statesByCountry = newState.location.statesByCountry || {};
+    newState.location.configsByCountry = newState.location.configsByCountry || {};
+
+    newState.location.statesByCountry[countryCode] = data.states || [];
+    newState.location.configsByCountry[countryCode] = data.countryConfig || {};
+
+    this.#state = newState;
+    this.#notifySubscribers('location', this.#state.location);
+    this.#logger.info(`Stored states and config for ${countryCode} successfully`);
+  }
+
+  /**
+   * Set currency data for detected or selected currency
+   * @param {Object} currencyData - Currency information
+   * @param {string} type - 'detected' or 'selected'
+   */
+  setCurrencyData(currencyData, type = 'selected') {
+    if (!currencyData || typeof currencyData !== 'object') {
+      this.#logger.error('setCurrencyData received invalid data', currencyData);
+      return;
+    }
+
+    this.#logger.info(`Setting ${type} currency data:`, currencyData);
+
+    const newState = { ...this.#state };
+    newState.currency = newState.currency || {};
+    newState.currency[type] = {
+      code: currencyData.currency || currencyData.code,
+      symbol: currencyData.symbol,
+      name: currencyData.name,
+      country: currencyData.country,
+      source: currencyData.source || type
+    };
+
+    // Update formatting if provided
+    if (currencyData.formatting) {
+      newState.currency.formatting = { ...newState.currency.formatting, ...currencyData.formatting };
+    }
+
+    this.#state = newState;
+    
+    // Update cart currency if this is the selected currency
+    if (type === 'selected') {
+      this.#updateCartCurrency(newState.currency.selected);
+    }
+
+    this.#notifySubscribers('currency', this.#state.currency);
+    this.#logger.info(`${type} currency data updated successfully`);
+  }
+
+  /**
+   * Set exchange rates data
+   * @param {Object} ratesData - Exchange rates information
+   */
+  setCurrencyRates(ratesData) {
+    if (!ratesData || typeof ratesData !== 'object') {
+      this.#logger.error('setCurrencyRates received invalid data', ratesData);
+      return;
+    }
+
+    this.#logger.info('Setting currency exchange rates:', ratesData);
+
+    const newState = { ...this.#state };
+    newState.currency = newState.currency || {};
+    newState.currency.rates = {
+      base: ratesData.base,
+      rates: ratesData.rates || {},
+      lastUpdated: ratesData.lastUpdated || new Date().toISOString(),
+      isFallback: ratesData.isFallback || false
+    };
+
+    this.#state = newState;
+    this.#notifySubscribers('currency', this.#state.currency);
+    this.#logger.info('Exchange rates updated successfully');
+  }
+
+  /**
+   * Update cart currency information when currency changes
+   * @param {Object} selectedCurrency - The selected currency object
+   */
+  #updateCartCurrency(selectedCurrency) {
+    if (!selectedCurrency) return;
+
+    const newState = { ...this.#state };
+    newState.cart.totals.currency = selectedCurrency.code;
+    newState.cart.totals.currency_symbol = selectedCurrency.symbol;
+
+    this.#state = newState;
+    this.#notifySubscribers('cart', this.#state.cart);
+    this.#logger.debug(`Cart currency updated to ${selectedCurrency.code}`);
+  }
+
+  /**
+   * Get currency formatting rules
+   * @returns {Object} Currency formatting configuration
+   */
+  getCurrencyFormatting() {
+    return this.#state.currency?.formatting || {
+      decimal: '.',
+      thousands: ',',
+      precision: 2,
+      format: '%s%v'
+    };
+  }
+
+  /**
+   * Get current selected currency
+   * @returns {Object} Selected currency information
+   */
+  getSelectedCurrency() {
+    return this.#state.currency?.selected || {
+      code: 'USD',
+      symbol: '$',
+      name: 'US Dollar',
+      source: 'default'
+    };
+  }
+
+  /**
+   * Get current exchange rates
+   * @returns {Object} Exchange rates information
+   */
+  getExchangeRates() {
+    return this.#state.currency?.rates || {
+      base: 'USD',
+      rates: {},
+      lastUpdated: null,
+      isFallback: false
+    };
+  }
+
+  /**
+   * Check if currency data is available
+   * @returns {boolean} Whether currency system is ready
+   */
+  isCurrencyReady() {
+    const currency = this.#state.currency;
+    return !!(currency?.selected?.code && currency?.formatting);
   }
 }

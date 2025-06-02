@@ -10,6 +10,8 @@ export class ApiClient {
   #apiKey;
   #campaignId;
   #baseUrl = 'https://campaigns.apps.29next.com/api/v1';
+  #locationWorkerUrl = 'https://cdn-countries.muddy-wind-c7ca.workers.dev';
+  #currencyWorkerUrl = 'https://cdn-currency.muddy-wind-c7ca.workers.dev';
   #logger;
 
   constructor(app) {
@@ -453,5 +455,214 @@ export class ApiClient {
     // If somehow no order_status_url exists (should not happen), log a warning
     this.#logger.warn('No order_status_url found in API response - using fallback URL');
     return `${window.location.origin}/checkout/confirmation/?ref_id=${refId || ''}`;
+  }
+
+  /**
+   * Fetch initial location data from the Cloudflare Worker
+   * Includes all countries, detected user country, states for detected country, and config for detected country.
+   * @returns {Promise<Object>} Location data object
+   */
+  async getLocationData() {
+    const url = `${this.#locationWorkerUrl}/location`;
+    this.#logger.info(`Fetching initial location data from worker: ${url}`);
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        headers: { 'Accept': 'application/json' }
+      });
+      this.#logger.debug(`Received response from ${url} with status ${response.status}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.#logger.error(`Worker API error from ${url}: ${response.status}`, errorText);
+        throw new Error(`Worker API error: ${response.status} ${errorText}`);
+      }
+      const data = await response.json();
+      this.#logger.info('Successfully fetched initial location data');
+      this.#logger.debug('Location data received:', data);
+      return data;
+    } catch (error) {
+      this.#logger.error(`Worker API request failed: ${url}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch states and configuration for a specific country from the Cloudflare Worker
+   * @param {string} countryCode - The ISO 3166-1 alpha-2 country code
+   * @returns {Promise<Object>} Object containing states and countryConfig
+   */
+  async getCountryStatesAndConfig(countryCode) {
+    if (!countryCode) {
+      this.#logger.warn('getCountryStatesAndConfig called without countryCode');
+      return { states: [], countryConfig: {} }; // Return empty structure
+    }
+    const url = `${this.#locationWorkerUrl}/countries/${countryCode}/states`;
+    this.#logger.info(`Fetching states and config for ${countryCode} from worker: ${url}`);
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        headers: { 'Accept': 'application/json' }
+      });
+      this.#logger.debug(`Received response from ${url} with status ${response.status}`);
+      if (!response.ok) {
+        // Handle 404 specifically - country might genuinely have no states/config defined
+        if (response.status === 404) {
+            this.#logger.warn(`No states/config found for country ${countryCode} (404). Returning empty data.`);
+            return { states: [], countryConfig: {} }; // Return empty structure as per spec
+        }
+        const errorText = await response.text();
+        this.#logger.error(`Worker API error from ${url}: ${response.status}`, errorText);
+        throw new Error(`Worker API error: ${response.status} ${errorText}`);
+      }
+      const data = await response.json();
+      this.#logger.info(`Successfully fetched states and config for ${countryCode}`);
+      this.#logger.debug(`States/Config data received for ${countryCode}:`, data);
+      return data;
+    } catch (error) {
+      this.#logger.error(`Worker API request failed: ${url}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch currency data for a specific country from the Currency Worker
+   * @param {string} countryCode - The ISO 3166-1 alpha-2 country code
+   * @returns {Promise<Object>} Object containing currency info for the country
+   */
+  async getCurrencyData(countryCode) {
+    if (!countryCode) {
+      this.#logger.warn('getCurrencyData called without countryCode');
+      return { currency: 'USD', symbol: '$', name: 'US Dollar' };
+    }
+    
+    const url = `${this.#currencyWorkerUrl}/currency/${countryCode}`;
+    this.#logger.info(`Fetching currency data for ${countryCode} from worker: ${url}`);
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      this.#logger.debug(`Received response from ${url} with status ${response.status}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          this.#logger.warn(`No currency data found for country ${countryCode} (404). Using fallback.`);
+          return this.#getFallbackCurrencyData(countryCode);
+        }
+        const errorText = await response.text();
+        this.#logger.error(`Currency worker API error from ${url}: ${response.status}`, errorText);
+        throw new Error(`Currency worker API error: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      this.#logger.info(`Successfully fetched currency data for ${countryCode}`);
+      this.#logger.debug(`Currency data received for ${countryCode}:`, data);
+      return data;
+    } catch (error) {
+      this.#logger.error(`Currency worker API request failed: ${url}`, error);
+      // Return fallback currency data
+      return this.#getFallbackCurrencyData(countryCode);
+    }
+  }
+
+  /**
+   * Fetch exchange rates for a specific base currency from the Currency Worker
+   * @param {string} baseCurrency - The base currency code (e.g., 'USD')
+   * @returns {Promise<Object>} Object containing exchange rates
+   */
+  async getCurrencyRates(baseCurrency = 'USD') {
+    const url = `${this.#currencyWorkerUrl}/rates/${baseCurrency}`;
+    this.#logger.info(`Fetching exchange rates for ${baseCurrency} from worker: ${url}`);
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      this.#logger.debug(`Received response from ${url} with status ${response.status}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.#logger.error(`Currency rates worker API error from ${url}: ${response.status}`, errorText);
+        throw new Error(`Currency rates worker API error: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      this.#logger.info(`Successfully fetched exchange rates for ${baseCurrency}`);
+      this.#logger.debug(`Exchange rates data received for ${baseCurrency}:`, data);
+      return data;
+    } catch (error) {
+      this.#logger.error(`Currency rates worker API request failed: ${url}`, error);
+      // Return fallback rates
+      return this.#getFallbackExchangeRates(baseCurrency);
+    }
+  }
+
+  /**
+   * Get fallback currency data when the worker is unavailable
+   * @param {string} countryCode - The country code
+   * @returns {Object} Fallback currency data
+   */
+  #getFallbackCurrencyData(countryCode) {
+    const countryToCurrency = {
+      'US': { currency: 'USD', symbol: '$', name: 'US Dollar' },
+      'GB': { currency: 'GBP', symbol: '£', name: 'British Pound' },
+      'CA': { currency: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+      'AU': { currency: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+      'DE': { currency: 'EUR', symbol: '€', name: 'Euro' },
+      'FR': { currency: 'EUR', symbol: '€', name: 'Euro' },
+      'IT': { currency: 'EUR', symbol: '€', name: 'Euro' },
+      'ES': { currency: 'EUR', symbol: '€', name: 'Euro' },
+      'NL': { currency: 'EUR', symbol: '€', name: 'Euro' },
+    };
+
+    const fallback = countryToCurrency[countryCode] || { currency: 'USD', symbol: '$', name: 'US Dollar' };
+    
+    this.#logger.info(`Using fallback currency data for ${countryCode}:`, fallback);
+    return {
+      ...fallback,
+      country: countryCode,
+      formatting: {
+        decimal: '.',
+        thousands: ',',
+        precision: 2,
+        format: '%s%v'
+      },
+      isFallback: true
+    };
+  }
+
+  /**
+   * Get fallback exchange rates when the worker is unavailable
+   * @param {string} baseCurrency - The base currency
+   * @returns {Object} Fallback exchange rates
+   */
+  #getFallbackExchangeRates(baseCurrency) {
+    const fallbackRates = {
+      USD: { EUR: 0.85, GBP: 0.79, CAD: 1.25, AUD: 1.35, USD: 1.00 },
+      EUR: { USD: 1.18, GBP: 0.93, CAD: 1.47, AUD: 1.59, EUR: 1.00 },
+      GBP: { USD: 1.27, EUR: 1.08, CAD: 1.58, AUD: 1.71, GBP: 1.00 },
+      CAD: { USD: 0.80, EUR: 0.68, GBP: 0.63, AUD: 1.08, CAD: 1.00 },
+      AUD: { USD: 0.74, EUR: 0.63, GBP: 0.58, CAD: 0.93, AUD: 1.00 }
+    };
+
+    const rates = fallbackRates[baseCurrency] || fallbackRates.USD;
+    
+    const fallbackData = {
+      base: baseCurrency,
+      rates: rates,
+      lastUpdated: new Date().toISOString(),
+      isFallback: true
+    };
+    
+    this.#logger.warn(`Using fallback exchange rates for ${baseCurrency}:`, fallbackData);
+    return fallbackData;
   }
 }

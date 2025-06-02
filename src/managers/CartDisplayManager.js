@@ -41,6 +41,9 @@ export class CartDisplayManager {
     // Subscribe to cart updates
     this.#app.state.subscribe('cart', () => this.updateCartDisplay());
     
+    // Subscribe to currency updates
+    this.#app.state.subscribe('currency', () => this.#handleCurrencyChange());
+    
     this.#logger.infoWithTime('CartDisplayManager initialized');
   }
 
@@ -632,18 +635,115 @@ export class CartDisplayManager {
   }
 
   /**
-   * Format a price with currency symbol
+   * Format a price with currency symbol and conversion
    * @param {number} price - Price to format
+   * @param {string} fromCurrency - Source currency (optional, defaults to USD)
    * @returns {string} Formatted price
    */
-  #formatPrice(price) {
+  #formatPrice(price, fromCurrency = 'USD') {
+    // Use the CurrencyManager if available and enabled
+    if (this.#app.currency?.isEnabled()) {
+      try {
+        // Convert price if needed
+        const selectedCurrency = this.#app.state.getSelectedCurrency();
+        let convertedPrice = price;
+
+        if (fromCurrency !== selectedCurrency.code) {
+          convertedPrice = this.#app.currency.convertPrice(price, fromCurrency, selectedCurrency.code);
+        }
+
+        // Format using CurrencyManager
+        return this.#app.currency.formatCurrency(convertedPrice);
+      } catch (error) {
+        this.#logger.error('Error formatting price with CurrencyManager:', error);
+        // Fall through to fallback formatting
+      }
+    }
+
     // Use the campaign's formatPrice method if available
     if (this.#app.campaign?.formatPrice) {
       return this.#app.campaign.formatPrice(price);
     }
     
-    // Otherwise, use a simple formatter
-    return `${this.#config.currencySymbol}${price.toFixed(2)} USD`;
+    // Get current currency info from state
+    const selectedCurrency = this.#app.state.getSelectedCurrency();
+    const symbol = selectedCurrency?.symbol || this.#config.currencySymbol;
+    
+    // Simple formatter fallback
+    return `${symbol}${price.toFixed(2)}`;
+  }
+
+  /**
+   * Handle currency changes
+   */
+  #handleCurrencyChange() {
+    this.#logger.debugWithTime('[CURRENCY] Currency changed, updating cart display');
+    
+    // Update currency symbol in config from state
+    const selectedCurrency = this.#app.state.getSelectedCurrency();
+    if (selectedCurrency) {
+      this.#config.currencySymbol = selectedCurrency.symbol;
+      this.#logger.debugWithTime(`[CURRENCY] Updated currency symbol to: ${selectedCurrency.symbol}`);
+    }
+    
+    // Update all currency-related displays
+    this.updateCartDisplay();
+    
+    // Update any standalone currency elements
+    this.#updateCurrencyElements();
+  }
+
+  /**
+   * Update standalone currency elements (currency symbol displays)
+   */
+  #updateCurrencyElements() {
+    const currencyElements = document.querySelectorAll('[data-os-currency="symbol"]');
+    const selectedCurrency = this.#app.state.getSelectedCurrency();
+    
+    if (selectedCurrency && currencyElements.length > 0) {
+      currencyElements.forEach(element => {
+        element.textContent = selectedCurrency.symbol;
+      });
+      this.#logger.debugWithTime(`[CURRENCY] Updated ${currencyElements.length} currency symbol elements`);
+    }
+
+    // Update currency code elements
+    const currencyCodeElements = document.querySelectorAll('[data-os-currency="code"]');
+    if (selectedCurrency && currencyCodeElements.length > 0) {
+      currencyCodeElements.forEach(element => {
+        element.textContent = selectedCurrency.code;
+      });
+      this.#logger.debugWithTime(`[CURRENCY] Updated ${currencyCodeElements.length} currency code elements`);
+    }
+
+    // Update currency name elements
+    const currencyNameElements = document.querySelectorAll('[data-os-currency="name"]');
+    if (selectedCurrency && currencyNameElements.length > 0) {
+      currencyNameElements.forEach(element => {
+        element.textContent = selectedCurrency.name;
+      });
+      this.#logger.debugWithTime(`[CURRENCY] Updated ${currencyNameElements.length} currency name elements`);
+    }
+  }
+
+  /**
+   * Convert a price from one currency to another
+   * @param {number} amount - Amount to convert
+   * @param {string} fromCurrency - Source currency
+   * @param {string} toCurrency - Target currency  
+   * @returns {number} Converted amount
+   */
+  #convertPrice(amount, fromCurrency, toCurrency) {
+    if (!this.#app.currency?.isEnabled()) {
+      return amount;
+    }
+
+    try {
+      return this.#app.currency.convertPrice(amount, fromCurrency, toCurrency);
+    } catch (error) {
+      this.#logger.error(`Currency conversion error (${fromCurrency} → ${toCurrency}):`, error);
+      return amount;
+    }
   }
 
   /**

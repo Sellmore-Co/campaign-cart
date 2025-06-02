@@ -168,7 +168,7 @@ export class CheckoutPage {
 
   #initAddressHandler() {
     try {
-      this.addressHandler = new AddressHandler(this.#form, this.#logger);
+      this.addressHandler = new AddressHandler(this.#form, this.#logger, this.#app);
     } catch (error) {
       this.#logger.error('Error initializing AddressHandler', error);
     }

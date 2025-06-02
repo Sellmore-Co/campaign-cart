@@ -9,6 +9,7 @@ This document explains the various ways to initialize and configure the Campaign
 - [Unit Pricing System](./components/UnitPricing.md) - Documentation on unit pricing for selector cards
 - [Events System](./Events.md) - Documentation on events and their usage
 - [Checkout System](./checkout/) - Checkout page documentation
+- [Currency System](./Currency.md) - Documentation on multi-currency support and configuration
 - [Upsell System](./Upsell.md) - Documentation on implementing upsells
 - [Voucher System](./Vouchers.md) - Documentation on using the voucher/discount system
 
@@ -101,6 +102,22 @@ window.osConfig.cartDisplay = {
   showSavings: true,           // Show savings amount in cart
   showRetailPrice: true,       // Show original price for discounted items
   animateQuantityChanges: true // Animate quantity changes in cart
+};
+```
+
+### Currency Configuration
+
+```javascript
+window.osConfig = window.osConfig || {};
+window.osConfig.currencyConfig = {
+  enabled: true,                    // Enable/disable currency system
+  defaultCurrency: 'USD',           // Default currency
+  supportedCurrencies: ['USD', 'EUR', 'GBP', 'CAD', 'AUD'], // Supported currencies
+  autoSwitchOnCountryChange: true,  // Auto-switch currency when country changes
+  showCurrencySelector: false,      // Show manual currency selector
+  fallbackCurrency: 'USD',         // Fallback when conversion fails
+  rateUpdateInterval: 3600000,      // Rate refresh interval (1 hour)
+  conversionNotice: true            // Show conversion notice to users
 };
 ```
 
