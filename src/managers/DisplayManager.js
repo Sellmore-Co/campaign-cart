@@ -197,6 +197,15 @@ export class DisplayManager {
         return;
       }
       
+      // Parse decimal setting with better validation
+      const showDecimalsAttr = element.dataset.osShowDecimals;
+      const showDecimals = showDecimalsAttr === 'true' || showDecimalsAttr === '1';
+      
+      // Debug decimal setting
+      if (showDecimalsAttr) {
+        this.#logger.debugWithTime(`Element ${elementId} decimal setting: "${showDecimalsAttr}" -> ${showDecimals}`);
+      }
+      
       // Store element data for later processing
       if (!this.#priceElements.has(elementId)) {
         this.#priceElements.set(elementId, []);
@@ -209,11 +218,11 @@ export class DisplayManager {
         divideBy: element.dataset.osDivideBy ? parseInt(element.dataset.osDivideBy, 10) : null,
         format: element.dataset.osFormat || 'default',
         hideIfZero: element.dataset.osHideIfZero === 'true',
-        showDecimals: element.dataset.osShowDecimals === 'true'
+        showDecimals
       });
       
       const type = isProfile ? 'Profile' : 'Package';
-      this.#logger.debugWithTime(`Registered pricing element: ${type} ${elementId}, Type ${priceType}`);
+      this.#logger.debugWithTime(`Registered pricing element: ${type} ${elementId}, Type ${priceType}, Decimals: ${showDecimals}`);
     });
     
     // Initial update of all pricing elements

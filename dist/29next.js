@@ -7817,7 +7817,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/ToggleManager.js
-  var _packageToggles, _app12, _logger17, _isDebugMode3, _initAndRegisterToggleElements, initAndRegisterToggleElements_fn, _setupCountryChangeListener4, setupCountryChangeListener_fn4, _registerToggleElement, registerToggleElement_fn, _addDebugOverlay, addDebugOverlay_fn, _processToggleAction, processToggleAction_fn, _translatePackageId, translatePackageId_fn, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn, _updateAllToggleUIs, updateAllToggleUIs_fn, _updateUIForPackage, updateUIForPackage_fn, _isItemInCart, isItemInCart_fn, _addItemToCart2, addItemToCart_fn2, _removeItemFromCart2, removeItemFromCart_fn2;
+  var _packageToggles, _app12, _logger17, _isDebugMode3, _initAndRegisterToggleElements, initAndRegisterToggleElements_fn, _setupCountryChangeListener4, setupCountryChangeListener_fn4, _registerToggleElement, registerToggleElement_fn, _addDebugOverlay, addDebugOverlay_fn, _processToggleAction, processToggleAction_fn, _processProfileToggle, processProfileToggle_fn, _processPackageToggle, processPackageToggle_fn, _translatePackageId, translatePackageId_fn, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn, _updateAllToggleUIs, updateAllToggleUIs_fn, _updateUIForProfile, updateUIForProfile_fn, _updateUIForPackage, updateUIForPackage_fn, _isItemInCart, isItemInCart_fn, _addItemToCart2, addItemToCart_fn2, _removeItemFromCart2, removeItemFromCart_fn2;
   var ToggleManager = class {
     constructor(app) {
       __privateAdd(this, _initAndRegisterToggleElements);
@@ -7826,10 +7826,11 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _setupCountryChangeListener4);
       __privateAdd(this, _registerToggleElement);
-      // Note: Removed toggleId parameter as it's not the primary key anymore
       __privateAdd(this, _addDebugOverlay);
-      // Renamed from #toggleItem, takes packageId and the specific element clicked
+      // Process toggle action for both packages and profiles
       __privateAdd(this, _processToggleAction);
+      __privateAdd(this, _processProfileToggle);
+      __privateAdd(this, _processPackageToggle);
       /**
        * Translate package ID using CountryCampaignManager if available
        * @param {string} originalPackageId - The original package ID from the HTML data attribute
@@ -7837,9 +7838,11 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _translatePackageId);
       __privateAdd(this, _getPackageDataFromCampaign);
-      // Renamed from #updateAllToggleItemsUI
+      // Update all toggle UIs (both packages and profiles)
       __privateAdd(this, _updateAllToggleUIs);
-      // New method to update all elements for a given package
+      // Update UI for profile toggles
+      __privateAdd(this, _updateUIForProfile);
+      // Update UI for package toggles
       __privateAdd(this, _updateUIForPackage);
       __privateAdd(this, _isItemInCart);
       __privateAdd(this, _addItemToCart2);
@@ -7887,56 +7890,112 @@ var TwentyNineNext = (() => {
   _registerToggleElement = new WeakSet();
   registerToggleElement_fn = function(toggleElement) {
     const packageId = toggleElement.getAttribute("data-os-package");
-    if (!packageId) {
-      __privateGet(this, _logger17).warn("Toggle element missing data-os-package attribute", toggleElement);
+    const profileId = toggleElement.getAttribute("data-os-profile");
+    if (!packageId && !profileId) {
+      __privateGet(this, _logger17).warn("Toggle element missing data-os-package or data-os-profile attribute", toggleElement);
       return;
     }
+    const isProfile = !!profileId;
+    const toggleId = isProfile ? profileId : packageId;
+    const toggleType = isProfile ? "profile" : "package";
     const quantity = Number.parseInt(toggleElement.getAttribute("data-os-quantity") ?? "1", 10);
-    if (!__privateGet(this, _packageToggles)[packageId]) {
-      __privateGet(this, _packageToggles)[packageId] = {
+    if (!__privateGet(this, _packageToggles)[toggleId]) {
+      __privateGet(this, _packageToggles)[toggleId] = {
+        id: toggleId,
+        type: toggleType,
+        isProfile,
         packageId,
+        // Keep for backwards compatibility
         quantity,
-        // Assume quantity is consistent for the package
         elements: []
-        // Array to hold all DOM elements for this package
       };
-      __privateGet(this, _logger17).debug(`[INIT] Creating new toggle registration for packageId: ${packageId}`);
+      __privateGet(this, _logger17).debug(`[INIT] Creating new toggle registration for ${toggleType}: ${toggleId}`);
     } else {
-      if (__privateGet(this, _packageToggles)[packageId].quantity !== quantity) {
-        __privateGet(this, _logger17).warn(`Toggle button for package ${packageId} has different quantity (${quantity}) than previously registered (${__privateGet(this, _packageToggles)[packageId].quantity}). Using first quantity found.`);
+      if (__privateGet(this, _packageToggles)[toggleId].quantity !== quantity) {
+        __privateGet(this, _logger17).warn(`Toggle button for ${toggleType} ${toggleId} has different quantity (${quantity}) than previously registered (${__privateGet(this, _packageToggles)[toggleId].quantity}). Using first quantity found.`);
       }
     }
-    __privateGet(this, _packageToggles)[packageId].elements.push(toggleElement);
-    __privateGet(this, _logger17).debugWithTime(`[INIT] Registered element for packageId: ${packageId}. Total elements for this package: ${__privateGet(this, _packageToggles)[packageId].elements.length}`);
+    __privateGet(this, _packageToggles)[toggleId].elements.push(toggleElement);
+    __privateGet(this, _logger17).debugWithTime(`[INIT] Registered element for ${toggleType}: ${toggleId}. Total elements: ${__privateGet(this, _packageToggles)[toggleId].elements.length}`);
     toggleElement.addEventListener("click", (event) => {
       event.preventDefault();
-      __privateMethod(this, _processToggleAction, processToggleAction_fn).call(this, packageId, toggleElement);
+      __privateMethod(this, _processToggleAction, processToggleAction_fn).call(this, toggleId, toggleElement);
     });
     if (__privateGet(this, _isDebugMode3)) {
-      __privateMethod(this, _addDebugOverlay, addDebugOverlay_fn).call(this, toggleElement, packageId, quantity);
+      __privateMethod(this, _addDebugOverlay, addDebugOverlay_fn).call(this, toggleElement, toggleId, toggleType, quantity);
     }
   };
   _addDebugOverlay = new WeakSet();
-  addDebugOverlay_fn = function(element, packageId, quantity) {
-    const packageData = __privateMethod(this, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn).call(this, packageId);
-    const price = packageData ? packageData.price : "N/A";
+  addDebugOverlay_fn = function(element, toggleId, toggleType, quantity) {
     const isUpsell = element.hasAttribute("data-os-upsell") ? element.getAttribute("data-os-upsell") === "true" : element.closest("[data-os-upsell-section]") !== null;
-    DebugUtils.addDebugOverlay(element, `toggle-${packageId}-${__privateGet(this, _packageToggles)[packageId]?.elements.length || 0}`, "toggle", {
-      "Package": packageId,
-      "Qty": quantity,
-      "Price": price,
-      "Upsell": isUpsell ? "Yes" : "No"
-    });
+    let price = "N/A";
+    let debugInfo = {};
+    if (toggleType === "profile") {
+      if (__privateGet(this, _app12).profiles) {
+        price = __privateGet(this, _app12).profiles.getFormattedPrice(toggleId) || "N/A";
+      }
+      debugInfo = {
+        "Profile": toggleId,
+        "Type": "Profile",
+        "Qty": quantity,
+        "Price": price,
+        "Upsell": isUpsell ? "Yes" : "No"
+      };
+    } else {
+      const packageData = __privateMethod(this, _getPackageDataFromCampaign, getPackageDataFromCampaign_fn).call(this, toggleId);
+      price = packageData ? packageData.price : "N/A";
+      debugInfo = {
+        "Package": toggleId,
+        "Type": "Package",
+        "Qty": quantity,
+        "Price": price,
+        "Upsell": isUpsell ? "Yes" : "No"
+      };
+    }
+    DebugUtils.addDebugOverlay(element, `toggle-${toggleType}-${toggleId}-${__privateGet(this, _packageToggles)[toggleId]?.elements.length || 0}`, "toggle", debugInfo);
   };
   _processToggleAction = new WeakSet();
-  processToggleAction_fn = function(packageId, clickedElement) {
-    const packageInfo = __privateGet(this, _packageToggles)[packageId];
-    if (!packageInfo) {
-      __privateGet(this, _logger17).error(`Toggle package info for packageId ${packageId} not found`);
+  processToggleAction_fn = async function(toggleId, clickedElement) {
+    const toggleInfo = __privateGet(this, _packageToggles)[toggleId];
+    if (!toggleInfo) {
+      __privateGet(this, _logger17).error(`Toggle info for ${toggleInfo?.type || "unknown"} ${toggleId} not found`);
       return;
     }
+    const { type, isProfile, quantity } = toggleInfo;
+    if (isProfile) {
+      await __privateMethod(this, _processProfileToggle, processProfileToggle_fn).call(this, toggleId, clickedElement, quantity);
+    } else {
+      await __privateMethod(this, _processPackageToggle, processPackageToggle_fn).call(this, toggleId, clickedElement, quantity);
+    }
+  };
+  _processProfileToggle = new WeakSet();
+  processProfileToggle_fn = async function(profileId, clickedElement, quantity) {
+    try {
+      const isInCart = __privateGet(this, _app12).profiles.isInCart(profileId);
+      const isUpsell = clickedElement.hasAttribute("data-os-upsell") ? clickedElement.getAttribute("data-os-upsell") === "true" : clickedElement.closest("[data-os-upsell-section]") !== null;
+      if (isInCart) {
+        const result = await __privateGet(this, _app12).profiles.removeFromCart(profileId);
+        if (result) {
+          __privateGet(this, _logger17).info(`Toggled OFF profile: ${profileId}`);
+        }
+      } else {
+        const result = await __privateGet(this, _app12).profiles.addToCart(profileId, { quantity, is_upsell: isUpsell });
+        if (result) {
+          __privateGet(this, _logger17).info(`Toggled ON profile: ${profileId}${isUpsell ? " (upsell)" : ""}`);
+        }
+      }
+      __privateGet(this, _app12).triggerEvent("toggle.changed", {
+        profileId,
+        type: "profile",
+        isActive: !isInCart
+      });
+    } catch (error) {
+      __privateGet(this, _logger17).error(`Error toggling profile ${profileId}:`, error);
+    }
+  };
+  _processPackageToggle = new WeakSet();
+  processPackageToggle_fn = async function(packageId, clickedElement, quantity) {
     const translatedPackageId = __privateMethod(this, _translatePackageId, translatePackageId_fn).call(this, packageId);
-    const { quantity } = packageInfo;
     const isInCart = __privateMethod(this, _isItemInCart, isItemInCart_fn).call(this, translatedPackageId);
     if (isInCart) {
       __privateMethod(this, _removeItemFromCart2, removeItemFromCart_fn2).call(this, translatedPackageId);
@@ -7959,7 +8018,12 @@ var TwentyNineNext = (() => {
       });
       __privateGet(this, _logger17).info(`Toggled ON item ${packageId} (translated to ${translatedPackageId})${isUpsell ? " (upsell)" : ""}`);
     }
-    __privateGet(this, _app12).triggerEvent("toggle.changed", { packageId, translatedPackageId, isActive: !isInCart });
+    __privateGet(this, _app12).triggerEvent("toggle.changed", {
+      packageId,
+      translatedPackageId,
+      type: "package",
+      isActive: !isInCart
+    });
   };
   _translatePackageId = new WeakSet();
   translatePackageId_fn = function(originalPackageId) {
@@ -7998,9 +8062,30 @@ var TwentyNineNext = (() => {
   };
   _updateAllToggleUIs = new WeakSet();
   updateAllToggleUIs_fn = function() {
-    __privateGet(this, _logger17).debugWithTime(`[UPDATE_ALL] Cart state changed. Updating ALL package toggle UIs.`);
-    Object.values(__privateGet(this, _packageToggles)).forEach((packageInfo) => {
-      __privateMethod(this, _updateUIForPackage, updateUIForPackage_fn).call(this, packageInfo);
+    __privateGet(this, _logger17).debugWithTime(`[UPDATE_ALL] Cart state changed. Updating ALL toggle UIs.`);
+    Object.values(__privateGet(this, _packageToggles)).forEach((toggleInfo) => {
+      if (toggleInfo.isProfile) {
+        __privateMethod(this, _updateUIForProfile, updateUIForProfile_fn).call(this, toggleInfo);
+      } else {
+        __privateMethod(this, _updateUIForPackage, updateUIForPackage_fn).call(this, toggleInfo);
+      }
+    });
+  };
+  _updateUIForProfile = new WeakSet();
+  updateUIForProfile_fn = function(profileInfo) {
+    const { id: profileId, elements } = profileInfo;
+    if (!elements || elements.length === 0)
+      return;
+    const isInCart = __privateGet(this, _app12).profiles ? __privateGet(this, _app12).profiles.isInCart(profileId) : false;
+    __privateGet(this, _logger17).debugWithTime(`[UPDATE_PROFILE_UI] Updating UI for profile ${profileId}. IsInCart: ${isInCart}. Element count: ${elements.length}`);
+    elements.forEach((element) => {
+      element.classList.toggle("os--active", isInCart);
+      element.setAttribute("data-os-active", isInCart.toString());
+      const wrapper = element.closest("[data-os-toggle-wrapper]");
+      if (wrapper) {
+        wrapper.classList.toggle("os--active", isInCart);
+        __privateGet(this, _logger17).debugWithTime(`  > Toggled wrapper class for profile element ${profileId}`);
+      }
     });
   };
   _updateUIForPackage = new WeakSet();
@@ -8870,6 +8955,11 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger20).warnWithTime(`Pricing element missing ${isProfile ? "data-os-profile-price" : "data-os-package-price"} attribute`, element);
         return;
       }
+      const showDecimalsAttr = element.dataset.osShowDecimals;
+      const showDecimals = showDecimalsAttr === "true" || showDecimalsAttr === "1";
+      if (showDecimalsAttr) {
+        __privateGet(this, _logger20).debugWithTime(`Element ${elementId} decimal setting: "${showDecimalsAttr}" -> ${showDecimals}`);
+      }
       if (!__privateGet(this, _priceElements).has(elementId)) {
         __privateGet(this, _priceElements).set(elementId, []);
       }
@@ -8880,10 +8970,10 @@ var TwentyNineNext = (() => {
         divideBy: element.dataset.osDivideBy ? parseInt(element.dataset.osDivideBy, 10) : null,
         format: element.dataset.osFormat || "default",
         hideIfZero: element.dataset.osHideIfZero === "true",
-        showDecimals: element.dataset.osShowDecimals === "true"
+        showDecimals
       });
       const type = isProfile ? "Profile" : "Package";
-      __privateGet(this, _logger20).debugWithTime(`Registered pricing element: ${type} ${elementId}, Type ${priceType}`);
+      __privateGet(this, _logger20).debugWithTime(`Registered pricing element: ${type} ${elementId}, Type ${priceType}, Decimals: ${showDecimals}`);
     });
     this.refreshPackagePricing();
   };
@@ -12718,6 +12808,8 @@ var TwentyNineNext = (() => {
         await __privateMethod(this, _updateCartForNewCountry, updateCartForNewCountry_fn).call(this, __privateGet(this, _currentCountry), upperCountryCode, campaignData);
         const previousCountry = __privateGet(this, _currentCountry);
         __privateSet(this, _currentCountry, upperCountryCode);
+        localStorage.setItem("os-forced-country", upperCountryCode);
+        localStorage.setItem("os-forced-country-timestamp", Date.now().toString());
         __privateGet(this, _app22).campaignData = campaignData;
         if (window.osConfig) {
           window.osConfig.campaign = campaignData;
@@ -12780,6 +12872,43 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _isInitialized2);
     }
     /**
+     * Sync country selection with checkout forms
+     * Call this to ensure country selects show the current country
+     */
+    syncCountrySelection() {
+      if (!__privateGet(this, _currentCountry))
+        return;
+      const countrySelects = [
+        document.querySelector('[os-checkout-field="country"]'),
+        document.querySelector('[os-checkout-field="billing-country"]')
+      ];
+      countrySelects.forEach((select) => {
+        if (select && select.value !== __privateGet(this, _currentCountry)) {
+          __privateGet(this, _logger27).info(`Syncing country select to: ${__privateGet(this, _currentCountry)}`);
+          select.value = __privateGet(this, _currentCountry);
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+    }
+    /**
+     * Clear stored country selection and detect fresh
+     * @returns {Promise<Object>} Result of country detection
+     */
+    async clearStoredCountry() {
+      __privateGet(this, _logger27).info("Clearing stored country selection");
+      localStorage.removeItem("os-forced-country");
+      localStorage.removeItem("os-forced-country-timestamp");
+      const detectedCountry = await __privateMethod(this, _detectUserCountry, detectUserCountry_fn).call(this);
+      if (detectedCountry !== __privateGet(this, _currentCountry)) {
+        return await this.switchCountry(detectedCountry);
+      }
+      return {
+        success: true,
+        country: detectedCountry,
+        message: "Country selection cleared"
+      };
+    }
+    /**
      * Get available countries from configuration
      */
     getAvailableCountries() {
@@ -12828,7 +12957,22 @@ var TwentyNineNext = (() => {
     const forceCountry = urlParams.get("forceCountry");
     if (forceCountry) {
       __privateGet(this, _logger27).info(`Using forced country from URL parameter: ${forceCountry}`);
+      localStorage.setItem("os-forced-country", forceCountry.toUpperCase());
+      localStorage.setItem("os-forced-country-timestamp", Date.now().toString());
       return forceCountry.toUpperCase();
+    }
+    const storedCountry = localStorage.getItem("os-forced-country");
+    const storedTimestamp = localStorage.getItem("os-forced-country-timestamp");
+    if (storedCountry && storedTimestamp) {
+      const hoursSinceStored = (Date.now() - parseInt(storedTimestamp)) / (1e3 * 60 * 60);
+      if (hoursSinceStored < 24) {
+        __privateGet(this, _logger27).info(`Using previously selected country: ${storedCountry} (${Math.round(hoursSinceStored)}h ago)`);
+        return storedCountry;
+      } else {
+        localStorage.removeItem("os-forced-country");
+        localStorage.removeItem("os-forced-country-timestamp");
+        __privateGet(this, _logger27).info(`Stored country expired after ${Math.round(hoursSinceStored)} hours, detecting fresh`);
+      }
     }
     try {
       const response = await fetch("/location", {
@@ -13717,8 +13861,14 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _initializeManagers, initializeManagers_fn).call(this);
       await __privateMethod(this, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn).call(this);
       __privateSet(this, _isCheckoutPage, __privateMethod(this, _detectCheckoutPage, detectCheckoutPage_fn).call(this));
-      if (__privateGet(this, _isCheckoutPage))
+      if (__privateGet(this, _isCheckoutPage)) {
         __privateMethod(this, _initCheckoutPage, initCheckoutPage_fn).call(this);
+        setTimeout(() => {
+          if (this.countryCampaign && this.countryCampaign.isInitialized) {
+            this.countryCampaign.syncCountrySelection();
+          }
+        }, 500);
+      }
       __privateMethod(this, _initUIUtilities, initUIUtilities_fn).call(this);
       await __privateMethod(this, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn).call(this);
       __privateSet(this, _isInitialized3, true);

@@ -8,6 +8,7 @@ This implementation provides a smart multi-currency system that automatically de
 - **Optimal Performance**: Only 1 API call on page load (for detected country's campaign)
 - **Dynamic Country Switching**: Seamless switching between countries with automatic cart updates
 - **Package Translation**: Automatic mapping of package IDs between different country campaigns
+- **Profile System**: Semantic product profiles that automatically handle country-specific package mappings
 - **Currency Support**: USD, CAD, GBP, EUR, AUD with proper symbols
 - **Event-Driven Updates**: All managers automatically refresh when country changes
 - **Testing Support**: Force country with URL parameter `?forceCountry=CA`
@@ -17,8 +18,9 @@ This implementation provides a smart multi-currency system that automatically de
 ### Core Components
 
 1. **CountryCampaignManager**: Handles country detection, campaign fetching, and package translation
-2. **Updated ApiClient**: Uses country-specific campaign IDs for API requests
-3. **Enhanced Managers**: All managers listen for country changes and refresh data
+2. **ProductProfileManager**: Manages semantic profiles with automatic country-aware package mapping
+3. **Updated ApiClient**: Uses country-specific campaign IDs for API requests
+4. **Enhanced Managers**: All managers listen for country changes and refresh data
 
 ### Flow
 
@@ -60,15 +62,85 @@ window.osConfig = {
       'CA': 'mvjijeLnHTVTePB5BDdTvBZs8kEJY97Oel69hbOo'
     },
     
-    // Map external package IDs to internal campaign package IDs
+    // Map external package IDs to internal campaign package IDs (for legacy package system)
     packageMaps: {
       'US': { '1': '1', '2': '2', '6': '6' },
       'CA': { '1': '1', '2': '2', '6': '6' }
+    }
+  },
+
+  // Product profiles configuration (recommended for multi-currency)
+  productProfiles: {
+    'starter-kit': {
+      name: 'Starter Facial Kit',
+      description: 'Perfect introduction to our facial system',
+      campaignMappings: {
+        'US': { packageId: '1', quantity: 1 },
+        'CA': { packageId: '1', quantity: 1 }
+      },
+      metadata: {
+        category: 'kits',
+        featured: true,
+        tags: ['beginner', 'essential']
+      }
+    },
+    'value-bundle': {
+      name: '2-Month Value Bundle', 
+      description: 'Best value for regular users',
+      campaignMappings: {
+        'US': { packageId: '2', quantity: 1 },
+        'CA': { packageId: '2', quantity: 1 }
+      },
+      metadata: {
+        category: 'bundles',
+        featured: false,
+        tags: ['value', 'popular']
+      }
+    },
+    'premium-package': {
+      name: '3-Month Premium Package',
+      description: 'Maximum savings with bonus items',
+      campaignMappings: {
+        'US': { packageId: '6', quantity: 1 },
+        'CA': { packageId: '6', quantity: 1 }
+      },
+      metadata: {
+        category: 'bundles',
+        featured: true,
+        tags: ['premium', 'savings', 'bonus']
+      }
     }
   }
 };
 </script>
 ```
+
+## 🎯 Package vs Profile Approaches
+
+### Legacy Package Approach
+```html
+<!-- Package-based (still supported) -->
+<div data-os-action="toggle-item" data-os-package="1">Add to Cart</div>
+<span data-os-package-price="total-sale" data-os-package-id="1">$69.99</span>
+```
+
+### Profile Approach (Recommended)
+```html
+<!-- Profile-based (recommended for multi-currency) -->
+<div data-os-action="toggle-item" data-os-profile="starter-kit">Add to Cart</div>
+<span data-os-profile-price="total-sale" data-os-profile-id="starter-kit">$69.99</span>
+```
+
+### Why Profiles for Multi-Currency?
+
+| Feature | Package Approach | Profile Approach |
+|---------|-----------------|------------------|
+| **Setup Complexity** | Medium | Simple |
+| **Country Switching** | Manual package mapping required | Automatic |
+| **Maintenance** | Update HTML when package IDs change | Update config only |
+| **Semantic Clarity** | Technical IDs (`data-os-package="1"`) | Meaningful names (`data-os-profile="starter-kit"`) |
+| **Multi-Country** | Requires packageMaps configuration | Built-in country awareness |
+| **Recommended For** | Single country or simple setups | Multi-country implementations |
 
 ## 🎯 Implementation
 
@@ -102,6 +174,26 @@ function switchCountry(countryCode) {
       });
   }
 }
+
+// Profile-based cart operations (recommended)
+window.on29NextReady = window.on29NextReady || [];
+window.on29NextReady.push(function(client) {
+  // Add profile to cart (automatically handles country-specific packages)
+  document.querySelectorAll('[data-action="add-to-cart"]').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const profileId = this.dataset.profileId; // e.g., "starter-kit"
+      
+      try {
+        const result = await client.profiles.addToCart(profileId);
+        if (result) {
+          console.log(`Added ${profileId} to cart in current country`);
+        }
+      } catch (error) {
+        console.error('Failed to add profile to cart:', error);
+      }
+    });
+  });
+});
 
 // Update UI after country change
 function updateCountryUI(country, campaignData) {
@@ -154,20 +246,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ### Console Testing
 ```javascript
-// Check current country
+// Country management
 window.osCountryCampaignManager.getCurrentCountry(); // "CA"
-
-// Switch countries
 window.osCountryCampaignManager.switchCountry('US');
-
-// Get current campaign data
 window.osCountryCampaignManager.getCurrentCampaignData();
-
-// Check cached campaigns
 window.osCountryCampaignManager.getCachedCampaigns();
-
-// Get available countries
 window.osCountryCampaignManager.getAvailableCountries();
+
+// Profile management (when using profiles)
+window.twentyNineNext.profiles.getProfile('starter-kit');
+window.twentyNineNext.profiles.getPrice('starter-kit'); // Gets price in current country
+window.twentyNineNext.profiles.getFormattedPrice('starter-kit'); // "C$89.00" or "$69.00"
+window.twentyNineNext.profiles.isInCart('starter-kit');
+window.twentyNineNext.profiles.addToCart('starter-kit');
+window.twentyNineNext.profiles.removeFromCart('starter-kit');
 ```
 
 ### Network Monitoring
@@ -189,15 +281,30 @@ The system automatically maps currencies to their symbols:
 
 ## 🔄 Package Translation
 
+### Package Approach (Legacy)
 The `packageMaps` configuration translates package IDs between campaigns:
 
-```javascript
-// Example: Package "1" in HTML
+```html
+<!-- Example: Package "1" in HTML -->
 <div data-os-package="1">Package 1</div>
+<span data-os-package-price="total-sale" data-os-package-id="1">$69.99</span>
 
-// US Campaign: data-os-package="1" → Campaign package ref_id: 1
-// CA Campaign: data-os-package="1" → Campaign package ref_id: 1 (same mapping)
-// But different campaigns = different prices ($69 vs C$89)
+<!-- US Campaign: data-os-package="1" → Campaign package ref_id: 1 -->
+<!-- CA Campaign: data-os-package="1" → Campaign package ref_id: 1 (same mapping) -->
+<!-- But different campaigns = different prices ($69 vs C$89) -->
+```
+
+### Profile Approach (Recommended)
+Profiles automatically handle country-specific package mapping:
+
+```html
+<!-- Example: Profile "starter-kit" in HTML -->
+<div data-os-profile="starter-kit">Starter Kit</div>
+<span data-os-profile-price="total-sale" data-os-profile-id="starter-kit">$69.99</span>
+
+<!-- US: profile "starter-kit" → packageId: "1" in US campaign → $69.99 -->
+<!-- CA: profile "starter-kit" → packageId: "1" in CA campaign → C$89.99 -->
+<!-- Automatic country detection and package mapping! -->
 ```
 
 ## 📊 Performance Benefits
@@ -245,8 +352,10 @@ All existing managers automatically support the multi-currency system:
 - **StateManager**: Updates cart currency and recalculates totals
 - **CartDisplayManager**: Refreshes with new currency symbols
 - **SelectorManager**: Updates unit pricing with new campaign data
-- **DisplayManager**: Refreshes display elements for new package IDs
+- **DisplayManager**: Refreshes display elements for packages and profiles
 - **CartManager**: Handles package ID translation during country switches
+- **ProductProfileManager**: Automatically maps profiles to country-specific packages
+- **ToggleManager**: Supports both package and profile toggles with country awareness
 
 ## 🚨 Error Handling
 
@@ -259,20 +368,28 @@ The system includes comprehensive error handling:
 
 ## 💡 Best Practices
 
-1. **Configuration**: Always include fallback mappings in `packageMaps`
+1. **Configuration**: 
+   - For packages: Include fallback mappings in `packageMaps`
+   - For profiles: Configure `productProfiles` with all target countries
 2. **Testing**: Test with `?forceCountry=XX` parameters
 3. **UI**: Provide clear country selection interface
 4. **Loading**: Show loading states during country switches
 5. **Errors**: Handle country switch failures gracefully
+6. **Profiles**: Use profiles for new implementations, especially multi-country sites
 
 ## 🔧 Troubleshooting
 
 ### Common Issues
 
 1. **Country not switching**: Check `osConfig.countryCampaigns` configuration
-2. **Wrong prices**: Verify campaign IDs and package mappings
+2. **Wrong prices**: 
+   - For packages: Verify campaign IDs and package mappings
+   - For profiles: Check `productProfiles` configuration and `campaignMappings`
 3. **Network errors**: Check `/location` endpoint availability
-4. **Package not found**: Ensure package mappings are complete
+4. **Package not found**: 
+   - For packages: Ensure package mappings are complete
+   - For profiles: Verify profile exists in `productProfiles` with correct country mappings
+5. **Profile pricing not working**: Ensure both `countryCampaigns` and `productProfiles` are configured
 
 ### Debug Mode
 
@@ -299,4 +416,99 @@ console.log('Cached Campaigns:', window.osCountryCampaignManager.getCachedCampai
 // Performance metrics
 console.log('Manager Status:', window.osCountryCampaignManager.isInitialized);
 console.log('Campaign Data:', window.osCountryCampaignManager.getCurrentCampaignData());
+```
+
+## 🎯 Complete Multi-Currency Example
+
+Here's a complete example showing both package and profile approaches working together:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Multi-Currency Store</title>
+  <script>
+    // Configuration (must be before 29next SDK)
+    window.osConfig = {
+      countryCampaigns: {
+        campaignIds: {
+          'US': 'us-campaign-id',
+          'CA': 'ca-campaign-id'
+        },
+        packageMaps: {
+          'US': { '1': '1', '2': '2', '6': '6' },
+          'CA': { '1': '1', '2': '2', '6': '6' }
+        }
+      },
+      productProfiles: {
+        'starter-kit': {
+          name: 'Starter Kit',
+          campaignMappings: {
+            'US': { packageId: '1', quantity: 1 },
+            'CA': { packageId: '1', quantity: 1 }
+          }
+        },
+        'premium-bundle': {
+          name: 'Premium Bundle',
+          campaignMappings: {
+            'US': { packageId: '6', quantity: 1 },
+            'CA': { packageId: '6', quantity: 1 }
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body>
+  <!-- Country Selector -->
+  <select id="country-selector" onchange="switchCountry(this.value)">
+    <option value="US">United States (USD)</option>
+    <option value="CA">Canada (CAD)</option>
+  </select>
+
+  <!-- Legacy Package Approach (still works) -->
+  <div class="package-section">
+    <h3>Legacy Package System</h3>
+    <div data-os-action="toggle-item" data-os-package="1">
+      Package 1: <span data-os-package-price="total-sale" data-os-package-id="1">$69.99</span>
+    </div>
+    <div data-os-action="toggle-item" data-os-package="6">
+      Package 6: <span data-os-package-price="total-sale" data-os-package-id="6">$199.99</span>
+    </div>
+  </div>
+
+  <!-- Profile Approach (recommended) -->
+  <div class="profile-section">
+    <h3>Profile System (Recommended)</h3>
+    <div data-os-action="toggle-item" data-os-profile="starter-kit">
+      Starter Kit: <span data-os-profile-price="total-sale" data-os-profile-id="starter-kit">$69.99</span>
+    </div>
+    <div data-os-action="toggle-item" data-os-profile="premium-bundle">
+      Premium Bundle: <span data-os-profile-price="total-sale" data-os-profile-id="premium-bundle">$199.99</span>
+    </div>
+  </div>
+
+  <!-- 29next SDK -->
+  <script src="https://your-sdk-url/29next.js"></script>
+  
+  <script>
+    function switchCountry(countryCode) {
+      if (window.osCountryCampaignManager) {
+        window.osCountryCampaignManager.switchCountry(countryCode)
+          .then(() => console.log(`Switched to ${countryCode}`))
+          .catch(error => console.error('Switch failed:', error));
+      }
+    }
+
+    // Listen for country changes
+    document.addEventListener('os:country.changed', (event) => {
+      const { country, campaignData } = event.detail;
+      console.log(`Now showing ${campaignData.currency} prices for ${country}`);
+      
+      // Update country selector
+      document.getElementById('country-selector').value = country;
+    });
+  </script>
+</body>
+</html>
 ``` 

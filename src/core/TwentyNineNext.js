@@ -245,7 +245,17 @@ export class TwentyNineNext {
     await this.#checkForPendingUpsellPurchase();
     
     this.#isCheckoutPage = this.#detectCheckoutPage();
-    if (this.#isCheckoutPage) this.#initCheckoutPage();
+    if (this.#isCheckoutPage) {
+      this.#initCheckoutPage();
+      
+      // Sync country selection on checkout pages with a small delay
+      // to ensure DOM elements are ready
+      setTimeout(() => {
+        if (this.countryCampaign && this.countryCampaign.isInitialized) {
+          this.countryCampaign.syncCountrySelection();
+        }
+      }, 500);
+    }
 
     this.#initUIUtilities();
     

@@ -1,6 +1,13 @@
-# Standalone Package Pricing System
+# Standalone Package & Profile Pricing System
 
-The Standalone Package Pricing system allows you to display pricing information for any package anywhere on your page using data attributes. This system is managed by the `DisplayManager` and provides comprehensive pricing display capabilities outside of selector cards.
+The Standalone Pricing system allows you to display pricing information for packages or profiles anywhere on your page using data attributes. This system is managed by the `DisplayManager` and provides comprehensive pricing display capabilities outside of selector cards.
+
+## Package vs Profile Pricing
+
+This system supports two pricing methods:
+
+- **Package Pricing**: Direct package ID pricing using `data-os-package-price` (traditional method)
+- **Profile Pricing**: Semantic profile-based pricing using `data-os-profile-price` (recommended for multi-country sites)
 
 ## Key Features
 
@@ -14,7 +21,9 @@ The Standalone Package Pricing system allows you to display pricing information 
 
 ## Basic Usage
 
-Add pricing elements to your HTML with the required attributes:
+### Package Pricing (Traditional Method)
+
+Add pricing elements using package IDs:
 
 ```html
 <!-- Display the sale price for package ID "1" -->
@@ -24,14 +33,33 @@ Add pricing elements to your HTML with the required attributes:
 <span data-os-package-price="total-saving-percentage" data-os-package-id="3">20% OFF</span>
 ```
 
+### Profile Pricing (Recommended)
+
+Add pricing elements using profile IDs (automatically handles country detection and package mapping):
+
+```html
+<!-- Display the sale price for "starter-kit" profile -->
+<span data-os-profile-price="total-sale" data-os-profile-id="starter-kit">$95.00</span>
+
+<!-- Display savings for "premium-bundle" profile -->
+<span data-os-profile-price="total-saving-percentage" data-os-profile-id="premium-bundle">20% OFF</span>
+```
+
 ## Required Attributes
 
-Every pricing element needs these two attributes:
+### Package Pricing Attributes
 
 | Attribute | Description | Example |
 |-----------|-------------|---------|
 | `data-os-package-price` | The type of price to display | `"total-sale"`, `"unit-regular"`, `"saving-percentage"` |
 | `data-os-package-id` | The package ID (ref_id or id from campaign data) | `"1"`, `"product-123"` |
+
+### Profile Pricing Attributes
+
+| Attribute | Description | Example |
+|-----------|-------------|---------|
+| `data-os-profile-price` | The type of price to display | `"total-sale"`, `"unit-regular"`, `"saving-percentage"` |
+| `data-os-profile-id` | The profile ID from productProfiles config | `"starter-kit"`, `"premium-bundle"` |
 
 ## Available Price Types
 
@@ -69,9 +97,14 @@ Every pricing element needs these two attributes:
 Divide the price by a custom amount to show per-subunit pricing:
 
 ```html
-<!-- Show price per facial if package contains 4 facials -->
+<!-- Package pricing: Show price per facial if package contains 4 facials -->
 <span data-os-package-price="unit-sale" 
       data-os-package-id="1" 
+      data-os-divide-by="4">$23.75</span>
+
+<!-- Profile pricing: Show price per facial using profile -->
+<span data-os-profile-price="unit-sale" 
+      data-os-profile-id="starter-kit" 
       data-os-divide-by="4">$23.75</span>
 ```
 
@@ -86,8 +119,14 @@ Control how percentages are displayed:
 | `simple` | Just the percentage | 20% |
 
 ```html
+<!-- Package pricing with formatting -->
 <span data-os-package-price="saving-percentage" 
       data-os-package-id="1" 
+      data-os-format="parenthesis">(20% OFF)</span>
+
+<!-- Profile pricing with formatting -->
+<span data-os-profile-price="saving-percentage" 
+      data-os-profile-id="premium-bundle" 
       data-os-format="parenthesis">(20% OFF)</span>
 ```
 
@@ -96,9 +135,14 @@ Control how percentages are displayed:
 Hide elements when the value is zero or negative:
 
 ```html
-<!-- This element will be hidden if there are no savings -->
+<!-- Package: This element will be hidden if there are no savings -->
 <div data-os-package-price="saving-amount" 
      data-os-package-id="1" 
+     data-os-hide-if-zero="true">$23.00</div>
+
+<!-- Profile: This element will be hidden if there are no savings -->
+<div data-os-profile-price="saving-amount" 
+     data-os-profile-id="starter-kit" 
      data-os-hide-if-zero="true">$23.00</div>
 ```
 
@@ -107,12 +151,20 @@ Hide elements when the value is zero or negative:
 Always show decimal places, even for whole dollar amounts:
 
 ```html
-<!-- Without decimals (default) -->
+<!-- Package pricing without decimals (default) -->
 <span data-os-package-price="total-sale" data-os-package-id="1">$89</span>
 
-<!-- With decimals always shown -->
+<!-- Package pricing with decimals always shown -->
 <span data-os-package-price="total-sale" 
       data-os-package-id="1" 
+      data-os-show-decimals="true">$89.00</span>
+
+<!-- Profile pricing without decimals (default) -->
+<span data-os-profile-price="total-sale" data-os-profile-id="starter-kit">$89</span>
+
+<!-- Profile pricing with decimals always shown -->
+<span data-os-profile-price="total-sale" 
+      data-os-profile-id="starter-kit" 
       data-os-show-decimals="true">$89.00</span>
 ```
 
@@ -132,6 +184,66 @@ Automatically hide a container when any child with `data-os-hide-if-zero="true"`
         data-os-hide-if-zero="true">$23.00</span>
 </div>
 ```
+
+## Profile Configuration
+
+To use profile pricing, you need to configure profiles in your `window.osConfig`:
+
+```javascript
+window.osConfig = {
+  // Country campaigns configuration (required for profiles)
+  countryCampaigns: {
+    campaignIds: {
+      'US': 'us-campaign-id',
+      'CA': 'ca-campaign-id'
+    },
+    packageMaps: {
+      'US': { '1': '1', '3': '3' },
+      'CA': { '1': '2', '3': '4' }
+    }
+  },
+
+  // Product profiles configuration
+  productProfiles: {
+    'starter-kit': {
+      name: 'Starter Facial Kit',
+      description: 'Perfect starter package',
+      campaignMappings: {
+        'US': { packageId: '1', quantity: 1 },
+        'CA': { packageId: '2', quantity: 1 }
+      },
+      metadata: {
+        category: 'kits',
+        featured: true,
+        tags: ['beginner', 'essential']
+      }
+    },
+    'premium-bundle': {
+      name: 'Premium Bundle',
+      description: '3-month supply with bonuses',
+      campaignMappings: {
+        'US': { packageId: '3', quantity: 1 },
+        'CA': { packageId: '4', quantity: 1 }
+      },
+      metadata: {
+        category: 'bundles',
+        featured: true,
+        tags: ['value', 'savings']
+      }
+    }
+  }
+};
+```
+
+### Profile vs Package Benefits
+
+| Feature | Package Pricing | Profile Pricing |
+|---------|----------------|-----------------|
+| **Setup** | Simple, direct package IDs | Requires configuration |
+| **Multi-Country** | Manual package ID management | Automatic country handling |
+| **Maintenance** | Update HTML when package IDs change | Update config only |
+| **Semantics** | Technical IDs (`data-os-package-id="3"`) | Meaningful names (`data-os-profile-id="starter-kit"`) |
+| **Recommended For** | Single-country sites, simple setups | Multi-country sites, complex campaigns |
 
 ## Complete Examples
 
@@ -179,19 +291,19 @@ Automatically hide a container when any child with `data-os-hide-if-zero="true"`
 </div>
 ```
 
-### Hero Section with Package Pricing
+### Hero Section with Profile Pricing
 
 ```html
 <section class="hero">
   <h1>The All-In-One Facial® System</h1>
   
   <div class="hero-pricing">
-    <!-- Main CTA price -->
+    <!-- Main CTA price using profiles (recommended) -->
     <div class="cta-price">
       <span class="cta-text">Starting at just</span>
       <span class="cta-amount" 
-            data-os-package-price="unit-sale" 
-            data-os-package-id="1" 
+            data-os-profile-price="unit-sale" 
+            data-os-profile-id="starter-kit" 
             data-os-divide-by="4">$29.50</span>
       <span class="cta-text">per facial</span>
     </div>
@@ -199,13 +311,32 @@ Automatically hide a container when any child with `data-os-hide-if-zero="true"`
     <!-- Value proposition -->
     <div class="value-prop" data-container="true">
       <span>Save up to </span>
-      <span data-os-package-price="total-saving-percentage" 
-            data-os-package-id="6" 
+      <span data-os-profile-price="total-saving-percentage" 
+            data-os-profile-id="premium-bundle" 
             data-os-hide-if-zero="true">20%</span>
-      <span> with our 3-month package</span>
+      <span> with our premium bundle</span>
     </div>
   </div>
 </section>
+```
+
+### Mixed Usage Example (Both Systems)
+
+```html
+<!-- You can use both systems on the same page -->
+<div class="pricing-section">
+  <!-- Legacy package pricing (continues to work) -->
+  <div class="legacy-price">
+    <span data-os-package-price="total-sale" data-os-package-id="1">$118.00</span>
+  </div>
+  
+  <!-- New profile pricing (recommended for new implementations) -->
+  <div class="profile-price">
+    <span data-os-profile-price="total-sale" data-os-profile-id="starter-kit">$118.00</span>
+  </div>
+  
+  <!-- Both will show the same price, but profiles handle country switching automatically -->
+</div>
 ```
 
 ### Comparison Table
@@ -330,7 +461,7 @@ If you dynamically add pricing elements after page load, refresh the DisplayMana
 
 ```javascript
 window.on29NextReady.push(function(client) {
-  // After adding new pricing elements
+  // After adding new package or profile pricing elements
   client.display.refresh();
 });
 ```
@@ -343,10 +474,15 @@ In debug mode, pricing elements will show additional information overlays to hel
 
 ### Common Issues
 
-1. **Pricing not showing**: Ensure both `data-os-package-price` and `data-os-package-id` are set
-2. **Wrong package ID**: Check that the package ID matches the `ref_id` or `id` in your campaign data
+1. **Pricing not showing**: 
+   - For packages: Ensure both `data-os-package-price` and `data-os-package-id` are set
+   - For profiles: Ensure both `data-os-profile-price` and `data-os-profile-id` are set
+2. **Wrong package/profile ID**: 
+   - Check that package ID matches the `ref_id` or `id` in your campaign data
+   - Check that profile ID exists in your `window.osConfig.productProfiles`
 3. **Currency not updating**: Verify that campaign data includes currency information
 4. **Elements not hiding**: Check that `data-os-hide-if-zero="true"` is properly set
+5. **Profile pricing not working**: Ensure you have both `countryCampaigns` and `productProfiles` configured
 
 ### Debugging
 

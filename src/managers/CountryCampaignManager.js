@@ -87,7 +87,28 @@ export class CountryCampaignManager {
     
     if (forceCountry) {
       this.#logger.info(`Using forced country from URL parameter: ${forceCountry}`);
+      // Store forced country for persistence
+      localStorage.setItem('os-forced-country', forceCountry.toUpperCase());
+      localStorage.setItem('os-forced-country-timestamp', Date.now().toString());
       return forceCountry.toUpperCase();
+    }
+    
+    // Check for previously forced/selected country (valid for 24 hours)
+    const storedCountry = localStorage.getItem('os-forced-country');
+    const storedTimestamp = localStorage.getItem('os-forced-country-timestamp');
+    
+    if (storedCountry && storedTimestamp) {
+      const hoursSinceStored = (Date.now() - parseInt(storedTimestamp)) / (1000 * 60 * 60);
+      
+      if (hoursSinceStored < 24) {
+        this.#logger.info(`Using previously selected country: ${storedCountry} (${Math.round(hoursSinceStored)}h ago)`);
+        return storedCountry;
+      } else {
+        // Clear expired stored country
+        localStorage.removeItem('os-forced-country');
+        localStorage.removeItem('os-forced-country-timestamp');
+        this.#logger.info(`Stored country expired after ${Math.round(hoursSinceStored)} hours, detecting fresh`);
+      }
     }
 
     try {
@@ -214,6 +235,10 @@ export class CountryCampaignManager {
       // Step 5: Update current country
       const previousCountry = this.#currentCountry;
       this.#currentCountry = upperCountryCode;
+      
+      // Store the country selection for persistence
+      localStorage.setItem('os-forced-country', upperCountryCode);
+      localStorage.setItem('os-forced-country-timestamp', Date.now().toString());
 
       // Step 6: Update campaign data in app
       this.#app.campaignData = campaignData;
@@ -395,6 +420,56 @@ export class CountryCampaignManager {
    */
   get isInitialized() {
     return this.#isInitialized;
+  }
+
+  /**
+   * Sync country selection with checkout forms
+   * Call this to ensure country selects show the current country
+   */
+  syncCountrySelection() {
+    if (!this.#currentCountry) return;
+
+    // Find and update country select elements
+    const countrySelects = [
+      document.querySelector('[os-checkout-field="country"]'),
+      document.querySelector('[os-checkout-field="billing-country"]')
+    ];
+
+    countrySelects.forEach(select => {
+      if (select && select.value !== this.#currentCountry) {
+        this.#logger.info(`Syncing country select to: ${this.#currentCountry}`);
+        select.value = this.#currentCountry;
+        
+        // Trigger change event to update related fields
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+  }
+
+  /**
+   * Clear stored country selection and detect fresh
+   * @returns {Promise<Object>} Result of country detection
+   */
+  async clearStoredCountry() {
+    this.#logger.info('Clearing stored country selection');
+    
+    // Remove stored country data
+    localStorage.removeItem('os-forced-country');
+    localStorage.removeItem('os-forced-country-timestamp');
+    
+    // Detect fresh country
+    const detectedCountry = await this.#detectUserCountry();
+    
+    // Switch to detected country if different
+    if (detectedCountry !== this.#currentCountry) {
+      return await this.switchCountry(detectedCountry);
+    }
+    
+    return {
+      success: true,
+      country: detectedCountry,
+      message: 'Country selection cleared'
+    };
   }
 
   /**
