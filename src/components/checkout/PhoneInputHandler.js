@@ -1,6 +1,7 @@
 export class PhoneInputHandler {
   #logger;
   #intlTelInputAvailable = !!window.intlTelInput;
+  #phoneInstances = new Map(); // Store phone input instances for sync
 
   constructor(logger) {
     this.#logger = logger;
@@ -38,92 +39,63 @@ export class PhoneInputHandler {
     const phoneInputs = document.querySelectorAll('input[type="tel"]');
     this.#logger.info(`Found ${phoneInputs.length} phone inputs`);
     phoneInputs.forEach((input, i) => this.#initializePhoneInput(input, i + 1));
+    
+    // Setup integration with AddressHandler
+    this.#setupAddressHandlerIntegration();
   }
 
   #initializePhoneInput(input, index) {
     try {
+      // Get the initial country from AddressHandler or default to US
+      const initialCountry = this.#getInitialCountry(input);
+      
       const iti = window.intlTelInput(input, {
         utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js',
         separateDialCode: true,
-        onlyCountries: ['us'],
-        initialCountry: 'us',
-        allowDropdown: false,
+        initialCountry: initialCountry,
+        allowDropdown: true, // Enable country dropdown
+        preferredCountries: ['us', 'ca', 'gb', 'au'], // Common countries at top
         dropdownContainer: document.body,
-        useFullscreenPopup: true,
+        useFullscreenPopup: false, // Better for desktop
         formatOnDisplay: true,
         autoPlaceholder: 'aggressive',
         customContainer: 'iti-tel-input',
         autoFormat: true,
-        nationalMode: true
+        nationalMode: false, // Use international mode for better validation
+        geoIpLookup: null // Disable GeoIP since we get country from AddressHandler
       });
 
       input.iti = iti;
-      this.#logger.debug(`Phone input ${index} (${input.getAttribute('os-checkout-field') ?? 'unknown'}) initialized`);
+      
+      // Store the instance for syncing
+      const fieldAttr = input.getAttribute('os-checkout-field');
+      this.#phoneInstances.set(fieldAttr, { input, iti });
+      
+      this.#logger.debug(`Phone input ${index} (${fieldAttr ?? 'unknown'}) initialized with country: ${initialCountry}`);
 
       this.#setupPhoneInputSync(input, iti);
       this.#setupPhoneValidation(input, iti);
+      this.#setupCountryChangeListener(input, iti);
 
       // Add input event listener for formatting and validation
       input.addEventListener('input', () => {
         const number = input.value.trim();
         
-        // Format the number as user types
-        if (number) {
-          // Remove all non-numeric characters
-          const numericValue = number.replace(/\D/g, '');
-          
-          // Format according to US pattern (XXX) XXX-XXXX
-          let formattedNumber = '';
-          if (numericValue.length > 0) {
-            if (numericValue.length <= 3) {
-              formattedNumber = `(${numericValue}`;
-            } else if (numericValue.length <= 6) {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3)}`;
-            } else {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
-            }
-          }
-          
-          // Only update if the format is different to avoid cursor jumping
-          if (input.value !== formattedNumber) {
-            // Store cursor position
-            const cursorPos = input.selectionStart;
-            const oldLength = input.value.length;
-            
-            // Update value
-            input.value = formattedNumber;
-            
-            // Calculate new cursor position
-            if (cursorPos !== null) {
-              const newLength = formattedNumber.length;
-              const cursorOffset = newLength - oldLength;
-              input.setSelectionRange(cursorPos + cursorOffset, cursorPos + cursorOffset);
-            }
-          }
-        }
-
-        const isValid = iti.isValidNumber();
-        const numberType = iti.getNumberType();
-        const validationError = iti.getValidationError();
-
         // Clear any existing error if the field is empty
         if (!number) {
           this.#clearError(input);
           return;
         }
 
-        console.group('Phone Number Validation');
-        console.log('Number:', number);
-        console.log('Is Valid:', isValid);
-        console.log('Formatted Number:', iti.getNumber());
-        console.log('Number Type:', this.#getNumberTypeName(numberType));
-        console.log('Validation Error:', validationError);
-        console.groupEnd();
-
+        const isValid = iti.isValidNumber();
+        const numberType = iti.getNumberType();
+        const validationError = iti.getValidationError();
+        
         this.#logger.debug('Phone validation:', {
           number,
           isValid,
           formattedNumber: iti.getNumber(),
+          country: iti.getSelectedCountryData().iso2,
           type: this.#getNumberTypeName(numberType),
           error: validationError
         });
@@ -134,20 +106,18 @@ export class PhoneInputHandler {
         const number = input.value.trim();
         if (number) {
           const isValid = iti.isValidNumber();
+          const countryData = iti.getSelectedCountryData();
           
-          // On blur, ensure the number is in full international format
-          if (isValid) {
-            input.value = iti.getNumber(intlTelInputUtils.numberFormat.NATIONAL);
-          }
-          
-          console.log('Phone field blur - Final validation:', {
+          this.#logger.debug('Phone field blur - Final validation:', {
             number,
             isValid,
+            country: countryData.iso2,
             formattedNumber: iti.getNumber()
           });
 
           if (!isValid) {
-            this.#showError(input, 'Please enter a valid US phone number (e.g. 555-555-5555)');
+            const countryName = countryData.name || 'selected country';
+            this.#showError(input, `Please enter a valid ${countryName} phone number`);
           } else {
             this.#clearError(input);
           }
@@ -156,6 +126,120 @@ export class PhoneInputHandler {
 
     } catch (error) {
       this.#logger.error(`Error initializing phone input ${index}:`, error);
+    }
+  }
+
+  /**
+   * Get the initial country for phone input from AddressHandler or URL params
+   */
+  #getInitialCountry(input) {
+    // First check for forced country from URL
+    if (window.osAddressHandler && typeof window.osAddressHandler.getForcedCountry === 'function') {
+      const forcedCountry = window.osAddressHandler.getForcedCountry();
+      if (forcedCountry) {
+        this.#logger.debug(`Using forced country for phone input: ${forcedCountry}`);
+        return forcedCountry.toLowerCase();
+      }
+    }
+    
+    // Then check the corresponding country select field
+    const fieldAttr = input.getAttribute('os-checkout-field');
+    const countrySelect = document.querySelector(
+      fieldAttr === 'phone' ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
+    );
+    
+    if (countrySelect && countrySelect.value) {
+      this.#logger.debug(`Using country from select for phone input: ${countrySelect.value}`);
+      return countrySelect.value.toLowerCase();
+    }
+    
+    // Fallback to US
+    return 'us';
+  }
+
+  /**
+   * Setup integration with AddressHandler to sync country changes
+   */
+  #setupAddressHandlerIntegration() {
+    // Listen for AddressHandler being ready
+    if (window.osAddressHandler) {
+      this.#setupCountrySelectionSync();
+    } else {
+      // Wait for AddressHandler to be available
+      const checkInterval = setInterval(() => {
+        if (window.osAddressHandler) {
+          clearInterval(checkInterval);
+          this.#setupCountrySelectionSync();
+        }
+      }, 100);
+      
+      // Stop checking after 10 seconds
+      setTimeout(() => clearInterval(checkInterval), 10000);
+    }
+  }
+
+  /**
+   * Setup synchronization with country select fields
+   */
+  #setupCountrySelectionSync() {
+    const countrySelects = [
+      document.querySelector('[os-checkout-field="country"]'),
+      document.querySelector('[os-checkout-field="billing-country"]')
+    ];
+
+    countrySelects.forEach(countrySelect => {
+      if (!countrySelect) return;
+
+      countrySelect.addEventListener('change', (e) => {
+        const selectedCountry = e.target.value;
+        if (!selectedCountry) return;
+
+        const fieldType = e.target.getAttribute('os-checkout-field');
+        const phoneFieldType = fieldType === 'country' ? 'phone' : 'billing-phone';
+        const phoneInstance = this.#phoneInstances.get(phoneFieldType);
+
+        if (phoneInstance) {
+          this.#updatePhoneCountry(phoneInstance.iti, selectedCountry);
+          this.#logger.debug(`Updated phone country to ${selectedCountry} for ${phoneFieldType}`);
+        }
+      });
+    });
+
+    this.#logger.debug('Country selection sync setup complete');
+  }
+
+  /**
+   * Setup listener for when user changes country in phone input dropdown
+   */
+  #setupCountryChangeListener(input, iti) {
+    input.addEventListener('countrychange', () => {
+      const selectedCountryData = iti.getSelectedCountryData();
+      const countryCode = selectedCountryData.iso2.toUpperCase();
+      
+      this.#logger.debug(`Phone country changed to: ${countryCode}`);
+      
+      // Update the corresponding country select if needed
+      const fieldAttr = input.getAttribute('os-checkout-field');
+      const countrySelect = document.querySelector(
+        fieldAttr === 'phone' ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
+      );
+      
+      if (countrySelect && countrySelect.value !== countryCode) {
+        this.#logger.debug(`Syncing country select to: ${countryCode}`);
+        countrySelect.value = countryCode;
+        countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+  }
+
+  /**
+   * Update phone input country programmatically
+   */
+  #updatePhoneCountry(iti, countryCode) {
+    try {
+      iti.setCountry(countryCode.toLowerCase());
+    } catch (error) {
+      this.#logger.warn(`Failed to set phone country to ${countryCode}:`, error);
     }
   }
 
@@ -171,7 +255,7 @@ export class PhoneInputHandler {
     }
     
     // Find or create error message element
-    const wrapper = input.closest('.frm-flds') || input.closest('.form-group');
+    const wrapper = input.closest('.frm-flds') || input.closest('.form-group') || input.parentElement;
     let errorElement = wrapper.querySelector('.pb-input-error');
     if (!errorElement) {
       errorElement = document.createElement('div');
@@ -203,7 +287,7 @@ export class PhoneInputHandler {
     }
     
     // Remove error message
-    const wrapper = input.closest('.frm-flds') || input.closest('.form-group');
+    const wrapper = input.closest('.frm-flds') || input.closest('.form-group') || input.parentElement;
     const errorElement = wrapper.querySelector('.pb-input-error');
     if (errorElement) {
       errorElement.remove();
@@ -235,21 +319,9 @@ export class PhoneInputHandler {
       return;
     }
 
-    const countrySelect = document.querySelector(
-      fieldAttr === 'phone' ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
-    );
-
-    if (!countrySelect) {
-      this.#logger.warn(`Country select not found for ${fieldAttr}`);
-      return;
-    }
-
-    // Set country select to US if it exists
-    if (countrySelect.value !== 'US') {
-      countrySelect.value = 'US';
-      countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
-      this.#logger.debug('Country select updated to US');
-    }
+    // Get the initial country and set it
+    const initialCountry = this.#getInitialCountry(input);
+    this.#updatePhoneCountry(iti, initialCountry);
   }
 
   #setupPhoneValidation(input, iti) {
@@ -263,5 +335,30 @@ export class PhoneInputHandler {
         this.#logger.debug(`Formatted phone number set to ${input.value} on submit`);
       }
     });
+  }
+
+  // Public methods for external integration
+  
+  /**
+   * Manually update phone country for a specific field
+   * @param {string} fieldType - 'phone' or 'billing-phone'
+   * @param {string} countryCode - Country code (e.g., 'US', 'GB')
+   */
+  updatePhoneCountry(fieldType, countryCode) {
+    const phoneInstance = this.#phoneInstances.get(fieldType);
+    if (phoneInstance) {
+      this.#updatePhoneCountry(phoneInstance.iti, countryCode);
+      this.#logger.info(`Updated ${fieldType} country to ${countryCode}`);
+    } else {
+      this.#logger.warn(`Phone instance not found for ${fieldType}`);
+    }
+  }
+
+  /**
+   * Get all phone instances
+   * @returns {Map} Map of phone instances
+   */
+  getPhoneInstances() {
+    return this.#phoneInstances;
   }
 }

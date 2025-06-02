@@ -169,6 +169,12 @@ export class CheckoutPage {
   #initAddressHandler() {
     try {
       this.addressHandler = new AddressHandler(this.#form, this.#logger);
+      
+      // Make AddressHandler globally accessible for FormValidator integration
+      if (this.addressHandler) {
+        window.osAddressHandler = this.addressHandler;
+        this.#logger.debug('AddressHandler made globally accessible via window.osAddressHandler');
+      }
     } catch (error) {
       this.#logger.error('Error initializing AddressHandler', error);
     }
@@ -244,6 +250,12 @@ export class CheckoutPage {
   #initPhoneInputHandler() {
     try {
       this.phoneInputHandler = new PhoneInputHandler(this.#logger);
+      
+      // Make PhoneInputHandler globally accessible for AddressHandler integration
+      if (this.phoneInputHandler) {
+        window.osPhoneInputHandler = this.phoneInputHandler;
+        this.#logger.debug('PhoneInputHandler made globally accessible via window.osPhoneInputHandler');
+      }
     } catch (error) {
       this.#logger.error('Error initializing PhoneInputHandler', error);
     }

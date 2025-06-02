@@ -4,7 +4,9 @@ export class AddressHandler {
   #addressConfig;
   #countries = [];
   #states = {};
+  #countryConfigs = {}; // Store country-specific configurations
   #elements;
+  #workerBaseUrl = 'https://cdn-countries.muddy-wind-c7ca.workers.dev';
 
   constructor(form, logger) {
     this.#form = form;
@@ -15,11 +17,19 @@ export class AddressHandler {
       shippingState: document.querySelector('[os-checkout-field="province"]'),
       billingCountry: document.querySelector('[os-checkout-field="billing-country"]'),
       billingState: document.querySelector('[os-checkout-field="billing-province"]'),
+      // Get form field labels for dynamic updates
+      shippingStateLabel: document.querySelector('label[for*="province"], label[for*="state"]'),
+      billingStateLabel: document.querySelector('label[for*="billing-province"], label[for*="billing-state"]'),
+      postcodeLabel: document.querySelector('label[for*="postal"], label[for*="zip"]'),
+      billingPostcodeLabel: document.querySelector('label[for*="billing-postal"], label[for*="billing-zip"]'),
+      // Get postcode input fields for validation
+      postcodeField: document.querySelector('[os-checkout-field="postal"]'),
+      billingPostcodeField: document.querySelector('[os-checkout-field="billing-postal"]'),
     };
 
     this.#loadCachedData();
     if (this.#elements.shippingCountry || this.#elements.billingCountry) {
-      this.#logger.info('AddressHandler initialized');
+      this.#logger.info('AddressHandler initialized with Cloudflare Worker integration');
       this.#init();
     } else {
       this.#logger.warn('No country selects found');
@@ -27,14 +37,14 @@ export class AddressHandler {
   }
 
   async #init() {
-    await this.#loadCountriesAndStates();
+    await this.#loadCountriesAndInitialState();
     await Promise.all([
       this.#elements.shippingCountry && this.#initCountrySelect(this.#elements.shippingCountry, this.#elements.shippingState),
       this.#elements.billingCountry && this.#initCountrySelect(this.#elements.billingCountry, this.#elements.billingState),
     ]);
     this.#setupCountryChangeListeners();
-    this.#detectUserCountry();
     this.#setupAutocompleteDetection();
+    this.#setupPostcodeValidation();
   }
 
   #getAddressConfig() {
@@ -46,12 +56,126 @@ export class AddressHandler {
     };
   }
 
+  async #loadCountriesAndInitialState() {
+    // Try to load from cache first
+    if (this.#countries.length && Object.keys(this.#states).length > 0) {
+      this.#logger.debug('Using cached countries and states data');
+      
+      // Check for forced country even with cached data
+      const forcedCountry = this.#checkForForcedCountry();
+      if (forcedCountry) {
+        await this.#handleForcedCountry(forcedCountry);
+      }
+      return;
+    }
+
+    try {
+      this.#logger.info('Loading countries and initial state data from Cloudflare Worker');
+      const response = await fetch(`${this.#workerBaseUrl}/location`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      this.#logger.debug('Received location data from Worker:', data);
+
+      // Process countries list
+      if (data.countries && Array.isArray(data.countries)) {
+        this.#countries = data.countries
+          .filter(country => {
+            // Apply showCountries filter if specified
+            if (this.#addressConfig.showCountries.length > 0) {
+              return this.#addressConfig.showCountries.includes(country.code);
+            }
+            return true;
+          })
+          .map(country => ({
+            iso2: country.code,
+            name: country.name,
+            phonecode: country.phonecode,
+            currency: country.currency,
+            currencySymbol: country.currencySymbol
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        this.#logger.info(`Loaded ${this.#countries.length} countries from Worker`);
+      }
+
+      // Check for forced country override before processing detected country
+      const forcedCountry = this.#checkForForcedCountry();
+      let effectiveCountryCode = data.detectedCountryCode;
+
+      if (forcedCountry) {
+        // Validate that forced country exists in our countries list
+        const countryExists = this.#countries.some(country => country.iso2 === forcedCountry);
+        if (countryExists) {
+          effectiveCountryCode = forcedCountry;
+          this.#logger.info(`🔧 Forced country override: ${forcedCountry} (detected: ${data.detectedCountryCode})`);
+          
+          // Load states for forced country instead of detected country
+          await this.#loadStatesForForcedCountry(forcedCountry);
+        } else {
+          this.#logger.warn(`⚠️ Invalid forced country code: ${forcedCountry} - not found in available countries`);
+        }
+      } else {
+        // Process detected country and its states normally
+        if (data.detectedCountryCode && data.detectedStates) {
+          this.#states[data.detectedCountryCode] = data.detectedStates
+            .filter(state => !this.#addressConfig.dontShowStates.includes(state.code))
+            .map(state => ({
+              iso2: state.code,
+              name: state.name
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+          this.#logger.debug(`Loaded ${this.#states[data.detectedCountryCode].length} states for detected country: ${data.detectedCountryCode}`);
+        }
+
+        // Store detected country config
+        if (data.detectedCountryCode && data.detectedCountryConfig) {
+          this.#countryConfigs[data.detectedCountryCode] = data.detectedCountryConfig;
+          this.#logger.debug(`Stored config for detected country: ${data.detectedCountryCode}`, data.detectedCountryConfig);
+        }
+      }
+
+      // Update default country to effective country (forced or detected)
+      if (effectiveCountryCode) {
+        this.#addressConfig.defaultCountry = effectiveCountryCode;
+        this.#logger.info(`Set default country to: ${effectiveCountryCode}${forcedCountry ? ' (forced)' : ' (detected)'}`);
+      }
+
+      // Cache the data
+      this.#saveCache('os_countries_cache', { countries: this.#countries });
+      this.#saveCache('os_states_cache', { states: this.#states });
+      this.#saveCache('os_country_configs_cache', { configs: this.#countryConfigs });
+
+    } catch (error) {
+      this.#logger.error('Failed to load data from Cloudflare Worker:', error);
+      // Fallback to cached data or defaults
+      await this.#loadCountriesAndStatesFallback();
+    }
+  }
+
   async #initCountrySelect(countrySelect, stateSelect) {
     countrySelect.innerHTML = '<option value="">Select Country</option>' + 
       this.#countries.map(c => `<option value="${c.iso2}">${c.name}</option>`).join('');
-    countrySelect.value = this.#addressConfig.defaultCountry;
-    if (stateSelect && countrySelect.value) await this.#updateStateSelect(stateSelect, countrySelect.value);
-    this.#logger.debug(`Country select initialized with default ${this.#addressConfig.defaultCountry}`);
+    
+    // Set default country
+    const defaultCountry = this.#addressConfig.defaultCountry;
+    if (defaultCountry) {
+      countrySelect.value = defaultCountry;
+      
+      // Apply country configuration if available
+      await this.#applyCountryConfig(defaultCountry);
+      
+      // Load and populate states for default country
+      if (stateSelect) {
+        await this.#updateStateSelect(stateSelect, defaultCountry);
+      }
+    }
+    
+    this.#logger.debug(`Country select initialized with default ${defaultCountry}`);
   }
 
   #setupCountryChangeListeners() {
@@ -59,25 +183,281 @@ export class AddressHandler {
       [this.#elements.shippingCountry, this.#elements.shippingState],
       [this.#elements.billingCountry, this.#elements.billingState]
     ];
+    
     pairs.forEach(([country, state]) => {
-      country?.addEventListener('change', () => state && this.#updateStateSelect(state, country.value));
+      country?.addEventListener('change', async (event) => {
+        const selectedCountryCode = event.target.value;
+        this.#logger.debug(`Country changed to: ${selectedCountryCode}`);
+        
+        if (selectedCountryCode) {
+          // Apply country configuration
+          await this.#applyCountryConfig(selectedCountryCode);
+          
+          // Update state select
+          if (state) {
+            await this.#updateStateSelect(state, selectedCountryCode);
+          }
+          
+          // Update phone input country if PhoneInputHandler is available
+          this.#updatePhoneInputCountry(country, selectedCountryCode);
+        } else {
+          // Reset to default labels when no country selected
+          this.#resetFormLabels();
+          if (state) {
+            state.innerHTML = '<option value="">Select State/Province</option>';
+            state.parentElement.style.display = 'none';
+          }
+        }
+      });
     });
   }
 
   async #updateStateSelect(stateSelect, countryCode, isPriority = false) {
-    if (!countryCode) return stateSelect.innerHTML = '<option value="">Select State/Province</option>';
-    const states = this.#states[countryCode] || (await this.#loadStates(countryCode));
-    if (isPriority) await states;
-    this.#populateStateSelect(stateSelect, states);
-    this.#logger.debug(`State select updated for ${countryCode}`);
+    if (!countryCode) {
+      stateSelect.innerHTML = '<option value="">Select State/Province</option>';
+      stateSelect.parentElement.style.display = 'none';
+      return;
+    }
+
+    // Show loading state
+    stateSelect.innerHTML = '<option value="">Loading States...</option>';
+    stateSelect.disabled = true;
+
+    try {
+      const states = this.#states[countryCode] || await this.#loadStates(countryCode);
+      if (isPriority) await states;
+      
+      this.#populateStateSelect(stateSelect, states, countryCode);
+      this.#logger.debug(`State select updated for ${countryCode}`);
+    } catch (error) {
+      this.#logger.error(`Failed to update state select for ${countryCode}:`, error);
+      stateSelect.innerHTML = '<option value="">Error loading states</option>';
+    } finally {
+      stateSelect.disabled = false;
+    }
   }
 
-  #populateStateSelect(stateSelect, states) {
+  #populateStateSelect(stateSelect, states, countryCode) {
     const currentValue = stateSelect.value || stateSelect.getAttribute('data-pending-state') || '';
-    stateSelect.innerHTML = '<option value="">Select State/Province</option>' + 
+    const config = this.#countryConfigs[countryCode];
+    
+    // Use country-specific state label or default
+    const stateLabel = config?.stateLabel || 'State/Province';
+    stateSelect.innerHTML = `<option value="">Select ${stateLabel}</option>` + 
       states.map(s => `<option value="${s.iso2}">${s.name}</option>`).join('');
-    stateSelect.parentElement.style.display = states.length ? '' : 'none';
-    if (currentValue && Array.from(stateSelect.options).some(o => o.value === currentValue)) stateSelect.value = currentValue;
+    
+    // Show/hide state field based on country requirements
+    const shouldShow = states.length > 0 && (config?.stateRequired !== false);
+    stateSelect.parentElement.style.display = shouldShow ? '' : 'none';
+    
+    // Set required attribute based on country config
+    if (config?.stateRequired !== undefined) {
+      if (config.stateRequired) {
+        stateSelect.setAttribute('required', 'required');
+        stateSelect.setAttribute('os-checkout-validate', 'required');
+      } else {
+        stateSelect.removeAttribute('required');
+        stateSelect.removeAttribute('os-checkout-validate');
+      }
+    }
+    
+    // Restore previous value if available
+    if (currentValue && Array.from(stateSelect.options).some(o => o.value === currentValue)) {
+      stateSelect.value = currentValue;
+    }
+  }
+
+  async #loadStates(countryCode) {
+    if (this.#states[countryCode]) return this.#states[countryCode];
+    
+    try {
+      this.#logger.debug(`Loading states for ${countryCode} from Worker`);
+      const response = await fetch(`${this.#workerBaseUrl}/countries/${countryCode}/states`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      this.#logger.debug(`Received states data for ${countryCode}:`, data);
+
+      // Process states
+      let states = [];
+      if (data.states && Array.isArray(data.states)) {
+        states = data.states
+          .filter(state => !this.#addressConfig.dontShowStates.includes(state.code))
+          .map(state => ({
+            iso2: state.code,
+            name: state.name
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      }
+
+      // Store country config
+      if (data.countryConfig) {
+        this.#countryConfigs[countryCode] = data.countryConfig;
+        this.#logger.debug(`Stored config for ${countryCode}:`, data.countryConfig);
+      }
+
+      // Cache the data
+      this.#states[countryCode] = states;
+      this.#saveCache('os_states_cache', { states: this.#states });
+      this.#saveCache('os_country_configs_cache', { configs: this.#countryConfigs });
+
+      this.#logger.debug(`Loaded and cached ${states.length} states for ${countryCode}`);
+      return states;
+      
+    } catch (error) {
+      this.#logger.error(`Failed to load states for ${countryCode}:`, error);
+      this.#states[countryCode] = [];
+      return [];
+    }
+  }
+
+  async #applyCountryConfig(countryCode) {
+    try {
+      // Get config from cache or load it
+      let config = this.#countryConfigs[countryCode];
+      
+      if (!config) {
+        // Load config by fetching states (which includes config)
+        await this.#loadStates(countryCode);
+        config = this.#countryConfigs[countryCode];
+      }
+
+      if (config) {
+        this.#logger.debug(`Applying config for ${countryCode}:`, config);
+        
+        // Update form labels
+        this.#updateFormLabels(config);
+        
+        // Update postcode validation
+        this.#updatePostcodeValidation(config);
+        
+        this.#logger.debug(`Applied country configuration for ${countryCode}`);
+      } else {
+        this.#logger.debug(`No specific configuration found for ${countryCode}, using defaults`);
+        this.#resetFormLabels();
+      }
+    } catch (error) {
+      this.#logger.error(`Failed to apply country config for ${countryCode}:`, error);
+    }
+  }
+
+  #updateFormLabels(config) {
+    // Update state/province labels
+    if (config.stateLabel) {
+      [this.#elements.shippingStateLabel, this.#elements.billingStateLabel].forEach(label => {
+        if (label) {
+          label.textContent = config.stateLabel;
+        }
+      });
+    }
+
+    // Update postcode labels
+    if (config.postcodeLabel) {
+      [this.#elements.postcodeLabel, this.#elements.billingPostcodeLabel].forEach(label => {
+        if (label) {
+          label.textContent = config.postcodeLabel;
+        }
+      });
+    }
+
+    // Update input placeholders and examples
+    [this.#elements.postcodeField, this.#elements.billingPostcodeField].forEach(field => {
+      if (field && config.postcodeExample) {
+        field.setAttribute('placeholder', config.postcodeExample);
+        field.setAttribute('title', `Format: ${config.postcodeExample}`);
+      }
+    });
+  }
+
+  #resetFormLabels() {
+    // Reset to default labels
+    [this.#elements.shippingStateLabel, this.#elements.billingStateLabel].forEach(label => {
+      if (label) {
+        label.textContent = 'State/Province';
+      }
+    });
+
+    [this.#elements.postcodeLabel, this.#elements.billingPostcodeLabel].forEach(label => {
+      if (label) {
+        label.textContent = 'Postal Code';
+      }
+    });
+
+    [this.#elements.postcodeField, this.#elements.billingPostcodeField].forEach(field => {
+      if (field) {
+        field.setAttribute('placeholder', 'Postal Code');
+        field.removeAttribute('title');
+      }
+    });
+  }
+
+  #updatePostcodeValidation(config) {
+    [this.#elements.postcodeField, this.#elements.billingPostcodeField].forEach(field => {
+      if (field) {
+        // Set validation attributes based on country config
+        if (config.postcodeRegex) {
+          field.setAttribute('pattern', config.postcodeRegex);
+        } else {
+          field.removeAttribute('pattern');
+        }
+
+        if (config.postcodeMinLength) {
+          field.setAttribute('minlength', config.postcodeMinLength);
+        } else {
+          field.removeAttribute('minlength');
+        }
+
+        if (config.postcodeMaxLength) {
+          field.setAttribute('maxlength', config.postcodeMaxLength);
+        } else {
+          field.removeAttribute('maxlength');
+        }
+      }
+    });
+  }
+
+  #setupPostcodeValidation() {
+    [this.#elements.postcodeField, this.#elements.billingPostcodeField].forEach(field => {
+      if (field) {
+        field.addEventListener('input', (event) => {
+          this.#validatePostcodeField(event.target);
+        });
+
+        field.addEventListener('blur', (event) => {
+          this.#validatePostcodeField(event.target);
+        });
+      }
+    });
+  }
+
+  #validatePostcodeField(field) {
+    if (!field.value) return;
+
+    const countryField = field.getAttribute('os-checkout-field') === 'postal' 
+      ? this.#elements.shippingCountry 
+      : this.#elements.billingCountry;
+    
+    if (!countryField || !countryField.value) return;
+
+    const config = this.#countryConfigs[countryField.value];
+    if (!config || !config.postcodeRegex) return;
+
+    const regex = new RegExp(config.postcodeRegex);
+    const isValid = regex.test(field.value);
+
+    // Add/remove validation classes
+    field.classList.toggle('invalid', !isValid);
+    field.classList.toggle('valid', isValid);
+
+    // Set custom validity message
+    if (!isValid && config.postcodeExample) {
+      field.setCustomValidity(`Please enter a valid ${config.postcodeLabel || 'postcode'}. Example: ${config.postcodeExample}`);
+    } else {
+      field.setCustomValidity('');
+    }
   }
 
   #loadCachedData() {
@@ -85,7 +465,9 @@ export class AddressHandler {
       const data = JSON.parse(localStorage.getItem(key) ?? '{}');
       return (Date.now() - (data.timestamp ?? 0) < 24 * 60 * 60 * 1000) ? data : {};
     };
-    this.#countries = loadCache('os_countries_cache').countries ?? [];
+    
+    const countriesCache = loadCache('os_countries_cache');
+    this.#countries = countriesCache.countries ?? [];
     
     // Filter cached countries if showCountries is specified
     if (this.#countries.length && this.#addressConfig.showCountries.length) {
@@ -94,77 +476,233 @@ export class AddressHandler {
       this.#logger.debug(`Filtered cached countries to: ${this.#addressConfig.showCountries.join(', ')}`);
     }
     
-    this.#states = loadCache('os_states_cache').states ?? {};
-    this.#logger.debug(`Loaded cached data: ${this.#countries.length} countries, ${Object.keys(this.#states).length} state sets`);
+    const statesCache = loadCache('os_states_cache');
+    this.#states = statesCache.states ?? {};
+    
+    const configsCache = loadCache('os_country_configs_cache');
+    this.#countryConfigs = configsCache.configs ?? {};
+    
+    this.#logger.debug(`Loaded cached data: ${this.#countries.length} countries, ${Object.keys(this.#states).length} state sets, ${Object.keys(this.#countryConfigs).length} country configs`);
   }
 
   #saveCache(key, data) {
     localStorage.setItem(key, JSON.stringify({ ...data, timestamp: Date.now() }));
   }
 
-  async #loadCountriesAndStates() {
+  // Fallback method for loading countries/states from old API
+  async #loadCountriesAndStatesFallback() {
     if (this.#countries.length) return;
+    
+    this.#logger.warn('Using fallback method for loading countries');
+    
     this.#countries = this.#addressConfig.countries.length ? 
       this.#addressConfig.countries.map(c => ({ iso2: c.iso2 || c.code, name: c.name })) :
-      (await (await fetch('https://api.countrystatecity.in/v1/countries', { 
-        headers: { 'X-CSCAPI-KEY': 'c2R3MzNhYmpvYUJPdmhkUlE5TUJWYUtJUGs2TTlNU3cyRmxmVW9wVQ==' } 
-      })).json()).filter(c => !this.#addressConfig.showCountries.length || this.#addressConfig.showCountries.includes(c.iso2));
+      [];
+    
+    // If no countries in config, provide basic fallback
+    if (this.#countries.length === 0) {
+      this.#countries = [
+        { iso2: 'US', name: 'United States' },
+        { iso2: 'CA', name: 'Canada' },
+        { iso2: 'GB', name: 'United Kingdom' },
+        { iso2: 'AU', name: 'Australia' }
+      ];
+    }
+    
     this.#countries.sort((a, b) => a.name.localeCompare(b.name));
     this.#saveCache('os_countries_cache', { countries: this.#countries });
-    this.#logger.info(`Loaded ${this.#countries.length} countries`);
-  }
-
-  async #loadStates(countryCode) {
-    if (this.#states[countryCode]) return this.#states[countryCode];
-    try {
-      let states = (await (await fetch(`https://api.countrystatecity.in/v1/countries/${countryCode}/states`, { 
-        headers: { 'X-CSCAPI-KEY': 'c2R3MzNhYmpvYUJPdmhkUlE5TUJWYUtJUGs2TTlNU3cyRmxmVW9wVQ==' } 
-      })).json()).filter(s => !this.#addressConfig.dontShowStates.includes(s.iso2));
-      
-      states.sort((a, b) => a.name.localeCompare(b.name));
-      
-      this.#states[countryCode] = states;
-      this.#saveCache('os_states_cache', { states: this.#states });
-      this.#logger.debug(`Loaded and sorted ${states.length} states for ${countryCode}`);
-      return states;
-    } catch (error) {
-      this.#logger.error(`Failed to load states for ${countryCode}:`, error);
-      this.#states[countryCode] = countryCode === 'US' ? /* US states list */ [] : [];
-      return this.#states[countryCode];
-    }
-  }
-
-  async #detectUserCountry() {
-    if (this.#elements.shippingCountry?.value || this.#elements.billingCountry?.value) return;
-    const countryCode = this.#addressConfig.defaultCountry || (await Promise.any(['https://ipapi.co/json/', 'https://ipinfo.io/json'].map(u => fetch(u).then(r => r.json()))))?.country_code;
-    [this.#elements.shippingCountry, this.#elements.billingCountry].forEach(c => {
-      if (c) {
-        c.value = countryCode;
-        c.dispatchEvent(new Event('change'));
-      }
-    });
-    this.#logger.debug(`User country detected/set to ${countryCode}`);
+    this.#logger.info(`Loaded ${this.#countries.length} countries from fallback`);
   }
 
   #setupAutocompleteDetection() {
-    const fields = Object.values(this.#elements).filter(Boolean);
+    const fields = Object.values(this.#elements).filter(field => 
+      field && (field.tagName === 'SELECT' || field.tagName === 'INPUT')
+    );
+    
     const observer = new MutationObserver(mutations => {
       mutations.forEach(m => {
         if (m.attributeName === 'value' && m.target.value) {
-          const state = m.target === this.#elements.shippingCountry ? this.#elements.shippingState : this.#elements.billingState;
-          state && this.#updateStateSelect(state, m.target.value, true);
-          this.#logger.debug(`Autocomplete detected on ${m.target.getAttribute('os-checkout-field')}`);
+          const isCountryField = m.target === this.#elements.shippingCountry || m.target === this.#elements.billingCountry;
+          const isStateField = m.target === this.#elements.shippingState || m.target === this.#elements.billingState;
+          
+          if (isCountryField) {
+            const stateField = m.target === this.#elements.shippingCountry ? 
+              this.#elements.shippingState : this.#elements.billingState;
+            
+            if (stateField) {
+              this.#updateStateSelect(stateField, m.target.value, true);
+            }
+            
+            // Apply country config
+            this.#applyCountryConfig(m.target.value);
+          }
+          
+          this.#logger.debug(`Autocomplete detected on ${m.target.getAttribute('os-checkout-field') || 'field'}`);
         }
       });
     });
+    
     fields.forEach(f => observer.observe(f, { attributes: true, attributeFilter: ['value'] }));
     this.#preloadCommonStates();
     this.#logger.debug('Autocomplete detection set up');
   }
 
   #preloadCommonStates() {
-    const countries = this.#addressConfig.showCountries.length ? this.#addressConfig.showCountries : ['US', 'CA', 'GB', 'AU'];
-    countries.forEach(c => !this.#states[c] && this.#loadStates(c));
+    const countries = this.#addressConfig.showCountries.length ? 
+      this.#addressConfig.showCountries : ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'BR'];
+    
+    countries.forEach(countryCode => {
+      if (!this.#states[countryCode]) {
+        this.#loadStates(countryCode).catch(error => {
+          this.#logger.debug(`Failed to preload states for ${countryCode}:`, error);
+        });
+      }
+    });
+    
     this.#logger.debug(`Preloading states for ${countries.join(', ')}`);
+  }
+
+  /**
+   * Check URL parameters for forced country override
+   * @returns {string|null} The forced country code or null
+   */
+  #checkForForcedCountry() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const forcedCountry = urlParams.get('forceCountry');
+      
+      if (forcedCountry) {
+        // Normalize to uppercase for consistency
+        const normalizedCountry = forcedCountry.toUpperCase();
+        this.#logger.debug(`🔧 Found forceCountry parameter: ${normalizedCountry}`);
+        return normalizedCountry;
+      }
+      
+      return null;
+    } catch (error) {
+      this.#logger.error('Error checking for forced country parameter:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Handle forced country when we already have cached data
+   * @param {string} forcedCountry - The forced country code
+   */
+  async #handleForcedCountry(forcedCountry) {
+    // Validate that forced country exists in our countries list
+    const countryExists = this.#countries.some(country => country.iso2 === forcedCountry);
+    if (countryExists) {
+      this.#logger.info(`🔧 Applying forced country override: ${forcedCountry}`);
+      this.#addressConfig.defaultCountry = forcedCountry;
+      
+      // Load states for forced country if not already cached
+      if (!this.#states[forcedCountry]) {
+        await this.#loadStates(forcedCountry);
+      }
+    } else {
+      this.#logger.warn(`⚠️ Invalid forced country code: ${forcedCountry} - not found in available countries`);
+    }
+  }
+
+  /**
+   * Load states for a forced country from the Worker API
+   * @param {string} countryCode - The country code to load states for
+   */
+  async #loadStatesForForcedCountry(countryCode) {
+    try {
+      this.#logger.debug(`Loading states for forced country: ${countryCode}`);
+      const response = await fetch(`${this.#workerBaseUrl}/countries/${countryCode}/states`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      this.#logger.debug(`Received states data for forced country ${countryCode}:`, data);
+
+      // Process states
+      let states = [];
+      if (data.states && Array.isArray(data.states)) {
+        states = data.states
+          .filter(state => !this.#addressConfig.dontShowStates.includes(state.code))
+          .map(state => ({
+            iso2: state.code,
+            name: state.name
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      }
+
+      // Store country config
+      if (data.countryConfig) {
+        this.#countryConfigs[countryCode] = data.countryConfig;
+        this.#logger.debug(`Stored config for forced country ${countryCode}:`, data.countryConfig);
+      }
+
+      // Cache the data
+      this.#states[countryCode] = states;
+      this.#saveCache('os_states_cache', { states: this.#states });
+      this.#saveCache('os_country_configs_cache', { configs: this.#countryConfigs });
+
+      this.#logger.info(`✅ Loaded and cached ${states.length} states for forced country: ${countryCode}`);
+      
+    } catch (error) {
+      this.#logger.error(`Failed to load states for forced country ${countryCode}:`, error);
+      this.#states[countryCode] = [];
+    }
+  }
+
+  // Public methods for external access
+  getCountryConfig(countryCode) {
+    return this.#countryConfigs[countryCode] || null;
+  }
+
+  async refreshCountryData(countryCode) {
+    delete this.#states[countryCode];
+    delete this.#countryConfigs[countryCode];
+    return await this.#loadStates(countryCode);
+  }
+
+  getAvailableCountries() {
+    return [...this.#countries];
+  }
+
+  getStatesForCountry(countryCode) {
+    return this.#states[countryCode] || [];
+  }
+
+  /**
+   * Get the currently forced country from URL parameters
+   * @returns {string|null} The forced country code or null
+   */
+  getForcedCountry() {
+    return this.#checkForForcedCountry();
+  }
+
+  /**
+   * Update phone input country when address country changes
+   * @param {HTMLSelectElement} countrySelect - The country select element that changed
+   * @param {string} countryCode - The new country code
+   */
+  #updatePhoneInputCountry(countrySelect, countryCode) {
+    // Check if PhoneInputHandler is available globally
+    const phoneHandler = window.osPhoneInputHandler;
+    
+    if (!phoneHandler || typeof phoneHandler.updatePhoneCountry !== 'function') {
+      this.#logger.debug('PhoneInputHandler not available for country sync');
+      return;
+    }
+
+    try {
+      // Determine which phone field to update based on which country select changed
+      const fieldType = countrySelect.getAttribute('os-checkout-field');
+      const phoneFieldType = fieldType === 'country' ? 'phone' : 'billing-phone';
+      
+      // Update the phone input country
+      phoneHandler.updatePhoneCountry(phoneFieldType, countryCode);
+      this.#logger.debug(`Updated phone input country: ${phoneFieldType} → ${countryCode}`);
+    } catch (error) {
+      this.#logger.error('Error updating phone input country:', error);
+    }
   }
 }

@@ -307,8 +307,9 @@ export class FormValidator {
       return this.#validateCity(value, label);
     }
     
+    // Updated postcode validation to use country-specific rules
     if (fieldName && (fieldName.includes('zip') || fieldName.includes('postal') || fieldName.endsWith('-zip'))) {
-      return this.#validateZipCode(value, fieldName);
+      return this.#validatePostcodeWithCountryRules(field, value, fieldName);
     }
     
     if (field.type === 'email') return {
@@ -328,7 +329,151 @@ export class FormValidator {
   }
 
   /**
-   * Validate a US ZIP code (5 digits or ZIP+4 format)
+   * Validate postcode using country-specific rules from AddressHandler
+   * @param {HTMLElement} field - The postcode field
+   * @param {string} value - Postcode value to validate
+   * @param {string} fieldName - Name of the field for error message
+   * @returns {Object} Validation result with isValid and errorMessage
+   */
+  #validatePostcodeWithCountryRules(field, value, fieldName) {
+    // Get the corresponding country field
+    const isShippingPostcode = fieldName === 'postal' || fieldName === 'zip';
+    const countryField = isShippingPostcode 
+      ? document.querySelector('[os-checkout-field="country"]')
+      : document.querySelector('[os-checkout-field="billing-country"]');
+    
+    // If no country selected, fall back to basic validation
+    if (!countryField || !countryField.value) {
+      return this.#validateZipCode(value, fieldName);
+    }
+    
+    const countryCode = countryField.value;
+    
+    // Try to get country config from AddressHandler if available
+    if (window.osAddressHandler && typeof window.osAddressHandler.getCountryConfig === 'function') {
+      const config = window.osAddressHandler.getCountryConfig(countryCode);
+      
+      if (config && config.postcodeRegex) {
+        try {
+          const regex = new RegExp(config.postcodeRegex);
+          const isValid = regex.test(value);
+          
+          return {
+            isValid,
+            errorMessage: isValid ? '' : 
+              `Please enter a valid ${config.postcodeLabel || 'postcode'}${config.postcodeExample ? `. Example: ${config.postcodeExample}` : ''}`
+          };
+        } catch (error) {
+          this.#logger?.warn('Invalid postcode regex from country config:', config.postcodeRegex);
+        }
+      }
+    }
+    
+    // Fall back to built-in country-specific validation
+    return this.#validatePostcodeByCountry(value, countryCode, fieldName);
+  }
+
+  /**
+   * Built-in country-specific postcode validation (fallback)
+   * @param {string} value - Postcode value to validate
+   * @param {string} countryCode - Country code
+   * @param {string} fieldName - Name of the field for error message
+   * @returns {Object} Validation result with isValid and errorMessage
+   */
+  #validatePostcodeByCountry(value, countryCode, fieldName) {
+    let pattern, label, example;
+    
+    switch (countryCode.toUpperCase()) {
+      case 'US':
+        pattern = /^(\d{5}|\d{5}-\d{4})$/;
+        label = 'ZIP Code';
+        example = '12345 or 12345-6789';
+        break;
+        
+      case 'CA':
+        pattern = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
+        label = 'Postal Code';
+        example = 'K1A 0A6';
+        break;
+        
+      case 'GB':
+      case 'UK':
+        pattern = /^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i;
+        label = 'Postcode';
+        example = 'SW1A 0AA';
+        break;
+        
+      case 'AU':
+        pattern = /^\d{4}$/;
+        label = 'Postcode';
+        example = '2000';
+        break;
+        
+      case 'DE':
+        pattern = /^\d{5}$/;
+        label = 'Postleitzahl';
+        example = '10115';
+        break;
+        
+      case 'FR':
+        pattern = /^\d{5}$/;
+        label = 'Code Postal';
+        example = '75001';
+        break;
+        
+      case 'NL':
+        pattern = /^\d{4} ?[A-Z]{2}$/i;
+        label = 'Postcode';
+        example = '1012 JS';
+        break;
+        
+      case 'ES':
+        pattern = /^\d{5}$/;
+        label = 'Código Postal';
+        example = '28001';
+        break;
+        
+      case 'IT':
+        pattern = /^\d{5}$/;
+        label = 'Codice Postale';
+        example = '00118';
+        break;
+        
+      case 'BR':
+        pattern = /^\d{5}-?\d{3}$/;
+        label = 'CEP';
+        example = '01310-100';
+        break;
+        
+      case 'JP':
+        pattern = /^\d{3}-?\d{4}$/;
+        label = 'Postal Code';
+        example = '100-0005';
+        break;
+        
+      case 'IN':
+        pattern = /^\d{6}$/;
+        label = 'PIN Code';
+        example = '110001';
+        break;
+        
+      default:
+        // For unknown countries, accept any non-empty value
+        return {
+          isValid: value.trim().length > 0,
+          errorMessage: value.trim().length > 0 ? '' : 'Please enter a postal code'
+        };
+    }
+    
+    const isValid = pattern.test(value);
+    return {
+      isValid,
+      errorMessage: isValid ? '' : `Please enter a valid ${label}. Example: ${example}`
+    };
+  }
+
+  /**
+   * Legacy US ZIP code validation (kept for compatibility)
    * @param {string} value - ZIP code to validate
    * @param {string} fieldName - Name of the field for error message
    * @returns {Object} Validation result with isValid and errorMessage

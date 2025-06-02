@@ -502,7 +502,21 @@ export class ProspectCartHandler {
       return true;
     }
     
-    // Validate based on country
+    // Try to use AddressHandler's country config first
+    if (window.osAddressHandler && typeof window.osAddressHandler.getCountryConfig === 'function') {
+      const config = window.osAddressHandler.getCountryConfig(country);
+      
+      if (config && config.postcodeRegex) {
+        try {
+          const regex = new RegExp(config.postcodeRegex);
+          return regex.test(postalCode);
+        } catch (error) {
+          this.#logger.warn('Invalid postcode regex from AddressHandler config:', config.postcodeRegex);
+        }
+      }
+    }
+    
+    // Fall back to built-in validation
     switch (country.toUpperCase()) {
       case 'US':
         // US postal codes should be 5 digits or 5+4 digits
@@ -531,6 +545,30 @@ export class ProspectCartHandler {
         
       case 'FR':
         // French postal codes are 5 digits
+        return /^\d{5}$/.test(postalCode);
+        
+      case 'BR':
+        // Brazilian CEP: 12345-678
+        return /^\d{5}-?\d{3}$/.test(postalCode);
+        
+      case 'JP':
+        // Japanese postal code: 123-4567
+        return /^\d{3}-?\d{4}$/.test(postalCode);
+        
+      case 'IN':
+        // Indian PIN code: 6 digits
+        return /^\d{6}$/.test(postalCode);
+        
+      case 'NL':
+        // Dutch postal code: 1234 AB
+        return /^\d{4} ?[A-Z]{2}$/i.test(postalCode);
+        
+      case 'ES':
+        // Spanish postal code: 5 digits
+        return /^\d{5}$/.test(postalCode);
+        
+      case 'IT':
+        // Italian postal code: 5 digits
         return /^\d{5}$/.test(postalCode);
         
       // Add more countries as needed
