@@ -205,12 +205,17 @@ export class TwentyNineNext {
     this.coreLogger.debug('Loading Google Maps API...');
     return new Promise((resolve) => {
       const script = document.createElement('script');
-      const regionParam = this.options.googleMapsRegion ? `&region=${this.options.googleMapsRegion}` : '';
+      
+      // Use detected country as region if available, fallback to configured region
+      const detectedCountry = this.countryCampaign?.getCurrentCountry();
+      const regionToUse = detectedCountry || this.options.googleMapsRegion || 'US';
+      const regionParam = `&region=${regionToUse}`;
+      
       script.src = `https://maps.googleapis.com/maps/api/js?key=${this.options.googleMapsApiKey}&libraries=places${regionParam}`;
       script.async = true;
       script.defer = true;
       script.onload = () => {
-        this.coreLogger.debug('Google Maps API loaded successfully');
+        this.coreLogger.debug(`Google Maps API loaded successfully (region: ${regionToUse})`);
         resolve();
       };
       script.onerror = () => {

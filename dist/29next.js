@@ -4554,7 +4554,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/AddressAutocomplete.js
-  var _logger8, _fieldsShown, _elements2, _enableAutocomplete, _init4, init_fn4, _hideLocationFields, hideLocationFields_fn, _showLocationFields, showLocationFields_fn, _isGoogleMapsAvailable, isGoogleMapsAvailable_fn, _initAutocompleteWithRetry, initAutocompleteWithRetry_fn, _initializeAutocomplete, initializeAutocomplete_fn, _setupAutocomplete, setupAutocomplete_fn, _setStateWithRetry, setStateWithRetry_fn, _setupBasicFieldListeners, setupBasicFieldListeners_fn, _setupAutofillDetection, setupAutofillDetection_fn;
+  var _logger8, _fieldsShown, _elements2, _enableAutocomplete, _currentCountry, _init4, init_fn4, _hideLocationFields, hideLocationFields_fn, _showLocationFields, showLocationFields_fn, _isGoogleMapsAvailable, isGoogleMapsAvailable_fn, _initAutocompleteWithRetry, initAutocompleteWithRetry_fn, _initializeAutocomplete, initializeAutocomplete_fn, _setupAutocomplete, setupAutocomplete_fn, _setStateWithRetry, setStateWithRetry_fn, _setupBasicFieldListeners, setupBasicFieldListeners_fn, _setupAutofillDetection, setupAutofillDetection_fn;
   var AddressAutocomplete = class {
     constructor(logger, options = {}) {
       __privateAdd(this, _init4);
@@ -4571,8 +4571,10 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _fieldsShown, false);
       __privateAdd(this, _elements2, void 0);
       __privateAdd(this, _enableAutocomplete, void 0);
+      __privateAdd(this, _currentCountry, void 0);
       __privateSet(this, _logger8, logger);
       __privateSet(this, _enableAutocomplete, options.enableGoogleMapsAutocomplete !== false);
+      __privateSet(this, _currentCountry, options.currentCountry || "US");
       __privateSet(this, _elements2, {
         shipping: {
           address: document.querySelector('[os-checkout-field="address1"]'),
@@ -4590,15 +4592,36 @@ var TwentyNineNext = (() => {
         },
         locations: document.querySelectorAll('[data-os-component="location"]')
       });
-      __privateGet(this, _logger8).info(`AddressAutocomplete initialized (autocomplete ${__privateGet(this, _enableAutocomplete) ? "enabled" : "disabled"})`);
+      __privateGet(this, _logger8).info(`AddressAutocomplete initialized (autocomplete ${__privateGet(this, _enableAutocomplete) ? "enabled" : "disabled"}, country: ${__privateGet(this, _currentCountry)})`);
       __privateMethod(this, _hideLocationFields, hideLocationFields_fn).call(this);
       __privateMethod(this, _init4, init_fn4).call(this);
+    }
+    /**
+     * Update the country restriction for autocomplete
+     * @param {string} newCountryCode - New country code to restrict to
+     */
+    updateCountry(newCountryCode) {
+      if (!newCountryCode || newCountryCode === __privateGet(this, _currentCountry)) {
+        return;
+      }
+      __privateSet(this, _currentCountry, newCountryCode.toUpperCase());
+      __privateGet(this, _logger8).info(`Updating AddressAutocomplete country to: ${__privateGet(this, _currentCountry)}`);
+      if (__privateGet(this, _enableAutocomplete) && __privateMethod(this, _isGoogleMapsAvailable, isGoogleMapsAvailable_fn).call(this)) {
+        __privateMethod(this, _initializeAutocomplete, initializeAutocomplete_fn).call(this);
+      }
+    }
+    /**
+     * Get current country restriction
+     */
+    getCurrentCountry() {
+      return __privateGet(this, _currentCountry);
     }
   };
   _logger8 = new WeakMap();
   _fieldsShown = new WeakMap();
   _elements2 = new WeakMap();
   _enableAutocomplete = new WeakMap();
+  _currentCountry = new WeakMap();
   _init4 = new WeakSet();
   init_fn4 = async function() {
     __privateMethod(this, _setupAutofillDetection, setupAutofillDetection_fn).call(this);
@@ -4658,10 +4681,17 @@ var TwentyNineNext = (() => {
   _setupAutocomplete = new WeakSet();
   setupAutocomplete_fn = function(input, fields) {
     try {
-      const autocomplete = new google.maps.places.Autocomplete(input, {
+      const autocompleteOptions = {
         types: ["address"],
         fields: ["address_components", "formatted_address"]
-      });
+      };
+      if (__privateGet(this, _currentCountry)) {
+        autocompleteOptions.componentRestrictions = {
+          country: __privateGet(this, _currentCountry).toLowerCase()
+        };
+        __privateGet(this, _logger8).debug(`Google Maps autocomplete restricted to country: ${__privateGet(this, _currentCountry)}`);
+      }
+      const autocomplete = new google.maps.places.Autocomplete(input, autocompleteOptions);
       autocomplete.addListener("place_changed", () => {
         const place = autocomplete.getPlace();
         if (!place.address_components)
@@ -5886,10 +5916,17 @@ var TwentyNineNext = (() => {
   _initAddressAutocomplete = new WeakSet();
   initAddressAutocomplete_fn = function() {
     try {
+      const currentCountry = __privateGet(this, _app7).countryCampaign?.getCurrentCountry() || "US";
       const googleMapsOptions = {
-        enableGoogleMapsAutocomplete: __privateGet(this, _app7).options.enableGoogleMapsAutocomplete
+        enableGoogleMapsAutocomplete: __privateGet(this, _app7).options.enableGoogleMapsAutocomplete,
+        currentCountry
       };
       this.addressAutocomplete = new AddressAutocomplete(__privateGet(this, _logger12), googleMapsOptions);
+      document.addEventListener("os:country.changed", (event) => {
+        if (this.addressAutocomplete && event.detail?.country) {
+          this.addressAutocomplete.updateCountry(event.detail.country);
+        }
+      });
     } catch (error) {
       __privateGet(this, _logger12).error("Error initializing AddressAutocomplete", error);
     }
@@ -12709,7 +12746,7 @@ var TwentyNineNext = (() => {
   _logger26 = new WeakMap();
 
   // src/managers/CountryCampaignManager.js
-  var _app22, _logger27, _currentCountry, _cachedCampaigns, _config3, _isInitialized2, _loadConfig2, loadConfig_fn2, _detectUserCountry, detectUserCountry_fn, _getCampaignIdForCountry, getCampaignIdForCountry_fn, _updateApiClientCampaign, updateApiClientCampaign_fn, _updateCartForNewCountry, updateCartForNewCountry_fn, _triggerCountryChangedEvent, triggerCountryChangedEvent_fn;
+  var _app22, _logger27, _currentCountry2, _cachedCampaigns, _config3, _isInitialized2, _loadConfig2, loadConfig_fn2, _detectUserCountry, detectUserCountry_fn, _getCampaignIdForCountry, getCampaignIdForCountry_fn, _updateApiClientCampaign, updateApiClientCampaign_fn, _updateCartForNewCountry, updateCartForNewCountry_fn, _triggerCountryChangedEvent, triggerCountryChangedEvent_fn;
   var CountryCampaignManager = class {
     constructor(app) {
       /**
@@ -12738,7 +12775,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _triggerCountryChangedEvent);
       __privateAdd(this, _app22, void 0);
       __privateAdd(this, _logger27, void 0);
-      __privateAdd(this, _currentCountry, null);
+      __privateAdd(this, _currentCountry2, null);
       __privateAdd(this, _cachedCampaigns, /* @__PURE__ */ new Map());
       // Map of country -> campaign data
       __privateAdd(this, _config3, {
@@ -12760,7 +12797,7 @@ var TwentyNineNext = (() => {
         const detectedCountry = await __privateMethod(this, _detectUserCountry, detectUserCountry_fn).call(this);
         const campaignId = __privateMethod(this, _getCampaignIdForCountry, getCampaignIdForCountry_fn).call(this, detectedCountry);
         __privateMethod(this, _updateApiClientCampaign, updateApiClientCampaign_fn).call(this, campaignId);
-        __privateSet(this, _currentCountry, detectedCountry);
+        __privateSet(this, _currentCountry2, detectedCountry);
         __privateSet(this, _isInitialized2, true);
         __privateGet(this, _logger27).info(`Country campaign system initialized for country: ${detectedCountry}, campaign: ${campaignId}`);
         return {
@@ -12805,9 +12842,9 @@ var TwentyNineNext = (() => {
           __privateGet(this, _logger27).debug(`Using cached campaign data for ${upperCountryCode}`);
           __privateMethod(this, _updateApiClientCampaign, updateApiClientCampaign_fn).call(this, newCampaignId);
         }
-        await __privateMethod(this, _updateCartForNewCountry, updateCartForNewCountry_fn).call(this, __privateGet(this, _currentCountry), upperCountryCode, campaignData);
-        const previousCountry = __privateGet(this, _currentCountry);
-        __privateSet(this, _currentCountry, upperCountryCode);
+        await __privateMethod(this, _updateCartForNewCountry, updateCartForNewCountry_fn).call(this, __privateGet(this, _currentCountry2), upperCountryCode, campaignData);
+        const previousCountry = __privateGet(this, _currentCountry2);
+        __privateSet(this, _currentCountry2, upperCountryCode);
         localStorage.setItem("os-forced-country", upperCountryCode);
         localStorage.setItem("os-forced-country-timestamp", Date.now().toString());
         __privateGet(this, _app22).campaignData = campaignData;
@@ -12831,25 +12868,25 @@ var TwentyNineNext = (() => {
      * Get current country code
      */
     getCurrentCountry() {
-      return __privateGet(this, _currentCountry);
+      return __privateGet(this, _currentCountry2);
     }
     /**
      * Get current campaign ID
      */
     getCurrentCampaignId() {
-      if (!__privateGet(this, _currentCountry)) {
+      if (!__privateGet(this, _currentCountry2)) {
         return null;
       }
-      return __privateMethod(this, _getCampaignIdForCountry, getCampaignIdForCountry_fn).call(this, __privateGet(this, _currentCountry));
+      return __privateMethod(this, _getCampaignIdForCountry, getCampaignIdForCountry_fn).call(this, __privateGet(this, _currentCountry2));
     }
     /**
      * Get current campaign data
      */
     getCurrentCampaignData() {
-      if (!__privateGet(this, _currentCountry)) {
+      if (!__privateGet(this, _currentCountry2)) {
         return null;
       }
-      return __privateGet(this, _cachedCampaigns).get(__privateGet(this, _currentCountry)) || __privateGet(this, _app22).campaignData;
+      return __privateGet(this, _cachedCampaigns).get(__privateGet(this, _currentCountry2)) || __privateGet(this, _app22).campaignData;
     }
     /**
      * Get cached campaigns
@@ -12876,16 +12913,16 @@ var TwentyNineNext = (() => {
      * Call this to ensure country selects show the current country
      */
     syncCountrySelection() {
-      if (!__privateGet(this, _currentCountry))
+      if (!__privateGet(this, _currentCountry2))
         return;
       const countrySelects = [
         document.querySelector('[os-checkout-field="country"]'),
         document.querySelector('[os-checkout-field="billing-country"]')
       ];
       countrySelects.forEach((select) => {
-        if (select && select.value !== __privateGet(this, _currentCountry)) {
-          __privateGet(this, _logger27).info(`Syncing country select to: ${__privateGet(this, _currentCountry)}`);
-          select.value = __privateGet(this, _currentCountry);
+        if (select && select.value !== __privateGet(this, _currentCountry2)) {
+          __privateGet(this, _logger27).info(`Syncing country select to: ${__privateGet(this, _currentCountry2)}`);
+          select.value = __privateGet(this, _currentCountry2);
           select.dispatchEvent(new Event("change", { bubbles: true }));
         }
       });
@@ -12899,7 +12936,7 @@ var TwentyNineNext = (() => {
       localStorage.removeItem("os-forced-country");
       localStorage.removeItem("os-forced-country-timestamp");
       const detectedCountry = await __privateMethod(this, _detectUserCountry, detectUserCountry_fn).call(this);
-      if (detectedCountry !== __privateGet(this, _currentCountry)) {
+      if (detectedCountry !== __privateGet(this, _currentCountry2)) {
         return await this.switchCountry(detectedCountry);
       }
       return {
@@ -12934,7 +12971,7 @@ var TwentyNineNext = (() => {
   };
   _app22 = new WeakMap();
   _logger27 = new WeakMap();
-  _currentCountry = new WeakMap();
+  _currentCountry2 = new WeakMap();
   _cachedCampaigns = new WeakMap();
   _config3 = new WeakMap();
   _isInitialized2 = new WeakMap();
@@ -14007,12 +14044,14 @@ var TwentyNineNext = (() => {
     this.coreLogger.debug("Loading Google Maps API...");
     return new Promise((resolve) => {
       const script = document.createElement("script");
-      const regionParam = this.options.googleMapsRegion ? `&region=${this.options.googleMapsRegion}` : "";
+      const detectedCountry = this.countryCampaign?.getCurrentCountry();
+      const regionToUse = detectedCountry || this.options.googleMapsRegion || "US";
+      const regionParam = `&region=${regionToUse}`;
       script.src = `https://maps.googleapis.com/maps/api/js?key=${this.options.googleMapsApiKey}&libraries=places${regionParam}`;
       script.async = true;
       script.defer = true;
       script.onload = () => {
-        this.coreLogger.debug("Google Maps API loaded successfully");
+        this.coreLogger.debug(`Google Maps API loaded successfully (region: ${regionToUse})`);
         resolve();
       };
       script.onerror = () => {

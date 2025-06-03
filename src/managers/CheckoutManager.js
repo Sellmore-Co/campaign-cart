@@ -239,12 +239,23 @@ export class CheckoutPage {
 
   #initAddressAutocomplete() {
     try {
-      // Pass Google Maps options from the app instance
+      // Get current country from CountryCampaignManager if available
+      const currentCountry = this.#app.countryCampaign?.getCurrentCountry() || 'US';
+      
+      // Pass Google Maps options from the app instance including current country
       const googleMapsOptions = {
-        enableGoogleMapsAutocomplete: this.#app.options.enableGoogleMapsAutocomplete
+        enableGoogleMapsAutocomplete: this.#app.options.enableGoogleMapsAutocomplete,
+        currentCountry: currentCountry
       };
       
       this.addressAutocomplete = new AddressAutocomplete(this.#logger, googleMapsOptions);
+      
+      // Listen for country changes to update autocomplete
+      document.addEventListener('os:country.changed', (event) => {
+        if (this.addressAutocomplete && event.detail?.country) {
+          this.addressAutocomplete.updateCountry(event.detail.country);
+        }
+      });
     } catch (error) {
       this.#logger.error('Error initializing AddressAutocomplete', error);
     }

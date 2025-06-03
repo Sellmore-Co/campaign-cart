@@ -3,10 +3,12 @@ export class AddressAutocomplete {
     #fieldsShown = false;
     #elements;
     #enableAutocomplete;
+    #currentCountry;
   
     constructor(logger, options = {}) {
       this.#logger = logger;
       this.#enableAutocomplete = options.enableGoogleMapsAutocomplete !== false;
+      this.#currentCountry = options.currentCountry || 'US';
       
       this.#elements = {
         shipping: {
@@ -26,7 +28,7 @@ export class AddressAutocomplete {
         locations: document.querySelectorAll('[data-os-component="location"]'),
       };
   
-      this.#logger.info(`AddressAutocomplete initialized (autocomplete ${this.#enableAutocomplete ? 'enabled' : 'disabled'})`);
+      this.#logger.info(`AddressAutocomplete initialized (autocomplete ${this.#enableAutocomplete ? 'enabled' : 'disabled'}, country: ${this.#currentCountry})`);
       this.#hideLocationFields();
       this.#init();
     }
@@ -93,10 +95,19 @@ export class AddressAutocomplete {
   
     #setupAutocomplete(input, fields) {
       try {
-        const autocomplete = new google.maps.places.Autocomplete(input, {
+        const autocompleteOptions = {
           types: ['address'],
           fields: ['address_components', 'formatted_address'],
-        });
+        };
+  
+        if (this.#currentCountry) {
+          autocompleteOptions.componentRestrictions = {
+            country: this.#currentCountry.toLowerCase()
+          };
+          this.#logger.debug(`Google Maps autocomplete restricted to country: ${this.#currentCountry}`);
+        }
+  
+        const autocomplete = new google.maps.places.Autocomplete(input, autocompleteOptions);
   
         autocomplete.addListener('place_changed', () => {
           const place = autocomplete.getPlace();
@@ -178,5 +189,30 @@ export class AddressAutocomplete {
         });
       });
       this.#logger.debug('Autofill detection initialized');
+    }
+
+    /**
+     * Update the country restriction for autocomplete
+     * @param {string} newCountryCode - New country code to restrict to
+     */
+    updateCountry(newCountryCode) {
+      if (!newCountryCode || newCountryCode === this.#currentCountry) {
+        return;
+      }
+
+      this.#currentCountry = newCountryCode.toUpperCase();
+      this.#logger.info(`Updating AddressAutocomplete country to: ${this.#currentCountry}`);
+
+      // Re-initialize autocomplete with new country restriction if Google Maps is available
+      if (this.#enableAutocomplete && this.#isGoogleMapsAvailable()) {
+        this.#initializeAutocomplete();
+      }
+    }
+
+    /**
+     * Get current country restriction
+     */
+    getCurrentCountry() {
+      return this.#currentCountry;
     }
   }
