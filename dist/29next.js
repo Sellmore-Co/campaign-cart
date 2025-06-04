@@ -9403,6 +9403,11 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger21).infoWithTime(`Country changed to ${country}, updating cart display`);
       this.updateCartDisplay();
     });
+    document.addEventListener("os:country-campaign.initialized", (event) => {
+      __privateGet(this, _logger21).infoWithTime(`🔔 [CartDisplay] Received country-campaign.initialized event for ${event.detail.country}`);
+      __privateMethod(this, _updateCurrencySymbols, updateCurrencySymbols_fn).call(this);
+      __privateGet(this, _logger21).infoWithTime(`🔔 [CartDisplay] Currency elements updated after country campaign initialization`);
+    });
   };
   _getCurrencySymbol3 = new WeakSet();
   getCurrencySymbol_fn3 = function(currencyCode) {
@@ -9826,19 +9831,16 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger21).warnWithTime("Grand total elements not found");
       return;
     }
+    const formattedPrice = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, total);
     __privateGet(this, _elements3).grandTotals.forEach((element) => {
-      element.textContent = __privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, total);
+      element.textContent = formattedPrice;
     });
-    __privateGet(this, _logger21).debugWithTime(`Updated grand total to: ${__privateMethod(this, _formatPrice2, formatPrice_fn2).call(this, total)}`);
+    __privateGet(this, _logger21).debugWithTime(`Updated grand total to: ${formattedPrice}`);
   };
   _formatPrice2 = new WeakSet();
   formatPrice_fn2 = function(price) {
-    if (__privateGet(this, _app16).campaign?.formatPrice) {
-      return __privateGet(this, _app16).campaign.formatPrice(price);
-    }
     const symbol = __privateGet(this, _app16).getCurrencySymbol();
-    const currencyCode = __privateGet(this, _app16).getCurrencyCode();
-    return `${symbol}${price.toFixed(2)} ${currencyCode}`;
+    return `${symbol}${price.toFixed(2)}`;
   };
   _debounce = new WeakSet();
   debounce_fn = function(func, wait) {
@@ -12851,6 +12853,17 @@ var TwentyNineNext = (() => {
         __privateSet(this, _currentCountry2, detectedCountry);
         __privateSet(this, _isInitialized2, true);
         __privateGet(this, _logger27).info(`✅ [CountryCampaign] System initialized - Country: ${detectedCountry}, Campaign: ${campaignId}`);
+        __privateGet(this, _logger27).info(`🔔 [CountryCampaign] Firing country-campaign.initialized event for: ${detectedCountry}`);
+        const event = new CustomEvent("os:country-campaign.initialized", {
+          bubbles: true,
+          detail: {
+            country: detectedCountry,
+            campaignId,
+            manager: this
+          }
+        });
+        document.dispatchEvent(event);
+        __privateGet(this, _logger27).info(`🔔 [CountryCampaign] Event dispatched successfully`);
         return {
           country: detectedCountry,
           campaignId
@@ -12858,6 +12871,16 @@ var TwentyNineNext = (() => {
       } catch (error) {
         __privateGet(this, _logger27).error("Failed to initialize country campaign system:", error);
         __privateSet(this, _isInitialized2, true);
+        const event = new CustomEvent("os:country-campaign.initialized", {
+          bubbles: true,
+          detail: {
+            country: "US",
+            // Safe fallback
+            campaignId: null,
+            manager: this
+          }
+        });
+        document.dispatchEvent(event);
         return null;
       }
     }
@@ -13088,11 +13111,19 @@ var TwentyNineNext = (() => {
     }
     const localizationData = window.osLocalizationData;
     if (localizationData && localizationData.detectedCountryCode) {
-      __privateGet(this, _logger27).info(`🌐 [CountryCampaign] Using cached localization data for country: ${localizationData.detectedCountryCode}`);
-      return localizationData.detectedCountryCode;
+      const detectedCountry = localizationData.detectedCountryCode;
+      __privateGet(this, _logger27).info(`🌐 [CountryCampaign] Using cached localization data for country: ${detectedCountry}`);
+      if (__privateGet(this, _config3).campaignIds[detectedCountry]) {
+        __privateGet(this, _logger27).info(`✅ [CountryCampaign] Detected country ${detectedCountry} is supported`);
+        return detectedCountry;
+      } else {
+        const defaultCountry = window.osConfig?.addressConfig?.defaultCountry || "US";
+        __privateGet(this, _logger27).warn(`⚠️ [CountryCampaign] Detected country ${detectedCountry} not supported, using default: ${defaultCountry}`);
+        return defaultCountry;
+      }
     }
     __privateGet(this, _logger27).error("❌ [CountryCampaign] No global localization data available! TwentyNineNext should have loaded this first.");
-    return "US";
+    return window.osConfig?.addressConfig?.defaultCountry || "US";
   };
   _getCampaignIdForCountry = new WeakSet();
   getCampaignIdForCountry_fn = function(countryCode) {
@@ -14004,41 +14035,68 @@ var TwentyNineNext = (() => {
      * @returns {string} Currency symbol
      */
     getCurrencySymbol(currencyCode = null) {
-      const currentLocalizationData = window.osLocalizationData || __privateGet(this, _localizationData);
-      if (currentLocalizationData?.detectedCountryConfig?.currencySymbol) {
-        if (!currencyCode || currencyCode === currentLocalizationData.detectedCountryConfig.currencyCode) {
-          const symbol = currentLocalizationData.detectedCountryConfig.currencySymbol;
-          const country = currentLocalizationData.detectedCountryCode;
-          const detectedCurrency = currentLocalizationData.detectedCountryConfig.currencyCode;
-          this.coreLogger.debug(`💱 [TwentyNineNext] getCurrencySymbol(${currencyCode || "auto"}) → "${symbol}" (from current localization: ${country}/${detectedCurrency})`);
-          return symbol;
+      let symbol, source;
+      if (this.countryCampaign && this.countryCampaign.isInitialized) {
+        const currentCountry = this.countryCampaign.getCurrentCountry();
+        if (currentCountry && window.osConfig?.countryConfigs?.[currentCountry]?.currencySymbol) {
+          const countrySymbol = window.osConfig.countryConfigs[currentCountry].currencySymbol;
+          const countryCode = window.osConfig.countryConfigs[currentCountry].currencyCode;
+          if (!currencyCode || currencyCode === countryCode) {
+            symbol = countrySymbol;
+            source = `country campaign manager configs (${currentCountry}/${countryCode})`;
+          }
         }
       }
-      const symbols = {
-        "USD": "$",
-        "GBP": "£",
-        "EUR": "€"
-      };
-      const fallbackSymbol = symbols[currencyCode] || "$";
-      this.coreLogger.debug(`💱 [TwentyNineNext] getCurrencySymbol(${currencyCode}) → "${fallbackSymbol}" (from fallback mapping as current localization didn't match or apply)`);
-      return fallbackSymbol;
+      if (!symbol) {
+        const currentLocalizationData = window.osLocalizationData || __privateGet(this, _localizationData);
+        if (currentLocalizationData?.detectedCountryConfig?.currencySymbol) {
+          if (!currencyCode || currencyCode === currentLocalizationData.detectedCountryConfig.currencyCode) {
+            symbol = currentLocalizationData.detectedCountryConfig.currencySymbol;
+            const country = currentLocalizationData.detectedCountryCode;
+            const detectedCurrency = currentLocalizationData.detectedCountryConfig.currencyCode;
+            source = `current localization (${country}/${detectedCurrency})`;
+          }
+        }
+      }
+      if (!symbol) {
+        const symbols = {
+          "USD": "$",
+          "GBP": "£",
+          "EUR": "€"
+        };
+        symbol = symbols[currencyCode] || "$";
+        source = `fallback mapping for ${currencyCode || "default"}`;
+      }
+      this.coreLogger.debug(`💱 [TwentyNineNext] getCurrencySymbol(${currencyCode || "auto"}) → "${symbol}" (from ${source})`);
+      return symbol;
     }
     /**
      * Get currency code from localization data or fallback
      * @returns {string} Currency code
      */
     getCurrencyCode() {
-      const currentLocalizationData = window.osLocalizationData || __privateGet(this, _localizationData);
-      const localizationCurrency = currentLocalizationData?.detectedCountryConfig?.currencyCode;
-      const campaignCurrency = __privateGet(this, _campaignData)?.currency;
       let currency, source;
-      if (localizationCurrency) {
-        currency = localizationCurrency;
-        source = `current localization (${currentLocalizationData.detectedCountryCode || "unknown"})`;
-      } else if (campaignCurrency) {
-        currency = campaignCurrency;
+      if (this.countryCampaign && this.countryCampaign.isInitialized) {
+        const currentCountry = this.countryCampaign.getCurrentCountry();
+        const currentCampaignData = this.countryCampaign.getCurrentCampaignData();
+        if (currentCountry && currentCampaignData?.currency) {
+          currency = currentCampaignData.currency;
+          source = `country campaign manager (${currentCountry})`;
+        }
+      }
+      if (!currency) {
+        const currentLocalizationData = window.osLocalizationData || __privateGet(this, _localizationData);
+        const localizationCurrency = currentLocalizationData?.detectedCountryConfig?.currencyCode;
+        if (localizationCurrency) {
+          currency = localizationCurrency;
+          source = `current localization (${currentLocalizationData.detectedCountryCode || "unknown"})`;
+        }
+      }
+      if (!currency && __privateGet(this, _campaignData)?.currency) {
+        currency = __privateGet(this, _campaignData).currency;
         source = "campaign data";
-      } else {
+      }
+      if (!currency) {
         currency = "USD";
         source = "default fallback";
       }

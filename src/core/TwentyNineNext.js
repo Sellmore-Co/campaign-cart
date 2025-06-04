@@ -594,31 +594,59 @@ export class TwentyNineNext {
    * @returns {string} Currency symbol
    */
   getCurrencySymbol(currencyCode = null) {
-    // Prioritize window.osLocalizationData as it might be updated by AddressHandler
-    const currentLocalizationData = window.osLocalizationData || this.#localizationData;
+    let symbol, source;
+    
+    // Priority:
+    // 1. Symbol from CountryCampaignManager's current country data
+    // 2. Symbol from window.osLocalizationData (updated by AddressHandler)
+    // 3. Fallback to hardcoded mapping
+    
+    // Check CountryCampaignManager first if available and initialized
+    if (this.countryCampaign && this.countryCampaign.isInitialized) {
+      const currentCountry = this.countryCampaign.getCurrentCountry();
+      
+      // Try to get symbol from cached country configs (AddressHandler caches these)
+      if (currentCountry && window.osConfig?.countryConfigs?.[currentCountry]?.currencySymbol) {
+        const countrySymbol = window.osConfig.countryConfigs[currentCountry].currencySymbol;
+        const countryCode = window.osConfig.countryConfigs[currentCountry].currencyCode;
+        
+        // Use this symbol if no specific currency requested OR if it matches the requested currency
+        if (!currencyCode || currencyCode === countryCode) {
+          symbol = countrySymbol;
+          source = `country campaign manager configs (${currentCountry}/${countryCode})`;
+        }
+      }
+    }
+    
+    // Fallback to window.osLocalizationData (updated by AddressHandler)
+    if (!symbol) {
+      const currentLocalizationData = window.osLocalizationData || this.#localizationData;
 
-    // First try to use the detected currency from localization data
-    if (currentLocalizationData?.detectedCountryConfig?.currencySymbol) {
-      // If no specific currency code requested, use the detected one's symbol
-      // OR if a currencyCode is provided, it must match the detected one's code to use its symbol
-      if (!currencyCode || currencyCode === currentLocalizationData.detectedCountryConfig.currencyCode) {
-        const symbol = currentLocalizationData.detectedCountryConfig.currencySymbol;
-        const country = currentLocalizationData.detectedCountryCode;
-        const detectedCurrency = currentLocalizationData.detectedCountryConfig.currencyCode;
-        this.coreLogger.debug(`💱 [TwentyNineNext] getCurrencySymbol(${currencyCode || 'auto'}) → "${symbol}" (from current localization: ${country}/${detectedCurrency})`);
-        return symbol;
+      if (currentLocalizationData?.detectedCountryConfig?.currencySymbol) {
+        // If no specific currency code requested, use the detected one's symbol
+        // OR if a currencyCode is provided, it must match the detected one's code to use its symbol
+        if (!currencyCode || currencyCode === currentLocalizationData.detectedCountryConfig.currencyCode) {
+          symbol = currentLocalizationData.detectedCountryConfig.currencySymbol;
+          const country = currentLocalizationData.detectedCountryCode;
+          const detectedCurrency = currentLocalizationData.detectedCountryConfig.currencyCode;
+          source = `current localization (${country}/${detectedCurrency})`;
+        }
       }
     }
 
-    // Fallback to hardcoded mapping for other currencies
-    const symbols = {
-      'USD': '$',
-      'GBP': '£',
-      'EUR': '€'
-    };
-    const fallbackSymbol = symbols[currencyCode] || '$'; // Default to '$' if no specific match
-    this.coreLogger.debug(`💱 [TwentyNineNext] getCurrencySymbol(${currencyCode}) → "${fallbackSymbol}" (from fallback mapping as current localization didn't match or apply)`);
-    return fallbackSymbol;
+    // Final fallback to hardcoded mapping
+    if (!symbol) {
+      const symbols = {
+        'USD': '$',
+        'GBP': '£',
+        'EUR': '€'
+      };
+      symbol = symbols[currencyCode] || '$'; // Default to '$' if no specific match
+      source = `fallback mapping for ${currencyCode || 'default'}`;
+    }
+    
+    this.coreLogger.debug(`💱 [TwentyNineNext] getCurrencySymbol(${currencyCode || 'auto'}) → "${symbol}" (from ${source})`);
+    return symbol;
   }
 
   /**
@@ -626,24 +654,45 @@ export class TwentyNineNext {
    * @returns {string} Currency code
    */
   getCurrencyCode() {
-    // Prioritize window.osLocalizationData
-    const currentLocalizationData = window.osLocalizationData || this.#localizationData;
-    const localizationCurrency = currentLocalizationData?.detectedCountryConfig?.currencyCode;
-    const campaignCurrency = this.#campaignData?.currency; // Campaign data might also have a currency
-    
     let currency, source;
+    
     // Priority:
-    // 1. Currency code from the currently active country's localization data
-    // 2. Currency code from the loaded campaign data
-    // 3. Fallback to USD
-    if (localizationCurrency) {
-      currency = localizationCurrency;
-      source = `current localization (${currentLocalizationData.detectedCountryCode || 'unknown'})`;
-    } else if (campaignCurrency) {
-      currency = campaignCurrency;
+    // 1. Currency from CountryCampaignManager's current country (most authoritative)
+    // 2. Currency code from the currently active country's localization data  
+    // 3. Currency code from the loaded campaign data
+    // 4. Fallback to USD
+    
+    // Check CountryCampaignManager first if available and initialized
+    if (this.countryCampaign && this.countryCampaign.isInitialized) {
+      const currentCountry = this.countryCampaign.getCurrentCountry();
+      const currentCampaignData = this.countryCampaign.getCurrentCampaignData();
+      
+      if (currentCountry && currentCampaignData?.currency) {
+        currency = currentCampaignData.currency;
+        source = `country campaign manager (${currentCountry})`;
+      }
+    }
+    
+    // Fallback to localization data
+    if (!currency) {
+      const currentLocalizationData = window.osLocalizationData || this.#localizationData;
+      const localizationCurrency = currentLocalizationData?.detectedCountryConfig?.currencyCode;
+      
+      if (localizationCurrency) {
+        currency = localizationCurrency;
+        source = `current localization (${currentLocalizationData.detectedCountryCode || 'unknown'})`;
+      }
+    }
+    
+    // Campaign data fallback
+    if (!currency && this.#campaignData?.currency) {
+      currency = this.#campaignData.currency;
       source = 'campaign data';
-    } else {
-      currency = 'USD'; // Default fallback
+    }
+    
+    // Final fallback
+    if (!currency) {
+      currency = 'USD';
       source = 'default fallback';
     }
     

@@ -67,6 +67,19 @@ export class CountryCampaignManager {
       this.#isInitialized = true;
       this.#logger.info(`✅ [CountryCampaign] System initialized - Country: ${detectedCountry}, Campaign: ${campaignId}`);
       
+      // Fire initialization complete event for other managers to sync
+      this.#logger.info(`🔔 [CountryCampaign] Firing country-campaign.initialized event for: ${detectedCountry}`);
+      const event = new CustomEvent('os:country-campaign.initialized', {
+        bubbles: true,
+        detail: {
+          country: detectedCountry,
+          campaignId: campaignId,
+          manager: this
+        }
+      });
+      document.dispatchEvent(event);
+      this.#logger.info(`🔔 [CountryCampaign] Event dispatched successfully`);
+      
       return {
         country: detectedCountry,
         campaignId: campaignId
@@ -75,6 +88,18 @@ export class CountryCampaignManager {
       this.#logger.error('Failed to initialize country campaign system:', error);
       // Fall back to default behavior
       this.#isInitialized = true;
+      
+      // Still fire event even on error for consistency
+      const event = new CustomEvent('os:country-campaign.initialized', {
+        bubbles: true,
+        detail: {
+          country: 'US', // Safe fallback
+          campaignId: null,
+          manager: this
+        }
+      });
+      document.dispatchEvent(event);
+      
       return null;
     }
   }
@@ -118,13 +143,24 @@ export class CountryCampaignManager {
     // Use globally cached localization data (should always be available)
     const localizationData = window.osLocalizationData;
     if (localizationData && localizationData.detectedCountryCode) {
-      this.#logger.info(`🌐 [CountryCampaign] Using cached localization data for country: ${localizationData.detectedCountryCode}`);
-      return localizationData.detectedCountryCode;
+      const detectedCountry = localizationData.detectedCountryCode;
+      this.#logger.info(`🌐 [CountryCampaign] Using cached localization data for country: ${detectedCountry}`);
+      
+      // CHECK: Is this detected country actually supported by our configuration?
+      if (this.#config.campaignIds[detectedCountry]) {
+        this.#logger.info(`✅ [CountryCampaign] Detected country ${detectedCountry} is supported`);
+        return detectedCountry;
+      } else {
+        // Country not supported, use configured default
+        const defaultCountry = window.osConfig?.addressConfig?.defaultCountry || 'US';
+        this.#logger.warn(`⚠️ [CountryCampaign] Detected country ${detectedCountry} not supported, using default: ${defaultCountry}`);
+        return defaultCountry;
+      }
     }
 
     // Should not happen since TwentyNineNext loads this first
     this.#logger.error('❌ [CountryCampaign] No global localization data available! TwentyNineNext should have loaded this first.');
-    return 'US'; // Safe fallback
+    return window.osConfig?.addressConfig?.defaultCountry || 'US'; // Safe fallback
   }
 
   /**

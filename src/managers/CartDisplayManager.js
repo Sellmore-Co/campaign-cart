@@ -58,6 +58,16 @@ export class CartDisplayManager {
       // Refresh cart display with new currency/prices
       this.updateCartDisplay();
     });
+
+    // ALSO listen for when country campaign initialization is complete
+    // This ensures currency elements are correct on page load/refresh
+    document.addEventListener('os:country-campaign.initialized', (event) => {
+      this.#logger.infoWithTime(`🔔 [CartDisplay] Received country-campaign.initialized event for ${event.detail.country}`);
+      
+      // Force update currency elements to match the initialized country
+      this.#updateCurrencySymbols();
+      this.#logger.infoWithTime(`🔔 [CartDisplay] Currency elements updated after country campaign initialization`);
+    });
   }
 
   /**
@@ -273,6 +283,7 @@ export class CartDisplayManager {
     this.#updateShipping(cart.totals.shipping, cart.shippingMethod);
     this.#updateSavings(cart.totals);
     this.#updateGrandTotal(cart.totals.total);
+    
     this.#updateCompareTotals(cart.totals);
     this.#updateCurrencySymbols();
     this.#logger.debugWithTime('[UPDATE] Cart display fully updated');
@@ -649,12 +660,14 @@ export class CartDisplayManager {
       return;
     }
     
+    const formattedPrice = this.#formatPrice(total);
+    
     // Update all grand total elements
     this.#elements.grandTotals.forEach(element => {
-      element.textContent = this.#formatPrice(total);
+      element.textContent = formattedPrice;
     });
     
-    this.#logger.debugWithTime(`Updated grand total to: ${this.#formatPrice(total)}`);
+    this.#logger.debugWithTime(`Updated grand total to: ${formattedPrice}`);
   }
 
   /**
@@ -663,16 +676,10 @@ export class CartDisplayManager {
    * @returns {string} Formatted price
    */
   #formatPrice(price) {
-    // If CampaignHelper provides a formatter, prefer it
-    if (this.#app.campaign?.formatPrice) {
-      return this.#app.campaign.formatPrice(price);
-    }
-
-    // Centralized currency utilities
+    // ALWAYS use centralized currency utilities for consistent formatting
+    // Return ONLY symbol + price (currency code is handled separately by #updateCurrencySymbols)
     const symbol = this.#app.getCurrencySymbol();
-    const currencyCode = this.#app.getCurrencyCode();
-
-    return `${symbol}${price.toFixed(2)} ${currencyCode}`;
+    return `${symbol}${price.toFixed(2)}`;
   }
 
   /**
