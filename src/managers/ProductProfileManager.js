@@ -202,7 +202,8 @@ export class ProductProfileManager {
           quantity: quantity,
           type: 'package',
           profileId: profileId, // Add profile reference
-          profileName: profile.name
+          profileName: profile.name,
+          is_upsell: options.is_upsell || false // Pass through upsell flag
         });
 
         this.#logger.debugWithTime(`Added package ${pkg.packageId} (qty: ${quantity}) from profile ${profileId}`);

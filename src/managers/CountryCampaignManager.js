@@ -398,7 +398,7 @@ export class CountryCampaignManager {
 
         // Step 4: Create updated item with new campaign data
         const updatedItem = {
-          ...item,
+          ...item, // This preserves profileId, profileName, is_upsell, and other metadata
           id: newPackageData.ref_id?.toString() || newPackageId,
           package_id: newPackageData.ref_id,
           name: newPackageData.name,

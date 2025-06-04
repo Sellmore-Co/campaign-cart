@@ -13394,6 +13394,7 @@ var TwentyNineNext = (() => {
         }
         const updatedItem = {
           ...item,
+          // This preserves profileId, profileName, is_upsell, and other metadata
           id: newPackageData.ref_id?.toString() || newPackageId,
           package_id: newPackageData.ref_id,
           name: newPackageData.name,
@@ -13606,7 +13607,9 @@ var TwentyNineNext = (() => {
             type: "package",
             profileId,
             // Add profile reference
-            profileName: profile.name
+            profileName: profile.name,
+            is_upsell: options.is_upsell || false
+            // Pass through upsell flag
           });
           __privateGet(this, _logger28).debugWithTime(`Added package ${pkg.packageId} (qty: ${quantity}) from profile ${profileId}`);
         }
