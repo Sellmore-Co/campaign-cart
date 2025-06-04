@@ -383,17 +383,8 @@ export class ProductProfileManager {
    * @returns {string} Currency symbol
    */
   #getCurrencySymbol() {
-    if (this.#app.campaignData?.currency) {
-      const symbols = {
-        'USD': '$',
-        'CAD': 'C$',
-        'GBP': '£',
-        'EUR': '€',
-        'AUD': 'A$'
-      };
-      return symbols[this.#app.campaignData.currency] || '$';
-    }
-    return '$';
+    // Use centralized currency utility from TwentyNineNext
+    return this.#app.getCurrencySymbol();
   }
 
   /**

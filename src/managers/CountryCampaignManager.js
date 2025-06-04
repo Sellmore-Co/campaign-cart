@@ -52,9 +52,11 @@ export class CountryCampaignManager {
     try {
       // Step 1: Detect user's country
       const detectedCountry = await this.#detectUserCountry();
+      this.#logger.info(`🌍 [CountryCampaign] Detected country: ${detectedCountry}`);
       
       // Step 2: Get the appropriate campaign ID
       const campaignId = this.#getCampaignIdForCountry(detectedCountry);
+      this.#logger.info(`📋 [CountryCampaign] Campaign ID for ${detectedCountry}: ${campaignId}`);
       
       // Step 3: Update API client to use this campaign
       this.#updateApiClientCampaign(campaignId);
@@ -63,7 +65,7 @@ export class CountryCampaignManager {
       this.#currentCountry = detectedCountry;
       
       this.#isInitialized = true;
-      this.#logger.info(`Country campaign system initialized for country: ${detectedCountry}, campaign: ${campaignId}`);
+      this.#logger.info(`✅ [CountryCampaign] System initialized - Country: ${detectedCountry}, Campaign: ${campaignId}`);
       
       return {
         country: detectedCountry,
@@ -78,15 +80,17 @@ export class CountryCampaignManager {
   }
 
   /**
-   * Detect user's country using the location endpoint
+   * Detect user's country using globally cached localization data
    */
   async #detectUserCountry() {
+    this.#logger.info('🔍 [CountryCampaign] Starting country detection...');
+    
     // Check for force country parameter first
     const urlParams = new URLSearchParams(window.location.search);
     const forceCountry = urlParams.get('forceCountry');
     
     if (forceCountry) {
-      this.#logger.info(`Using forced country from URL parameter: ${forceCountry}`);
+      this.#logger.info(`🔧 [CountryCampaign] Using forced country from URL parameter: ${forceCountry}`);
       // Store forced country for persistence
       localStorage.setItem('os-forced-country', forceCountry.toUpperCase());
       localStorage.setItem('os-forced-country-timestamp', Date.now().toString());
@@ -101,38 +105,26 @@ export class CountryCampaignManager {
       const hoursSinceStored = (Date.now() - parseInt(storedTimestamp)) / (1000 * 60 * 60);
       
       if (hoursSinceStored < 24) {
-        this.#logger.info(`Using previously selected country: ${storedCountry} (${Math.round(hoursSinceStored)}h ago)`);
+        this.#logger.info(`💾 [CountryCampaign] Using previously selected country: ${storedCountry} (${Math.round(hoursSinceStored)}h ago)`);
         return storedCountry;
       } else {
         // Clear expired stored country
         localStorage.removeItem('os-forced-country');
         localStorage.removeItem('os-forced-country-timestamp');
-        this.#logger.info(`Stored country expired after ${Math.round(hoursSinceStored)} hours, detecting fresh`);
+        this.#logger.info(`⏰ [CountryCampaign] Stored country expired after ${Math.round(hoursSinceStored)} hours, detecting fresh`);
       }
     }
 
-    try {
-      // Use the same endpoint as AddressHandler for consistency
-      const response = await fetch('/location', {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Location API returned ${response.status}`);
-      }
-
-      const locationData = await response.json();
-      const detectedCountry = locationData.detectedCountryCode || 'US';
-      
-      this.#logger.info(`Detected country from location API: ${detectedCountry}`);
-      return detectedCountry;
-    } catch (error) {
-      this.#logger.warn('Failed to detect country from location API, falling back to US:', error);
-      return 'US';
+    // Use globally cached localization data (should always be available)
+    const localizationData = window.osLocalizationData;
+    if (localizationData && localizationData.detectedCountryCode) {
+      this.#logger.info(`🌐 [CountryCampaign] Using cached localization data for country: ${localizationData.detectedCountryCode}`);
+      return localizationData.detectedCountryCode;
     }
+
+    // Should not happen since TwentyNineNext loads this first
+    this.#logger.error('❌ [CountryCampaign] No global localization data available! TwentyNineNext should have loaded this first.');
+    return 'US'; // Safe fallback
   }
 
   /**
@@ -192,6 +184,34 @@ export class CountryCampaignManager {
     }
 
     const upperCountryCode = newCountryCode.toUpperCase();
+
+    // Guard against switching to the same country
+    if (upperCountryCode === this.#currentCountry) {
+      this.#logger.debug(`Country is already ${upperCountryCode}, no switch needed.`);
+      return {
+        success: true,
+        newCountry: upperCountryCode,
+        campaignData: this.#cachedCampaigns.get(upperCountryCode) || this.#app.campaignData,
+        message: 'Already current country'
+      };
+    }
+
+    // Debounce rapid successive calls to prevent cascading loops
+    if (this._switchTimeout) {
+      this.#logger.debug(`Debouncing country switch to ${upperCountryCode}`);
+      clearTimeout(this._switchTimeout);
+    }
+
+    // Set a flag to prevent additional switches during processing
+    if (this._isSwitching) {
+      this.#logger.debug(`Country switch already in progress, ignoring request for ${upperCountryCode}`);
+      return {
+        success: false,
+        message: 'Switch already in progress'
+      };
+    }
+
+    this._isSwitching = true;
     this.#logger.info(`Switching country to: ${upperCountryCode}`);
 
     try {
@@ -260,6 +280,9 @@ export class CountryCampaignManager {
     } catch (error) {
       this.#logger.error(`Failed to switch country to ${upperCountryCode}:`, error);
       throw error;
+    } finally {
+      // Always clear the switching flag
+      this._isSwitching = false;
     }
   }
 
@@ -351,6 +374,9 @@ export class CountryCampaignManager {
    * Trigger country changed event
    */
   #triggerCountryChangedEvent(newCountry, campaignData, previousCountry) {
+    const currency = campaignData?.currency || 'Unknown';
+    this.#logger.info(`🔄 [CountryCampaign] Triggering country change: ${previousCountry} → ${newCountry} (${currency})`);
+    
     const eventDetail = {
       country: newCountry,
       previousCountry,
@@ -370,7 +396,7 @@ export class CountryCampaignManager {
     });
     document.dispatchEvent(event);
 
-    this.#logger.debug(`Triggered country changed event: ${previousCountry} -> ${newCountry}`);
+    this.#logger.info(`✅ [CountryCampaign] Country changed event triggered: ${previousCountry} → ${newCountry} (${currency})`);
   }
 
   /**

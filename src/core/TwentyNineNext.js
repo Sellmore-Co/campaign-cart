@@ -30,6 +30,7 @@ export class TwentyNineNext {
   #isInitialized = false;
   #isCheckoutPage = false;
   #campaignData = null;
+  #localizationData = null;
 
   constructor(options = {}) {
     // Get Google Maps config from window.osConfig if available
@@ -226,10 +227,115 @@ export class TwentyNineNext {
     });
   }
 
+  /**
+   * Load localization data first - this should be the very first thing we do
+   */
+  async #loadLocalizationData() {
+    this.coreLogger.info('Loading localization data from Cloudflare Worker...');
+    
+    try {
+      // Check cache first (24 hour TTL)
+      const cached = this.#getLocalizationCache();
+      if (cached) {
+        this.#localizationData = cached;
+        // CRITICAL: Make cached data globally available too!
+        window.osLocalizationData = cached;
+        this.coreLogger.info('Using cached localization data');
+        return cached;
+      }
+
+      // Load fresh data from worker
+      const workerBaseUrl = 'https://cdn-countries.muddy-wind-c7ca.workers.dev';
+      const response = await fetch(`${workerBaseUrl}/location`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Store globally for all components to use
+      this.#localizationData = {
+        detectedCountryCode: data.detectedCountryCode,
+        detectedCountryConfig: data.detectedCountryConfig,
+        countries: data.countries || [],
+        detectedStates: data.detectedStates || [],
+        timestamp: Date.now()
+      };
+      
+      // Cache the data
+      this.#saveLocalizationCache(this.#localizationData);
+      
+      // Make globally available
+      window.osLocalizationData = this.#localizationData;
+      
+      this.coreLogger.info(`Localization data loaded for country: ${data.detectedCountryCode}`);
+      return this.#localizationData;
+      
+    } catch (error) {
+      this.coreLogger.error('Failed to load localization data:', error);
+      
+      // Fallback to basic US data
+      this.#localizationData = {
+        detectedCountryCode: 'US',
+        detectedCountryConfig: {
+          currencyCode: 'USD',
+          currencySymbol: '$'
+        },
+        countries: [],
+        detectedStates: [],
+        timestamp: Date.now()
+      };
+      
+      window.osLocalizationData = this.#localizationData;
+      return this.#localizationData;
+    }
+  }
+
+  /**
+   * Get cached localization data if valid
+   */
+  #getLocalizationCache() {
+    try {
+      const cached = localStorage.getItem('os_localization_cache');
+      if (cached) {
+        const data = JSON.parse(cached);
+        const hoursSinceCached = (Date.now() - data.timestamp) / (1000 * 60 * 60);
+        
+        if (hoursSinceCached < 24) {
+          this.coreLogger.debug(`Using cached localization data (${Math.round(hoursSinceCached)}h old)`);
+          return data;
+        } else {
+          localStorage.removeItem('os_localization_cache');
+          this.coreLogger.debug('Localization cache expired, will fetch fresh');
+        }
+      }
+    } catch (error) {
+      this.coreLogger.error('Error reading localization cache:', error);
+      localStorage.removeItem('os_localization_cache');
+    }
+    return null;
+  }
+
+  /**
+   * Save localization data to cache
+   */
+  #saveLocalizationCache(data) {
+    try {
+      localStorage.setItem('os_localization_cache', JSON.stringify(data));
+      this.coreLogger.debug('Localization data cached');
+    } catch (error) {
+      this.coreLogger.error('Error caching localization data:', error);
+    }
+  }
+
   async init() {
     this.coreLogger.info('Initializing 29next client (async init phase)');
     
-    // Initialize country campaign system FIRST (before API init)
+    // LOAD LOCALIZATION DATA FIRST - before everything else
+    await this.#loadLocalizationData();
+    
+    // Initialize country campaign system SECOND (can now use cached localization data)
     await this.#initCountryCampaignSystem();
     
     this.api.init();
@@ -476,6 +582,88 @@ export class TwentyNineNext {
 
   getCampaignData() {
     return this.#campaignData;
+  }
+
+  getLocalizationData() {
+    return this.#localizationData;
+  }
+
+  /**
+   * Get currency symbol from localization data or fallback
+   * @param {string} currencyCode - Optional currency code, defaults to detected currency
+   * @returns {string} Currency symbol
+   */
+  getCurrencySymbol(currencyCode = null) {
+    // Prioritize window.osLocalizationData as it might be updated by AddressHandler
+    const currentLocalizationData = window.osLocalizationData || this.#localizationData;
+
+    // First try to use the detected currency from localization data
+    if (currentLocalizationData?.detectedCountryConfig?.currencySymbol) {
+      // If no specific currency code requested, use the detected one's symbol
+      // OR if a currencyCode is provided, it must match the detected one's code to use its symbol
+      if (!currencyCode || currencyCode === currentLocalizationData.detectedCountryConfig.currencyCode) {
+        const symbol = currentLocalizationData.detectedCountryConfig.currencySymbol;
+        const country = currentLocalizationData.detectedCountryCode;
+        const detectedCurrency = currentLocalizationData.detectedCountryConfig.currencyCode;
+        this.coreLogger.debug(`💱 [TwentyNineNext] getCurrencySymbol(${currencyCode || 'auto'}) → "${symbol}" (from current localization: ${country}/${detectedCurrency})`);
+        return symbol;
+      }
+    }
+
+    // Fallback to hardcoded mapping for other currencies
+    const symbols = {
+      'USD': '$',
+      'GBP': '£',
+      'EUR': '€'
+    };
+    const fallbackSymbol = symbols[currencyCode] || '$'; // Default to '$' if no specific match
+    this.coreLogger.debug(`💱 [TwentyNineNext] getCurrencySymbol(${currencyCode}) → "${fallbackSymbol}" (from fallback mapping as current localization didn't match or apply)`);
+    return fallbackSymbol;
+  }
+
+  /**
+   * Get currency code from localization data or fallback
+   * @returns {string} Currency code
+   */
+  getCurrencyCode() {
+    // Prioritize window.osLocalizationData
+    const currentLocalizationData = window.osLocalizationData || this.#localizationData;
+    const localizationCurrency = currentLocalizationData?.detectedCountryConfig?.currencyCode;
+    const campaignCurrency = this.#campaignData?.currency; // Campaign data might also have a currency
+    
+    let currency, source;
+    // Priority:
+    // 1. Currency code from the currently active country's localization data
+    // 2. Currency code from the loaded campaign data
+    // 3. Fallback to USD
+    if (localizationCurrency) {
+      currency = localizationCurrency;
+      source = `current localization (${currentLocalizationData.detectedCountryCode || 'unknown'})`;
+    } else if (campaignCurrency) {
+      currency = campaignCurrency;
+      source = 'campaign data';
+    } else {
+      currency = 'USD'; // Default fallback
+      source = 'default fallback';
+    }
+    
+    this.coreLogger.debug(`💱 [TwentyNineNext] getCurrencyCode() → "${currency}" (from ${source})`);
+    return currency;
+  }
+
+  /**
+   * Force refresh of localization data
+   */
+  async refreshLocalizationData() {
+    this.coreLogger.info('Force refreshing localization data...');
+    
+    // Clear cache
+    localStorage.removeItem('os_localization_cache');
+    
+    // Load fresh data
+    await this.#loadLocalizationData();
+    
+    return this.#localizationData;
   }
 
   get isInitialized() {

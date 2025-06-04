@@ -34,8 +34,15 @@ export class StateManager {
       
       // Update currency in cart totals
       if (campaignData?.currency) {
-        this.setState('cart.totals.currency', campaignData.currency, false);
-        this.setState('cart.totals.currency_symbol', this.#getCurrencySymbol(campaignData.currency), false);
+        const oldCurrency = this.getState('cart.totals.currency');
+        const oldSymbol = this.getState('cart.totals.currency_symbol');
+        const newCurrency = campaignData.currency;
+        const newSymbol = this.#getCurrencySymbol(campaignData.currency);
+        
+        this.setState('cart.totals.currency', newCurrency, false);
+        this.setState('cart.totals.currency_symbol', newSymbol, false);
+        
+        this.#logger.info(`💱 [StateManager] Cart currency updated: "${oldCurrency}" (${oldSymbol}) → "${newCurrency}" (${newSymbol})`);
       }
       
       // Recalculate cart totals with new campaign data
@@ -47,14 +54,8 @@ export class StateManager {
    * Get currency symbol for a currency code
    */
   #getCurrencySymbol(currencyCode) {
-    const symbols = {
-      'USD': '$',
-      'CAD': 'C$',
-      'GBP': '£',
-      'EUR': '€',
-      'AUD': 'A$'
-    };
-    return symbols[currencyCode] || '$';
+    // Use centralized currency utility from TwentyNineNext
+    return this.#app.getCurrencySymbol(currencyCode);
   }
 
   finalizeInitializationAndRecalculate() {
@@ -517,8 +518,8 @@ export class StateManager {
     }
     const tax = 0;
     const finalTotal = subtotalAfterDiscount + shipping + tax;
-    const currency = this.#app.campaignData?.currency ?? 'USD';
-    const currencySymbol = { USD: '$', EUR: '€', GBP: '£' }[currency] ?? '$';
+    const currency = this.#app.getCurrencyCode();
+    const currencySymbol = this.#app.getCurrencySymbol();
 
     this.#state.cart.totals = {
       subtotal: subtotalAfterDiscount,

@@ -55,11 +55,6 @@ export class CartDisplayManager {
       const { country, campaignData } = event.detail;
       this.#logger.infoWithTime(`Country changed to ${country}, updating cart display`);
       
-      // Update currency symbol if campaign data has it
-      if (campaignData?.currency) {
-        this.#config.currencySymbol = this.#getCurrencySymbol(campaignData.currency);
-      }
-      
       // Refresh cart display with new currency/prices
       this.updateCartDisplay();
     });
@@ -69,14 +64,8 @@ export class CartDisplayManager {
    * Get currency symbol for a currency code
    */
   #getCurrencySymbol(currencyCode) {
-    const symbols = {
-      'USD': '$',
-      'CAD': 'C$',
-      'GBP': '£',
-      'EUR': '€',
-      'AUD': 'A$'
-    };
-    return symbols[currencyCode] || '$';
+    // Use centralized currency utility from TwentyNineNext
+    return this.#app.getCurrencySymbol(currencyCode);
   }
 
   /**
@@ -135,6 +124,7 @@ export class CartDisplayManager {
     
     this.#initSummaryToggle();
     this.updateCartDisplay();
+    this.#updateCurrencySymbols(); // Set currency symbols on init
   }
 
   /**
@@ -284,6 +274,7 @@ export class CartDisplayManager {
     this.#updateSavings(cart.totals);
     this.#updateGrandTotal(cart.totals.total);
     this.#updateCompareTotals(cart.totals);
+    this.#updateCurrencySymbols();
     this.#logger.debugWithTime('[UPDATE] Cart display fully updated');
   }
 
@@ -672,13 +663,16 @@ export class CartDisplayManager {
    * @returns {string} Formatted price
    */
   #formatPrice(price) {
-    // Use the campaign's formatPrice method if available
+    // If CampaignHelper provides a formatter, prefer it
     if (this.#app.campaign?.formatPrice) {
       return this.#app.campaign.formatPrice(price);
     }
-    
-    // Otherwise, use a simple formatter
-    return `${this.#config.currencySymbol}${price.toFixed(2)} USD`;
+
+    // Centralized currency utilities
+    const symbol = this.#app.getCurrencySymbol();
+    const currencyCode = this.#app.getCurrencyCode();
+
+    return `${symbol}${price.toFixed(2)} ${currencyCode}`;
   }
 
   /**
@@ -829,5 +823,52 @@ export class CartDisplayManager {
   refresh() {
     this.#logger.infoWithTime('Manually refreshing cart display');
     this.#initCartDisplay();
+  }
+
+  /**
+   * Update currency symbol and currency code elements
+   */
+  #updateCurrencySymbols() {
+    // Find all currency symbol elements
+    const currencySymbolElements = document.querySelectorAll('[data-os-cart-summary="currency-symbol"]');
+    
+    // Find all currency code elements  
+    const currencyCodeElements = document.querySelectorAll('[data-os-cart-summary="currency-code"]');
+    
+    if (currencySymbolElements.length === 0 && currencyCodeElements.length === 0) {
+      this.#logger.debugWithTime('No currency symbol or currency code elements found');
+      return;
+    }
+    
+    // Get current currency data from centralized utility
+    const currentSymbol = this.#app.getCurrencySymbol();
+    const currentCode = this.#app.getCurrencyCode();
+    
+    this.#logger.infoWithTime(`💰 [CartDisplay] Updating currency elements - Symbol: "${currentSymbol}", Code: "${currentCode}"`);
+    
+    // Update all currency symbol elements
+    currencySymbolElements.forEach((element, index) => {
+      const oldValue = element.textContent;
+      element.textContent = currentSymbol;
+      this.#logger.debugWithTime(`💰 Currency symbol element ${index + 1}: "${oldValue}" → "${currentSymbol}"`);
+    });
+    
+    // Update all currency code elements
+    currencyCodeElements.forEach((element, index) => {
+      const oldValue = element.textContent;
+      element.textContent = currentCode;
+      this.#logger.debugWithTime(`💰 Currency code element ${index + 1}: "${oldValue}" → "${currentCode}"`);
+    });
+    
+    // FORCE REFRESH ALL PRICE ELEMENTS to replace any hardcoded "CA$" template text
+    const cart = this.#app.state.getState('cart');
+    if (cart && cart.totals) {
+      this.#logger.debugWithTime(`💰 [CartDisplay] Force refreshing all prices to remove template currency prefixes`);
+      this.#updateSummary(cart.totals);
+      this.#updateGrandTotal(cart.totals.total);
+      this.#updateSavings(cart.totals);
+    }
+    
+    this.#logger.infoWithTime(`💰 [CartDisplay] Updated ${currencySymbolElements.length} symbol + ${currencyCodeElements.length} code elements`);
   }
 } 

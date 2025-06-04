@@ -69,20 +69,20 @@ export class AddressHandler {
       return;
     }
 
-    try {
-      this.#logger.info('Loading countries and initial state data from Cloudflare Worker');
-      const response = await fetch(`${this.#workerBaseUrl}/location`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      this.#logger.debug('Received location data from Worker:', data);
+    // Use globally cached localization data (should always be available)
+    const localizationData = window.osLocalizationData;
+    if (!localizationData) {
+      this.#logger.error('No global localization data available! TwentyNineNext should have loaded this first.');
+      await this.#loadCountriesAndStatesFallback();
+      return;
+    }
 
-      // Process countries list
-      if (data.countries && Array.isArray(data.countries)) {
-        this.#countries = data.countries
+    this.#logger.info('Using globally cached localization data from TwentyNineNext');
+    
+    try {
+      // Process countries list from global cache
+      if (localizationData.countries && Array.isArray(localizationData.countries)) {
+        this.#countries = localizationData.countries
           .filter(country => {
             // Apply showCountries filter if specified
             if (this.#addressConfig.showCountries.length > 0) {
@@ -99,19 +99,19 @@ export class AddressHandler {
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
 
-        this.#logger.info(`Loaded ${this.#countries.length} countries from Worker`);
+        this.#logger.info(`Loaded ${this.#countries.length} countries from global cache`);
       }
 
       // Check for forced country override before processing detected country
       const forcedCountry = this.#checkForForcedCountry();
-      let effectiveCountryCode = data.detectedCountryCode;
+      let effectiveCountryCode = localizationData.detectedCountryCode;
 
       if (forcedCountry) {
         // Validate that forced country exists in our countries list
         const countryExists = this.#countries.some(country => country.iso2 === forcedCountry);
         if (countryExists) {
           effectiveCountryCode = forcedCountry;
-          this.#logger.info(`🔧 Forced country override: ${forcedCountry} (detected: ${data.detectedCountryCode})`);
+          this.#logger.info(`🔧 Forced country override: ${forcedCountry} (detected: ${localizationData.detectedCountryCode})`);
           
           // Load states for forced country instead of detected country
           await this.#loadStatesForForcedCountry(forcedCountry);
@@ -119,9 +119,9 @@ export class AddressHandler {
           this.#logger.warn(`⚠️ Invalid forced country code: ${forcedCountry} - not found in available countries`);
         }
       } else {
-        // Process detected country and its states normally
-        if (data.detectedCountryCode && data.detectedStates) {
-          this.#states[data.detectedCountryCode] = data.detectedStates
+        // Process detected country and its states from global cache
+        if (localizationData.detectedCountryCode && localizationData.detectedStates) {
+          this.#states[localizationData.detectedCountryCode] = localizationData.detectedStates
             .filter(state => !this.#addressConfig.dontShowStates.includes(state.code))
             .map(state => ({
               iso2: state.code,
@@ -129,13 +129,13 @@ export class AddressHandler {
             }))
             .sort((a, b) => a.name.localeCompare(b.name));
 
-          this.#logger.debug(`Loaded ${this.#states[data.detectedCountryCode].length} states for detected country: ${data.detectedCountryCode}`);
+          this.#logger.debug(`Loaded ${this.#states[localizationData.detectedCountryCode].length} states for detected country: ${localizationData.detectedCountryCode}`);
         }
 
-        // Store detected country config
-        if (data.detectedCountryCode && data.detectedCountryConfig) {
-          this.#countryConfigs[data.detectedCountryCode] = data.detectedCountryConfig;
-          this.#logger.debug(`Stored config for detected country: ${data.detectedCountryCode}`, data.detectedCountryConfig);
+        // Store detected country config from global cache
+        if (localizationData.detectedCountryCode && localizationData.detectedCountryConfig) {
+          this.#countryConfigs[localizationData.detectedCountryCode] = localizationData.detectedCountryConfig;
+          this.#logger.debug(`Stored config for detected country: ${localizationData.detectedCountryCode}`, localizationData.detectedCountryConfig);
         }
       }
 
@@ -145,14 +145,13 @@ export class AddressHandler {
         this.#logger.info(`Set default country to: ${effectiveCountryCode}${forcedCountry ? ' (forced)' : ' (detected)'}`);
       }
 
-      // Cache the data
+      // Cache the data locally as well
       this.#saveCache('os_countries_cache', { countries: this.#countries });
       this.#saveCache('os_states_cache', { states: this.#states });
       this.#saveCache('os_country_configs_cache', { configs: this.#countryConfigs });
 
     } catch (error) {
-      this.#logger.error('Failed to load data from Cloudflare Worker:', error);
-      // Fallback to cached data or defaults
+      this.#logger.error('Error processing global localization data:', error);
       await this.#loadCountriesAndStatesFallback();
     }
   }
@@ -190,6 +189,9 @@ export class AddressHandler {
         this.#logger.debug(`Country changed to: ${selectedCountryCode}`);
         
         if (selectedCountryCode) {
+          // Update default country so global localization data gets updated
+          this.#addressConfig.defaultCountry = selectedCountryCode;
+          
           // Apply country configuration
           await this.#applyCountryConfig(selectedCountryCode);
           
@@ -300,6 +302,9 @@ export class AddressHandler {
       if (data.countryConfig) {
         this.#countryConfigs[countryCode] = data.countryConfig;
         this.#logger.debug(`Stored config for ${countryCode}:`, data.countryConfig);
+        
+        // Update global localization data with fresh currency information
+        this.#updateGlobalLocalizationData(countryCode, data.countryConfig);
       }
 
       // Cache the data
@@ -317,6 +322,34 @@ export class AddressHandler {
     }
   }
 
+  /**
+   * Update global localization data with fresh currency information
+   * @param {string} countryCode - The country code  
+   * @param {Object} countryConfig - The country configuration from the API
+   */
+  #updateGlobalLocalizationData(countryCode, countryConfig) {
+    try {
+      if (window.osLocalizationData) {
+        // Ensure the global localization data reflects the currently processed country.
+        window.osLocalizationData.detectedCountryCode = countryCode;
+        window.osLocalizationData.detectedCountryConfig = {
+          ...(window.osLocalizationData.detectedCountryConfig || {}), // Preserve other existing fields
+          // Overwrite with specific fields from the new countryConfig
+          currencyCode: countryConfig.currencyCode,
+          currencySymbol: countryConfig.currencySymbol,
+          ...countryConfig // Spread the rest of the new countryConfig
+        };
+        
+        // Update the timestamp to indicate freshness for this specific update
+        window.osLocalizationData.timestamp = Date.now();
+
+        this.#logger.info(`🔄 Updated global currency data via AddressHandler: ${countryCode} → ${countryConfig.currencyCode} (${countryConfig.currencySymbol})`);
+      }
+    } catch (error) {
+      this.#logger.error('Error updating global localization data:', error);
+    }
+  }
+
   async #applyCountryConfig(countryCode) {
     try {
       // Get config from cache or load it
@@ -330,7 +363,10 @@ export class AddressHandler {
 
       if (config) {
         this.#logger.debug(`Applying config for ${countryCode}:`, config);
-        
+
+        // Ensure global localization data reflects this config, even if it was cached
+        this.#updateGlobalLocalizationData(countryCode, config);
+
         // Update form labels
         this.#updateFormLabels(config);
         
@@ -640,6 +676,9 @@ export class AddressHandler {
       if (data.countryConfig) {
         this.#countryConfigs[countryCode] = data.countryConfig;
         this.#logger.debug(`Stored config for forced country ${countryCode}:`, data.countryConfig);
+        
+        // Update global localization data with fresh currency information
+        this.#updateGlobalLocalizationData(countryCode, data.countryConfig);
       }
 
       // Cache the data
@@ -729,19 +768,26 @@ export class AddressHandler {
       return;
     }
 
-    try {
-      this.#logger.info(`Triggering country campaign switch to: ${countryCode}`);
-      
-      // Switch country campaign
-      countryCampaignManager.switchCountry(countryCode).then(result => {
-        if (result && result.success) {
-          this.#logger.info(`Successfully switched country campaign from ${result.previousCountry} to ${result.newCountry}`);
-        }
-      }).catch(error => {
-        this.#logger.error('Error switching country campaign:', error);
-      });
-    } catch (error) {
-      this.#logger.error('Error triggering country campaign change:', error);
+    // Add debouncing to prevent rapid successive calls
+    if (this._countryChangeTimeout) {
+      clearTimeout(this._countryChangeTimeout);
     }
+    
+    this._countryChangeTimeout = setTimeout(() => {
+      try {
+        this.#logger.info(`Triggering country campaign switch to: ${countryCode}`);
+        
+        // Switch country campaign
+        countryCampaignManager.switchCountry(countryCode).then(result => {
+          if (result && result.success) {
+            this.#logger.info(`Successfully switched country campaign from ${result.previousCountry} to ${result.newCountry}`);
+          }
+        }).catch(error => {
+          this.#logger.error('Error switching country campaign:', error);
+        });
+      } catch (error) {
+        this.#logger.error('Error triggering country campaign change:', error);
+      }
+    }, 100); // 100ms debounce
   }
 }
