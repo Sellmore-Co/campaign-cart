@@ -70,13 +70,7 @@ export class CartDisplayManager {
     });
   }
 
-  /**
-   * Get currency symbol for a currency code
-   */
-  #getCurrencySymbol(currencyCode) {
-    // Use centralized currency utility from TwentyNineNext
-    return this.#app.getCurrencySymbol(currencyCode);
-  }
+
 
   /**
    * Initialize the cart display elements
@@ -676,10 +670,8 @@ export class CartDisplayManager {
    * @returns {string} Formatted price
    */
   #formatPrice(price) {
-    // ALWAYS use centralized currency utilities for consistent formatting
-    // Return ONLY symbol + price (currency code is handled separately by #updateCurrencySymbols)
-    const symbol = this.#app.getCurrencySymbol();
-    return `${symbol}${price.toFixed(2)}`;
+    // Use centralized currency service for consistent formatting
+    return this.#app.currency.formatPrice(price);
   }
 
   /**
@@ -847,9 +839,9 @@ export class CartDisplayManager {
       return;
     }
     
-    // Get current currency data from centralized utility
-    const currentSymbol = this.#app.getCurrencySymbol();
-    const currentCode = this.#app.getCurrencyCode();
+    // Get current currency data from centralized currency service
+    const currentSymbol = this.#app.currency.getCurrencySymbol();
+    const currentCode = this.#app.currency.getCurrencyCode();
     
     this.#logger.infoWithTime(`💰 [CartDisplay] Updating currency elements - Symbol: "${currentSymbol}", Code: "${currentCode}"`);
     

@@ -56,7 +56,7 @@ export class CartManager {
       element.classList.toggle('hidden', itemCount === 0);
     });
 
-    const formatPrice = price => this.#app.campaign?.formatPrice(price) ?? price.toFixed(2);
+    const formatPrice = price => this.#app.currency.formatPrice(price);
     this.#cartElements.cartTotal.forEach(element => element.textContent = formatPrice(cart.totals.total));
 
     const updateElement = (selector, value, hideIfZero = false) => {
@@ -104,7 +104,7 @@ export class CartManager {
   }
 
   #createCartItemElement(item) {
-    const formatPrice = price => this.#app.campaign?.formatPrice(price) ?? price.toFixed(2);
+    const formatPrice = price => this.#app.currency.formatPrice(price);
     const itemElement = document.createElement('div');
     itemElement.className = 'os-cart-item';
     itemElement.setAttribute('data-os-cart-item-id', item.id);

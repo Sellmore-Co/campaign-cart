@@ -37,7 +37,7 @@ export class StateManager {
         const oldCurrency = this.getState('cart.totals.currency');
         const oldSymbol = this.getState('cart.totals.currency_symbol');
         const newCurrency = campaignData.currency;
-        const newSymbol = this.#getCurrencySymbol(campaignData.currency);
+        const newSymbol = this.#app.currency.getCurrencySymbol(campaignData.currency);
         
         this.setState('cart.totals.currency', newCurrency, false);
         this.setState('cart.totals.currency_symbol', newSymbol, false);
@@ -50,13 +50,7 @@ export class StateManager {
     });
   }
 
-  /**
-   * Get currency symbol for a currency code
-   */
-  #getCurrencySymbol(currencyCode) {
-    // Use centralized currency utility from TwentyNineNext
-    return this.#app.getCurrencySymbol(currencyCode);
-  }
+
 
   finalizeInitializationAndRecalculate() {
     this.#logger.info('[StateManager] Finalizing initialization: performing initial cart calculations.');
@@ -518,8 +512,8 @@ export class StateManager {
     }
     const tax = 0;
     const finalTotal = subtotalAfterDiscount + shipping + tax;
-    const currency = this.#app.getCurrencyCode();
-    const currencySymbol = this.#app.getCurrencySymbol();
+    const currency = this.#app.currency.getCurrencyCode();
+    const currencySymbol = this.#app.currency.getCurrencySymbol();
 
     this.#state.cart.totals = {
       subtotal: subtotalAfterDiscount,

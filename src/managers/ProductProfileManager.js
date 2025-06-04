@@ -383,8 +383,8 @@ export class ProductProfileManager {
    * @returns {string} Currency symbol
    */
   #getCurrencySymbol() {
-    // Use centralized currency utility from TwentyNineNext
-    return this.#app.getCurrencySymbol();
+    // Use centralized currency service
+    return this.#app.currency.getCurrencySymbol();
   }
 
   /**

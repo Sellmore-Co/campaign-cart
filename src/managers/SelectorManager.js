@@ -510,13 +510,8 @@ export class SelectorManager {
    * @returns {string} Formatted price
    */
   #formatPrice(price) {
-    // Use the campaign's formatPrice method if available
-    if (this.#app.campaign?.formatPrice) {
-      return this.#app.campaign.formatPrice(price);
-    }
-    
-    // Otherwise, use a simple formatter
-    return `$${price.toFixed(2)}`;
+    // Use centralized currency service for consistent formatting
+    return this.#app.currency.formatPrice(price);
   }
 
   /**
