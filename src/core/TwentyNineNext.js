@@ -50,8 +50,14 @@ export class TwentyNineNext {
     this.api = new ApiClient(this);
     this.config = this.#loadConfig();
     
-    // Initialize country campaign manager first (before other managers)
-    this.countryCampaign = new CountryCampaignManager(this);
+    // Only initialize country campaign manager if country campaigns are configured
+    if (window.osConfig?.countryCampaigns && Object.keys(window.osConfig.countryCampaigns.campaignIds || {}).length > 0) {
+      this.coreLogger.info('Country campaigns configured, initializing CountryCampaignManager');
+      this.countryCampaign = new CountryCampaignManager(this);
+    } else {
+      this.coreLogger.info('No country campaigns configured, skipping CountryCampaignManager');
+      this.countryCampaign = null;
+    }
     
     // Initialize product profile manager (after country campaign manager)
     this.profiles = new ProductProfileManager(this);
@@ -339,8 +345,12 @@ export class TwentyNineNext {
     // LOAD LOCALIZATION DATA FIRST - before everything else
     await this.#loadLocalizationData();
     
-    // Initialize country campaign system SECOND (can now use cached localization data)
-    await this.#initCountryCampaignSystem();
+    // Initialize country campaign system SECOND (only if enabled)
+    if (this.countryCampaign) {
+      await this.#initCountryCampaignSystem();
+    } else {
+      this.coreLogger.info('Country campaigns not configured, skipping country campaign initialization');
+    }
     
     this.api.init();
 
@@ -363,7 +373,7 @@ export class TwentyNineNext {
     if (this.#isCheckoutPage) {
       this.#initCheckoutPage();
       
-      // Sync country selection on checkout pages with a small delay
+      // Sync country selection on checkout pages with a small delay (only if country campaigns enabled)
       // to ensure DOM elements are ready
       setTimeout(() => {
         if (this.countryCampaign && this.countryCampaign.isInitialized) {
@@ -389,20 +399,25 @@ export class TwentyNineNext {
     try {
       this.coreLogger.info('Initializing country campaign system...');
       
+      // Always make country campaign manager globally accessible first
+      window.osCountryCampaignManager = this.countryCampaign;
+      
       // Initialize the country campaign manager
       const result = await this.countryCampaign.init();
       
       if (result) {
         this.coreLogger.info(`Country campaign system initialized: ${result.country} -> ${result.campaignId}`);
-        
-        // Make country campaign manager globally accessible
-        window.osCountryCampaignManager = this.countryCampaign;
       } else {
         this.coreLogger.warn('Country campaign system initialization returned null, using fallback');
       }
+      
+      return result;
     } catch (error) {
       this.coreLogger.error('Failed to initialize country campaign system:', error);
+      // Always ensure global access is set up even on error
+      window.osCountryCampaignManager = this.countryCampaign;
       // Continue with normal initialization as fallback
+      return null;
     }
   }
 

@@ -219,7 +219,7 @@ export class AddressHandler {
           // Reset to default labels when no country selected
           this.#resetFormLabels();
           if (state) {
-            state.innerHTML = '<option value="">Select State/Province</option>';
+            state.innerHTML = '<option value="">Select State</option>';
             state.parentElement.style.display = 'none';
           }
         }
@@ -425,7 +425,7 @@ export class AddressHandler {
     // Reset to default labels
     [this.#elements.shippingStateLabel, this.#elements.billingStateLabel].forEach(label => {
       if (label) {
-        label.textContent = 'State/Province';
+        label.textContent = 'State';
       }
     });
 
@@ -766,8 +766,8 @@ export class AddressHandler {
     // Check if CountryCampaignManager is available globally
     const countryCampaignManager = window.osCountryCampaignManager;
     
-    if (!countryCampaignManager || typeof countryCampaignManager.switchCountry !== 'function') {
-      this.#logger.debug('CountryCampaignManager not available for country campaign switching');
+    if (!countryCampaignManager) {
+      this.#logger.debug('CountryCampaignManager not available - country campaigns not configured');
       return;
     }
 
@@ -791,6 +791,8 @@ export class AddressHandler {
         countryCampaignManager.switchCountry(countryCode).then(result => {
           if (result && result.success) {
             this.#logger.info(`Successfully switched country campaign from ${result.previousCountry} to ${result.newCountry}`);
+          } else if (result && !result.success) {
+            this.#logger.warn(`Country campaign switch failed: ${result.message || result.error}`);
           }
         }).catch(error => {
           this.#logger.error('Error switching country campaign:', error);

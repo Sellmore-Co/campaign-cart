@@ -1200,7 +1200,7 @@ var TwentyNineNext = (() => {
         } else {
           __privateMethod(this, _resetFormLabels, resetFormLabels_fn).call(this);
           if (state) {
-            state.innerHTML = '<option value="">Select State/Province</option>';
+            state.innerHTML = '<option value="">Select State</option>';
             state.parentElement.style.display = "none";
           }
         }
@@ -1355,7 +1355,7 @@ var TwentyNineNext = (() => {
   resetFormLabels_fn = function() {
     [__privateGet(this, _elements).shippingStateLabel, __privateGet(this, _elements).billingStateLabel].forEach((label) => {
       if (label) {
-        label.textContent = "State/Province";
+        label.textContent = "State";
       }
     });
     [__privateGet(this, _elements).postcodeLabel, __privateGet(this, _elements).billingPostcodeLabel].forEach((label) => {
@@ -1581,8 +1581,8 @@ var TwentyNineNext = (() => {
   _triggerCountryCampaignChange = new WeakSet();
   triggerCountryCampaignChange_fn = function(countryCode) {
     const countryCampaignManager = window.osCountryCampaignManager;
-    if (!countryCampaignManager || typeof countryCampaignManager.switchCountry !== "function") {
-      __privateGet(this, _logger2).debug("CountryCampaignManager not available for country campaign switching");
+    if (!countryCampaignManager) {
+      __privateGet(this, _logger2).debug("CountryCampaignManager not available - country campaigns not configured");
       return;
     }
     const currentCountry = countryCampaignManager.getCurrentCountry();
@@ -1599,6 +1599,8 @@ var TwentyNineNext = (() => {
         countryCampaignManager.switchCountry(countryCode).then((result) => {
           if (result && result.success) {
             __privateGet(this, _logger2).info(`Successfully switched country campaign from ${result.previousCountry} to ${result.newCountry}`);
+          } else if (result && !result.success) {
+            __privateGet(this, _logger2).warn(`Country campaign switch failed: ${result.message || result.error}`);
           }
         }).catch((error) => {
           __privateGet(this, _logger2).error("Error switching country campaign:", error);
@@ -12873,7 +12875,10 @@ var TwentyNineNext = (() => {
     async switchCountry(newCountryCode) {
       if (!newCountryCode) {
         __privateGet(this, _logger27).error("Cannot switch country: no country code provided");
-        return;
+        return {
+          success: false,
+          message: "No country code provided"
+        };
       }
       const upperCountryCode = newCountryCode.toUpperCase();
       if (upperCountryCode === __privateGet(this, _currentCountry2)) {
@@ -12901,7 +12906,19 @@ var TwentyNineNext = (() => {
       try {
         const newCampaignId = __privateMethod(this, _getCampaignIdForCountry, getCampaignIdForCountry_fn).call(this, upperCountryCode);
         if (!newCampaignId) {
-          throw new Error(`No campaign found for country: ${upperCountryCode}`);
+          __privateGet(this, _logger27).warn(`No campaign found for country: ${upperCountryCode}, but updating current country anyway`);
+          const previousCountry2 = __privateGet(this, _currentCountry2);
+          __privateSet(this, _currentCountry2, upperCountryCode);
+          localStorage.setItem("os-forced-country", upperCountryCode);
+          localStorage.setItem("os-forced-country-timestamp", Date.now().toString());
+          __privateMethod(this, _triggerCountryChangedEvent, triggerCountryChangedEvent_fn).call(this, upperCountryCode, __privateGet(this, _app22).campaignData, previousCountry2);
+          return {
+            success: true,
+            previousCountry: previousCountry2,
+            newCountry: upperCountryCode,
+            campaignData: __privateGet(this, _app22).campaignData,
+            message: "Country updated without campaign switch"
+          };
         }
         let campaignData = __privateGet(this, _cachedCampaigns).get(upperCountryCode);
         if (!campaignData) {
@@ -12939,7 +12956,11 @@ var TwentyNineNext = (() => {
         };
       } catch (error) {
         __privateGet(this, _logger27).error(`Failed to switch country to ${upperCountryCode}:`, error);
-        throw error;
+        return {
+          success: false,
+          error: error.message,
+          message: `Failed to switch to ${upperCountryCode}: ${error.message}`
+        };
       } finally {
         this._isSwitching = false;
       }
@@ -14139,7 +14160,13 @@ var TwentyNineNext = (() => {
       this.coreLogger = this.logger.createModuleLogger("CORE");
       this.api = new ApiClient(this);
       this.config = __privateMethod(this, _loadConfig3, loadConfig_fn3).call(this);
-      this.countryCampaign = new CountryCampaignManager(this);
+      if (window.osConfig?.countryCampaigns && Object.keys(window.osConfig.countryCampaigns.campaignIds || {}).length > 0) {
+        this.coreLogger.info("Country campaigns configured, initializing CountryCampaignManager");
+        this.countryCampaign = new CountryCampaignManager(this);
+      } else {
+        this.coreLogger.info("No country campaigns configured, skipping CountryCampaignManager");
+        this.countryCampaign = null;
+      }
       this.profiles = new ProductProfileManager(this);
       this.currency = new CurrencyService(this);
       this.state = new StateManager(this);
@@ -14195,7 +14222,11 @@ var TwentyNineNext = (() => {
     async init() {
       this.coreLogger.info("Initializing 29next client (async init phase)");
       await __privateMethod(this, _loadLocalizationData, loadLocalizationData_fn).call(this);
-      await __privateMethod(this, _initCountryCampaignSystem, initCountryCampaignSystem_fn).call(this);
+      if (this.countryCampaign) {
+        await __privateMethod(this, _initCountryCampaignSystem, initCountryCampaignSystem_fn).call(this);
+      } else {
+        this.coreLogger.info("Country campaigns not configured, skipping country campaign initialization");
+      }
       this.api.init();
       if (typeof window.on29NextReady !== "undefined" && !Array.isArray(window.on29NextReady)) {
         this.coreLogger.warn("window.on29NextReady is not an array, resetting it");
@@ -14484,15 +14515,18 @@ var TwentyNineNext = (() => {
   initCountryCampaignSystem_fn = async function() {
     try {
       this.coreLogger.info("Initializing country campaign system...");
+      window.osCountryCampaignManager = this.countryCampaign;
       const result = await this.countryCampaign.init();
       if (result) {
         this.coreLogger.info(`Country campaign system initialized: ${result.country} -> ${result.campaignId}`);
-        window.osCountryCampaignManager = this.countryCampaign;
       } else {
         this.coreLogger.warn("Country campaign system initialization returned null, using fallback");
       }
+      return result;
     } catch (error) {
       this.coreLogger.error("Failed to initialize country campaign system:", error);
+      window.osCountryCampaignManager = this.countryCampaign;
+      return null;
     }
   };
   _fetchCampaignData = new WeakSet();

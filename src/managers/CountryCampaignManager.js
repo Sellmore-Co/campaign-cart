@@ -216,7 +216,10 @@ export class CountryCampaignManager {
   async switchCountry(newCountryCode) {
     if (!newCountryCode) {
       this.#logger.error('Cannot switch country: no country code provided');
-      return;
+      return {
+        success: false,
+        message: 'No country code provided'
+      };
     }
 
     const upperCountryCode = newCountryCode.toUpperCase();
@@ -254,7 +257,26 @@ export class CountryCampaignManager {
       // Step 1: Get campaign ID for new country
       const newCampaignId = this.#getCampaignIdForCountry(upperCountryCode);
       if (!newCampaignId) {
-        throw new Error(`No campaign found for country: ${upperCountryCode}`);
+        // If no campaign ID is found, just update the current country
+        this.#logger.warn(`No campaign found for country: ${upperCountryCode}, but updating current country anyway`);
+        
+        const previousCountry = this.#currentCountry;
+        this.#currentCountry = upperCountryCode;
+        
+        // Store the country selection for persistence
+        localStorage.setItem('os-forced-country', upperCountryCode);
+        localStorage.setItem('os-forced-country-timestamp', Date.now().toString());
+
+        // Trigger country changed event with existing campaign data
+        this.#triggerCountryChangedEvent(upperCountryCode, this.#app.campaignData, previousCountry);
+
+        return {
+          success: true,
+          previousCountry,
+          newCountry: upperCountryCode,
+          campaignData: this.#app.campaignData,
+          message: 'Country updated without campaign switch'
+        };
       }
 
       // Step 2: Check if campaign is already cached
@@ -315,7 +337,13 @@ export class CountryCampaignManager {
       };
     } catch (error) {
       this.#logger.error(`Failed to switch country to ${upperCountryCode}:`, error);
-      throw error;
+      
+      // Return a more graceful error response instead of throwing
+      return {
+        success: false,
+        error: error.message,
+        message: `Failed to switch to ${upperCountryCode}: ${error.message}`
+      };
     } finally {
       // Always clear the switching flag
       this._isSwitching = false;
