@@ -236,9 +236,9 @@ export class ToggleManager {
   }
 
   /**
-   * Translate package ID using CountryCampaignManager if available
-   * @param {string} originalPackageId - The original package ID from the HTML data attribute
-   * @returns {string} - The translated package ID for the current country
+   * Translate package ID using product profiles configuration
+   * @param {string} originalPackageId - The original package ID from the HTML data attribute (canonical ID)
+   * @returns {string} - The translated package ID for the current country's campaign
    */
   #translatePackageId(originalPackageId) {
     // Check if CountryCampaignManager is available
@@ -251,21 +251,41 @@ export class ToggleManager {
 
     try {
       const currentCountry = countryCampaignManager.getCurrentCountry();
-      const config = window.osConfig?.countryCampaigns?.packageMaps?.[currentCountry];
       
-      if (!config) {
-        this.#logger.debug(`No package mapping found for country ${currentCountry}, using original package ID: ${originalPackageId}`);
+      // Use product profiles for translation
+      const profiles = window.osConfig?.productProfiles;
+      
+      if (!profiles) {
+        this.#logger.debug('No product profiles configuration found, using original package ID');
         return originalPackageId;
       }
 
-      const translatedId = config[originalPackageId];
-      if (translatedId !== undefined) {
-        this.#logger.debug(`Translated package ID: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
-        return translatedId.toString();
-      } else {
-        this.#logger.debug(`No translation found for package ${originalPackageId} in country ${currentCountry}, using original ID`);
-        return originalPackageId;
+      // Look through all profiles to find which one should be used for this canonical package ID
+      // The originalPackageId might be a canonical ID that maps to different campaign IDs per country
+      for (const [profileId, profile] of Object.entries(profiles)) {
+        // Check if ANY country mapping in this profile matches the original package ID
+        // This helps us identify which profile this canonical ID belongs to
+        const hasMatchingMapping = Object.values(profile.campaignMappings || {}).some(mapping => 
+          mapping.packageId?.toString() === originalPackageId?.toString()
+        );
+        
+        if (hasMatchingMapping) {
+          // Found the profile! Now get the package ID for the current country
+          const currentMapping = profile.campaignMappings?.[currentCountry];
+          if (currentMapping) {
+            const translatedId = currentMapping.packageId?.toString();
+            this.#logger.debug(`Translated package ID via profile ${profileId}: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
+            return translatedId;
+          } else {
+            this.#logger.warn(`Profile ${profileId} found but no mapping for country ${currentCountry}`);
+            return originalPackageId;
+          }
+        }
       }
+
+      // If no profile mapping found, this package might not be profile-based
+      this.#logger.debug(`No profile mapping found for package ${originalPackageId}, using original ID`);
+      return originalPackageId;
     } catch (error) {
       this.#logger.error('Error translating package ID:', error);
       return originalPackageId;

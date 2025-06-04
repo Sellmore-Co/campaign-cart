@@ -14,8 +14,7 @@ export class CountryCampaignManager {
   #currentCountry = null;
   #cachedCampaigns = new Map(); // Map of country -> campaign data
   #config = {
-    campaignIds: {},
-    packageMaps: {}
+    campaignIds: {}
   };
   #isInitialized = false;
 
@@ -32,14 +31,22 @@ export class CountryCampaignManager {
   #loadConfig() {
     if (window.osConfig?.countryCampaigns) {
       this.#config.campaignIds = window.osConfig.countryCampaigns.campaignIds || {};
-      this.#config.packageMaps = window.osConfig.countryCampaigns.packageMaps || {};
       
       this.#logger.info('Loaded country campaigns configuration:', {
-        countries: Object.keys(this.#config.campaignIds),
-        packageMaps: Object.keys(this.#config.packageMaps)
+        countries: Object.keys(this.#config.campaignIds)
       });
     } else {
       this.#logger.warn('No countryCampaigns configuration found in window.osConfig');
+    }
+
+    // Check for product profiles configuration
+    if (window.osConfig?.productProfiles) {
+      const profiles = Object.keys(window.osConfig.productProfiles);
+      this.#logger.info('Found product profiles configuration:', {
+        profiles: profiles
+      });
+    } else {
+      this.#logger.warn('No productProfiles configuration found in window.osConfig');
     }
   }
 
@@ -351,7 +358,7 @@ export class CountryCampaignManager {
   }
 
   /**
-   * Update cart items when switching countries
+   * Update cart items when switching countries using product profiles
    */
   async #updateCartForNewCountry(fromCountry, toCountry, newCampaignData) {
     if (!this.#app.state) {
@@ -367,42 +374,32 @@ export class CountryCampaignManager {
 
     this.#logger.info(`Updating ${cart.items.length} cart items for country switch: ${fromCountry} -> ${toCountry}`);
 
-    const fromPackageMap = this.#config.packageMaps[fromCountry] || {};
-    const toPackageMap = this.#config.packageMaps[toCountry] || {};
     const newPackages = newCampaignData.packages || [];
-
-    // Create reverse mapping for easier lookup
-    const reverseFromMap = {};
-    Object.entries(fromPackageMap).forEach(([external, internal]) => {
-      reverseFromMap[internal] = external;
-    });
-
     const updatedItems = [];
 
     for (const item of cart.items) {
       try {
-        // Step 1: Find the external package ID from the current country mapping
-        const currentInternalId = item.package_id?.toString() || item.id?.toString();
-        const externalId = reverseFromMap[currentInternalId] || currentInternalId;
+        // Step 1: Get current package ID
+        const currentPackageId = item.package_id?.toString() || item.id?.toString();
 
-        // Step 2: Map to new country's internal package ID
-        const newInternalId = toPackageMap[externalId] || externalId;
+        // Step 2: Translate package ID using product profiles
+        const newPackageId = this.#translatePackageIdUsingProfiles(currentPackageId, fromCountry, toCountry);
 
         // Step 3: Find package data in new campaign
         const newPackageData = newPackages.find(pkg => 
-          pkg.ref_id?.toString() === newInternalId ||
-          pkg.external_id?.toString() === externalId
+          pkg.ref_id?.toString() === newPackageId ||
+          pkg.id?.toString() === newPackageId
         );
 
         if (!newPackageData) {
-          this.#logger.warn(`Package not found in new campaign: external=${externalId}, internal=${newInternalId}`);
+          this.#logger.warn(`Package not found in new campaign: translated ID ${newPackageId} (original: ${currentPackageId})`);
           continue;
         }
 
         // Step 4: Create updated item with new campaign data
         const updatedItem = {
           ...item,
-          id: newPackageData.ref_id?.toString() || newInternalId,
+          id: newPackageData.ref_id?.toString() || newPackageId,
           package_id: newPackageData.ref_id,
           name: newPackageData.name,
           price: parseFloat(newPackageData.price) || item.price,
@@ -415,7 +412,7 @@ export class CountryCampaignManager {
 
         updatedItems.push(updatedItem);
         
-        this.#logger.debug(`Mapped item: ${externalId} (${fromCountry}:${currentInternalId}) -> (${toCountry}:${newInternalId})`);
+        this.#logger.debug(`Mapped item using profiles: ${currentPackageId} (${fromCountry}) -> ${newPackageId} (${toCountry})`);
       } catch (error) {
         this.#logger.error(`Error updating cart item:`, error, item);
       }
@@ -430,7 +427,7 @@ export class CountryCampaignManager {
       const updatedCart = this.#app.state.getState('cart');
       this.#app.state.setState('cart', updatedCart, true);
       
-      this.#logger.info(`Updated ${updatedItems.length} cart items for new country`);
+      this.#logger.info(`Updated ${updatedItems.length} cart items for new country using product profiles`);
     }
   }
 
@@ -577,18 +574,80 @@ export class CountryCampaignManager {
   }
 
   /**
-   * Translate package ID from one country to another
+   * Translate package ID from one country to another using product profiles
    */
   translatePackageId(packageId, fromCountry, toCountry) {
-    const fromMap = this.#config.packageMaps[fromCountry] || {};
-    const toMap = this.#config.packageMaps[toCountry] || {};
+    // If no countries specified, use current and target countries
+    const sourceCountry = fromCountry || this.#currentCountry;
+    const targetCountry = toCountry || this.#currentCountry;
+    
+    if (!sourceCountry || !targetCountry) {
+      this.#logger.debug(`Cannot translate package ID: missing country info`);
+      return packageId;
+    }
 
-    // Find external ID from source country
-    const externalId = Object.entries(fromMap).find(([external, internal]) => 
-      internal === packageId.toString()
-    )?.[0] || packageId.toString();
+    return this.#translatePackageIdUsingProfiles(packageId, sourceCountry, targetCountry);
+  }
 
-    // Map to target country
-    return toMap[externalId] || packageId;
+  /**
+   * Translate package ID using product profiles configuration
+   * @param {string} packageId - The package ID to translate
+   * @param {string} fromCountry - Source country code
+   * @param {string} toCountry - Target country code
+   * @returns {string} Translated package ID
+   */
+  #translatePackageIdUsingProfiles(packageId, fromCountry, toCountry) {
+    const profiles = window.osConfig?.productProfiles;
+    
+    if (!profiles) {
+      this.#logger.debug('No product profiles configuration found, using original package ID');
+      return packageId;
+    }
+
+    // Look through all profiles to find which one maps to this package ID in the source country
+    for (const [profileId, profile] of Object.entries(profiles)) {
+      const sourceMapping = profile.campaignMappings?.[fromCountry];
+      
+      if (sourceMapping && sourceMapping.packageId?.toString() === packageId?.toString()) {
+        // Found the profile that contains this package ID in the source country
+        const targetMapping = profile.campaignMappings?.[toCountry];
+        
+        if (targetMapping) {
+          const translatedId = targetMapping.packageId?.toString();
+          this.#logger.debug(`Translated package ID via profile ${profileId}: ${packageId} (${fromCountry}) -> ${translatedId} (${toCountry})`);
+          return translatedId;
+        } else {
+          this.#logger.warn(`Profile ${profileId} has no mapping for target country ${toCountry}`);
+          return packageId;
+        }
+      }
+    }
+
+    // No profile mapping found, return original ID
+    this.#logger.debug(`No profile mapping found for package ${packageId} in country ${fromCountry}, using original ID`);
+    return packageId;
+  }
+
+  /**
+   * Get the current country's package ID for a specific profile
+   * @param {string} profileId - Profile ID
+   * @returns {string|null} Package ID for current country
+   */
+  getPackageIdForProfile(profileId) {
+    const profiles = window.osConfig?.productProfiles;
+    
+    if (!profiles || !profiles[profileId]) {
+      this.#logger.warn(`Profile ${profileId} not found in configuration`);
+      return null;
+    }
+
+    const currentCountry = this.#currentCountry;
+    if (!currentCountry) {
+      this.#logger.warn('No current country set');
+      return null;
+    }
+
+    const mapping = profiles[profileId].campaignMappings?.[currentCountry];
+    return mapping?.packageId?.toString() || null;
   }
 } 

@@ -7926,9 +7926,9 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _processProfileToggle);
       __privateAdd(this, _processPackageToggle);
       /**
-       * Translate package ID using CountryCampaignManager if available
-       * @param {string} originalPackageId - The original package ID from the HTML data attribute
-       * @returns {string} - The translated package ID for the current country
+       * Translate package ID using product profiles configuration
+       * @param {string} originalPackageId - The original package ID from the HTML data attribute (canonical ID)
+       * @returns {string} - The translated package ID for the current country's campaign
        */
       __privateAdd(this, _translatePackageId);
       __privateAdd(this, _getPackageDataFromCampaign);
@@ -8128,19 +8128,29 @@ var TwentyNineNext = (() => {
     }
     try {
       const currentCountry = countryCampaignManager.getCurrentCountry();
-      const config = window.osConfig?.countryCampaigns?.packageMaps?.[currentCountry];
-      if (!config) {
-        __privateGet(this, _logger17).debug(`No package mapping found for country ${currentCountry}, using original package ID: ${originalPackageId}`);
+      const profiles = window.osConfig?.productProfiles;
+      if (!profiles) {
+        __privateGet(this, _logger17).debug("No product profiles configuration found, using original package ID");
         return originalPackageId;
       }
-      const translatedId = config[originalPackageId];
-      if (translatedId !== void 0) {
-        __privateGet(this, _logger17).debug(`Translated package ID: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
-        return translatedId.toString();
-      } else {
-        __privateGet(this, _logger17).debug(`No translation found for package ${originalPackageId} in country ${currentCountry}, using original ID`);
-        return originalPackageId;
+      for (const [profileId, profile] of Object.entries(profiles)) {
+        const hasMatchingMapping = Object.values(profile.campaignMappings || {}).some(
+          (mapping) => mapping.packageId?.toString() === originalPackageId?.toString()
+        );
+        if (hasMatchingMapping) {
+          const currentMapping = profile.campaignMappings?.[currentCountry];
+          if (currentMapping) {
+            const translatedId = currentMapping.packageId?.toString();
+            __privateGet(this, _logger17).debug(`Translated package ID via profile ${profileId}: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
+            return translatedId;
+          } else {
+            __privateGet(this, _logger17).warn(`Profile ${profileId} found but no mapping for country ${currentCountry}`);
+            return originalPackageId;
+          }
+        }
       }
+      __privateGet(this, _logger17).debug(`No profile mapping found for package ${originalPackageId}, using original ID`);
+      return originalPackageId;
     } catch (error) {
       __privateGet(this, _logger17).error("Error translating package ID:", error);
       return originalPackageId;
@@ -8860,9 +8870,9 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _updateProfilePricing);
       /**
-       * Translate package ID using CountryCampaignManager if available
-       * @param {string} originalPackageId - The original package ID from the HTML data attribute
-       * @returns {string} - The translated package ID for the current country
+       * Translate package ID using product profiles configuration
+       * @param {string} originalPackageId - The original package ID from the HTML data attribute (canonical ID)
+       * @returns {string} - The translated package ID for the current country's campaign
        */
       __privateAdd(this, _translatePackageId2);
       /**
@@ -9160,19 +9170,29 @@ var TwentyNineNext = (() => {
     }
     try {
       const currentCountry = countryCampaignManager.getCurrentCountry();
-      const config = window.osConfig?.countryCampaigns?.packageMaps?.[currentCountry];
-      if (!config) {
-        __privateGet(this, _logger20).debug(`No package mapping found for country ${currentCountry}, using original package ID: ${originalPackageId}`);
+      const profiles = window.osConfig?.productProfiles;
+      if (!profiles) {
+        __privateGet(this, _logger20).debug("No product profiles configuration found, using original package ID");
         return originalPackageId;
       }
-      const translatedId = config[originalPackageId];
-      if (translatedId !== void 0) {
-        __privateGet(this, _logger20).debug(`Translated package ID: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
-        return translatedId.toString();
-      } else {
-        __privateGet(this, _logger20).debug(`No translation found for package ${originalPackageId} in country ${currentCountry}, using original ID`);
-        return originalPackageId;
+      for (const [profileId, profile] of Object.entries(profiles)) {
+        const hasMatchingMapping = Object.values(profile.campaignMappings || {}).some(
+          (mapping) => mapping.packageId?.toString() === originalPackageId?.toString()
+        );
+        if (hasMatchingMapping) {
+          const currentMapping = profile.campaignMappings?.[currentCountry];
+          if (currentMapping) {
+            const translatedId = currentMapping.packageId?.toString();
+            __privateGet(this, _logger20).debug(`Translated package ID via profile ${profileId}: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
+            return translatedId;
+          } else {
+            __privateGet(this, _logger20).warn(`Profile ${profileId} found but no mapping for country ${currentCountry}`);
+            return originalPackageId;
+          }
+        }
       }
+      __privateGet(this, _logger20).debug(`No profile mapping found for package ${originalPackageId}, using original ID`);
+      return originalPackageId;
     } catch (error) {
       __privateGet(this, _logger20).error("Error translating package ID:", error);
       return originalPackageId;
@@ -12937,7 +12957,7 @@ var TwentyNineNext = (() => {
   _logger26 = new WeakMap();
 
   // src/managers/CountryCampaignManager.js
-  var _app22, _logger27, _currentCountry2, _cachedCampaigns, _config3, _isInitialized2, _loadConfig2, loadConfig_fn2, _detectUserCountry, detectUserCountry_fn, _getCampaignIdForCountry, getCampaignIdForCountry_fn, _updateApiClientCampaign, updateApiClientCampaign_fn, _updateCartForNewCountry, updateCartForNewCountry_fn, _triggerCountryChangedEvent, triggerCountryChangedEvent_fn;
+  var _app22, _logger27, _currentCountry2, _cachedCampaigns, _config3, _isInitialized2, _loadConfig2, loadConfig_fn2, _detectUserCountry, detectUserCountry_fn, _getCampaignIdForCountry, getCampaignIdForCountry_fn, _updateApiClientCampaign, updateApiClientCampaign_fn, _updateCartForNewCountry, updateCartForNewCountry_fn, _triggerCountryChangedEvent, triggerCountryChangedEvent_fn, _translatePackageIdUsingProfiles, translatePackageIdUsingProfiles_fn;
   var CountryCampaignManager = class {
     constructor(app) {
       /**
@@ -12957,21 +12977,28 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _updateApiClientCampaign);
       /**
-       * Update cart items when switching countries
+       * Update cart items when switching countries using product profiles
        */
       __privateAdd(this, _updateCartForNewCountry);
       /**
        * Trigger country changed event
        */
       __privateAdd(this, _triggerCountryChangedEvent);
+      /**
+       * Translate package ID using product profiles configuration
+       * @param {string} packageId - The package ID to translate
+       * @param {string} fromCountry - Source country code
+       * @param {string} toCountry - Target country code
+       * @returns {string} Translated package ID
+       */
+      __privateAdd(this, _translatePackageIdUsingProfiles);
       __privateAdd(this, _app22, void 0);
       __privateAdd(this, _logger27, void 0);
       __privateAdd(this, _currentCountry2, null);
       __privateAdd(this, _cachedCampaigns, /* @__PURE__ */ new Map());
       // Map of country -> campaign data
       __privateAdd(this, _config3, {
-        campaignIds: {},
-        packageMaps: {}
+        campaignIds: {}
       });
       __privateAdd(this, _isInitialized2, false);
       __privateSet(this, _app22, app);
@@ -13214,15 +13241,35 @@ var TwentyNineNext = (() => {
       return !!__privateGet(this, _config3).campaignIds[countryCode?.toUpperCase()];
     }
     /**
-     * Translate package ID from one country to another
+     * Translate package ID from one country to another using product profiles
      */
     translatePackageId(packageId, fromCountry, toCountry) {
-      const fromMap = __privateGet(this, _config3).packageMaps[fromCountry] || {};
-      const toMap = __privateGet(this, _config3).packageMaps[toCountry] || {};
-      const externalId = Object.entries(fromMap).find(
-        ([external, internal]) => internal === packageId.toString()
-      )?.[0] || packageId.toString();
-      return toMap[externalId] || packageId;
+      const sourceCountry = fromCountry || __privateGet(this, _currentCountry2);
+      const targetCountry = toCountry || __privateGet(this, _currentCountry2);
+      if (!sourceCountry || !targetCountry) {
+        __privateGet(this, _logger27).debug(`Cannot translate package ID: missing country info`);
+        return packageId;
+      }
+      return __privateMethod(this, _translatePackageIdUsingProfiles, translatePackageIdUsingProfiles_fn).call(this, packageId, sourceCountry, targetCountry);
+    }
+    /**
+     * Get the current country's package ID for a specific profile
+     * @param {string} profileId - Profile ID
+     * @returns {string|null} Package ID for current country
+     */
+    getPackageIdForProfile(profileId) {
+      const profiles = window.osConfig?.productProfiles;
+      if (!profiles || !profiles[profileId]) {
+        __privateGet(this, _logger27).warn(`Profile ${profileId} not found in configuration`);
+        return null;
+      }
+      const currentCountry = __privateGet(this, _currentCountry2);
+      if (!currentCountry) {
+        __privateGet(this, _logger27).warn("No current country set");
+        return null;
+      }
+      const mapping = profiles[profileId].campaignMappings?.[currentCountry];
+      return mapping?.packageId?.toString() || null;
     }
   };
   _app22 = new WeakMap();
@@ -13235,13 +13282,19 @@ var TwentyNineNext = (() => {
   loadConfig_fn2 = function() {
     if (window.osConfig?.countryCampaigns) {
       __privateGet(this, _config3).campaignIds = window.osConfig.countryCampaigns.campaignIds || {};
-      __privateGet(this, _config3).packageMaps = window.osConfig.countryCampaigns.packageMaps || {};
       __privateGet(this, _logger27).info("Loaded country campaigns configuration:", {
-        countries: Object.keys(__privateGet(this, _config3).campaignIds),
-        packageMaps: Object.keys(__privateGet(this, _config3).packageMaps)
+        countries: Object.keys(__privateGet(this, _config3).campaignIds)
       });
     } else {
       __privateGet(this, _logger27).warn("No countryCampaigns configuration found in window.osConfig");
+    }
+    if (window.osConfig?.productProfiles) {
+      const profiles = Object.keys(window.osConfig.productProfiles);
+      __privateGet(this, _logger27).info("Found product profiles configuration:", {
+        profiles
+      });
+    } else {
+      __privateGet(this, _logger27).warn("No productProfiles configuration found in window.osConfig");
     }
   };
   _detectUserCountry = new WeakSet();
@@ -13326,29 +13379,22 @@ var TwentyNineNext = (() => {
       return;
     }
     __privateGet(this, _logger27).info(`Updating ${cart.items.length} cart items for country switch: ${fromCountry} -> ${toCountry}`);
-    const fromPackageMap = __privateGet(this, _config3).packageMaps[fromCountry] || {};
-    const toPackageMap = __privateGet(this, _config3).packageMaps[toCountry] || {};
     const newPackages = newCampaignData.packages || [];
-    const reverseFromMap = {};
-    Object.entries(fromPackageMap).forEach(([external, internal]) => {
-      reverseFromMap[internal] = external;
-    });
     const updatedItems = [];
     for (const item of cart.items) {
       try {
-        const currentInternalId = item.package_id?.toString() || item.id?.toString();
-        const externalId = reverseFromMap[currentInternalId] || currentInternalId;
-        const newInternalId = toPackageMap[externalId] || externalId;
+        const currentPackageId = item.package_id?.toString() || item.id?.toString();
+        const newPackageId = __privateMethod(this, _translatePackageIdUsingProfiles, translatePackageIdUsingProfiles_fn).call(this, currentPackageId, fromCountry, toCountry);
         const newPackageData = newPackages.find(
-          (pkg) => pkg.ref_id?.toString() === newInternalId || pkg.external_id?.toString() === externalId
+          (pkg) => pkg.ref_id?.toString() === newPackageId || pkg.id?.toString() === newPackageId
         );
         if (!newPackageData) {
-          __privateGet(this, _logger27).warn(`Package not found in new campaign: external=${externalId}, internal=${newInternalId}`);
+          __privateGet(this, _logger27).warn(`Package not found in new campaign: translated ID ${newPackageId} (original: ${currentPackageId})`);
           continue;
         }
         const updatedItem = {
           ...item,
-          id: newPackageData.ref_id?.toString() || newInternalId,
+          id: newPackageData.ref_id?.toString() || newPackageId,
           package_id: newPackageData.ref_id,
           name: newPackageData.name,
           price: parseFloat(newPackageData.price) || item.price,
@@ -13359,7 +13405,7 @@ var TwentyNineNext = (() => {
           image: newPackageData.image || item.image
         };
         updatedItems.push(updatedItem);
-        __privateGet(this, _logger27).debug(`Mapped item: ${externalId} (${fromCountry}:${currentInternalId}) -> (${toCountry}:${newInternalId})`);
+        __privateGet(this, _logger27).debug(`Mapped item using profiles: ${currentPackageId} (${fromCountry}) -> ${newPackageId} (${toCountry})`);
       } catch (error) {
         __privateGet(this, _logger27).error(`Error updating cart item:`, error, item);
       }
@@ -13368,7 +13414,7 @@ var TwentyNineNext = (() => {
       __privateGet(this, _app22).state.setState("cart.items", updatedItems, false);
       const updatedCart = __privateGet(this, _app22).state.getState("cart");
       __privateGet(this, _app22).state.setState("cart", updatedCart, true);
-      __privateGet(this, _logger27).info(`Updated ${updatedItems.length} cart items for new country`);
+      __privateGet(this, _logger27).info(`Updated ${updatedItems.length} cart items for new country using product profiles`);
     }
   };
   _triggerCountryChangedEvent = new WeakSet();
@@ -13390,6 +13436,30 @@ var TwentyNineNext = (() => {
     });
     document.dispatchEvent(event);
     __privateGet(this, _logger27).info(`✅ [CountryCampaign] Country changed event triggered: ${previousCountry} → ${newCountry} (${currency})`);
+  };
+  _translatePackageIdUsingProfiles = new WeakSet();
+  translatePackageIdUsingProfiles_fn = function(packageId, fromCountry, toCountry) {
+    const profiles = window.osConfig?.productProfiles;
+    if (!profiles) {
+      __privateGet(this, _logger27).debug("No product profiles configuration found, using original package ID");
+      return packageId;
+    }
+    for (const [profileId, profile] of Object.entries(profiles)) {
+      const sourceMapping = profile.campaignMappings?.[fromCountry];
+      if (sourceMapping && sourceMapping.packageId?.toString() === packageId?.toString()) {
+        const targetMapping = profile.campaignMappings?.[toCountry];
+        if (targetMapping) {
+          const translatedId = targetMapping.packageId?.toString();
+          __privateGet(this, _logger27).debug(`Translated package ID via profile ${profileId}: ${packageId} (${fromCountry}) -> ${translatedId} (${toCountry})`);
+          return translatedId;
+        } else {
+          __privateGet(this, _logger27).warn(`Profile ${profileId} has no mapping for target country ${toCountry}`);
+          return packageId;
+        }
+      }
+    }
+    __privateGet(this, _logger27).debug(`No profile mapping found for package ${packageId} in country ${fromCountry}, using original ID`);
+    return packageId;
   };
 
   // src/managers/ProductProfileManager.js
@@ -14975,3 +15045,4 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
+//# sourceMappingURL=29next.js.map
