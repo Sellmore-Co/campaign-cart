@@ -266,7 +266,7 @@ export class DebugManager {
 
     this.#logger.debug('Updating mini-cart with cart data:', cart);
 
-    const formatPrice = price => this.#app.campaign?.formatPrice(price) ?? `$${price.toFixed(2)}`;
+    const formatPrice = price => this.#app.currency.formatPrice(price);
     let html = '';
 
     if (!cart.items?.length) {

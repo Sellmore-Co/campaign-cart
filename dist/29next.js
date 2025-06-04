@@ -520,8 +520,7 @@ var TwentyNineNext = (() => {
         return {
           name: "Default Campaign",
           currency: "USD",
-          packages: [],
-          formatPrice: (price) => `$${Number.parseFloat(price).toFixed(2)}`
+          packages: []
         };
       }
     }
@@ -7777,10 +7776,7 @@ var TwentyNineNext = (() => {
       unitSavingsPercentage
     });
     const formatPrice = (price) => {
-      if (__privateGet(this, _app11).campaign?.formatPrice) {
-        return __privateGet(this, _app11).campaign.formatPrice(price);
-      }
-      return `$${price.toFixed(2)}`;
+      return __privateGet(this, _app11).currency.formatPrice(price);
     };
     const processedElements = /* @__PURE__ */ new Set();
     const subunitElements = cardElement.querySelectorAll("[data-divide-by]");
@@ -8429,7 +8425,7 @@ var TwentyNineNext = (() => {
       return;
     }
     __privateGet(this, _logger18).debug("Updating mini-cart with cart data:", cart);
-    const formatPrice = (price) => __privateGet(this, _app13).campaign?.formatPrice(price) ?? `$${price.toFixed(2)}`;
+    const formatPrice = (price) => __privateGet(this, _app13).currency.formatPrice(price);
     let html = "";
     if (!cart.items?.length) {
       html += '<div style="color: #999; text-align: center; margin-bottom: 15px;">Cart is empty</div>';

@@ -404,10 +404,7 @@ export class SelectorManager {
     
     // Format prices
     const formatPrice = (price) => {
-      if (this.#app.campaign?.formatPrice) {
-        return this.#app.campaign.formatPrice(price);
-      }
-      return `$${price.toFixed(2)}`;
+      return this.#app.currency.formatPrice(price);
     };
     
     // Track which elements have been processed with data-divide-by

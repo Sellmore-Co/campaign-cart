@@ -167,8 +167,7 @@ export class ApiClient {
       return {
         name: 'Default Campaign',
         currency: 'USD',
-        packages: [],
-        formatPrice: price => `$${Number.parseFloat(price).toFixed(2)}`
+        packages: []
       };
     }
   }
