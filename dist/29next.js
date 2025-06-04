@@ -1134,18 +1134,25 @@ var TwentyNineNext = (() => {
           await __privateMethod(this, _loadStatesForForcedCountry, loadStatesForForcedCountry_fn).call(this, forcedCountry);
         } else {
           __privateGet(this, _logger2).warn(`⚠️ Invalid forced country code: ${forcedCountry} - not found in available countries`);
+          effectiveCountryCode = __privateGet(this, _addressConfig).defaultCountry;
         }
       } else {
-        if (localizationData.detectedCountryCode && localizationData.detectedStates) {
-          __privateGet(this, _states)[localizationData.detectedCountryCode] = localizationData.detectedStates.filter((state) => !__privateGet(this, _addressConfig).dontShowStates.includes(state.code)).map((state) => ({
-            iso2: state.code,
-            name: state.name
-          })).sort((a, b) => a.name.localeCompare(b.name));
-          __privateGet(this, _logger2).debug(`Loaded ${__privateGet(this, _states)[localizationData.detectedCountryCode].length} states for detected country: ${localizationData.detectedCountryCode}`);
-        }
-        if (localizationData.detectedCountryCode && localizationData.detectedCountryConfig) {
-          __privateGet(this, _countryConfigs)[localizationData.detectedCountryCode] = localizationData.detectedCountryConfig;
-          __privateGet(this, _logger2).debug(`Stored config for detected country: ${localizationData.detectedCountryCode}`, localizationData.detectedCountryConfig);
+        const detectedCountryAllowed = __privateGet(this, _countries).some((country) => country.iso2 === localizationData.detectedCountryCode);
+        if (!detectedCountryAllowed) {
+          __privateGet(this, _logger2).warn(`⚠️ Detected country ${localizationData.detectedCountryCode} not in showCountries list, using default: ${__privateGet(this, _addressConfig).defaultCountry}`);
+          effectiveCountryCode = __privateGet(this, _addressConfig).defaultCountry;
+        } else {
+          if (localizationData.detectedCountryCode && localizationData.detectedStates) {
+            __privateGet(this, _states)[localizationData.detectedCountryCode] = localizationData.detectedStates.filter((state) => !__privateGet(this, _addressConfig).dontShowStates.includes(state.code)).map((state) => ({
+              iso2: state.code,
+              name: state.name
+            })).sort((a, b) => a.name.localeCompare(b.name));
+            __privateGet(this, _logger2).debug(`Loaded ${__privateGet(this, _states)[localizationData.detectedCountryCode].length} states for detected country: ${localizationData.detectedCountryCode}`);
+          }
+          if (localizationData.detectedCountryCode && localizationData.detectedCountryConfig) {
+            __privateGet(this, _countryConfigs)[localizationData.detectedCountryCode] = localizationData.detectedCountryConfig;
+            __privateGet(this, _logger2).debug(`Stored config for detected country: ${localizationData.detectedCountryCode}`, localizationData.detectedCountryConfig);
+          }
         }
       }
       if (effectiveCountryCode) {

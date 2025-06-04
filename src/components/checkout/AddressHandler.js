@@ -117,25 +117,35 @@ export class AddressHandler {
           await this.#loadStatesForForcedCountry(forcedCountry);
         } else {
           this.#logger.warn(`⚠️ Invalid forced country code: ${forcedCountry} - not found in available countries`);
+          // Fall back to default country since forced country is invalid
+          effectiveCountryCode = this.#addressConfig.defaultCountry;
         }
-      } else {
-        // Process detected country and its states from global cache
-        if (localizationData.detectedCountryCode && localizationData.detectedStates) {
-          this.#states[localizationData.detectedCountryCode] = localizationData.detectedStates
-            .filter(state => !this.#addressConfig.dontShowStates.includes(state.code))
-            .map(state => ({
-              iso2: state.code,
-              name: state.name
-            }))
-            .sort((a, b) => a.name.localeCompare(b.name));
+              } else {
+        // CHECK: Is the detected country actually allowed by showCountries?
+        const detectedCountryAllowed = this.#countries.some(country => country.iso2 === localizationData.detectedCountryCode);
+        
+        if (!detectedCountryAllowed) {
+          this.#logger.warn(`⚠️ Detected country ${localizationData.detectedCountryCode} not in showCountries list, using default: ${this.#addressConfig.defaultCountry}`);
+          effectiveCountryCode = this.#addressConfig.defaultCountry;
+        } else {
+          // Process detected country and its states from global cache
+          if (localizationData.detectedCountryCode && localizationData.detectedStates) {
+            this.#states[localizationData.detectedCountryCode] = localizationData.detectedStates
+              .filter(state => !this.#addressConfig.dontShowStates.includes(state.code))
+              .map(state => ({
+                iso2: state.code,
+                name: state.name
+              }))
+              .sort((a, b) => a.name.localeCompare(b.name));
 
-          this.#logger.debug(`Loaded ${this.#states[localizationData.detectedCountryCode].length} states for detected country: ${localizationData.detectedCountryCode}`);
-        }
+            this.#logger.debug(`Loaded ${this.#states[localizationData.detectedCountryCode].length} states for detected country: ${localizationData.detectedCountryCode}`);
+          }
 
-        // Store detected country config from global cache
-        if (localizationData.detectedCountryCode && localizationData.detectedCountryConfig) {
-          this.#countryConfigs[localizationData.detectedCountryCode] = localizationData.detectedCountryConfig;
-          this.#logger.debug(`Stored config for detected country: ${localizationData.detectedCountryCode}`, localizationData.detectedCountryConfig);
+          // Store detected country config from global cache
+          if (localizationData.detectedCountryCode && localizationData.detectedCountryConfig) {
+            this.#countryConfigs[localizationData.detectedCountryCode] = localizationData.detectedCountryConfig;
+            this.#logger.debug(`Stored config for detected country: ${localizationData.detectedCountryCode}`, localizationData.detectedCountryConfig);
+          }
         }
       }
 
