@@ -8933,8 +8933,10 @@ var TwentyNineNext = (() => {
         return;
       }
       const currencySymbol = __privateMethod(this, _getCurrencySymbol, getCurrencySymbol_fn).call(this);
+      __privateGet(this, _logger20).debugWithTime(`Processing ${__privateGet(this, _priceElements).size} unique element groups for pricing updates`);
       __privateGet(this, _priceElements).forEach((elements, elementId) => {
         const isProfile = elements[0]?.isProfile || false;
+        __privateGet(this, _logger20).debugWithTime(`Updating ${isProfile ? "profile" : "package"} "${elementId}" with ${elements.length} elements`);
         if (isProfile) {
           __privateMethod(this, _updateProfilePricing, updateProfilePricing_fn).call(this, elementId, elements, currencySymbol);
         } else {
@@ -9126,7 +9128,8 @@ var TwentyNineNext = (() => {
       });
       return;
     }
-    elements.forEach(({ element, priceType, divideBy, format, hideIfZero, showDecimals }) => {
+    __privateGet(this, _logger20).debugWithTime(`Updating ${elements.length} elements for profile: ${profileId} (${profile.name})`);
+    elements.forEach(({ element, priceType, divideBy, format, hideIfZero, showDecimals }, index) => {
       let value = __privateGet(this, _app15).profiles.getPrice(profileId, priceType) || 0;
       if (divideBy && divideBy > 0) {
         value = value / divideBy;
@@ -9145,7 +9148,7 @@ var TwentyNineNext = (() => {
       }
       const displayValue = __privateMethod(this, _formatPriceValue, formatPriceValue_fn).call(this, value, priceType, format, currencySymbol, showDecimals);
       element.textContent = displayValue;
-      __privateGet(this, _logger20).debugWithTime(`Updated profile pricing: ${profileId}, Type ${priceType}, Value: ${displayValue}`);
+      __privateGet(this, _logger20).debugWithTime(`Updated profile pricing [${index + 1}/${elements.length}]: ${profileId}, Type ${priceType}, Value: ${displayValue}, Element: ${element.className || "no-class"}`);
     });
   };
   _translatePackageId2 = new WeakSet();
@@ -12465,10 +12468,14 @@ var TwentyNineNext = (() => {
 
   // src/managers/UpsellManager.js
   init_NavigationPrevention();
-  var _app20, _logger25, _stateManager2, _api, _upsellElements, _orderRef, _init10, init_fn10, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _redirect, redirect_fn, _displayError, displayError_fn;
+  var _app20, _logger25, _stateManager2, _api, _upsellElements, _orderRef, _init10, init_fn10, _setupCountryChangeListener7, setupCountryChangeListener_fn7, _getOrderReferenceId, getOrderReferenceId_fn, _initUpsellElements, initUpsellElements_fn, _bindEvents, bindEvents_fn, _storeProfileUpsellPurchaseData, storeProfileUpsellPurchaseData_fn, _storeUpsellPurchaseData, storeUpsellPurchaseData_fn, _disableUpsellButtons, disableUpsellButtons_fn, _enableUpsellButtons, enableUpsellButtons_fn, _redirect, redirect_fn, _displayError, displayError_fn;
   var UpsellManager = class {
     constructor(app) {
       __privateAdd(this, _init10);
+      /**
+       * Setup listener for country changes
+       */
+      __privateAdd(this, _setupCountryChangeListener7);
       /**
        * Get the order reference ID from URL parameters or sessionStorage
        * @returns {string|null} The order reference ID or null if not found
@@ -12482,6 +12489,15 @@ var TwentyNineNext = (() => {
        * Bind events to upsell elements
        */
       __privateAdd(this, _bindEvents);
+      /**
+       * Store profile upsell data in sessionStorage for tracking
+       * @param {Object} response - API response from createOrderUpsell
+       * @param {string} profileId - The profile ID added to the order
+       * @param {Object} profile - The profile object
+       * @param {Array} packages - The packages that were added
+       * @param {number} quantity - The quantity multiplier
+       */
+      __privateAdd(this, _storeProfileUpsellPurchaseData);
       /**
        * Store upsell data in sessionStorage to track as a purchase event on next page load
        * @param {Object} response - API response from createOrderUpsell
@@ -12519,6 +12535,55 @@ var TwentyNineNext = (() => {
       __privateSet(this, _api, app.api);
       __privateMethod(this, _init10, init_fn10).call(this);
       __privateGet(this, _logger25).info("UpsellManager initialized");
+    }
+    /**
+     * Accept a profile upsell offer by adding the profile packages to the order
+     * @param {string} profileId - The profile ID to add to the order
+     * @param {number} quantity - The quantity multiplier (default: 1)
+     * @param {string} nextUrl - The URL to redirect to after adding the upsell
+     */
+    async acceptProfileUpsell(profileId, quantity = 1, nextUrl) {
+      if (!__privateGet(this, _orderRef)) {
+        __privateGet(this, _logger25).error("Cannot accept profile upsell: No order reference ID found");
+        return;
+      }
+      if (!__privateGet(this, _app20).profiles) {
+        __privateGet(this, _logger25).error("Cannot accept profile upsell: ProductProfileManager not available");
+        return;
+      }
+      __privateGet(this, _logger25).info(`Accepting profile upsell: Profile ${profileId}, Quantity ${quantity}`);
+      __privateMethod(this, _disableUpsellButtons, disableUpsellButtons_fn).call(this);
+      try {
+        document.body.classList.add("os-loading");
+        const mapping = __privateGet(this, _app20).profiles.getCurrentMapping(profileId);
+        if (!mapping) {
+          throw new Error(`No mapping found for profile ${profileId} in current country`);
+        }
+        const profile = __privateGet(this, _app20).profiles.getProfile(profileId);
+        const packages = Array.isArray(mapping) ? mapping : [mapping];
+        const upsellLines = [];
+        for (const pkg of packages) {
+          const packageQuantity = (pkg.quantity || 1) * quantity;
+          upsellLines.push({
+            package_id: Number(pkg.packageId),
+            quantity: Number(packageQuantity),
+            is_upsell: true
+          });
+          __privateGet(this, _logger25).debug(`Added package ${pkg.packageId} (qty: ${packageQuantity}) to profile upsell`);
+        }
+        const upsellData = {
+          lines: upsellLines
+        };
+        const response = await __privateGet(this, _api).createOrderUpsell(__privateGet(this, _orderRef), upsellData);
+        __privateGet(this, _logger25).info("Profile upsell successfully added to order", response);
+        __privateMethod(this, _storeProfileUpsellPurchaseData, storeProfileUpsellPurchaseData_fn).call(this, response, profileId, profile, packages, quantity);
+        __privateMethod(this, _redirect, redirect_fn).call(this, nextUrl);
+      } catch (error) {
+        __privateGet(this, _logger25).error("Error accepting profile upsell:", error);
+        document.body.classList.remove("os-loading");
+        __privateMethod(this, _enableUpsellButtons, enableUpsellButtons_fn).call(this);
+        __privateMethod(this, _displayError, displayError_fn).call(this, "There was an error processing your upsell. Please try again.");
+      }
     }
     /**
      * Accept an upsell offer by adding the product to the order
@@ -12580,6 +12645,18 @@ var TwentyNineNext = (() => {
     }
     __privateMethod(this, _initUpsellElements, initUpsellElements_fn).call(this);
     __privateMethod(this, _bindEvents, bindEvents_fn).call(this);
+    __privateMethod(this, _setupCountryChangeListener7, setupCountryChangeListener_fn7).call(this);
+  };
+  _setupCountryChangeListener7 = new WeakSet();
+  setupCountryChangeListener_fn7 = function() {
+    document.addEventListener("os:country.changed", (event) => {
+      const { country, previousCountry, campaignData } = event.detail;
+      __privateGet(this, _logger25).info(`Country changed from ${previousCountry} to ${country}, upsell system updated`);
+      __privateGet(this, _logger25).debug("Updated campaign data available for upsell operations", {
+        currency: campaignData?.currency,
+        packages: campaignData?.packages?.length || 0
+      });
+    });
   };
   _getOrderReferenceId = new WeakSet();
   getOrderReferenceId_fn = function() {
@@ -12608,13 +12685,21 @@ var TwentyNineNext = (() => {
       button.addEventListener("click", (event) => {
         event.preventDefault();
         const packageId = button.getAttribute("data-os-package-id");
-        const quantity = parseInt(button.getAttribute("data-os-quantity") || "1", 10);
-        const nextUrl = button.getAttribute("data-os-next-url");
-        if (!packageId) {
-          __privateGet(this, _logger25).error("No package ID specified for upsell accept button");
+        const profileId = button.getAttribute("data-os-profile-id");
+        if (!packageId && !profileId) {
+          __privateGet(this, _logger25).error("No package ID or profile ID specified for upsell accept button");
           return;
         }
-        this.acceptUpsell(packageId, quantity, nextUrl);
+        const quantity = parseInt(button.getAttribute("data-os-quantity") || "1", 10);
+        const nextUrl = button.getAttribute("data-os-next-url");
+        const isProfile = !!profileId;
+        const upsellId = isProfile ? profileId : packageId;
+        __privateGet(this, _logger25).debug(`Processing upsell: ${isProfile ? "Profile" : "Package"} ${upsellId}`);
+        if (isProfile) {
+          this.acceptProfileUpsell(profileId, quantity, nextUrl);
+        } else {
+          this.acceptUpsell(packageId, quantity, nextUrl);
+        }
       });
     });
     __privateGet(this, _upsellElements).declineButtons.forEach((button) => {
@@ -12628,6 +12713,47 @@ var TwentyNineNext = (() => {
         }
       });
     });
+  };
+  _storeProfileUpsellPurchaseData = new WeakSet();
+  storeProfileUpsellPurchaseData_fn = function(response, profileId, profile, packages, quantity) {
+    try {
+      let totalPrice = 0;
+      const upsellLines = [];
+      packages.forEach((pkg) => {
+        const packageQuantity = (pkg.quantity || 1) * quantity;
+        const campaignData = __privateGet(this, _app20).getCampaignData();
+        const packageData = campaignData?.packages?.find(
+          (p) => p.ref_id.toString() === pkg.packageId.toString() || p.external_id?.toString() === pkg.packageId.toString()
+        );
+        if (packageData) {
+          const packagePrice = parseFloat(packageData.price) * packageQuantity;
+          totalPrice += packagePrice;
+          upsellLines.push({
+            product_id: packageData.external_id || packageData.ref_id,
+            product_title: packageData.name,
+            price: parseFloat(packageData.price),
+            quantity: packageQuantity,
+            is_upsell: true,
+            profile_id: profileId,
+            profile_name: profile.name
+          });
+        }
+      });
+      const upsellPurchaseData = {
+        number: response.number || response.ref_id,
+        ref_id: response.ref_id,
+        total: totalPrice,
+        currency: __privateGet(this, _app20).getCampaignData()?.currency || "USD",
+        lines: upsellLines,
+        profile_id: profileId,
+        profile_name: profile.name
+      };
+      sessionStorage.setItem("pending_upsell_purchase", "true");
+      sessionStorage.setItem("upsell_purchase_data", JSON.stringify(upsellPurchaseData));
+      __privateGet(this, _logger25).info("Stored profile upsell purchase data for tracking", upsellPurchaseData);
+    } catch (error) {
+      __privateGet(this, _logger25).error("Error storing profile upsell purchase data:", error);
+    }
   };
   _storeUpsellPurchaseData = new WeakSet();
   storeUpsellPurchaseData_fn = function(response, packageId, quantity) {
@@ -13267,7 +13393,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/ProductProfileManager.js
-  var _app23, _logger28, _profiles, _initializeProfiles, initializeProfiles_fn, _validateProfile, validateProfile_fn, _setupCountryChangeListener7, setupCountryChangeListener_fn7, _getCurrentCountry, getCurrentCountry_fn, _getPackageData2, getPackageData_fn2, _getPackageDataSync, getPackageDataSync_fn, _calculatePackagePricing2, calculatePackagePricing_fn2, _getCurrencySymbol2, getCurrencySymbol_fn2, _triggerProfileEvent, triggerProfileEvent_fn;
+  var _app23, _logger28, _profiles, _initializeProfiles, initializeProfiles_fn, _validateProfile, validateProfile_fn, _setupCountryChangeListener8, setupCountryChangeListener_fn8, _getCurrentCountry, getCurrentCountry_fn, _getPackageData2, getPackageData_fn2, _getPackageDataSync, getPackageDataSync_fn, _calculatePackagePricing2, calculatePackagePricing_fn2, _getCurrencySymbol2, getCurrencySymbol_fn2, _triggerProfileEvent, triggerProfileEvent_fn;
   var ProductProfileManager = class {
     constructor(app) {
       /**
@@ -13283,7 +13409,7 @@ var TwentyNineNext = (() => {
       /**
        * Setup listener for country changes
        */
-      __privateAdd(this, _setupCountryChangeListener7);
+      __privateAdd(this, _setupCountryChangeListener8);
       /**
        * Get current country from CountryCampaignManager
        * @returns {string} Current country code
@@ -13325,7 +13451,7 @@ var TwentyNineNext = (() => {
       __privateSet(this, _app23, app);
       __privateSet(this, _logger28, app.logger.createModuleLogger("PROFILE"));
       __privateMethod(this, _initializeProfiles, initializeProfiles_fn).call(this);
-      __privateMethod(this, _setupCountryChangeListener7, setupCountryChangeListener_fn7).call(this);
+      __privateMethod(this, _setupCountryChangeListener8, setupCountryChangeListener_fn8).call(this);
       __privateGet(this, _logger28).infoWithTime("ProductProfileManager initialized");
     }
     /**
@@ -13576,8 +13702,8 @@ var TwentyNineNext = (() => {
       }
     });
   };
-  _setupCountryChangeListener7 = new WeakSet();
-  setupCountryChangeListener_fn7 = function() {
+  _setupCountryChangeListener8 = new WeakSet();
+  setupCountryChangeListener_fn8 = function() {
     document.addEventListener("os:country.changed", (event) => {
       const { country } = event.detail;
       __privateGet(this, _logger28).debugWithTime(`Country changed to ${country}, profile mappings updated`);
@@ -13657,13 +13783,19 @@ var TwentyNineNext = (() => {
   };
 
   // src/services/CurrencyService.js
-  var _app24, _logger29, _cache, _setupEventListeners7, setupEventListeners_fn7, _getHardcodedSymbol, getHardcodedSymbol_fn, _isCacheValid, isCacheValid_fn, _updateCacheValidation, updateCacheValidation_fn, _clearCache, clearCache_fn;
+  var _app24, _logger29, _cache, _setupEventListeners7, setupEventListeners_fn7, _isCountrySupported, isCountrySupported_fn, _getHardcodedSymbol, getHardcodedSymbol_fn, _isCacheValid, isCacheValid_fn, _updateCacheValidation, updateCacheValidation_fn, _clearCache, clearCache_fn;
   var CurrencyService = class {
     constructor(app) {
       /**
        * Setup event listeners for cache invalidation
        */
       __privateAdd(this, _setupEventListeners7);
+      /**
+       * Check if a country is supported by our country campaigns configuration
+       * @param {string} countryCode - Country code to check
+       * @returns {boolean} True if country is supported
+       */
+      __privateAdd(this, _isCountrySupported);
       /**
        * Get hardcoded currency symbol mapping
        * @param {string} currencyCode - Currency code
@@ -13723,11 +13855,16 @@ var TwentyNineNext = (() => {
       if (!symbol) {
         const currentLocalizationData = window.osLocalizationData || __privateGet(this, _app24).getLocalizationData();
         if (currentLocalizationData?.detectedCountryConfig?.currencySymbol) {
-          if (!currencyCode || currencyCode === currentLocalizationData.detectedCountryConfig.currencyCode) {
-            symbol = currentLocalizationData.detectedCountryConfig.currencySymbol;
-            const country = currentLocalizationData.detectedCountryCode;
-            const detectedCurrency = currentLocalizationData.detectedCountryConfig.currencyCode;
-            source = `current localization (${country}/${detectedCurrency})`;
+          const detectedCountry = currentLocalizationData.detectedCountryCode;
+          const isCountrySupported = __privateMethod(this, _isCountrySupported, isCountrySupported_fn).call(this, detectedCountry);
+          if (isCountrySupported) {
+            if (!currencyCode || currencyCode === currentLocalizationData.detectedCountryConfig.currencyCode) {
+              symbol = currentLocalizationData.detectedCountryConfig.currencySymbol;
+              const detectedCurrency = currentLocalizationData.detectedCountryConfig.currencyCode;
+              source = `current localization (${detectedCountry}/${detectedCurrency})`;
+            }
+          } else {
+            __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] Detected country "${detectedCountry}" not supported, skipping its currency symbol`);
           }
         }
       }
@@ -13762,9 +13899,15 @@ var TwentyNineNext = (() => {
       if (!currency) {
         const currentLocalizationData = window.osLocalizationData || __privateGet(this, _app24).getLocalizationData();
         const localizationCurrency = currentLocalizationData?.detectedCountryConfig?.currencyCode;
-        if (localizationCurrency) {
-          currency = localizationCurrency;
-          source = `current localization (${currentLocalizationData.detectedCountryCode || "unknown"})`;
+        const detectedCountry = currentLocalizationData?.detectedCountryCode;
+        if (localizationCurrency && detectedCountry) {
+          const isCountrySupported = __privateMethod(this, _isCountrySupported, isCountrySupported_fn).call(this, detectedCountry);
+          if (isCountrySupported) {
+            currency = localizationCurrency;
+            source = `current localization (${detectedCountry})`;
+          } else {
+            __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] Detected country "${detectedCountry}" not supported, skipping its currency code`);
+          }
         }
       }
       if (!currency) {
@@ -13838,19 +13981,28 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger29).debugWithTime("Cache cleared due to country campaign initialization");
     });
   };
+  _isCountrySupported = new WeakSet();
+  isCountrySupported_fn = function(countryCode) {
+    if (!countryCode)
+      return false;
+    const campaignIds = window.osConfig?.countryCampaigns?.campaignIds || {};
+    const isSupported = !!campaignIds[countryCode.toUpperCase()];
+    __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] Country "${countryCode}" supported: ${isSupported}`);
+    return isSupported;
+  };
   _getHardcodedSymbol = new WeakSet();
   getHardcodedSymbol_fn = function(currencyCode) {
     const symbols = {
       "USD": "$",
-      "GBP": "£",
-      "EUR": "€",
+      "GBP": "$",
+      "EUR": "$",
       "CAD": "$",
       "AUD": "$",
-      "JPY": "¥",
-      "CHF": "CHF",
-      "SEK": "kr",
-      "NOK": "kr",
-      "DKK": "kr"
+      "JPY": "$",
+      "CHF": "$",
+      "SEK": "$",
+      "NOK": "$",
+      "DKK": "$"
     };
     return symbols[currencyCode] || "$";
   };

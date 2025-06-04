@@ -2,7 +2,17 @@
  * UpsellManager - Manages post-purchase upsell operations
  * 
  * This class provides functionality for handling post-purchase upsells,
- * allowing customers to add additional products to their order.
+ * allowing customers to add additional products or product profiles to their order.
+ * 
+ * Supports both individual packages and product profiles:
+ * - Package upsells: Use data-os-package-id attribute
+ * - Profile upsells: Use data-os-profile-id attribute (works with CountryCampaignManager)
+ * 
+ * Example HTML for package upsell:
+ * <button data-os-upsell="accept" data-os-package-id="123" data-os-quantity="1" data-os-next-url="/next">Accept</button>
+ * 
+ * Example HTML for profile upsell:
+ * <button data-os-upsell="accept" data-os-profile-id="premium-bundle" data-os-quantity="1" data-os-next-url="/next">Accept</button>
  */
 
 import { initNavigationPrevention, saveAcceptedUpsell, createNextUrlWithDebug } from '../utils/NavigationPrevention.js';
@@ -41,6 +51,23 @@ export class UpsellManager {
     
     this.#initUpsellElements();
     this.#bindEvents();
+    this.#setupCountryChangeListener();
+  }
+
+  /**
+   * Setup listener for country changes
+   */
+  #setupCountryChangeListener() {
+    document.addEventListener('os:country.changed', (event) => {
+      const { country, previousCountry, campaignData } = event.detail;
+      this.#logger.info(`Country changed from ${previousCountry} to ${country}, upsell system updated`);
+      
+      // Log country change for upsell context
+      this.#logger.debug('Updated campaign data available for upsell operations', {
+        currency: campaignData?.currency,
+        packages: campaignData?.packages?.length || 0
+      });
+    });
   }
   
   /**
@@ -86,16 +113,29 @@ export class UpsellManager {
       button.addEventListener('click', event => {
         event.preventDefault();
         
+        // Check for both package and profile attributes
         const packageId = button.getAttribute('data-os-package-id');
-        const quantity = parseInt(button.getAttribute('data-os-quantity') || '1', 10);
-        const nextUrl = button.getAttribute('data-os-next-url');
+        const profileId = button.getAttribute('data-os-profile-id');
         
-        if (!packageId) {
-          this.#logger.error('No package ID specified for upsell accept button');
+        if (!packageId && !profileId) {
+          this.#logger.error('No package ID or profile ID specified for upsell accept button');
           return;
         }
         
-        this.acceptUpsell(packageId, quantity, nextUrl);
+        const quantity = parseInt(button.getAttribute('data-os-quantity') || '1', 10);
+        const nextUrl = button.getAttribute('data-os-next-url');
+        
+        // Determine if this is a profile or package upsell
+        const isProfile = !!profileId;
+        const upsellId = isProfile ? profileId : packageId;
+        
+        this.#logger.debug(`Processing upsell: ${isProfile ? 'Profile' : 'Package'} ${upsellId}`);
+        
+        if (isProfile) {
+          this.acceptProfileUpsell(profileId, quantity, nextUrl);
+        } else {
+          this.acceptUpsell(packageId, quantity, nextUrl);
+        }
       });
     });
     
@@ -112,6 +152,82 @@ export class UpsellManager {
         }
       });
     });
+  }
+  
+  /**
+   * Accept a profile upsell offer by adding the profile packages to the order
+   * @param {string} profileId - The profile ID to add to the order
+   * @param {number} quantity - The quantity multiplier (default: 1)
+   * @param {string} nextUrl - The URL to redirect to after adding the upsell
+   */
+  async acceptProfileUpsell(profileId, quantity = 1, nextUrl) {
+    if (!this.#orderRef) {
+      this.#logger.error('Cannot accept profile upsell: No order reference ID found');
+      return;
+    }
+
+    if (!this.#app.profiles) {
+      this.#logger.error('Cannot accept profile upsell: ProductProfileManager not available');
+      return;
+    }
+
+    this.#logger.info(`Accepting profile upsell: Profile ${profileId}, Quantity ${quantity}`);
+    
+    // Disable all upsell buttons to prevent multiple clicks
+    this.#disableUpsellButtons();
+    
+    try {
+      // Show loading state
+      document.body.classList.add('os-loading');
+      
+      // Get profile mapping for current country
+      const mapping = this.#app.profiles.getCurrentMapping(profileId);
+      if (!mapping) {
+        throw new Error(`No mapping found for profile ${profileId} in current country`);
+      }
+
+      const profile = this.#app.profiles.getProfile(profileId);
+      const packages = Array.isArray(mapping) ? mapping : [mapping];
+      
+      // Create upsell lines for all packages in the profile
+      const upsellLines = [];
+      
+      for (const pkg of packages) {
+        const packageQuantity = (pkg.quantity || 1) * quantity;
+        
+        upsellLines.push({
+          package_id: Number(pkg.packageId),
+          quantity: Number(packageQuantity),
+          is_upsell: true
+        });
+        
+        this.#logger.debug(`Added package ${pkg.packageId} (qty: ${packageQuantity}) to profile upsell`);
+      }
+
+      // Create the upsell data
+      const upsellData = {
+        lines: upsellLines
+      };
+      
+      // Call the API to add the upsell
+      const response = await this.#api.createOrderUpsell(this.#orderRef, upsellData);
+      this.#logger.info('Profile upsell successfully added to order', response);
+      
+      // Store upsell information for tracking
+      this.#storeProfileUpsellPurchaseData(response, profileId, profile, packages, quantity);
+      
+      // Redirect to the next page
+      this.#redirect(nextUrl);
+    } catch (error) {
+      this.#logger.error('Error accepting profile upsell:', error);
+      document.body.classList.remove('os-loading');
+      
+      // Re-enable buttons in case of error
+      this.#enableUpsellButtons();
+      
+      // Display error to user
+      this.#displayError('There was an error processing your upsell. Please try again.');
+    }
   }
   
   /**
@@ -166,6 +282,67 @@ export class UpsellManager {
       
       // Display error to user
       this.#displayError('There was an error processing your upsell. Please try again.');
+    }
+  }
+  
+  /**
+   * Store profile upsell data in sessionStorage for tracking
+   * @param {Object} response - API response from createOrderUpsell
+   * @param {string} profileId - The profile ID added to the order
+   * @param {Object} profile - The profile object
+   * @param {Array} packages - The packages that were added
+   * @param {number} quantity - The quantity multiplier
+   */
+  #storeProfileUpsellPurchaseData(response, profileId, profile, packages, quantity) {
+    try {
+      // Calculate total price for the profile upsell
+      let totalPrice = 0;
+      const upsellLines = [];
+
+      packages.forEach(pkg => {
+        const packageQuantity = (pkg.quantity || 1) * quantity;
+        
+        // Get package price from campaign data
+        const campaignData = this.#app.getCampaignData();
+        const packageData = campaignData?.packages?.find(p => 
+          p.ref_id.toString() === pkg.packageId.toString() || 
+          p.external_id?.toString() === pkg.packageId.toString()
+        );
+
+        if (packageData) {
+          const packagePrice = parseFloat(packageData.price) * packageQuantity;
+          totalPrice += packagePrice;
+
+          upsellLines.push({
+            product_id: packageData.external_id || packageData.ref_id,
+            product_title: packageData.name,
+            price: parseFloat(packageData.price),
+            quantity: packageQuantity,
+            is_upsell: true,
+            profile_id: profileId,
+            profile_name: profile.name
+          });
+        }
+      });
+
+      // Store data for tracking
+      const upsellPurchaseData = {
+        number: response.number || response.ref_id,
+        ref_id: response.ref_id,
+        total: totalPrice,
+        currency: this.#app.getCampaignData()?.currency || 'USD',
+        lines: upsellLines,
+        profile_id: profileId,
+        profile_name: profile.name
+      };
+
+      // Store data in sessionStorage
+      sessionStorage.setItem('pending_upsell_purchase', 'true');
+      sessionStorage.setItem('upsell_purchase_data', JSON.stringify(upsellPurchaseData));
+
+      this.#logger.info('Stored profile upsell purchase data for tracking', upsellPurchaseData);
+    } catch (error) {
+      this.#logger.error('Error storing profile upsell purchase data:', error);
     }
   }
   

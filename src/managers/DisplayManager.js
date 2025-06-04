@@ -243,10 +243,14 @@ export class DisplayManager {
     // Get currency symbol from campaign data or default
     const currencySymbol = this.#getCurrencySymbol();
     
+    this.#logger.debugWithTime(`Processing ${this.#priceElements.size} unique element groups for pricing updates`);
+    
     // Update each package's and profile's pricing elements
     this.#priceElements.forEach((elements, elementId) => {
       // Check if this is a profile or package
       const isProfile = elements[0]?.isProfile || false;
+      
+      this.#logger.debugWithTime(`Updating ${isProfile ? 'profile' : 'package'} "${elementId}" with ${elements.length} elements`);
       
       if (isProfile) {
         this.#updateProfilePricing(elementId, elements, currencySymbol);
@@ -337,8 +341,10 @@ export class DisplayManager {
       return;
     }
 
+    this.#logger.debugWithTime(`Updating ${elements.length} elements for profile: ${profileId} (${profile.name})`);
+
     // Update each element
-    elements.forEach(({ element, priceType, divideBy, format, hideIfZero, showDecimals }) => {
+    elements.forEach(({ element, priceType, divideBy, format, hideIfZero, showDecimals }, index) => {
       let value = this.#app.profiles.getPrice(profileId, priceType) || 0;
       
       // Apply divideBy if specified
@@ -362,7 +368,7 @@ export class DisplayManager {
       const displayValue = this.#formatPriceValue(value, priceType, format, currencySymbol, showDecimals);
       element.textContent = displayValue;
       
-      this.#logger.debugWithTime(`Updated profile pricing: ${profileId}, Type ${priceType}, Value: ${displayValue}`);
+      this.#logger.debugWithTime(`Updated profile pricing [${index + 1}/${elements.length}]: ${profileId}, Type ${priceType}, Value: ${displayValue}, Element: ${element.className || 'no-class'}`);
     });
   }
 

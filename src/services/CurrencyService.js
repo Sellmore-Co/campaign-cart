@@ -93,17 +93,26 @@ export class CurrencyService {
     }
     
     // Fallback to window.osLocalizationData (updated by AddressHandler)
+    // BUT ONLY if the detected country is actually supported by our country campaigns
     if (!symbol) {
       const currentLocalizationData = window.osLocalizationData || this.#app.getLocalizationData();
 
       if (currentLocalizationData?.detectedCountryConfig?.currencySymbol) {
-        // If no specific currency code requested, use the detected one's symbol
-        // OR if a currencyCode is provided, it must match the detected one's code to use its symbol
-        if (!currencyCode || currencyCode === currentLocalizationData.detectedCountryConfig.currencyCode) {
-          symbol = currentLocalizationData.detectedCountryConfig.currencySymbol;
-          const country = currentLocalizationData.detectedCountryCode;
-          const detectedCurrency = currentLocalizationData.detectedCountryConfig.currencyCode;
-          source = `current localization (${country}/${detectedCurrency})`;
+        const detectedCountry = currentLocalizationData.detectedCountryCode;
+        
+        // Check if detected country is actually supported
+        const isCountrySupported = this.#isCountrySupported(detectedCountry);
+        
+        if (isCountrySupported) {
+          // If no specific currency code requested, use the detected one's symbol
+          // OR if a currencyCode is provided, it must match the detected one's code to use its symbol
+          if (!currencyCode || currencyCode === currentLocalizationData.detectedCountryConfig.currencyCode) {
+            symbol = currentLocalizationData.detectedCountryConfig.currencySymbol;
+            const detectedCurrency = currentLocalizationData.detectedCountryConfig.currencyCode;
+            source = `current localization (${detectedCountry}/${detectedCurrency})`;
+          }
+        } else {
+          this.#logger.debugWithTime(`💱 [CurrencyService] Detected country "${detectedCountry}" not supported, skipping its currency symbol`);
         }
       }
     }
@@ -154,13 +163,21 @@ export class CurrencyService {
     }
     
     // Fallback to localization data
+    // BUT ONLY if the detected country is actually supported by our country campaigns
     if (!currency) {
       const currentLocalizationData = window.osLocalizationData || this.#app.getLocalizationData();
       const localizationCurrency = currentLocalizationData?.detectedCountryConfig?.currencyCode;
+      const detectedCountry = currentLocalizationData?.detectedCountryCode;
       
-      if (localizationCurrency) {
-        currency = localizationCurrency;
-        source = `current localization (${currentLocalizationData.detectedCountryCode || 'unknown'})`;
+      if (localizationCurrency && detectedCountry) {
+        const isCountrySupported = this.#isCountrySupported(detectedCountry);
+        
+        if (isCountrySupported) {
+          currency = localizationCurrency;
+          source = `current localization (${detectedCountry})`;
+        } else {
+          this.#logger.debugWithTime(`💱 [CurrencyService] Detected country "${detectedCountry}" not supported, skipping its currency code`);
+        }
       }
     }
     
@@ -210,6 +227,22 @@ export class CurrencyService {
   }
 
   /**
+   * Check if a country is supported by our country campaigns configuration
+   * @param {string} countryCode - Country code to check
+   * @returns {boolean} True if country is supported
+   */
+  #isCountrySupported(countryCode) {
+    if (!countryCode) return false;
+    
+    // Check if country campaigns are configured and this country is supported
+    const campaignIds = window.osConfig?.countryCampaigns?.campaignIds || {};
+    const isSupported = !!campaignIds[countryCode.toUpperCase()];
+    
+    this.#logger.debugWithTime(`💱 [CurrencyService] Country "${countryCode}" supported: ${isSupported}`);
+    return isSupported;
+  }
+
+  /**
    * Get hardcoded currency symbol mapping
    * @param {string} currencyCode - Currency code
    * @returns {string} Currency symbol
@@ -217,15 +250,15 @@ export class CurrencyService {
   #getHardcodedSymbol(currencyCode) {
     const symbols = {
       'USD': '$',
-      'GBP': '£',
-      'EUR': '€',
+      'GBP': '$',
+      'EUR': '$',
       'CAD': '$',
       'AUD': '$',
-      'JPY': '¥',
-      'CHF': 'CHF',
-      'SEK': 'kr',
-      'NOK': 'kr',
-      'DKK': 'kr'
+      'JPY': '$',
+      'CHF': '$',
+      'SEK': '$',
+      'NOK': '$',
+      'DKK': '$'
     };
     
     return symbols[currencyCode] || '$'; // Default to '$' if no specific match
