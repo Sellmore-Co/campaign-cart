@@ -4813,7 +4813,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/PhoneInputHandler.js
-  var _logger9, _intlTelInputAvailable, _phoneInstances, _loadIntlTelInput, loadIntlTelInput_fn, _initPhoneInputs, initPhoneInputs_fn, _initializePhoneInput, initializePhoneInput_fn, _getInitialCountry, getInitialCountry_fn, _setupAddressHandlerIntegration, setupAddressHandlerIntegration_fn, _setupCountrySelectionSync, setupCountrySelectionSync_fn, _setupCountryChangeListener, setupCountryChangeListener_fn, _updatePhoneCountry, updatePhoneCountry_fn, _showError2, showError_fn2, _clearError, clearError_fn, _getNumberTypeName, getNumberTypeName_fn, _setupPhoneInputSync, setupPhoneInputSync_fn, _setupPhoneValidation, setupPhoneValidation_fn;
+  var _logger9, _intlTelInputAvailable, _phoneInstances, _loadIntlTelInput, loadIntlTelInput_fn, _initPhoneInputs, initPhoneInputs_fn, _initializePhoneInput, initializePhoneInput_fn, _getInitialCountry, getInitialCountry_fn, _setupAddressHandlerIntegration, setupAddressHandlerIntegration_fn, _updatePhoneCountriesFromValidatedSelects, updatePhoneCountriesFromValidatedSelects_fn, _setupCountrySelectionSync, setupCountrySelectionSync_fn, _setupCountryChangeListener, setupCountryChangeListener_fn, _updatePhoneCountry, updatePhoneCountry_fn, _showError2, showError_fn2, _clearError, clearError_fn, _getNumberTypeName, getNumberTypeName_fn, _setupPhoneInputSync, setupPhoneInputSync_fn, _setupPhoneValidation, setupPhoneValidation_fn;
   var PhoneInputHandler = class {
     // Store phone input instances for sync
     constructor(logger) {
@@ -4828,6 +4828,10 @@ var TwentyNineNext = (() => {
        * Setup integration with AddressHandler to sync country changes
        */
       __privateAdd(this, _setupAddressHandlerIntegration);
+      /**
+       * Update phone countries from validated country selects after AddressHandler initialization
+       */
+      __privateAdd(this, _updatePhoneCountriesFromValidatedSelects);
       /**
        * Setup synchronization with country select fields
        */
@@ -4983,36 +4987,61 @@ var TwentyNineNext = (() => {
   };
   _getInitialCountry = new WeakSet();
   getInitialCountry_fn = function(input) {
-    if (window.osAddressHandler && typeof window.osAddressHandler.getForcedCountry === "function") {
-      const forcedCountry = window.osAddressHandler.getForcedCountry();
-      if (forcedCountry) {
-        __privateGet(this, _logger9).debug(`Using forced country for phone input: ${forcedCountry}`);
-        return forcedCountry.toLowerCase();
-      }
-    }
     const fieldAttr = input.getAttribute("os-checkout-field");
     const countrySelect = document.querySelector(
       fieldAttr === "phone" ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
     );
     if (countrySelect && countrySelect.value) {
-      __privateGet(this, _logger9).debug(`Using country from select for phone input: ${countrySelect.value}`);
+      __privateGet(this, _logger9).debug(`Using validated country from select for phone input: ${countrySelect.value}`);
       return countrySelect.value.toLowerCase();
     }
-    return "us";
+    if (window.osAddressHandler && typeof window.osAddressHandler.getForcedCountry === "function") {
+      const forcedCountry = window.osAddressHandler.getForcedCountry();
+      if (forcedCountry) {
+        const availableCountries = window.osAddressHandler.getAvailableCountries();
+        const isValidCountry = availableCountries.some((country) => country.iso2 === forcedCountry);
+        if (isValidCountry) {
+          __privateGet(this, _logger9).debug(`Using validated forced country for phone input: ${forcedCountry}`);
+          return forcedCountry.toLowerCase();
+        } else {
+          __privateGet(this, _logger9).debug(`Forced country ${forcedCountry} not in available countries list, falling back`);
+        }
+      }
+    }
+    const defaultCountry = window.osConfig?.addressConfig?.defaultCountry || "US";
+    __privateGet(this, _logger9).debug(`Using default country for phone input: ${defaultCountry}`);
+    return defaultCountry.toLowerCase();
   };
   _setupAddressHandlerIntegration = new WeakSet();
   setupAddressHandlerIntegration_fn = function() {
-    if (window.osAddressHandler) {
-      __privateMethod(this, _setupCountrySelectionSync, setupCountrySelectionSync_fn).call(this);
-    } else {
-      const checkInterval = setInterval(() => {
-        if (window.osAddressHandler) {
-          clearInterval(checkInterval);
+    const waitForAddressHandler = () => {
+      if (window.osAddressHandler) {
+        setTimeout(() => {
           __privateMethod(this, _setupCountrySelectionSync, setupCountrySelectionSync_fn).call(this);
-        }
-      }, 100);
-      setTimeout(() => clearInterval(checkInterval), 1e4);
-    }
+          __privateMethod(this, _updatePhoneCountriesFromValidatedSelects, updatePhoneCountriesFromValidatedSelects_fn).call(this);
+        }, 100);
+      } else {
+        const checkInterval = setInterval(() => {
+          if (window.osAddressHandler) {
+            clearInterval(checkInterval);
+            setTimeout(() => {
+              __privateMethod(this, _setupCountrySelectionSync, setupCountrySelectionSync_fn).call(this);
+              __privateMethod(this, _updatePhoneCountriesFromValidatedSelects, updatePhoneCountriesFromValidatedSelects_fn).call(this);
+            }, 100);
+          }
+        }, 100);
+        setTimeout(() => clearInterval(checkInterval), 1e4);
+      }
+    };
+    waitForAddressHandler();
+  };
+  _updatePhoneCountriesFromValidatedSelects = new WeakSet();
+  updatePhoneCountriesFromValidatedSelects_fn = function() {
+    __privateGet(this, _phoneInstances).forEach((phoneInstance, fieldType) => {
+      const updatedCountry = __privateMethod(this, _getInitialCountry, getInitialCountry_fn).call(this, phoneInstance.input);
+      __privateMethod(this, _updatePhoneCountry, updatePhoneCountry_fn).call(this, phoneInstance.iti, updatedCountry);
+      __privateGet(this, _logger9).debug(`Updated ${fieldType} to validated country: ${updatedCountry}`);
+    });
   };
   _setupCountrySelectionSync = new WeakSet();
   setupCountrySelectionSync_fn = function() {

@@ -133,49 +133,82 @@ export class PhoneInputHandler {
    * Get the initial country for phone input from AddressHandler or URL params
    */
   #getInitialCountry(input) {
-    // First check for forced country from URL
-    if (window.osAddressHandler && typeof window.osAddressHandler.getForcedCountry === 'function') {
-      const forcedCountry = window.osAddressHandler.getForcedCountry();
-      if (forcedCountry) {
-        this.#logger.debug(`Using forced country for phone input: ${forcedCountry}`);
-        return forcedCountry.toLowerCase();
-      }
-    }
-    
-    // Then check the corresponding country select field
+    // First check the corresponding country select field (which has been validated by AddressHandler)
     const fieldAttr = input.getAttribute('os-checkout-field');
     const countrySelect = document.querySelector(
       fieldAttr === 'phone' ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
     );
     
     if (countrySelect && countrySelect.value) {
-      this.#logger.debug(`Using country from select for phone input: ${countrySelect.value}`);
+      this.#logger.debug(`Using validated country from select for phone input: ${countrySelect.value}`);
       return countrySelect.value.toLowerCase();
     }
     
-    // Fallback to US
-    return 'us';
+    // Only check for forced country if no validated country select value exists
+    if (window.osAddressHandler && typeof window.osAddressHandler.getForcedCountry === 'function') {
+      const forcedCountry = window.osAddressHandler.getForcedCountry();
+      if (forcedCountry) {
+        // Check if this forced country is actually in the available countries list
+        const availableCountries = window.osAddressHandler.getAvailableCountries();
+        const isValidCountry = availableCountries.some(country => country.iso2 === forcedCountry);
+        
+        if (isValidCountry) {
+          this.#logger.debug(`Using validated forced country for phone input: ${forcedCountry}`);
+          return forcedCountry.toLowerCase();
+        } else {
+          this.#logger.debug(`Forced country ${forcedCountry} not in available countries list, falling back`);
+        }
+      }
+    }
+    
+    // Fallback to address config default country or US
+    const defaultCountry = window.osConfig?.addressConfig?.defaultCountry || 'US';
+    this.#logger.debug(`Using default country for phone input: ${defaultCountry}`);
+    return defaultCountry.toLowerCase();
   }
 
   /**
    * Setup integration with AddressHandler to sync country changes
    */
   #setupAddressHandlerIntegration() {
-    // Listen for AddressHandler being ready
-    if (window.osAddressHandler) {
-      this.#setupCountrySelectionSync();
-    } else {
-      // Wait for AddressHandler to be available
-      const checkInterval = setInterval(() => {
-        if (window.osAddressHandler) {
-          clearInterval(checkInterval);
+    // Wait for AddressHandler to be available and initialized
+    const waitForAddressHandler = () => {
+      if (window.osAddressHandler) {
+        // Give AddressHandler a moment to finish its initialization and validation
+        setTimeout(() => {
           this.#setupCountrySelectionSync();
-        }
-      }, 100);
-      
-      // Stop checking after 10 seconds
-      setTimeout(() => clearInterval(checkInterval), 10000);
-    }
+          this.#updatePhoneCountriesFromValidatedSelects();
+        }, 100);
+      } else {
+        // Wait for AddressHandler to be available
+        const checkInterval = setInterval(() => {
+          if (window.osAddressHandler) {
+            clearInterval(checkInterval);
+            // Give AddressHandler a moment to finish its initialization and validation
+            setTimeout(() => {
+              this.#setupCountrySelectionSync();
+              this.#updatePhoneCountriesFromValidatedSelects();
+            }, 100);
+          }
+        }, 100);
+        
+        // Stop checking after 10 seconds
+        setTimeout(() => clearInterval(checkInterval), 10000);
+      }
+    };
+
+    waitForAddressHandler();
+  }
+
+  /**
+   * Update phone countries from validated country selects after AddressHandler initialization
+   */
+  #updatePhoneCountriesFromValidatedSelects() {
+    this.#phoneInstances.forEach((phoneInstance, fieldType) => {
+      const updatedCountry = this.#getInitialCountry(phoneInstance.input);
+      this.#updatePhoneCountry(phoneInstance.iti, updatedCountry);
+      this.#logger.debug(`Updated ${fieldType} to validated country: ${updatedCountry}`);
+    });
   }
 
   /**
