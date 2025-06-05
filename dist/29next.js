@@ -950,7 +950,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/AddressHandler.js
-  var _form, _logger2, _addressConfig, _countries, _states, _countryConfigs, _elements, _workerBaseUrl, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _loadCountriesAndInitialState, loadCountriesAndInitialState_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadStates, loadStates_fn, _updateGlobalLocalizationData, updateGlobalLocalizationData_fn, _applyCountryConfig, applyCountryConfig_fn, _updateFormLabels, updateFormLabels_fn, _resetFormLabels, resetFormLabels_fn, _updatePostcodeValidation, updatePostcodeValidation_fn, _setupPostcodeValidation, setupPostcodeValidation_fn, _validatePostcodeField, validatePostcodeField_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStatesFallback, loadCountriesAndStatesFallback_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn, _checkForForcedCountry, checkForForcedCountry_fn, _handleForcedCountry, handleForcedCountry_fn, _loadStatesForForcedCountry, loadStatesForForcedCountry_fn, _updatePhoneInputCountry, updatePhoneInputCountry_fn, _triggerCountryCampaignChange, triggerCountryCampaignChange_fn, _debugFormElementStates, debugFormElementStates_fn;
+  var _form, _logger2, _addressConfig, _countries, _states, _countryConfigs, _elements, _workerBaseUrl, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _loadCountriesAndInitialState, loadCountriesAndInitialState_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadStates, loadStates_fn, _updateGlobalLocalizationData, updateGlobalLocalizationData_fn, _applyCountryConfig, applyCountryConfig_fn, _updateFormLabels, updateFormLabels_fn, _resetFormLabels, resetFormLabels_fn, _updatePostcodeValidation, updatePostcodeValidation_fn, _setupPostcodeValidation, setupPostcodeValidation_fn, _clearInputRestrictions, clearInputRestrictions_fn, _getCountryForField, getCountryForField_fn, _isPostcodeNumericOnly, isPostcodeNumericOnly_fn, _handlePostcodeInput, handlePostcodeInput_fn, _validatePostcodeField, validatePostcodeField_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStatesFallback, loadCountriesAndStatesFallback_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn, _checkForForcedCountry, checkForForcedCountry_fn, _handleForcedCountry, handleForcedCountry_fn, _loadStatesForForcedCountry, loadStatesForForcedCountry_fn, _updatePhoneInputCountry, updatePhoneInputCountry_fn, _triggerCountryCampaignChange, triggerCountryCampaignChange_fn, _debugFormElementStates, debugFormElementStates_fn;
   var AddressHandler = class {
     constructor(form, logger) {
       __privateAdd(this, _init);
@@ -972,6 +972,29 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _resetFormLabels);
       __privateAdd(this, _updatePostcodeValidation);
       __privateAdd(this, _setupPostcodeValidation);
+      /**
+       * Clear any input restrictions that might prevent proper postcode entry
+       * @param {HTMLElement} field - The postcode input field
+       * @param {Object} config - Country configuration
+       */
+      __privateAdd(this, _clearInputRestrictions);
+      /**
+       * Get the country code for a given postal field
+       * @param {HTMLElement} field - The postcode input field
+       * @returns {string} - The country code
+       */
+      __privateAdd(this, _getCountryForField);
+      /**
+       * Determine if a postal code format is numeric-only based on the regex pattern
+       * @param {Object} config - Country configuration object
+       * @returns {boolean} - True if postal code should only accept numeric input
+       */
+      __privateAdd(this, _isPostcodeNumericOnly);
+      /**
+       * Handle postcode input formatting based on country requirements
+       * @param {HTMLElement} field - The postcode input field
+       */
+      __privateAdd(this, _handlePostcodeInput);
       __privateAdd(this, _validatePostcodeField);
       __privateAdd(this, _loadCachedData);
       __privateAdd(this, _saveCache);
@@ -1341,11 +1364,13 @@ var TwentyNineNext = (() => {
         config = __privateGet(this, _countryConfigs)[countryCode];
       }
       if (config) {
+        const isNumericOnly = __privateMethod(this, _isPostcodeNumericOnly, isPostcodeNumericOnly_fn).call(this, config);
         __privateGet(this, _logger2).info(`🔧 [AddressHandler] Applying config for ${countryCode}:`, {
           stateLabel: config.stateLabel,
           postcodeLabel: config.postcodeLabel,
           postcodeExample: config.postcodeExample,
           postcodeRegex: config.postcodeRegex,
+          inputmode: isNumericOnly ? "numeric" : "text",
           currency: `${config.currencyCode} (${config.currencySymbol})`
         });
         __privateMethod(this, _updateGlobalLocalizationData, updateGlobalLocalizationData_fn).call(this, countryCode, config);
@@ -1425,6 +1450,10 @@ var TwentyNineNext = (() => {
       if (field) {
         field.setAttribute("placeholder", "Postal Code");
         field.removeAttribute("title");
+        field.removeAttribute("pattern");
+        field.removeAttribute("minlength");
+        field.removeAttribute("maxlength");
+        field.setAttribute("inputmode", "text");
       }
     });
   };
@@ -1447,6 +1476,14 @@ var TwentyNineNext = (() => {
         } else {
           field.removeAttribute("maxlength");
         }
+        const isNumericOnly = __privateMethod(this, _isPostcodeNumericOnly, isPostcodeNumericOnly_fn).call(this, config);
+        if (isNumericOnly) {
+          field.setAttribute("inputmode", "numeric");
+        } else {
+          field.setAttribute("inputmode", "text");
+        }
+        __privateMethod(this, _clearInputRestrictions, clearInputRestrictions_fn).call(this, field, config);
+        __privateGet(this, _logger2).debug(`Updated inputmode for postcode field: ${isNumericOnly ? "numeric" : "text"} (based on regex: ${config.postcodeRegex})`);
       }
     });
   };
@@ -1455,6 +1492,7 @@ var TwentyNineNext = (() => {
     [__privateGet(this, _elements).postcodeField, __privateGet(this, _elements).billingPostcodeField].forEach((field) => {
       if (field) {
         field.addEventListener("input", (event) => {
+          __privateMethod(this, _handlePostcodeInput, handlePostcodeInput_fn).call(this, event.target);
           __privateMethod(this, _validatePostcodeField, validatePostcodeField_fn).call(this, event.target);
         });
         field.addEventListener("blur", (event) => {
@@ -1462,6 +1500,81 @@ var TwentyNineNext = (() => {
         });
       }
     });
+  };
+  _clearInputRestrictions = new WeakSet();
+  clearInputRestrictions_fn = function(field, config) {
+    const restrictiveAttributes = ["onkeypress", "oninput", "onkeydown"];
+    restrictiveAttributes.forEach((attr) => {
+      if (field.hasAttribute(attr)) {
+        __privateGet(this, _logger2).warn(`⚠️ Removing potentially restrictive attribute: ${attr} from postal field`);
+        field.removeAttribute(attr);
+      }
+    });
+    const countryCode = __privateMethod(this, _getCountryForField, getCountryForField_fn).call(this, field);
+    const isNumericOnly = __privateMethod(this, _isPostcodeNumericOnly, isPostcodeNumericOnly_fn).call(this, config);
+    if (!isNumericOnly && field.type !== "text") {
+      __privateGet(this, _logger2).info(`🔧 Changing input type from "${field.type}" to "text" for alphanumeric postcode (${countryCode})`);
+      field.type = "text";
+    }
+    __privateGet(this, _logger2).debug(`🔍 Postal field state for ${countryCode}:`, {
+      type: field.type,
+      inputmode: field.getAttribute("inputmode"),
+      pattern: field.getAttribute("pattern"),
+      maxlength: field.getAttribute("maxlength"),
+      restrictiveHandlers: restrictiveAttributes.filter((attr) => field.hasAttribute(attr))
+    });
+  };
+  _getCountryForField = new WeakSet();
+  getCountryForField_fn = function(field) {
+    const countryField = field.getAttribute("os-checkout-field") === "postal" ? __privateGet(this, _elements).shippingCountry : __privateGet(this, _elements).billingCountry;
+    return countryField ? countryField.value : "Unknown";
+  };
+  _isPostcodeNumericOnly = new WeakSet();
+  isPostcodeNumericOnly_fn = function(config) {
+    if (!config || !config.postcodeRegex) {
+      return true;
+    }
+    const regex = config.postcodeRegex;
+    if (regex.includes("[A-Z]") || regex.includes("[a-z]") || regex.includes("\\w")) {
+      return false;
+    }
+    const numericPattern = /^[\^$\\d\{\}\[\]\(\)\|\*\+\?\.\-\s]*$/;
+    return numericPattern.test(regex);
+  };
+  _handlePostcodeInput = new WeakSet();
+  handlePostcodeInput_fn = function(field) {
+    if (!field.value)
+      return;
+    const countryField = field.getAttribute("os-checkout-field") === "postal" ? __privateGet(this, _elements).shippingCountry : __privateGet(this, _elements).billingCountry;
+    if (!countryField || !countryField.value)
+      return;
+    const countryCode = countryField.value.toUpperCase();
+    const oldValue = field.value;
+    let newValue = oldValue;
+    switch (countryCode) {
+      case "CA":
+        newValue = oldValue.toUpperCase();
+        __privateGet(this, _logger2).debug(`🇨🇦 Canadian postal code: "${oldValue}" → "${newValue}"`);
+        break;
+      case "GB":
+      case "UK":
+        newValue = oldValue.toUpperCase();
+        __privateGet(this, _logger2).debug(`🇬🇧 UK postcode: "${oldValue}" → "${newValue}"`);
+        break;
+      case "NL":
+        newValue = oldValue.toUpperCase();
+        __privateGet(this, _logger2).debug(`🇳🇱 Dutch postcode: "${oldValue}" → "${newValue}"`);
+        break;
+      default:
+        break;
+    }
+    if (newValue !== oldValue) {
+      const cursorPos = field.selectionStart;
+      field.value = newValue;
+      const newCursorPos = cursorPos + (newValue.length - oldValue.length);
+      field.setSelectionRange(newCursorPos, newCursorPos);
+      __privateGet(this, _logger2).debug(`✨ Auto-formatted postcode: "${oldValue}" → "${newValue}"`);
+    }
   };
   _validatePostcodeField = new WeakSet();
   validatePostcodeField_fn = function(field) {
@@ -1678,7 +1791,8 @@ var TwentyNineNext = (() => {
           title: field.getAttribute("title"),
           pattern: field.getAttribute("pattern"),
           minlength: field.getAttribute("minlength"),
-          maxlength: field.getAttribute("maxlength")
+          maxlength: field.getAttribute("maxlength"),
+          inputmode: field.getAttribute("inputmode")
         });
       }
     });
@@ -1753,13 +1867,15 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _isValidEmail);
       __privateAdd(this, _validatePhoneFields);
       /**
-       * Set up auto-formatting for ZIP code fields
+       * Set up auto-formatting for ZIP/postal code fields
+       * Note: Formatting only applies to US addresses (country=US)
+       * Other countries like Canada (K1A 0B1) are left unformatted to allow letters
        */
       __privateAdd(this, _setupZipCodeFormatting);
       /**
        * Format ZIP code as user types: 
-       * - Allow only numbers and hyphen
-       * - Automatically add hyphen after 5 digits if the user is entering more
+       * - Only applies US ZIP code formatting for US addresses
+       * - For other countries, skip formatting to allow letters (e.g., Canadian K1A 0B1)
        * @param {Event} event - Input event
        */
       __privateAdd(this, _formatZipCode);
@@ -2339,13 +2455,20 @@ var TwentyNineNext = (() => {
     zipFields.forEach((field) => {
       if (field) {
         field.addEventListener("input", (e) => __privateMethod(this, _formatZipCode, formatZipCode_fn).call(this, e));
-        __privateGet(this, _logger3).debug(`ZIP code formatting setup for: ${field.getAttribute("os-checkout-field") || field.name || "unknown"}`);
+        __privateGet(this, _logger3).debug(`Country-aware ZIP/postal formatting setup for: ${field.getAttribute("os-checkout-field") || field.name || "unknown"}`);
       }
     });
   };
   _formatZipCode = new WeakSet();
   formatZipCode_fn = function(event) {
     const input = event.target;
+    const fieldName = input.getAttribute("os-checkout-field");
+    const isShippingPostcode = fieldName === "postal" || fieldName === "zip";
+    const countryField = isShippingPostcode ? document.querySelector('[os-checkout-field="country"]') : document.querySelector('[os-checkout-field="billing-country"]');
+    if (!countryField || countryField.value !== "US") {
+      __privateGet(this, _logger3).debug(`Skipping ZIP formatting for country: ${countryField?.value || "none"} (field: ${fieldName})`);
+      return;
+    }
     const cursorPos = input.selectionStart;
     const oldValue = input.value;
     let cleaned = oldValue.replace(/[^\d-]/g, "");
@@ -2369,6 +2492,7 @@ var TwentyNineNext = (() => {
       input.value = cleaned;
       const posAdjust = cleaned.length - oldValue.length;
       input.setSelectionRange(cursorPos + posAdjust, cursorPos + posAdjust);
+      __privateGet(this, _logger3).debug(`Applied US ZIP formatting: "${oldValue}" → "${cleaned}"`);
     }
   };
 

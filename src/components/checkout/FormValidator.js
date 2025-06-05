@@ -686,7 +686,9 @@ export class FormValidator {
   }
 
   /**
-   * Set up auto-formatting for ZIP code fields
+   * Set up auto-formatting for ZIP/postal code fields
+   * Note: Formatting only applies to US addresses (country=US)
+   * Other countries like Canada (K1A 0B1) are left unformatted to allow letters
    */
   #setupZipCodeFormatting() {
     // Find all ZIP/postal code fields
@@ -699,23 +701,37 @@ export class FormValidator {
     zipFields.forEach(field => {
       if (field) {
         field.addEventListener('input', (e) => this.#formatZipCode(e));
-        this.#logger.debug(`ZIP code formatting setup for: ${field.getAttribute('os-checkout-field') || field.name || 'unknown'}`);
+        this.#logger.debug(`Country-aware ZIP/postal formatting setup for: ${field.getAttribute('os-checkout-field') || field.name || 'unknown'}`);
       }
     });
   }
   
   /**
    * Format ZIP code as user types: 
-   * - Allow only numbers and hyphen
-   * - Automatically add hyphen after 5 digits if the user is entering more
+   * - Only applies US ZIP code formatting for US addresses
+   * - For other countries, skip formatting to allow letters (e.g., Canadian K1A 0B1)
    * @param {Event} event - Input event
    */
   #formatZipCode(event) {
     const input = event.target;
+    
+    // Get the corresponding country field to check if this is US
+    const fieldName = input.getAttribute('os-checkout-field');
+    const isShippingPostcode = fieldName === 'postal' || fieldName === 'zip';
+    const countryField = isShippingPostcode 
+      ? document.querySelector('[os-checkout-field="country"]')
+      : document.querySelector('[os-checkout-field="billing-country"]');
+    
+    // Only apply US ZIP formatting if country is explicitly US
+    if (!countryField || countryField.value !== 'US') {
+      this.#logger.debug(`Skipping ZIP formatting for country: ${countryField?.value || 'none'} (field: ${fieldName})`);
+      return; // Skip formatting for non-US countries
+    }
+    
     const cursorPos = input.selectionStart;
     const oldValue = input.value;
     
-    // Remove non-digits and non-hyphens
+    // Remove non-digits and non-hyphens (US ZIP code format only)
     let cleaned = oldValue.replace(/[^\d-]/g, '');
     
     // Only allow one hyphen after the 5th digit
@@ -748,6 +764,8 @@ export class FormValidator {
       // Adjust cursor position
       const posAdjust = cleaned.length - oldValue.length;
       input.setSelectionRange(cursorPos + posAdjust, cursorPos + posAdjust);
+      
+      this.#logger.debug(`Applied US ZIP formatting: "${oldValue}" → "${cleaned}"`);
     }
   }
 }

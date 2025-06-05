@@ -400,11 +400,13 @@ export class AddressHandler {
       }
 
       if (config) {
+        const isNumericOnly = this.#isPostcodeNumericOnly(config);
         this.#logger.info(`🔧 [AddressHandler] Applying config for ${countryCode}:`, {
           stateLabel: config.stateLabel,
           postcodeLabel: config.postcodeLabel,
           postcodeExample: config.postcodeExample,
           postcodeRegex: config.postcodeRegex,
+          inputmode: isNumericOnly ? 'numeric' : 'text',
           currency: `${config.currencyCode} (${config.currencySymbol})`
         });
 
@@ -505,6 +507,11 @@ export class AddressHandler {
       if (field) {
         field.setAttribute('placeholder', 'Postal Code');
         field.removeAttribute('title');
+        field.removeAttribute('pattern');
+        field.removeAttribute('minlength');
+        field.removeAttribute('maxlength');
+        // Reset to text input mode to allow both letters and numbers
+        field.setAttribute('inputmode', 'text');
       }
     });
   }
@@ -530,6 +537,21 @@ export class AddressHandler {
         } else {
           field.removeAttribute('maxlength');
         }
+
+        // Set appropriate inputmode based on postal code format
+        // Only use numeric input mode for countries with numeric-only postal codes
+        const isNumericOnly = this.#isPostcodeNumericOnly(config);
+        if (isNumericOnly) {
+          field.setAttribute('inputmode', 'numeric');
+        } else {
+          // For alphanumeric postal codes (like Canada), use text input mode
+          field.setAttribute('inputmode', 'text');
+        }
+        
+        // Clear any potential input restrictions that might block letters
+        this.#clearInputRestrictions(field, config);
+        
+        this.#logger.debug(`Updated inputmode for postcode field: ${isNumericOnly ? 'numeric' : 'text'} (based on regex: ${config.postcodeRegex})`);
       }
     });
   }
@@ -538,6 +560,7 @@ export class AddressHandler {
     [this.#elements.postcodeField, this.#elements.billingPostcodeField].forEach(field => {
       if (field) {
         field.addEventListener('input', (event) => {
+          this.#handlePostcodeInput(event.target);
           this.#validatePostcodeField(event.target);
         });
 
@@ -546,6 +569,136 @@ export class AddressHandler {
         });
       }
     });
+  }
+
+  /**
+   * Clear any input restrictions that might prevent proper postcode entry
+   * @param {HTMLElement} field - The postcode input field
+   * @param {Object} config - Country configuration
+   */
+  #clearInputRestrictions(field, config) {
+    // Remove any onkeypress/oninput handlers that might restrict character input
+    const restrictiveAttributes = ['onkeypress', 'oninput', 'onkeydown'];
+    restrictiveAttributes.forEach(attr => {
+      if (field.hasAttribute(attr)) {
+        this.#logger.warn(`⚠️ Removing potentially restrictive attribute: ${attr} from postal field`);
+        field.removeAttribute(attr);
+      }
+    });
+
+    // Ensure input type is 'text' for alphanumeric postcodes
+    const countryCode = this.#getCountryForField(field);
+    const isNumericOnly = this.#isPostcodeNumericOnly(config);
+    
+    if (!isNumericOnly && field.type !== 'text') {
+      this.#logger.info(`🔧 Changing input type from "${field.type}" to "text" for alphanumeric postcode (${countryCode})`);
+      field.type = 'text';
+    }
+
+    // Log current field state for debugging
+    this.#logger.debug(`🔍 Postal field state for ${countryCode}:`, {
+      type: field.type,
+      inputmode: field.getAttribute('inputmode'),
+      pattern: field.getAttribute('pattern'),
+      maxlength: field.getAttribute('maxlength'),
+      restrictiveHandlers: restrictiveAttributes.filter(attr => field.hasAttribute(attr))
+    });
+  }
+
+  /**
+   * Get the country code for a given postal field
+   * @param {HTMLElement} field - The postcode input field
+   * @returns {string} - The country code
+   */
+  #getCountryForField(field) {
+    const countryField = field.getAttribute('os-checkout-field') === 'postal' 
+      ? this.#elements.shippingCountry 
+      : this.#elements.billingCountry;
+    
+    return countryField ? countryField.value : 'Unknown';
+  }
+
+  /**
+   * Determine if a postal code format is numeric-only based on the regex pattern
+   * @param {Object} config - Country configuration object
+   * @returns {boolean} - True if postal code should only accept numeric input
+   */
+  #isPostcodeNumericOnly(config) {
+    if (!config || !config.postcodeRegex) {
+      // Default to numeric for unknown patterns (US-style)
+      return true;
+    }
+
+    // Check if the regex pattern only allows digits (and possibly spaces/hyphens)
+    // This is a heuristic to determine if the postal code format is numeric-only
+    const regex = config.postcodeRegex;
+    
+    // Patterns that contain [A-Z] or [a-z] or \\w (which includes letters) are not numeric-only
+    if (regex.includes('[A-Z]') || regex.includes('[a-z]') || regex.includes('\\w')) {
+      return false;
+    }
+    
+    // Patterns that only contain \\d (digits), spaces, hyphens, and basic regex chars are numeric-only
+    // Examples: "^\\d{5}$" (US), "^\\d{5}-\\d{4}$" (US extended)
+    const numericPattern = /^[\^$\\d\{\}\[\]\(\)\|\*\+\?\.\-\s]*$/;
+    return numericPattern.test(regex);
+  }
+
+  /**
+   * Handle postcode input formatting based on country requirements
+   * @param {HTMLElement} field - The postcode input field
+   */
+  #handlePostcodeInput(field) {
+    if (!field.value) return;
+
+    const countryField = field.getAttribute('os-checkout-field') === 'postal' 
+      ? this.#elements.shippingCountry 
+      : this.#elements.billingCountry;
+    
+    if (!countryField || !countryField.value) return;
+
+    const countryCode = countryField.value.toUpperCase();
+    const oldValue = field.value;
+    let newValue = oldValue;
+
+    // Apply country-specific formatting
+    switch (countryCode) {
+      case 'CA':
+        // Canadian postal codes should be uppercase: K1A 0B1
+        newValue = oldValue.toUpperCase();
+        this.#logger.debug(`🇨🇦 Canadian postal code: "${oldValue}" → "${newValue}"`);
+        break;
+        
+      case 'GB':
+      case 'UK':
+        // UK postcodes should be uppercase: SW1A 0AA
+        newValue = oldValue.toUpperCase();
+        this.#logger.debug(`🇬🇧 UK postcode: "${oldValue}" → "${newValue}"`);
+        break;
+        
+      case 'NL':
+        // Dutch postal codes should be uppercase: 1234 AB
+        newValue = oldValue.toUpperCase();
+        this.#logger.debug(`🇳🇱 Dutch postcode: "${oldValue}" → "${newValue}"`);
+        break;
+        
+      // US and other numeric-only countries don't need case conversion
+      default:
+        // No formatting needed for purely numeric postal codes
+        break;
+    }
+
+    // Update field value if changed, preserving cursor position
+    if (newValue !== oldValue) {
+      const cursorPos = field.selectionStart;
+      field.value = newValue;
+      
+      // Restore cursor position
+      const newCursorPos = cursorPos + (newValue.length - oldValue.length);
+      field.setSelectionRange(newCursorPos, newCursorPos);
+      
+      this.#logger.debug(`✨ Auto-formatted postcode: "${oldValue}" → "${newValue}"`);
+    }
   }
 
   #validatePostcodeField(field) {
@@ -884,7 +1037,8 @@ export class AddressHandler {
           title: field.getAttribute('title'),
           pattern: field.getAttribute('pattern'),
           minlength: field.getAttribute('minlength'),
-          maxlength: field.getAttribute('maxlength')
+          maxlength: field.getAttribute('maxlength'),
+          inputmode: field.getAttribute('inputmode')
         });
       }
     });
