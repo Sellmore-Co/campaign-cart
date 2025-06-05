@@ -27,6 +27,16 @@ export class AddressHandler {
       billingPostcodeField: document.querySelector('[os-checkout-field="billing-postal"]'),
     };
 
+    // Debug: Log found elements
+    this.#logger.info(`🔧 [AddressHandler] Found form elements:`, {
+      shippingCountry: !!this.#elements.shippingCountry,
+      billingCountry: !!this.#elements.billingCountry,
+      postcodeField: this.#elements.postcodeField ? this.#elements.postcodeField.id || this.#elements.postcodeField.name : null,
+      billingPostcodeField: this.#elements.billingPostcodeField ? this.#elements.billingPostcodeField.id || this.#elements.billingPostcodeField.name : null,
+      postcodeLabel: this.#elements.postcodeLabel ? this.#elements.postcodeLabel.textContent : null,
+      billingPostcodeLabel: this.#elements.billingPostcodeLabel ? this.#elements.billingPostcodeLabel.textContent : null
+    });
+
     this.#loadCachedData();
     if (this.#elements.shippingCountry || this.#elements.billingCountry) {
       this.#logger.info('AddressHandler initialized with Cloudflare Worker integration');
@@ -202,13 +212,22 @@ export class AddressHandler {
           // Update default country so global localization data gets updated
           this.#addressConfig.defaultCountry = selectedCountryCode;
           
-          // Apply country configuration
-          await this.#applyCountryConfig(selectedCountryCode);
-          
-          // Update state select
+          // Update state select (which loads fresh data if needed)
           if (state) {
             await this.#updateStateSelect(state, selectedCountryCode);
           }
+          
+          // Apply country configuration (using fresh data after states loaded)
+          await this.#applyCountryConfig(selectedCountryCode);
+          
+          // Debug: Check final form element states
+          this.#debugFormElementStates(selectedCountryCode);
+          
+          // Debug: Check again after a delay to see if something else overwrites our values
+          setTimeout(() => {
+            this.#logger.info(`🕐 [AddressHandler] Debug: Form element states after 500ms delay for ${selectedCountryCode}:`);
+            this.#debugFormElementStates(selectedCountryCode);
+          }, 500);
           
           // Update phone input country if PhoneInputHandler is available
           this.#updatePhoneInputCountry(country, selectedCountryCode);
@@ -243,6 +262,7 @@ export class AddressHandler {
     if (isPriority) await states;
       
       this.#populateStateSelect(stateSelect, states, countryCode);
+      
     this.#logger.debug(`State select updated for ${countryCode}`);
     } catch (error) {
       this.#logger.error(`Failed to update state select for ${countryCode}:`, error);
@@ -311,10 +331,18 @@ export class AddressHandler {
       // Store country config
       if (data.countryConfig) {
         this.#countryConfigs[countryCode] = data.countryConfig;
-        this.#logger.debug(`Stored config for ${countryCode}:`, data.countryConfig);
+        this.#logger.info(`🔧 [AddressHandler] Stored fresh config for ${countryCode}:`, {
+          stateLabel: data.countryConfig.stateLabel,
+          postcodeLabel: data.countryConfig.postcodeLabel,
+          postcodeExample: data.countryConfig.postcodeExample,
+          postcodeRegex: data.countryConfig.postcodeRegex,
+          currency: `${data.countryConfig.currencyCode} (${data.countryConfig.currencySymbol})`
+        });
         
         // Update global localization data with fresh currency information
         this.#updateGlobalLocalizationData(countryCode, data.countryConfig);
+      } else {
+        this.#logger.warn(`⚠️ [AddressHandler] No countryConfig in API response for ${countryCode}`);
       }
 
       // Cache the data
@@ -372,20 +400,26 @@ export class AddressHandler {
       }
 
       if (config) {
-        this.#logger.debug(`Applying config for ${countryCode}:`, config);
+        this.#logger.info(`🔧 [AddressHandler] Applying config for ${countryCode}:`, {
+          stateLabel: config.stateLabel,
+          postcodeLabel: config.postcodeLabel,
+          postcodeExample: config.postcodeExample,
+          postcodeRegex: config.postcodeRegex,
+          currency: `${config.currencyCode} (${config.currencySymbol})`
+        });
 
         // Ensure global localization data reflects this config, even if it was cached
         this.#updateGlobalLocalizationData(countryCode, config);
 
-        // Update form labels
+        // Update form labels with fresh config data
         this.#updateFormLabels(config);
         
-        // Update postcode validation
+        // Update postcode validation with fresh config data
         this.#updatePostcodeValidation(config);
         
-        this.#logger.debug(`Applied country configuration for ${countryCode}`);
+        this.#logger.info(`✅ [AddressHandler] Applied country configuration for ${countryCode} - Postcode: "${config.postcodeLabel}" (${config.postcodeExample}), Regex: ${config.postcodeRegex}`);
       } else {
-        this.#logger.debug(`No specific configuration found for ${countryCode}, using defaults`);
+        this.#logger.warn(`❌ [AddressHandler] No specific configuration found for ${countryCode}, using defaults`);
         this.#resetFormLabels();
       }
     } catch (error) {
@@ -394,29 +428,61 @@ export class AddressHandler {
   }
 
   #updateFormLabels(config) {
+    this.#logger.info(`🏷️ [AddressHandler] Updating form labels with config:`, {
+      stateLabel: config.stateLabel,
+      postcodeLabel: config.postcodeLabel, 
+      postcodeExample: config.postcodeExample
+    });
+
     // Update state/province labels
     if (config.stateLabel) {
-      [this.#elements.shippingStateLabel, this.#elements.billingStateLabel].forEach(label => {
+      [this.#elements.shippingStateLabel, this.#elements.billingStateLabel].forEach((label, index) => {
         if (label) {
+          const oldText = label.textContent;
           label.textContent = config.stateLabel;
+          this.#logger.info(`🏷️ Updated state label ${index + 1}: "${oldText}" → "${config.stateLabel}"`);
+        } else {
+          this.#logger.warn(`🏷️ State label element ${index + 1} not found`);
         }
       });
     }
 
     // Update postcode labels
     if (config.postcodeLabel) {
-      [this.#elements.postcodeLabel, this.#elements.billingPostcodeLabel].forEach(label => {
+      [this.#elements.postcodeLabel, this.#elements.billingPostcodeLabel].forEach((label, index) => {
         if (label) {
+          const oldText = label.textContent;
           label.textContent = config.postcodeLabel;
+          this.#logger.info(`🏷️ Updated postcode label ${index + 1}: "${oldText}" → "${config.postcodeLabel}"`);
+        } else {
+          this.#logger.warn(`🏷️ Postcode label element ${index + 1} not found`);
         }
       });
     }
 
     // Update input placeholders and examples
-    [this.#elements.postcodeField, this.#elements.billingPostcodeField].forEach(field => {
-      if (field && config.postcodeExample) {
-        field.setAttribute('placeholder', config.postcodeExample);
-        field.setAttribute('title', `Format: ${config.postcodeExample}`);
+    [this.#elements.postcodeField, this.#elements.billingPostcodeField].forEach((field, index) => {
+      if (field) {
+        const oldPlaceholder = field.getAttribute('placeholder');
+        const oldTitle = field.getAttribute('title');
+        
+        // Use postcodeLabel for placeholder (e.g., "ZIP Code", "Postal Code")
+        if (config.postcodeLabel) {
+          field.setAttribute('placeholder', config.postcodeLabel);
+        }
+        
+        // Use postcodeExample for title/help text (e.g., "12345 or 12345-6789")
+        if (config.postcodeExample) {
+          field.setAttribute('title', `Format: ${config.postcodeExample}`);
+        }
+        
+        this.#logger.info(`📝 Updated postcode field ${index + 1}:`, {
+          placeholder: `"${oldPlaceholder}" → "${config.postcodeLabel || 'unchanged'}"`,
+          title: `"${oldTitle}" → "Format: ${config.postcodeExample || 'unchanged'}"`,
+          element: field.id || field.name || 'no-id'
+        });
+      } else {
+        this.#logger.warn(`📝 Postcode field element ${index + 1} not found`);
       }
     });
   }
@@ -801,5 +867,48 @@ export class AddressHandler {
         this.#logger.error('Error triggering country campaign change:', error);
       }
     }, 100); // 100ms debounce
+  }
+
+  /**
+   * Debug method to check current form element states
+   * @param {string} countryCode - The country code for reference
+   */
+  #debugFormElementStates(countryCode) {
+    this.#logger.info(`🔍 [AddressHandler] Debug: Current form element states for ${countryCode}:`);
+    
+    // Check postcode fields
+    [this.#elements.postcodeField, this.#elements.billingPostcodeField].forEach((field, index) => {
+      if (field) {
+        this.#logger.info(`🔍 Postcode field ${index + 1} (${field.id || field.name || 'no-id'}):`, {
+          placeholder: field.getAttribute('placeholder'),
+          title: field.getAttribute('title'),
+          pattern: field.getAttribute('pattern'),
+          minlength: field.getAttribute('minlength'),
+          maxlength: field.getAttribute('maxlength')
+        });
+      }
+    });
+    
+    // Check labels
+    [this.#elements.postcodeLabel, this.#elements.billingPostcodeLabel].forEach((label, index) => {
+      if (label) {
+        this.#logger.info(`🔍 Postcode label ${index + 1}:`, {
+          textContent: label.textContent,
+          element: label.tagName,
+          for: label.getAttribute('for')
+        });
+      }
+    });
+    
+    // Check state labels
+    [this.#elements.shippingStateLabel, this.#elements.billingStateLabel].forEach((label, index) => {
+      if (label) {
+        this.#logger.info(`🔍 State label ${index + 1}:`, {
+          textContent: label.textContent,
+          element: label.tagName,
+          for: label.getAttribute('for')
+        });
+      }
+    });
   }
 }

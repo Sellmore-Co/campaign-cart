@@ -413,9 +413,9 @@ export class DisplayManager {
             const translatedId = currentMapping.packageId?.toString();
             this.#logger.debug(`Translated package ID via profile ${profileId}: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
             return translatedId;
-          } else {
+      } else {
             this.#logger.warn(`Profile ${profileId} found but no mapping for country ${currentCountry}`);
-            return originalPackageId;
+        return originalPackageId;
           }
         }
       }

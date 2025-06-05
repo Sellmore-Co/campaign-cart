@@ -950,7 +950,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/AddressHandler.js
-  var _form, _logger2, _addressConfig, _countries, _states, _countryConfigs, _elements, _workerBaseUrl, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _loadCountriesAndInitialState, loadCountriesAndInitialState_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadStates, loadStates_fn, _updateGlobalLocalizationData, updateGlobalLocalizationData_fn, _applyCountryConfig, applyCountryConfig_fn, _updateFormLabels, updateFormLabels_fn, _resetFormLabels, resetFormLabels_fn, _updatePostcodeValidation, updatePostcodeValidation_fn, _setupPostcodeValidation, setupPostcodeValidation_fn, _validatePostcodeField, validatePostcodeField_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStatesFallback, loadCountriesAndStatesFallback_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn, _checkForForcedCountry, checkForForcedCountry_fn, _handleForcedCountry, handleForcedCountry_fn, _loadStatesForForcedCountry, loadStatesForForcedCountry_fn, _updatePhoneInputCountry, updatePhoneInputCountry_fn, _triggerCountryCampaignChange, triggerCountryCampaignChange_fn;
+  var _form, _logger2, _addressConfig, _countries, _states, _countryConfigs, _elements, _workerBaseUrl, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _loadCountriesAndInitialState, loadCountriesAndInitialState_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadStates, loadStates_fn, _updateGlobalLocalizationData, updateGlobalLocalizationData_fn, _applyCountryConfig, applyCountryConfig_fn, _updateFormLabels, updateFormLabels_fn, _resetFormLabels, resetFormLabels_fn, _updatePostcodeValidation, updatePostcodeValidation_fn, _setupPostcodeValidation, setupPostcodeValidation_fn, _validatePostcodeField, validatePostcodeField_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStatesFallback, loadCountriesAndStatesFallback_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn, _checkForForcedCountry, checkForForcedCountry_fn, _handleForcedCountry, handleForcedCountry_fn, _loadStatesForForcedCountry, loadStatesForForcedCountry_fn, _updatePhoneInputCountry, updatePhoneInputCountry_fn, _triggerCountryCampaignChange, triggerCountryCampaignChange_fn, _debugFormElementStates, debugFormElementStates_fn;
   var AddressHandler = class {
     constructor(form, logger) {
       __privateAdd(this, _init);
@@ -1005,6 +1005,11 @@ var TwentyNineNext = (() => {
        * @param {string} countryCode - The new country code
        */
       __privateAdd(this, _triggerCountryCampaignChange);
+      /**
+       * Debug method to check current form element states
+       * @param {string} countryCode - The country code for reference
+       */
+      __privateAdd(this, _debugFormElementStates);
       __privateAdd(this, _form, void 0);
       __privateAdd(this, _logger2, void 0);
       __privateAdd(this, _addressConfig, void 0);
@@ -1030,6 +1035,14 @@ var TwentyNineNext = (() => {
         // Get postcode input fields for validation
         postcodeField: document.querySelector('[os-checkout-field="postal"]'),
         billingPostcodeField: document.querySelector('[os-checkout-field="billing-postal"]')
+      });
+      __privateGet(this, _logger2).info(`🔧 [AddressHandler] Found form elements:`, {
+        shippingCountry: !!__privateGet(this, _elements).shippingCountry,
+        billingCountry: !!__privateGet(this, _elements).billingCountry,
+        postcodeField: __privateGet(this, _elements).postcodeField ? __privateGet(this, _elements).postcodeField.id || __privateGet(this, _elements).postcodeField.name : null,
+        billingPostcodeField: __privateGet(this, _elements).billingPostcodeField ? __privateGet(this, _elements).billingPostcodeField.id || __privateGet(this, _elements).billingPostcodeField.name : null,
+        postcodeLabel: __privateGet(this, _elements).postcodeLabel ? __privateGet(this, _elements).postcodeLabel.textContent : null,
+        billingPostcodeLabel: __privateGet(this, _elements).billingPostcodeLabel ? __privateGet(this, _elements).billingPostcodeLabel.textContent : null
       });
       __privateMethod(this, _loadCachedData, loadCachedData_fn).call(this);
       if (__privateGet(this, _elements).shippingCountry || __privateGet(this, _elements).billingCountry) {
@@ -1191,10 +1204,15 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger2).debug(`Country changed to: ${selectedCountryCode}`);
         if (selectedCountryCode) {
           __privateGet(this, _addressConfig).defaultCountry = selectedCountryCode;
-          await __privateMethod(this, _applyCountryConfig, applyCountryConfig_fn).call(this, selectedCountryCode);
           if (state) {
             await __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, state, selectedCountryCode);
           }
+          await __privateMethod(this, _applyCountryConfig, applyCountryConfig_fn).call(this, selectedCountryCode);
+          __privateMethod(this, _debugFormElementStates, debugFormElementStates_fn).call(this, selectedCountryCode);
+          setTimeout(() => {
+            __privateGet(this, _logger2).info(`🕐 [AddressHandler] Debug: Form element states after 500ms delay for ${selectedCountryCode}:`);
+            __privateMethod(this, _debugFormElementStates, debugFormElementStates_fn).call(this, selectedCountryCode);
+          }, 500);
           __privateMethod(this, _updatePhoneInputCountry, updatePhoneInputCountry_fn).call(this, country, selectedCountryCode);
           __privateMethod(this, _triggerCountryCampaignChange, triggerCountryCampaignChange_fn).call(this, selectedCountryCode);
         } else {
@@ -1271,8 +1289,16 @@ var TwentyNineNext = (() => {
       }
       if (data.countryConfig) {
         __privateGet(this, _countryConfigs)[countryCode] = data.countryConfig;
-        __privateGet(this, _logger2).debug(`Stored config for ${countryCode}:`, data.countryConfig);
+        __privateGet(this, _logger2).info(`🔧 [AddressHandler] Stored fresh config for ${countryCode}:`, {
+          stateLabel: data.countryConfig.stateLabel,
+          postcodeLabel: data.countryConfig.postcodeLabel,
+          postcodeExample: data.countryConfig.postcodeExample,
+          postcodeRegex: data.countryConfig.postcodeRegex,
+          currency: `${data.countryConfig.currencyCode} (${data.countryConfig.currencySymbol})`
+        });
         __privateMethod(this, _updateGlobalLocalizationData, updateGlobalLocalizationData_fn).call(this, countryCode, data.countryConfig);
+      } else {
+        __privateGet(this, _logger2).warn(`⚠️ [AddressHandler] No countryConfig in API response for ${countryCode}`);
       }
       __privateGet(this, _states)[countryCode] = states;
       __privateMethod(this, _saveCache, saveCache_fn).call(this, "os_states_cache", { states: __privateGet(this, _states) });
@@ -1315,13 +1341,19 @@ var TwentyNineNext = (() => {
         config = __privateGet(this, _countryConfigs)[countryCode];
       }
       if (config) {
-        __privateGet(this, _logger2).debug(`Applying config for ${countryCode}:`, config);
+        __privateGet(this, _logger2).info(`🔧 [AddressHandler] Applying config for ${countryCode}:`, {
+          stateLabel: config.stateLabel,
+          postcodeLabel: config.postcodeLabel,
+          postcodeExample: config.postcodeExample,
+          postcodeRegex: config.postcodeRegex,
+          currency: `${config.currencyCode} (${config.currencySymbol})`
+        });
         __privateMethod(this, _updateGlobalLocalizationData, updateGlobalLocalizationData_fn).call(this, countryCode, config);
         __privateMethod(this, _updateFormLabels, updateFormLabels_fn).call(this, config);
         __privateMethod(this, _updatePostcodeValidation, updatePostcodeValidation_fn).call(this, config);
-        __privateGet(this, _logger2).debug(`Applied country configuration for ${countryCode}`);
+        __privateGet(this, _logger2).info(`✅ [AddressHandler] Applied country configuration for ${countryCode} - Postcode: "${config.postcodeLabel}" (${config.postcodeExample}), Regex: ${config.postcodeRegex}`);
       } else {
-        __privateGet(this, _logger2).debug(`No specific configuration found for ${countryCode}, using defaults`);
+        __privateGet(this, _logger2).warn(`❌ [AddressHandler] No specific configuration found for ${countryCode}, using defaults`);
         __privateMethod(this, _resetFormLabels, resetFormLabels_fn).call(this);
       }
     } catch (error) {
@@ -1330,24 +1362,50 @@ var TwentyNineNext = (() => {
   };
   _updateFormLabels = new WeakSet();
   updateFormLabels_fn = function(config) {
+    __privateGet(this, _logger2).info(`🏷️ [AddressHandler] Updating form labels with config:`, {
+      stateLabel: config.stateLabel,
+      postcodeLabel: config.postcodeLabel,
+      postcodeExample: config.postcodeExample
+    });
     if (config.stateLabel) {
-      [__privateGet(this, _elements).shippingStateLabel, __privateGet(this, _elements).billingStateLabel].forEach((label) => {
+      [__privateGet(this, _elements).shippingStateLabel, __privateGet(this, _elements).billingStateLabel].forEach((label, index) => {
         if (label) {
+          const oldText = label.textContent;
           label.textContent = config.stateLabel;
+          __privateGet(this, _logger2).info(`🏷️ Updated state label ${index + 1}: "${oldText}" → "${config.stateLabel}"`);
+        } else {
+          __privateGet(this, _logger2).warn(`🏷️ State label element ${index + 1} not found`);
         }
       });
     }
     if (config.postcodeLabel) {
-      [__privateGet(this, _elements).postcodeLabel, __privateGet(this, _elements).billingPostcodeLabel].forEach((label) => {
+      [__privateGet(this, _elements).postcodeLabel, __privateGet(this, _elements).billingPostcodeLabel].forEach((label, index) => {
         if (label) {
+          const oldText = label.textContent;
           label.textContent = config.postcodeLabel;
+          __privateGet(this, _logger2).info(`🏷️ Updated postcode label ${index + 1}: "${oldText}" → "${config.postcodeLabel}"`);
+        } else {
+          __privateGet(this, _logger2).warn(`🏷️ Postcode label element ${index + 1} not found`);
         }
       });
     }
-    [__privateGet(this, _elements).postcodeField, __privateGet(this, _elements).billingPostcodeField].forEach((field) => {
-      if (field && config.postcodeExample) {
-        field.setAttribute("placeholder", config.postcodeExample);
-        field.setAttribute("title", `Format: ${config.postcodeExample}`);
+    [__privateGet(this, _elements).postcodeField, __privateGet(this, _elements).billingPostcodeField].forEach((field, index) => {
+      if (field) {
+        const oldPlaceholder = field.getAttribute("placeholder");
+        const oldTitle = field.getAttribute("title");
+        if (config.postcodeLabel) {
+          field.setAttribute("placeholder", config.postcodeLabel);
+        }
+        if (config.postcodeExample) {
+          field.setAttribute("title", `Format: ${config.postcodeExample}`);
+        }
+        __privateGet(this, _logger2).info(`📝 Updated postcode field ${index + 1}:`, {
+          placeholder: `"${oldPlaceholder}" → "${config.postcodeLabel || "unchanged"}"`,
+          title: `"${oldTitle}" → "Format: ${config.postcodeExample || "unchanged"}"`,
+          element: field.id || field.name || "no-id"
+        });
+      } else {
+        __privateGet(this, _logger2).warn(`📝 Postcode field element ${index + 1} not found`);
       }
     });
   };
@@ -1609,6 +1667,39 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger2).error("Error triggering country campaign change:", error);
       }
     }, 100);
+  };
+  _debugFormElementStates = new WeakSet();
+  debugFormElementStates_fn = function(countryCode) {
+    __privateGet(this, _logger2).info(`🔍 [AddressHandler] Debug: Current form element states for ${countryCode}:`);
+    [__privateGet(this, _elements).postcodeField, __privateGet(this, _elements).billingPostcodeField].forEach((field, index) => {
+      if (field) {
+        __privateGet(this, _logger2).info(`🔍 Postcode field ${index + 1} (${field.id || field.name || "no-id"}):`, {
+          placeholder: field.getAttribute("placeholder"),
+          title: field.getAttribute("title"),
+          pattern: field.getAttribute("pattern"),
+          minlength: field.getAttribute("minlength"),
+          maxlength: field.getAttribute("maxlength")
+        });
+      }
+    });
+    [__privateGet(this, _elements).postcodeLabel, __privateGet(this, _elements).billingPostcodeLabel].forEach((label, index) => {
+      if (label) {
+        __privateGet(this, _logger2).info(`🔍 Postcode label ${index + 1}:`, {
+          textContent: label.textContent,
+          element: label.tagName,
+          for: label.getAttribute("for")
+        });
+      }
+    });
+    [__privateGet(this, _elements).shippingStateLabel, __privateGet(this, _elements).billingStateLabel].forEach((label, index) => {
+      if (label) {
+        __privateGet(this, _logger2).info(`🔍 State label ${index + 1}:`, {
+          textContent: label.textContent,
+          element: label.tagName,
+          for: label.getAttribute("for")
+        });
+      }
+    });
   };
 
   // src/components/checkout/FormValidator.js
