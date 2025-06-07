@@ -17,8 +17,10 @@ Welcome to the Campaign Cart documentation. Campaign Cart is a comprehensive e-c
 - [Express Checkout](guides/features/express-checkout.md) - PayPal, Apple Pay, Google Pay
 - [Product Profiles](guides/features/product-profiles.md) - Semantic product management
 - [Upsells](guides/features/upsells.md) - Post-purchase offers
-- [Vouchers & Discounts](guides/features/vouchers.md) - Discount system
-- [Timers](guides/features/timers.md) - Countdown timers
+- [Vouchers & Discounts](guides/features/vouchers.md) - Complete discount system
+- [Receipt Page](guides/features/receipt.md) - Order confirmation pages
+- [Timers](guides/features/timers.md) - Countdown timers with persistence
+- [Selectors](guides/features/selectors.md) - Product selection components
 
 #### Configuration
 - [Installation](guides/configuration/installation.md) - Setup methods
