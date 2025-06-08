@@ -1,10 +1,14 @@
 # Selectors Guide
 
+[← Product Profiles](product-profiles.md) | [Timers →](timers.md)
+
 Complete guide to implementing product selectors for choosing between different packages, plans, or product variations.
 
 ## Overview
 
 Campaign Cart's selector system enables users to choose between different product options in a swap-style interface. When a user selects an option, it automatically manages cart updates, applies shipping methods, and displays dynamic pricing with unit calculations.
+
+Selectors work seamlessly with [Product Profiles](product-profiles.md) and [Multi-Currency](multi-currency.md) features.
 
 ## Basic Selector Implementation
 
@@ -646,8 +650,20 @@ window.twentyNineNext.onReady(() => {
 });
 ```
 
-## Next Steps
+## Related Features
 
-- [Shopping Cart Guide](shopping-cart.md) - Cart management with selectors
-- [Product Profiles Guide](product-profiles.md) - Use profiles with selectors
-- [Multi-Currency Guide](multi-currency.md) - International pricing in selectors
+### Core Features
+- [Shopping Cart](shopping-cart.md) - Cart management with selectors
+- [Product Profiles](product-profiles.md) - Use profiles with selectors
+- [Multi-Currency](multi-currency.md) - International pricing in selectors
+- [Timers](timers.md) - Add urgency to selection
+
+### Configuration
+- [Basic Configuration](../configuration/basic-config.md) - Selector display options
+- [Advanced Configuration](../configuration/advanced-config.md) - Complex selector scenarios
+
+### Developer Resources
+- [JavaScript API](../../api/javascript-api.md#selector-methods) - Selector API methods
+- [HTML Attributes](../../api/html-attributes.md#selectors) - Selector attributes reference
+- [Events Reference](../../api/events-reference.md#selector-events) - Selector event tracking
+- [Examples](../../examples/basic-implementation.md#product-selector-page) - Selector implementation examples

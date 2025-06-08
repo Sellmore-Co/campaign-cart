@@ -7,27 +7,27 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Getting Started', link: '/getting-started/' },
+      { text: 'Introduction', link: '/introduction/' },
       { text: 'Guides', link: '/guides/' },
-      { text: 'API Reference', link: '/api/' },
+      { text: 'API', link: '/api/' },
       { text: 'Examples', link: '/examples/' }
     ],
 
     sidebar: {
-      '/introduction/': [
+      // Global sidebar - shown on all pages
+      '/': [
         {
-          text: 'Introduction',
+          text: '📖 Introduction',
+          collapsed: false,
           items: [
             { text: 'Overview', link: '/introduction/overview' },
-            { text: 'Core Concepts', link: '/introduction/core-concepts' },
-            { text: 'Getting Started', link: '/introduction/getting-started' }
+            { text: 'Getting Started', link: '/introduction/getting-started' },
+            { text: 'Core Concepts', link: '/introduction/core-concepts' }
           ]
-        }
-      ],
-      
-      '/guides/': [
+        },
         {
-          text: 'Configuration',
+          text: '⚙️ Configuration',
+          collapsed: false,
           items: [
             { text: 'Basic Configuration', link: '/guides/configuration/basic-config' },
             { text: 'Form Validation', link: '/guides/configuration/form-validation' },
@@ -36,43 +36,55 @@ export default defineConfig({
           ]
         },
         {
-          text: 'Features',
+          text: '🛒 Shopping & Cart',
+          collapsed: true,
           items: [
             { text: 'Shopping Cart', link: '/guides/features/shopping-cart' },
-            { text: 'Express Checkout', link: '/guides/features/express-checkout' },
-            { text: 'Multi-Currency', link: '/guides/features/multi-currency' },
             { text: 'Product Profiles', link: '/guides/features/product-profiles' },
-            { text: 'Receipt', link: '/guides/features/receipt' },
-            { text: 'Selectors', link: '/guides/features/selectors' },
-            { text: 'Timers', link: '/guides/features/timers' },
-            { text: 'Upsells', link: '/guides/features/upsells' },
-            { text: 'Vouchers', link: '/guides/features/vouchers' }
+            { text: 'Selectors', link: '/guides/features/selectors' }
           ]
         },
         {
-          text: 'Development',
+          text: '💳 Checkout & Payment',
+          collapsed: true,
+          items: [
+            { text: 'Express Checkout', link: '/guides/features/express-checkout' },
+            { text: 'Multi-Currency', link: '/guides/features/multi-currency' },
+            { text: 'Receipt Pages', link: '/guides/features/receipt' }
+          ]
+        },
+        {
+          text: '🎯 Marketing Tools',
+          collapsed: true,
+          items: [
+            { text: 'Timers', link: '/guides/features/timers' },
+            { text: 'Vouchers & Discounts', link: '/guides/features/vouchers' },
+            { text: 'Upsells', link: '/guides/features/upsells' }
+          ]
+        },
+        {
+          text: '🧪 Development',
+          collapsed: true,
           items: [
             { text: 'Test Orders', link: '/guides/development/test-orders' }
           ]
-        }
-      ],
-
-      '/api/': [
+        },
         {
-          text: 'API Reference',
+          text: '📚 API Reference',
+          collapsed: true,
           items: [
-            { text: 'Events Reference', link: '/api/events-reference' },
+            { text: 'JavaScript API', link: '/api/javascript-api' },
             { text: 'HTML Attributes', link: '/api/html-attributes' },
-            { text: 'JavaScript API', link: '/api/javascript-api' }
+            { text: 'Events Reference', link: '/api/events-reference' }
           ]
-        }
-      ],
-
-      '/examples/': [
+        },
         {
-          text: 'Examples',
+          text: '💡 Examples',
+          collapsed: true,
           items: [
-            { text: 'Basic Implementation', link: '/examples/basic-implementation' }
+            { text: 'Basic Implementation', link: '/examples/basic-implementation' },
+            { text: 'Interactive Cart Demo', link: '/examples/basic-cart.html', target: '_blank' },
+            { text: 'Checkout Form Demo', link: '/examples/checkout-form.html', target: '_blank' }
           ]
         }
       ]

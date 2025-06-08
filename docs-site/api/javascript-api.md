@@ -1,5 +1,7 @@
 # JavaScript API Reference
 
+[← API Overview](README.md) | [HTML Attributes →](html-attributes.md)
+
 Complete reference for Campaign Cart's JavaScript API.
 
 ## Global Object
@@ -93,6 +95,8 @@ const total = window.twentyNineNext.getCartTotal();
 ```
 
 ## Product Profile Methods
+
+These methods work with [Product Profiles](../guides/features/product-profiles.md) for semantic product management.
 
 ### `profiles.addToCart(profileId, quantity)`
 Add a product profile to cart.
@@ -368,6 +372,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 ```
+
+## See Also
+
+### Feature Guides
+- [Shopping Cart Guide](../guides/features/shopping-cart.md) - Using cart methods
+- [Product Profiles Guide](../guides/features/product-profiles.md) - Profile API usage
+- [Multi-Currency Guide](../guides/features/multi-currency.md) - Country and currency methods
+- [Events Guide](events-reference.md) - Event handling
+
+### Implementation
+- [Basic Implementation](../examples/basic-implementation.md) - API usage examples
+- [Configuration Guide](../guides/configuration/basic-config.md) - Configuration API
 
 ## TypeScript Support
 

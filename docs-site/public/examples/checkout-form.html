@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>29next Campaign Cart - Checkout Example</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007cba; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; width: 100%; }
+        button:hover { background: #005a87; }
+        .checkout-form { background: #f9f9f9; padding: 20px; border-radius: 8px; }
+        .error { color: red; font-size: 0.9em; }
+        .success { color: green; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <h1>29next Campaign Cart - Checkout Form</h1>
+    <p>Interactive checkout form with validation and submission handling.</p>
+
+    <form class="checkout-form" data-29next-checkout-form>
+        <h3>Customer Information</h3>
+        
+        <div class="form-group">
+            <label for="email">Email Address *</label>
+            <input type="email" id="email" name="email" data-29next-validate="email" required>
+            <div class="error" data-error-for="email"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="firstName">First Name *</label>
+            <input type="text" id="firstName" name="firstName" data-29next-validate="required" required>
+            <div class="error" data-error-for="firstName"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="lastName">Last Name *</label>
+            <input type="text" id="lastName" name="lastName" data-29next-validate="required" required>
+            <div class="error" data-error-for="lastName"></div>
+        </div>
+
+        <h3>Billing Address</h3>
+        
+        <div class="form-group">
+            <label for="address1">Address Line 1 *</label>
+            <input type="text" id="address1" name="address1" data-29next-validate="required" required>
+            <div class="error" data-error-for="address1"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="address2">Address Line 2</label>
+            <input type="text" id="address2" name="address2">
+        </div>
+
+        <div class="form-group">
+            <label for="city">City *</label>
+            <input type="text" id="city" name="city" data-29next-validate="required" required>
+            <div class="error" data-error-for="city"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="state">State/Province *</label>
+            <input type="text" id="state" name="state" data-29next-validate="required" required>
+            <div class="error" data-error-for="state"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="zip">ZIP/Postal Code *</label>
+            <input type="text" id="zip" name="zip" data-29next-validate="required" required>
+            <div class="error" data-error-for="zip"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="country">Country *</label>
+            <select id="country" name="country" data-29next-validate="required" required>
+                <option value="">Select Country</option>
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="GB">United Kingdom</option>
+                <option value="AU">Australia</option>
+            </select>
+            <div class="error" data-error-for="country"></div>
+        </div>
+
+        <h3>Payment Information</h3>
+        
+        <div class="form-group">
+            <label for="cardNumber">Card Number *</label>
+            <input type="text" id="cardNumber" name="cardNumber" placeholder="1234 5678 9012 3456" data-29next-validate="creditCard" required>
+            <div class="error" data-error-for="cardNumber"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="expiryDate">Expiry Date *</label>
+            <input type="text" id="expiryDate" name="expiryDate" placeholder="MM/YY" data-29next-validate="expiryDate" required>
+            <div class="error" data-error-for="expiryDate"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="cvv">CVV *</label>
+            <input type="text" id="cvv" name="cvv" placeholder="123" data-29next-validate="cvv" required>
+            <div class="error" data-error-for="cvv"></div>
+        </div>
+
+        <button type="submit" data-29next-submit-order>
+            Complete Order
+        </button>
+
+        <div class="success" id="successMessage" style="display: none;">
+            Order submitted successfully! (Demo mode)
+        </div>
+    </form>
+
+    <!-- Configuration -->
+    <script>
+        window.osConfig = {
+            apiKey: 'demo-key-for-testing',
+            campaignId: 'demo-campaign',
+            debug: true,
+            validation: {
+                realTime: true,
+                showErrors: true
+            }
+        };
+    </script>
+    
+    <!-- Load 29next Script -->
+    <script src="https://cdn.jsdelivr.net/gh/your-repo/campaign-cart@latest/dist/29next.min.js"></script>
+    
+    <!-- Demo Validation Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('[data-29next-checkout-form]');
+            
+            // Real-time validation
+            form.querySelectorAll('[data-29next-validate]').forEach(input => {
+                input.addEventListener('blur', validateField);
+                input.addEventListener('input', clearError);
+            });
+
+            function validateField(e) {
+                const field = e.target;
+                const validation = field.dataset['29nextValidate'];
+                const errorEl = document.querySelector(`[data-error-for="${field.name}"]`);
+                let isValid = true;
+                let errorMessage = '';
+
+                if (validation === 'required' && !field.value.trim()) {
+                    isValid = false;
+                    errorMessage = 'This field is required';
+                } else if (validation === 'email' && field.value && !isValidEmail(field.value)) {
+                    isValid = false;
+                    errorMessage = 'Please enter a valid email address';
+                } else if (validation === 'creditCard' && field.value && !isValidCreditCard(field.value)) {
+                    isValid = false;
+                    errorMessage = 'Please enter a valid credit card number';
+                }
+
+                if (errorEl) {
+                    errorEl.textContent = errorMessage;
+                }
+                
+                field.style.borderColor = isValid ? '#ddd' : '#ff0000';
+                return isValid;
+            }
+
+            function clearError(e) {
+                const field = e.target;
+                const errorEl = document.querySelector(`[data-error-for="${field.name}"]`);
+                if (errorEl) {
+                    errorEl.textContent = '';
+                }
+                field.style.borderColor = '#ddd';
+            }
+
+            function isValidEmail(email) {
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            }
+
+            function isValidCreditCard(cardNumber) {
+                return /^\d{4}\s?\d{4}\s?\d{4}\s?\d{4}$/.test(cardNumber);
+            }
+
+            // Form submission
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                let allValid = true;
+                form.querySelectorAll('[data-29next-validate]').forEach(input => {
+                    if (!validateField({ target: input })) {
+                        allValid = false;
+                    }
+                });
+
+                if (allValid) {
+                    document.getElementById('successMessage').style.display = 'block';
+                    form.reset();
+                    setTimeout(() => {
+                        document.getElementById('successMessage').style.display = 'none';
+                    }, 3000);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

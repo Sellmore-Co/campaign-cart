@@ -1,5 +1,7 @@
 # Basic Configuration Guide
 
+[← Configuration Overview](README.md) | [Form Validation →](form-validation.md)
+
 Essential configuration options to get Campaign Cart running on your site.
 
 ## Configuration Methods
@@ -151,6 +153,8 @@ window.osConfig = {
 ```
 
 ### Multi-Currency Setup
+
+For international campaigns, see the [Multi-Currency Guide](../features/multi-currency.md):
 
 ```javascript
 window.osConfig = {
@@ -412,9 +416,20 @@ window.twentyNineNext.onReady(() => {
 });
 ```
 
-## Next Steps
+## Related Topics
 
-- [Advanced Configuration](advanced-config.md) - All configuration options
-- [Events Configuration](events.md) - Analytics and tracking setup
-- [Multi-Currency Guide](../features/multi-currency.md) - Country-specific config
-- [Troubleshooting](../../reference/troubleshooting.md) - Common config issues
+### Configuration Guides
+- [Form Validation](form-validation.md) - Custom validation rules
+- [Payment Configuration](payment-config.md) - Payment method setup
+- [Google Autocomplete](google-autocomplete.md) - Address autocomplete setup
+
+### Feature Guides
+- [Shopping Cart](../features/shopping-cart.md) - Cart configuration options
+- [Product Profiles](../features/product-profiles.md) - Product configuration
+- [Multi-Currency](../features/multi-currency.md) - International configuration
+- [Express Checkout](../features/express-checkout.md) - Quick checkout setup
+
+### Developer Resources
+- [JavaScript API](../../api/javascript-api.md#configuration-methods) - Config API methods
+- [Events Reference](../../api/events-reference.md) - Analytics and tracking setup
+- [Examples](../../examples/basic-implementation.md) - Configuration examples

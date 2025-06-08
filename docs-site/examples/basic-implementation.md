@@ -1,6 +1,57 @@
 # Basic Implementation Examples
 
+[← Examples Overview](README.md) | [Advanced Examples →](advanced-examples.md)
+
 Complete examples showing how to implement Campaign Cart in common scenarios.
+
+## Interactive Live Examples
+
+Try these interactive examples to see Campaign Cart in action:
+
+- **[Interactive Cart Demo](/examples/basic-cart.html)** - Live cart functionality with add to cart, cart display, and checkout flow
+- **[Checkout Form Demo](/examples/checkout-form.html)** - Complete checkout form with real-time validation
+
+## Related Documentation
+
+- [Getting Started](../introduction/getting-started.md) - Initial setup guide
+- [Shopping Cart Guide](../guides/features/shopping-cart.md) - Cart implementation details
+- [JavaScript API](../api/javascript-api.md) - API reference
+
+## Script Loading and Configuration
+
+### CDN Loading
+```html
+<script src="https://cdn.jsdelivr.net/gh/your-repo/campaign-cart@latest/dist/29next.min.js"></script>
+```
+
+### Configuration Options
+```html
+<!-- Option 1: Meta Tags -->
+<meta name="29next:api-key" content="your-api-key">
+<meta name="29next:campaign-id" content="your-campaign-id">
+
+<!-- Option 2: JavaScript Configuration -->
+<script>
+window.osConfig = {
+    apiKey: 'your-api-key',
+    campaignId: 'your-campaign-id',
+    debug: true
+};
+</script>
+```
+
+### Event Handling
+```html
+<script>
+document.addEventListener('29next:cart:updated', function(event) {
+    console.log('Cart updated:', event.detail);
+});
+
+document.addEventListener('29next:checkout:complete', function(event) {
+    console.log('Checkout complete:', event.detail);
+});
+</script>
+```
 
 ## Minimal Setup
 
@@ -229,7 +280,7 @@ E-commerce catalog with multiple products:
 
 ## Product Selector Page
 
-Using the selector component for multiple product options:
+Using the [selector component](../guides/features/selectors.md) for multiple product options:
 
 ```html
 <!DOCTYPE html>
@@ -546,5 +597,24 @@ function App() {
 
 export default App;
 ```
+
+## Next Steps
+
+### Feature Guides
+- [Shopping Cart](../guides/features/shopping-cart.md) - Advanced cart features
+- [Product Profiles](../guides/features/product-profiles.md) - Semantic product management
+- [Selectors](../guides/features/selectors.md) - Product selection components
+- [Multi-Currency](../guides/features/multi-currency.md) - International support
+- [Timers](../guides/features/timers.md) - Countdown timers
+
+### Configuration
+- [Basic Configuration](../guides/configuration/basic-config.md) - Configuration options
+- [Form Validation](../guides/configuration/form-validation.md) - Custom validation
+- [Payment Configuration](../guides/configuration/payment-config.md) - Payment setup
+
+### API Reference
+- [JavaScript API](../api/javascript-api.md) - Complete API documentation
+- [HTML Attributes](../api/html-attributes.md) - All data attributes
+- [Events Reference](../api/events-reference.md) - Event handling
 
 These examples show various ways to implement Campaign Cart using the correct HTML attributes and JavaScript API calls.

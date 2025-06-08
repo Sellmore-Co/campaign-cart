@@ -1,5 +1,7 @@
 # Shopping Cart Guide
 
+[← Features Overview](../features/README.md) | [Product Profiles →](product-profiles.md)
+
 Complete guide to implementing and customizing the shopping cart functionality.
 
 ## Overview
@@ -32,6 +34,9 @@ window.twentyNineNext.addToCart(1, 2); // Add 2 units
 ```
 
 #### Using Product Profiles
+
+For better maintainability and multi-currency support, use [Product Profiles](product-profiles.md):
+
 ```html
 <!-- Toggle button -->
 <button data-os-action="toggle-item" data-os-profile="starter-kit">
@@ -43,6 +48,8 @@ window.twentyNineNext.addToCart(1, 2); // Add 2 units
 window.twentyNineNext.profiles.addToCart('starter-kit');
 </script>
 ```
+
+See [Product Profiles Guide](product-profiles.md) for detailed information.
 
 ### Displaying Cart Information
 
@@ -414,10 +421,24 @@ document.addEventListener('cart.updated', (e) => {
 4. **Mobile optimize** - Ensure cart works well on small screens
 5. **Handle errors gracefully** - Show user-friendly error messages
 6. **Use conditional display** - Show/hide relevant elements based on cart state
+7. **Use Product Profiles** - For better maintainability and [multi-currency support](multi-currency.md)
+8. **Implement proper events** - Track cart actions with [event system](../../api/events-reference.md)
 
-## Next Steps
+## Related Features
 
-- [Multi-Currency Guide](multi-currency.md) - International support
-- [Product Profiles](../features/product-profiles.md) - Advanced product management
-- [Configuration Guide](../configuration/basic-config.md) - Cart display options
-- [Events Configuration](../configuration/events.md) - Track cart analytics
+### Core Features
+- [Product Profiles](product-profiles.md) - Semantic product management
+- [Selectors](selectors.md) - Product selection components
+- [Multi-Currency](multi-currency.md) - International cart support
+- [Vouchers](vouchers.md) - Apply discount codes
+
+### Configuration
+- [Basic Configuration](../configuration/basic-config.md) - Cart display options
+- [Payment Configuration](../configuration/payment-config.md) - Checkout settings
+- [Form Validation](../configuration/form-validation.md) - Custom validation rules
+
+### Developer Resources
+- [JavaScript API](../../api/javascript-api.md) - Cart methods reference
+- [HTML Attributes](../../api/html-attributes.md) - Cart-related attributes
+- [Events Reference](../../api/events-reference.md) - Cart events and analytics
+- [Examples](../../examples/basic-implementation.md) - Cart implementation examples

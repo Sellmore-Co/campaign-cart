@@ -1,5 +1,7 @@
 # Getting Started
 
+[← Back to Introduction](overview.md) | [Core Concepts →](core-concepts.md)
+
 This guide will help you get Campaign Cart up and running in minutes.
 
 ## Prerequisites
@@ -100,7 +102,7 @@ Here's a complete minimal example:
 
 ## Using Product Profiles (Recommended)
 
-Instead of package IDs, use semantic product profiles:
+Instead of package IDs, use semantic [product profiles](../guides/features/product-profiles.md):
 
 ```html
 <!-- Add using product profile -->
@@ -111,6 +113,8 @@ Instead of package IDs, use semantic product profiles:
 <!-- Display profile price -->
 <span data-os-profile-price data-os-profile-id="starter-kit">$0.00</span>
 ```
+
+Learn more: [Product Profiles Guide](../guides/features/product-profiles.md)
 
 ## Manual Initialization
 
@@ -136,13 +140,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
 ## What's Next?
 
-- [Core Concepts](core-concepts.md) - Understand packages, profiles, and more
-- [Shopping Cart Guide](../guides/features/shopping-cart.md) - Advanced cart features
-- [Configuration Guide](../guides/configuration/basic-config.md) - All configuration options
+Now that you have Campaign Cart running, explore these topics:
+
+### Essential Guides
+- [Core Concepts](core-concepts.md) - Understand packages, profiles, and the architecture
+- [Basic Configuration](../guides/configuration/basic-config.md) - All configuration options
+- [Shopping Cart Guide](../guides/features/shopping-cart.md) - Advanced cart features and customization
+
+### Popular Features
+- [Product Profiles](../guides/features/product-profiles.md) - Semantic product management
+- [Selectors](../guides/features/selectors.md) - Product selection components
+- [Multi-Currency](../guides/features/multi-currency.md) - International support
+- [Express Checkout](../guides/features/express-checkout.md) - One-click checkout
+
+### Developer Resources
+- [JavaScript API Reference](../api/javascript-api.md) - Complete API documentation
+- [HTML Attributes Reference](../api/html-attributes.md) - All data attributes
+- [Events Reference](../api/events-reference.md) - Event handling and analytics
 - [Examples](../examples/basic-implementation.md) - More implementation examples
 
 ## Need Help?
 
-- Check the [Troubleshooting Guide](../reference/troubleshooting.md)
-- Review the [API Reference](../api/javascript-api.md)
+- Review the [JavaScript API Reference](../api/javascript-api.md)
+- Check [Examples](../examples/basic-implementation.md) for common patterns
 - Contact support at support@29next.com

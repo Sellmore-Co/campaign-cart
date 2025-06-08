@@ -1,5 +1,7 @@
 # Product Profiles Guide
 
+[← Multi-Currency](multi-currency.md) | [Selectors →](selectors.md)
+
 Complete guide to using semantic product profiles for better product management and multi-currency support.
 
 ## Overview
@@ -9,10 +11,11 @@ Product Profiles provide a semantic way to reference products using meaningful I
 ## Benefits of Product Profiles
 
 - **Semantic naming** - Use `starter-kit` instead of `1`
-- **Multi-currency support** - Automatic package mapping by country
+- **[Multi-currency support](multi-currency.md)** - Automatic package mapping by country
 - **Better maintainability** - Clear, descriptive product references
 - **Rich metadata** - Categories, tags, descriptions
 - **Backward compatibility** - Works alongside legacy package system
+- **Works with [Selectors](selectors.md)** - Easy product selection components
 
 ## Basic Implementation
 
@@ -47,6 +50,8 @@ console.log(profile.name, profile.price);
 // Get all profiles
 const allProfiles = await window.twentyNineNext.profiles.getAll();
 ```
+
+See [JavaScript API Reference](../../api/javascript-api.md#product-profile-methods) for complete API documentation.
 
 ## Profile Configuration
 
@@ -428,9 +433,11 @@ function findProfileByPackageId(packageId) {
 1. **Use descriptive IDs** - `starter-kit` not `sk1`
 2. **Consistent naming** - Follow a naming convention
 3. **Rich metadata** - Include categories, tags, descriptions
-4. **Multi-currency ready** - Define country-specific mappings
+4. **[Multi-currency ready](multi-currency.md)** - Define country-specific mappings
 5. **Backward compatibility** - Support both systems during migration
 6. **Performance** - Cache profile data when possible
+7. **Use with [Selectors](selectors.md)** - For product selection interfaces
+8. **Track with [Events](../../api/events-reference.md)** - Monitor profile performance
 
 ## Troubleshooting
 
@@ -459,9 +466,20 @@ console.log('Current country:', country);
 console.log('Profile mapping for country:', profile.campaigns[country]);
 ```
 
-## Next Steps
+## Related Features
 
-- [Multi-Currency Guide](multi-currency.md) - Use profiles with multiple currencies
-- [Shopping Cart Guide](shopping-cart.md) - Cart operations with profiles  
-- [Selectors Guide](../components/selectors.md) - Profile-based selectors
-- [Migration Guide](../../reference/migration-guide.md) - Package to profile migration
+### Core Features
+- [Multi-Currency](multi-currency.md) - Essential for international campaigns
+- [Shopping Cart](shopping-cart.md) - Cart operations with profiles
+- [Selectors](selectors.md) - Profile-based product selection
+- [Vouchers](vouchers.md) - Apply discounts to profile products
+
+### Configuration
+- [Basic Configuration](../configuration/basic-config.md) - Profile setup options
+- [Advanced Configuration](../configuration/advanced-config.md) - Complex profile scenarios
+
+### Developer Resources
+- [JavaScript API](../../api/javascript-api.md#product-profile-methods) - Profile API methods
+- [HTML Attributes](../../api/html-attributes.md#product-profiles) - Profile-related attributes
+- [Events Reference](../../api/events-reference.md#profile-events) - Profile event tracking
+- [Examples](../../examples/basic-implementation.md) - Implementation examples

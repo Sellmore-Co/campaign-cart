@@ -1,5 +1,7 @@
 # Vouchers & Discounts Guide
 
+[← Upsells](upsells.md) | [Receipt →](receipt.md)
+
 Complete guide to implementing discount coupons and vouchers for reducing cart totals and providing special offers.
 
 ## Overview
@@ -579,8 +581,20 @@ console.log('Coupon details:', cart.couponDetails);
 console.log('Coupon savings:', cart.totals.coupon_savings);
 ```
 
-## Next Steps
+## Related Features
 
-- [Shopping Cart Guide](shopping-cart.md) - Cart management and display
-- [Checkout Guide](../checkout/basic-checkout.md) - Completing orders with discounts
-- [API Reference](../../api/javascript-api.md) - Complete method documentation
+### Core Features
+- [Shopping Cart](shopping-cart.md) - Display voucher savings in cart
+- [Product Profiles](product-profiles.md) - Product-specific voucher restrictions
+- [Multi-Currency](multi-currency.md) - International voucher support
+- [Receipt](receipt.md) - Show applied vouchers on receipt
+
+### Configuration
+- [Basic Configuration](../configuration/basic-config.md) - Voucher display options
+- [Advanced Configuration](../configuration/advanced-config.md) - Complex voucher rules
+
+### Developer Resources
+- [JavaScript API](../../api/javascript-api.md#voucher-methods) - Voucher API methods
+- [HTML Attributes](../../api/html-attributes.md#vouchers) - Voucher-related attributes
+- [Events Reference](../../api/events-reference.md#voucher-events) - Voucher event tracking
+- [Examples](../../examples/basic-implementation.md#voucher-implementation) - Voucher examples

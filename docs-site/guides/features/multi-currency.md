@@ -1,5 +1,7 @@
 # Multi-Currency Guide
 
+[← Shopping Cart](shopping-cart.md) | [Product Profiles →](product-profiles.md)
+
 Complete guide to implementing multi-currency support with automatic country detection and campaign switching.
 
 ## Overview
@@ -46,6 +48,8 @@ window.osConfig = {
 
 ### 3. Map Packages Between Campaigns
 
+⚠️ **Important**: Multi-currency requires [Product Profiles](product-profiles.md) for automatic package mapping between campaigns.
+
 Use Product Profiles for automatic mapping:
 
 ```javascript
@@ -69,6 +73,8 @@ window.osConfig = {
 ## Implementation
 
 ### Using Product Profiles (Recommended)
+
+Product Profiles are essential for multi-currency support. Learn more in the [Product Profiles Guide](product-profiles.md).
 
 ```html
 <!-- Automatically uses correct package for user's country -->
@@ -340,13 +346,14 @@ document.addEventListener('cart.translated', (e) => {
 
 ## Best Practices
 
-1. **Always use Product Profiles** for multi-currency setups
+1. **Always use [Product Profiles](product-profiles.md)** for multi-currency setups
 2. **Test all supported countries** thoroughly
 3. **Provide country selector** for user control
 4. **Show prices clearly** with currency symbols
 5. **Handle edge cases** (VPNs, travel, etc.)
 6. **Cache campaign data** for performance
-7. **Monitor detection accuracy** in analytics
+7. **Monitor detection accuracy** in [analytics](../../api/events-reference.md)
+8. **Use [Selectors](selectors.md)** for country-aware product selection
 
 ## Example: Complete Multi-Currency Setup
 
@@ -424,9 +431,22 @@ document.addEventListener('cart.translated', (e) => {
 </html>
 ```
 
-## Next Steps
+## Related Features
 
-- [Product Profiles Guide](product-profiles.md) - Essential for multi-currency
-- [Configuration Guide](../configuration/advanced-config.md) - Country-specific settings
-- [Testing Guide](../advanced/test-mode.md) - Test all currencies
-- [Analytics Guide](../configuration/events.md) - Track by country
+### Essential for Multi-Currency
+- [Product Profiles](product-profiles.md) - Required for multi-currency package mapping
+- [Shopping Cart](shopping-cart.md) - Cart behavior with multiple currencies
+- [Selectors](selectors.md) - Country-aware product selection
+
+### Configuration
+- [Basic Configuration](../configuration/basic-config.md) - Currency display settings
+- [Payment Configuration](../configuration/payment-config.md) - Payment settings by country
+- [Google Autocomplete](../configuration/google-autocomplete.md) - Address validation by country
+
+### Testing & Analytics
+- [Test Orders](../development/test-orders.md) - Test all currencies
+- [Events Reference](../../api/events-reference.md) - Track conversions by country
+- [JavaScript API](../../api/javascript-api.md) - Country and currency methods
+
+### Implementation Examples
+- [Basic Implementation](../../examples/basic-implementation.md) - Multi-currency examples

@@ -1,5 +1,7 @@
 # Core Concepts
 
+[← Getting Started](getting-started.md) | [Overview →](overview.md)
+
 Understanding these core concepts will help you make the most of Campaign Cart.
 
 ## Packages vs Profiles
@@ -24,6 +26,8 @@ Campaign Cart supports two ways to reference products:
 ```html
 <button data-os-action="toggle-item" data-os-profile="starter-kit">Add Starter Kit</button>
 ```
+
+Learn more: [Product Profiles Guide](../guides/features/product-profiles.md)
 
 ## The Cart System
 
@@ -169,5 +173,6 @@ window.osConfig = {
 
 - [Shopping Cart Guide](../guides/features/shopping-cart.md) - Deep dive into cart features
 - [Product Profiles Guide](../guides/features/product-profiles.md) - Advanced product management
-- [Events Configuration](../guides/configuration/events.md) - Analytics setup
-- [API Reference](../api/javascript-api.md) - Complete API documentation
+- [Events Reference](../api/events-reference.md) - Event handling and analytics
+- [JavaScript API](../api/javascript-api.md) - Complete API documentation
+- [Basic Configuration](../guides/configuration/basic-config.md) - Configuration options

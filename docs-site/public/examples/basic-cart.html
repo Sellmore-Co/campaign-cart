@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>29next Campaign Cart - Basic Example</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .product { border: 1px solid #ddd; padding: 20px; margin: 10px 0; border-radius: 8px; }
+        .cart { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        button { background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #005a87; }
+        .cart-total { font-weight: bold; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+    <h1>29next Campaign Cart - Interactive Example</h1>
+    <p>This page demonstrates the Campaign Cart functionality with live script loading.</p>
+
+    <!-- Product 1 -->
+    <div class="product">
+        <h3>Premium Widget - $29.99</h3>
+        <p>High-quality widget with premium features.</p>
+        <button data-29next-add-to-cart 
+                data-product-id="widget-premium" 
+                data-product-name="Premium Widget" 
+                data-product-price="2999">
+            Add to Cart - $29.99
+        </button>
+    </div>
+
+    <!-- Product 2 -->
+    <div class="product">
+        <h3>Standard Widget - $19.99</h3>
+        <p>Standard widget with essential features.</p>
+        <button data-29next-add-to-cart 
+                data-product-id="widget-standard" 
+                data-product-name="Standard Widget" 
+                data-product-price="1999">
+            Add to Cart - $19.99
+        </button>
+    </div>
+
+    <!-- Cart Display -->
+    <div class="cart">
+        <h3>Shopping Cart</h3>
+        <div data-29next-cart-display>
+            <p>Your cart is empty</p>
+        </div>
+        <div class="cart-total">
+            Total: $<span data-29next-cart-total>0.00</span>
+        </div>
+        <button data-29next-checkout style="margin-top: 10px;">
+            Proceed to Checkout
+        </button>
+    </div>
+
+    <!-- Script Loading -->
+    <script>
+        // Configuration
+        window.osConfig = {
+            apiKey: 'demo-key-for-testing',
+            campaignId: 'demo-campaign',
+            debug: true
+        };
+    </script>
+    
+    <!-- Load 29next Script -->
+    <script src="https://cdn.jsdelivr.net/gh/your-repo/campaign-cart@latest/dist/29next.min.js"></script>
+    
+    <!-- Demo Script for Testing -->
+    <script>
+        // Demo functionality for testing without actual API
+        document.addEventListener('DOMContentLoaded', function() {
+            let cartItems = [];
+            let cartTotal = 0;
+
+            // Add to cart demo functionality
+            document.querySelectorAll('[data-29next-add-to-cart]').forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = this.dataset.productId;
+                    const productName = this.dataset.productName;
+                    const productPrice = parseInt(this.dataset.productPrice);
+                    
+                    cartItems.push({ id: productId, name: productName, price: productPrice });
+                    cartTotal += productPrice;
+                    
+                    updateCartDisplay();
+                    this.textContent = 'Added!';
+                    setTimeout(() => {
+                        this.textContent = `Add to Cart - $${(productPrice / 100).toFixed(2)}`;
+                    }, 1000);
+                });
+            });
+
+            function updateCartDisplay() {
+                const cartDisplay = document.querySelector('[data-29next-cart-display]');
+                const cartTotalEl = document.querySelector('[data-29next-cart-total]');
+                
+                if (cartItems.length === 0) {
+                    cartDisplay.innerHTML = '<p>Your cart is empty</p>';
+                } else {
+                    cartDisplay.innerHTML = cartItems.map(item => 
+                        `<div>${item.name} - $${(item.price / 100).toFixed(2)}</div>`
+                    ).join('');
+                }
+                
+                cartTotalEl.textContent = (cartTotal / 100).toFixed(2);
+            }
+
+            // Checkout demo
+            document.querySelector('[data-29next-checkout]').addEventListener('click', function() {
+                if (cartItems.length === 0) {
+                    alert('Your cart is empty!');
+                } else {
+                    alert(`Demo: Proceeding to checkout with ${cartItems.length} items totaling $${(cartTotal / 100).toFixed(2)}`);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

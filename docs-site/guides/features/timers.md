@@ -1,5 +1,7 @@
 # Timers Guide
 
+[← Selectors](selectors.md) | [Upsells →](upsells.md)
+
 Complete guide to implementing countdown timers for limited-time offers, flash sales, and time-sensitive content.
 
 ## Overview
@@ -579,8 +581,20 @@ document.addEventListener('os:timer.expired', (e) => {
 });
 ```
 
-## Next Steps
+## Related Features
 
-- [Upsells Guide](upsells.md) - Time-limited post-purchase offers
-- [Shopping Cart Guide](shopping-cart.md) - Cart abandonment timers
-- [Events Reference](../../api/events-reference.md) - All timer events
+### Core Features
+- [Upsells](upsells.md) - Time-limited post-purchase offers
+- [Shopping Cart](shopping-cart.md) - Cart abandonment timers
+- [Selectors](selectors.md) - Combine timers with product selection
+- [Express Checkout](express-checkout.md) - Fast checkout for time-sensitive offers
+
+### Configuration
+- [Basic Configuration](../configuration/basic-config.md) - Timer display options
+- [Advanced Configuration](../configuration/advanced-config.md) - Complex timer scenarios
+
+### Developer Resources
+- [JavaScript API](../../api/javascript-api.md#timer-methods) - Timer API methods
+- [HTML Attributes](../../api/html-attributes.md#timers) - Timer attributes reference
+- [Events Reference](../../api/events-reference.md#timer-events) - All timer events
+- [Examples](../../examples/basic-implementation.md#timer-based-offer-page) - Timer implementation examples
