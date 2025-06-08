@@ -1,0 +1,96 @@
+---
+title: Overview
+description: Introduction to Campaign Cart - A JavaScript SDK for e-commerce integration
+---
+
+import { CardGrid, Card, Aside, Steps } from '@astrojs/starlight/components';
+
+## What is Campaign Cart?
+
+A JavaScript SDK that connects the 29next API to web pages through HTML attributes. Works with Webflow, custom HTML, or any page builder.
+
+<Aside type="tip">
+Campaign Cart is designed to be framework-agnostic and works with any HTML page or page builder, making integration simple regardless of your tech stack.
+</Aside>
+
+## Features
+
+<CardGrid>
+  <Card title="🛒 Shopping Cart" icon="bag">
+    - Add/remove/update cart items
+    - Persistent cart across pages
+    - Real-time price calculations
+    - Mobile responsive
+  </Card>
+  
+  <Card title="💳 Payments" icon="payment">
+    - Credit cards via Spreedly
+    - PayPal Express
+    - Apple Pay (Safari)
+    - Google Pay (Chrome)
+  </Card>
+  
+  <Card title="🌍 Multi-Currency" icon="world">
+    - Auto-detect user country
+    - Switch campaigns by currency
+    - Supports USD, CAD, GBP, EUR, AUD
+    - Localized price formatting
+  </Card>
+  
+  <Card title="📦 Products" icon="package">
+    - Package IDs (legacy)
+    - Product profiles (recommended)
+    - Bundle configurations
+    - Dynamic pricing
+  </Card>
+  
+  <Card title="🚀 Additional Features" icon="rocket">
+    - Post-purchase upsells
+    - Discount codes
+    - Countdown timers
+    - Analytics events
+    - A/B testing
+  </Card>
+</CardGrid>
+
+## How it works
+
+<Steps>
+1. **Include the script** - Add the Campaign Cart JavaScript to your page
+2. **Add meta tags** - Configure API keys and campaign settings  
+3. **Use HTML attributes** - Add data attributes to buttons and elements
+4. **Automatic handling** - SDK manages all API calls and interactions
+</Steps>
+
+## Architecture
+
+```
+HTML Page (data-os-* attributes)
+         ↓
+Campaign Cart JavaScript
+         ↓
+29next Campaign API
+```
+
+## Browser requirements
+
+<Aside type="note" title="Supported Browsers">
+- **Chrome** 90+
+- **Firefox** 88+  
+- **Safari** 14+
+- **Edge** 90+
+</Aside>
+
+## Next Steps
+
+<CardGrid>
+  <Card title="Getting Started" icon="rocket">
+    [Quick setup guide →](getting-started)
+  </Card>
+  <Card title="Core Concepts" icon="information">
+    [Learn the fundamentals →](core-concepts)
+  </Card>
+  <Card title="Configuration" icon="setting">
+    [Configuration options →](../guides/configuration/basic-config)
+  </Card>
+</CardGrid>

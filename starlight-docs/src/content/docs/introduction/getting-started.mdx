@@ -3,9 +3,15 @@ title: Getting Started
 description: Setup guide for Campaign Cart - Add shopping cart functionality to any HTML page
 ---
 
-import { Code, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import { Code, Card, CardGrid, LinkCard, Aside, Steps } from '@astrojs/starlight/components';
 
 ## Basic Setup
+
+<Steps>
+1. **Add the JavaScript SDK** to your HTML page
+2. **Configure your API credentials** with meta tags
+3. **Add cart functionality** using data attributes
+</Steps>
 
 Add this to any HTML page:
 
@@ -42,6 +48,10 @@ Add this to any HTML page:
 
 Replace `YOUR_API_KEY` and `YOUR_CAMPAIGN_ID` with your actual values.
 
+<Aside type="caution">
+Make sure to replace the placeholder values with your actual API credentials before going live. Test with your staging environment first.
+</Aside>
+
 ## Using Product Profiles (Recommended)
 
 Instead of package IDs, use semantic profiles:
@@ -57,6 +67,10 @@ Instead of package IDs, use semantic profiles:
   lang="html"
   title="Product Profiles Example"
 />
+
+<Aside type="tip">
+Product profiles provide better organization and are essential for multi-currency support. They use meaningful names instead of numeric IDs.
+</Aside>
 
 <LinkCard
   title="Setup Product Profiles"

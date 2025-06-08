@@ -3,14 +3,19 @@ title: JavaScript API Reference
 description: Complete reference for Campaign Cart's JavaScript API methods and properties
 ---
 
+import { Steps, Aside, Card, CardGrid, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
 Complete reference for Campaign Cart's JavaScript API.
 
 ## Global Object
 
 Campaign Cart is available globally as:
-```javascript
-window.twentyNineNext
-```
+
+<Code code={`window.twentyNineNext`} lang="javascript" />
+
+<Aside type="tip">
+All API methods are accessed through the `window.twentyNineNext` object. Make sure the SDK is loaded before calling any methods.
+</Aside>
 
 ## Initialization
 
@@ -30,26 +35,27 @@ window.twentyNineNext.init({
 ### `addToCart(packageId, quantity, options)`
 Add a package to the cart.
 
-```javascript
-// Simple add
-window.twentyNineNext.addToCart(1);
-
-// With quantity
-window.twentyNineNext.addToCart(1, 2);
-
-// With options
-window.twentyNineNext.addToCart(1, 1, {
+<Tabs>
+  <TabItem label="Simple Add">
+    <Code code={`window.twentyNineNext.addToCart(1);`} lang="javascript" />
+  </TabItem>
+  
+  <TabItem label="With Quantity">
+    <Code code={`window.twentyNineNext.addToCart(1, 2);`} lang="javascript" />
+  </TabItem>
+  
+  <TabItem label="With Options">
+    <Code code={`window.twentyNineNext.addToCart(1, 1, {
     upsell: true,
     frequency: 30
-});
-```
+});`} lang="javascript" />
+  </TabItem>
+</Tabs>
 
 ### `addToCartByRefId(refId, quantity, price, name)`
 Add item by reference ID with custom details.
 
-```javascript
-window.twentyNineNext.addToCartByRefId('CUSTOM-001', 1, 29.99, 'Custom Product');
-```
+<Code code={`window.twentyNineNext.addToCartByRefId('CUSTOM-001', 1, 29.99, 'Custom Product');`} lang="javascript" />
 
 ### `removeFromCart(packageId)`
 Remove a package from the cart.

@@ -3,32 +3,48 @@ title: Core Concepts
 description: Key concepts for understanding Campaign Cart architecture and data flow
 ---
 
+import { Steps, Aside, Card, CardGrid, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
 Understanding these core concepts will help you make the most of Campaign Cart.
 
 ## Packages vs Profiles
 
 Campaign Cart supports two ways to reference products:
 
-### Packages (Legacy)
-- Numeric IDs (e.g., `1`, `2`, `3`)
-- Direct mapping to campaign packages
-- Simple but less flexible
+<Tabs>
+  <TabItem label="Product Profiles (Recommended)">
+    **Semantic IDs** - Use meaningful names instead of numbers
+    
+    <Code code={`<button data-os-action="toggle-item" data-os-profile="starter-kit">
+    Add Starter Kit
+</button>`} lang="html" />
 
-```html
-<button data-os-action="toggle-item" data-os-package="1">Add Package #1</button>
-```
+    **Benefits:**
+    - Country-aware automatic mapping
+    - Metadata support (categories, tags)
+    - Better for multi-currency setups
+    - More maintainable code
+  </TabItem>
+  
+  <TabItem label="Packages (Legacy)">
+    **Numeric IDs** - Direct package references
+    
+    <Code code={`<button data-os-action="toggle-item" data-os-package="1">
+    Add Package #1
+</button>`} lang="html" />
 
-### Product Profiles (Recommended)
-- Semantic IDs (e.g., `starter-kit`, `pro-bundle`)
-- Country-aware automatic mapping
-- Metadata support (categories, tags)
-- Better for multi-currency setups
+    **Limitations:**
+    - Less flexible for international sites
+    - Harder to maintain
+    - No automatic currency mapping
+  </TabItem>
+</Tabs>
 
-```html
-<button data-os-action="toggle-item" data-os-profile="starter-kit">Add Starter Kit</button>
-```
+<Aside type="tip">
+We strongly recommend using Product Profiles for new implementations, especially if you plan to support multiple currencies.
+</Aside>
 
-Learn more: [Product Profiles Guide](../guides/features/product-profiles.md)
+Learn more: [Product Profiles Guide](../guides/features/product-profiles)
 
 ## The Cart System
 
@@ -98,31 +114,41 @@ document.addEventListener('purchase.completed', (event) => {
 
 Campaign Cart automatically handles multiple currencies:
 
-1. **Detection**: Uses Cloudflare Workers to detect user location
-2. **Campaign Switching**: Loads appropriate campaign for the country
-3. **Package Mapping**: Translates package IDs between campaigns
-4. **Display**: Shows correct currency symbols and formatting
+<Steps>
+1. **Detection** - Uses Cloudflare Workers to detect user location
+2. **Campaign Switching** - Loads appropriate campaign for the country  
+3. **Package Mapping** - Translates package IDs between campaigns
+4. **Display** - Shows correct currency symbols and formatting
+</Steps>
 
 ## Configuration Hierarchy
 
 Configuration follows this priority order:
 
-1. **JavaScript Config** (`window.osConfig`)
-2. **Meta Tags** (`<meta name="os-*">`)
-3. **Data Attributes** (element-specific)
-4. **Defaults** (built-in fallbacks)
+<Steps>
+1. **JavaScript Config** (`window.osConfig`) - Highest priority
+2. **Meta Tags** (`<meta name="os-*">`) - Page-level settings
+3. **Data Attributes** (element-specific) - Component-level
+4. **Defaults** (built-in fallbacks) - Lowest priority
+</Steps>
+
+<Aside type="note">
+Higher priority settings override lower ones. Use JavaScript config for dynamic values and meta tags for static page settings.
+</Aside>
 
 ## Checkout Flow
 
 The checkout process follows these steps:
 
-1. **Cart Review** - User reviews items
-2. **Customer Info** - Email, name collection
-3. **Billing Address** - Address details
-4. **Payment Method** - Credit card, PayPal, etc.
-5. **Order Review** - Final confirmation
-6. **Processing** - Payment processing
-7. **Receipt** - Order confirmation
+<Steps>
+1. **Cart Review** - User reviews items and quantities
+2. **Customer Info** - Email and name collection
+3. **Billing Address** - Complete address details
+4. **Payment Method** - Credit card, PayPal, Apple Pay, etc.
+5. **Order Review** - Final confirmation before payment
+6. **Processing** - Secure payment processing
+7. **Receipt** - Order confirmation and details
+</Steps>
 
 ## Typical Funnel Workflow
 
@@ -149,24 +175,22 @@ Post-purchase upsells extend the checkout:
 
 ## Best Practices
 
-### 1. Use Product Profiles
-```html
-<!-- Good -->
+<CardGrid>
+  <Card title="1. Use Product Profiles" icon="star">
+    <Code code={`<!-- Recommended -->
 <button data-os-action="toggle-item" data-os-profile="starter-kit">Add</button>
 
-<!-- Less flexible -->
-<button data-os-action="toggle-item" data-os-package="1">Add</button>
-```
-
-### 2. Handle Events
-```javascript
-document.addEventListener('cart.updated', updateUI);
-document.addEventListener('purchase.completed', trackConversion);
-```
-
-### 3. Configure Properly
-```javascript
-window.osConfig = {
+<!-- Legacy approach -->
+<button data-os-action="toggle-item" data-os-package="1">Add</button>`} lang="html" />
+  </Card>
+  
+  <Card title="2. Handle Events" icon="broadcast">
+    <Code code={`document.addEventListener('cart.updated', updateUI);
+document.addEventListener('purchase.completed', trackConversion);`} lang="javascript" />
+  </Card>
+  
+  <Card title="3. Configure Properly" icon="setting">
+    <Code code={`window.osConfig = {
     apiKey: 'YOUR_KEY',
     campaignId: 'YOUR_CAMPAIGN',
     defaultCountry: 'US',
@@ -174,14 +198,20 @@ window.osConfig = {
         gtm: true,
         fbPixel: 'YOUR_PIXEL_ID'
     }
-};
-```
+};`} lang="javascript" />
+  </Card>
+  
+  <Card title="4. Test Thoroughly" icon="test-tube">
+    - Use `?test=true` for test mode
+    - Test different countries with `?forceCountry=CA`
+    - Verify analytics tracking  
+    - Check mobile responsiveness
+  </Card>
+</CardGrid>
 
-### 4. Test Thoroughly
-- Use `?test=true` for test mode
-- Test different countries with `?forceCountry=CA`
-- Verify analytics tracking
-- Check mobile responsiveness
+<Aside type="caution">
+Always test your implementation thoroughly before going live. Use test mode to avoid processing real payments during development.
+</Aside>
 
 ## Next Steps
 

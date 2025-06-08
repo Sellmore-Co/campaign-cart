@@ -3,24 +3,62 @@ title: Shopping Cart Guide
 description: Complete guide to the Campaign Cart functionality, HTML attributes, and JavaScript interactions
 ---
 
+import { Steps, Aside, Card, CardGrid, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
 This guide covers how the Campaign Cart works and how to interact with it using HTML attributes and JavaScript.
 
 ## How the Cart Works
 
 The shopping cart is designed to be persistent and accessible across your entire site.
 
-- **Browser Storage**: The cart's state (items, quantities, discounts) is automatically saved in the user's browser `localStorage`. This means the cart survives page reloads and even browser restarts.
-- **Real-time Updates**: All cart displays (`data-os-cart-count`, `data-os-cart-total`, etc.) are updated in real-time whenever a change occurs.
-- **API Sync**: The local cart is periodically synchronized with the 29next API to ensure consistency.
-- **Automatic Clearing**: The cart is automatically cleared after a successful purchase to prepare for the next order.
+<CardGrid>
+  <Card title="🗄️ Browser Storage" icon="database">
+    Cart state (items, quantities, discounts) is saved in `localStorage` and survives page reloads and browser restarts.
+  </Card>
+  
+  <Card title="⚡ Real-time Updates" icon="refresh">
+    All cart displays update instantly when changes occur - no page refresh needed.
+  </Card>
+  
+  <Card title="🔄 API Sync" icon="sync">
+    Local cart periodically syncs with 29next API to ensure data consistency.
+  </Card>
+  
+  <Card title="🧹 Auto-clearing" icon="trash">
+    Cart automatically clears after successful purchase to prepare for next order.
+  </Card>
+</CardGrid>
 
 ## Interacting with the Cart
 
-There are two primary ways to add or change items in the cart, designed for different use cases: **Selectors** and **Toggles**.
+There are two primary ways to add or change items in the cart, designed for different use cases:
+
+<Tabs>
+  <TabItem label="Selectors (Primary Products)">
+    Use when customers must choose **one** option from a list - like subscription plans or package sizes. When a new option is selected, it *swaps* the previous selection.
+    
+    **Use cases:**
+    - Subscription plans (Basic, Pro, Enterprise)
+    - Product bundles (Starter, Premium, Ultimate)
+    - Package sizes (Small, Medium, Large)
+  </TabItem>
+  
+  <TabItem label="Toggles (Add-ons)">
+    Use for optional add-ons that can be independently added or removed - like bonus materials, insurance, or accessories.
+    
+    **Use cases:**
+    - Order bumps
+    - Optional accessories
+    - Insurance or warranties
+    - Bonus materials
+  </TabItem>
+</Tabs>
 
 ### 1. Selectors (for Primary Products)
 
-Selectors are used when a customer must choose **one** option from a list of primary products, like different subscription plans, bundle sizes, or package deals. When a new option is selected, it *swaps* the previous selection in the cart.
+<Aside type="note">
+Selectors ensure only one item from the group can be in the cart at a time, making them perfect for mutually exclusive choices.
+</Aside>
 
 #### Implementation
 

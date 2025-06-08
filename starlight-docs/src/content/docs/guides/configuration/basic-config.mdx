@@ -3,15 +3,23 @@ title: Basic Configuration Guide
 description: Essential configuration options to get Campaign Cart running on your site
 ---
 
+import { Steps, Aside, Card, CardGrid, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
 Essential configuration options to get Campaign Cart running on your site.
 
 ## Configuration Methods
 
 Campaign Cart can be configured in three ways, in order of precedence:
 
-1. **JavaScript Configuration** (highest priority)
-2. **Meta Tags**
-3. **Default Values** (lowest priority)
+<Steps>
+1. **JavaScript Configuration** (`window.osConfig`) - Highest priority, dynamic values
+2. **Meta Tags** (`<meta name="os-*">`) - Page-level static configuration  
+3. **Default Values** - Built-in fallbacks, lowest priority
+</Steps>
+
+<Aside type="note">
+Higher priority configurations override lower ones. Use JavaScript for dynamic values and meta tags for static page settings.
+</Aside>
 
 ## Required Configuration
 
@@ -19,19 +27,23 @@ Campaign Cart can be configured in three ways, in order of precedence:
 
 You need at least these two values:
 
-```html
-<!-- Using meta tags -->
-<meta name="os-api-key" content="YOUR_API_KEY">
-<meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
-```
-
-```javascript
-// Using JavaScript
-window.osConfig = {
+<Tabs>
+  <TabItem label="Meta Tags">
+    <Code code={`<meta name="os-api-key" content="YOUR_API_KEY">
+<meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">`} lang="html" title="Basic Meta Tag Setup" />
+  </TabItem>
+  
+  <TabItem label="JavaScript">
+    <Code code={`window.osConfig = {
   apiKey: 'YOUR_API_KEY',
   campaignId: 'YOUR_CAMPAIGN_ID'
-};
-```
+};`} lang="javascript" title="Basic JavaScript Setup" />
+  </TabItem>
+</Tabs>
+
+<Aside type="caution">
+Replace `YOUR_API_KEY` and `YOUR_CAMPAIGN_ID` with your actual credentials from the 29next dashboard.
+</Aside>
 
 ## Basic Options
 
