@@ -3,8 +3,6 @@ title: Core Concepts
 description: Key concepts for understanding Campaign Cart architecture and data flow
 ---
 
-# Core Concepts | [Overview →](overview.md)
-
 Understanding these core concepts will help you make the most of Campaign Cart.
 
 ## Packages vs Profiles

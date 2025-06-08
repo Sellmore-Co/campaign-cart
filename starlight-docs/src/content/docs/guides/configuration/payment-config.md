@@ -1,4 +1,7 @@
-# Payment Configuration Guide
+---
+title: Payment Configuration Guide
+description: Complete guide to configuring Spreedly payment processing for secure credit card handling
+---
 
 Complete guide to configuring Spreedly payment processing for secure credit card handling.
 

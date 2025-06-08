@@ -1,0 +1,315 @@
+---
+title: Changelog
+description: Release history and updates for Campaign Cart
+---
+
+import { Card, CardGrid, Code } from '@astrojs/starlight/components';
+
+# Changelog
+
+Release history and feature updates for Campaign Cart.
+
+## v0.1.11 - Express Shipping / Prospect Fix
+*Latest Release - 3 weeks ago*
+
+<Card title="🚀 Features" icon="rocket">
+- Shipping Fix on Express Checkout
+- Prospect Handler Address Fix improvements
+</Card>
+
+**Pull Request:** [#20 - prospect-handler](https://github.com/Sellmore-Co/campaign-cart/pull/20)
+
+---
+
+## v0.1.10 - Platform Event Control
+*3 weeks ago*
+
+<Card title="🎯 Features" icon="setting">
+- Added functionality to disable firing events for specific platforms
+- Enhanced meta events control system
+</Card>
+
+**Pull Request:** [#19 - error-handling](https://github.com/Sellmore-Co/campaign-cart/pull/19)
+
+---
+
+## v0.1.9 - Voucher Error Handling
+*Last month*
+
+<Card title="🛠️ Bug Fixes" icon="warning">
+- Fixed voucher error response handling
+- Improved error handling for "Discount Code Already Used" scenarios
+</Card>
+
+**Pull Request:** [#18 - error-handling](https://github.com/Sellmore-Co/campaign-cart/pull/18)
+
+---
+
+## v0.1.8 - Cart Functionality Enhancement
+*Last month*
+
+<Card title="🛒 Cart Features" icon="bag">
+- Added cart functionality to add items by reference ID (`ref_id`)
+- Simplified cart add method with just `package_id`
+</Card>
+
+<Code 
+  code={`// New simplified cart method
+window.twentyNineNext.addToCartByRefId('CUSTOM-001', 1, 29.99, 'Custom Product');`}
+  lang="javascript"
+  title="New Cart Method"
+/>
+
+**Pull Request:** [#17 - cart-overrides](https://github.com/Sellmore-Co/campaign-cart/pull/17)
+
+---
+
+## v0.1.7 - Multiple Toggle Support
+*May 7, 2024*
+
+<Card title="🔄 Toggle Features" icon="toggle">
+- Allow multiple toggles sharing the same package ID
+- Solves positioning issues for mobile device displays
+</Card>
+
+---
+
+## v0.1.6 - Alphaology Features + Checkout V2
+*May 6, 2024*
+
+<CardGrid>
+  <Card title="💰 Discount Features" icon="discount">
+    Product-level discounts targeting specific package IDs
+  </Card>
+  <Card title="🏷️ Line Item Control" icon="list">
+    Attribute to remove line items from display
+  </Card>
+  <Card title="🎯 Toggle Wrapper" icon="wrapper">
+    Parent wrapper for toggle components with active states
+  </Card>
+</CardGrid>
+
+<Code 
+  code={`// Product-level discount targeting specific packages
+window.twentyNineNext.cart.applyCoupon('SUBSAVE1', 'percentage', 100, ["4"]);
+
+// Line item attributes for targeting
+data-os-line-item-type="subscription"
+data-os-line-package-id="4"`}
+  lang="javascript"
+  title="New Discount & Line Item Features"
+/>
+
+---
+
+## v0.1.5 - Payment & Shipping Improvements
+*May 5, 2024*
+
+<Card title="🎨 UI Enhancements" icon="palette">
+- Added CSS classes for active payment methods
+- Enhanced shipping selector styling on checkout
+- Shipping method improvements
+</Card>
+
+**Pull Request:** [#14 - subscription-controller](https://github.com/Sellmore-Co/campaign-cart/pull/14)
+
+---
+
+## v0.1.4 - Shipping & State Ordering
+*April 22, 2024*
+
+<Card title="🚚 Shipping Features" icon="shipping">
+- Shipping ID set on payment cards
+- Alphabetical state ordering implementation
+</Card>
+
+**Pull Request:** [#13 - shipping-methods](https://github.com/Sellmore-Co/campaign-cart/pull/13)
+
+---
+
+## v0.1.3 - Navigation Prevention Fix
+*April 16, 2024*
+
+<Card title="🔄 Navigation" icon="navigation">
+- Reverted navigation prevention feature
+- Implemented more reliable setup
+</Card>
+
+---
+
+## v0.1.2 - Major Feature Release
+*April 11, 2024*
+
+<CardGrid>
+  <Card title="📊 Analytics Improvements" icon="chart">
+    Enhanced DataLayer events and purchase tracking
+  </Card>
+  <Card title="🛒 Upsell Events" icon="upsell">
+    Comprehensive upsell purchase event system
+  </Card>
+  <Card title="🎯 Navigation Control" icon="lock">
+    Back navigation prevention on upsell pages
+  </Card>
+  <Card title="🎫 Voucher System" icon="voucher">
+    Complete voucher system with cart updates
+  </Card>
+</CardGrid>
+
+### Key Features Added:
+- **DataLayer Purchase Events**: Fire on first page after order creation
+- **View Item List Events**: Only fires when `os-package-id` elements exist
+- **Upsell Purchase Events**: Trigger on every page after upsell acceptance
+- **Custom Upsell Event**: `os_accepted_upsell` DataLayer event
+- **Navigation Prevention**: Prevents back navigation on upsell pages
+- **Enhanced Voucher System**: Updates entire cart automatically
+
+---
+
+## v0.1.1 - Receipt Documentation
+*April 8, 2024*
+
+<Card title="📄 Documentation" icon="document">
+- Added comprehensive receipt page documentation
+- Implemented shipping price display on receipt pages
+</Card>
+
+**Pull Request:** [#10 - receipt-tax-fixes](https://github.com/Sellmore-Co/campaign-cart/pull/10)
+
+---
+
+## v0.1.0 - Major Version Release
+*April 7, 2024*
+
+<Card title="🎉 Stable Release" icon="star">
+- First stable release of Campaign Cart
+- Receipt tax fixes and improvements
+</Card>
+
+**Pull Request:** [#9 - receipt-tax-fixes](https://github.com/Sellmore-Co/campaign-cart/pull/9)
+
+---
+
+## v0.0.9 - Receipt Page Enhancements
+*April 7, 2024*
+
+<Card title="🧾 Receipt Improvements" icon="receipt">
+- Include tax row summary when present
+- Remove tax from product line displays
+- Enhanced receipt page formatting
+</Card>
+
+---
+
+## v0.0.8 - Core Pricing & Express Checkout
+*April 4, 2024*
+
+<CardGrid>
+  <Card title="💲 Pricing Fixes" icon="currency">
+    Unit pricing fixes and price calculations
+  </Card>
+  <Card title="⚡ Express Checkout" icon="lightning">
+    Express checkout button implementation
+  </Card>
+  <Card title="🔗 URL Improvements" icon="link">
+    Enhanced success/failure URL handling
+  </Card>
+</CardGrid>
+
+### Features:
+- **Unit Pricing Fix**: Corrected pricing calculation logic
+- **Price Calculations**: Added price calculations inside product cards
+- **Express Checkout Buttons**: PayPal, Apple Pay, Google Pay integration
+- **URL Handling**: Improved success and failure URL management
+- **Funnel Value Fix**: Corrected funnel value in order creation payload
+
+---
+
+## v0.0.7 - Credit Card Name Fields
+*April 2, 2024*
+
+<Card title="💳 Payment Fixes" icon="credit-card">
+- Fixed first name and last name inputs on tokenization
+- Enhanced credit card processing reliability
+</Card>
+
+**Pull Request:** [#6 - credit-card-name-field](https://github.com/Sellmore-Co/campaign-cart/pull/6)
+
+---
+
+## v0.0.6a - Cart Notifications
+*March 27, 2024*
+
+<Card title="🔕 Notification System" icon="bell">
+- Cart notification removal functionality
+- Improved user experience with notification management
+</Card>
+
+**Pull Request:** [#4 - cart-trigger-message](https://github.com/Sellmore-Co/campaign-cart/pull/4)
+
+---
+
+## v0.0.5a - Validation & Upsell Fixes
+*March 26, 2024*
+
+<Card title="🛠️ Bug Fixes" icon="wrench">
+- Fixed `is_upsell=true` parameter handling
+- Enhanced international telephone input validation
+</Card>
+
+**Pull Request:** [#3 - sam-fixes-03/25/25](https://github.com/Sellmore-Co/campaign-cart/pull/3)
+
+---
+
+## v0.0.4a - General Bug Fixes
+*March 21, 2024*
+
+<Card title="🐛 Bug Fixes" icon="bug">
+- Multiple bug fixes and stability improvements
+- Enhanced error handling and validation
+</Card>
+
+**Pull Request:** [#2 - sam-fixes](https://github.com/Sellmore-Co/campaign-cart/pull/2)
+
+---
+
+## v0.0.3a - Post-Purchase Upsells
+*March 20, 2024*
+
+<Card title="🚀 Major Feature" icon="upsell">
+- **Post-Purchase Upsell Functionality**: Complete upsell system implementation
+</Card>
+
+### Features Added:
+- **`createOrderUpsell` method**: New API client method for upsells
+- **UpsellManager**: Dedicated manager for upsell functionality  
+- **Upsell Page Detection**: Automatic initialization on upsell pages
+- **Button Protection**: Prevents multiple submissions during processing
+
+📖 **Documentation**: See `docs/Upsell.md` for complete implementation guide
+
+---
+
+## v0.0.1a - Initial Alpha Release
+*March 20, 2024*
+
+<Card title="🎯 Alpha Launch" icon="rocket">
+- **Initial Alpha Release**: First public release of Campaign Cart
+- Core functionality and basic feature set
+- Compiled distribution files included
+</Card>
+
+### Core Features:
+- Basic shopping cart functionality
+- Checkout form integration
+- Payment processing foundation
+- HTML attribute-based interactions
+
+---
+
+## Getting Started
+
+Ready to implement Campaign Cart? Check out our [Getting Started Guide](/introduction/getting-started/) for setup instructions and examples.
+
+## Support
+
+For questions about any release or feature, visit our [documentation](/introduction/overview/) or check the [JavaScript API reference](/api/javascript-api/).

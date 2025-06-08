@@ -3,8 +3,6 @@ title: HTML Attributes Reference
 description: Complete reference for Campaign Cart HTML data attributes and interactive elements
 ---
 
-# HTML Attributes Reference
-
 Campaign Cart uses data attributes to create interactive elements without writing JavaScript.
 
 ## Attribute Prefix

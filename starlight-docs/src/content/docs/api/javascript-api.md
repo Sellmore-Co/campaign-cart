@@ -3,8 +3,6 @@ title: JavaScript API Reference
 description: Complete reference for Campaign Cart's JavaScript API methods and properties
 ---
 
-# JavaScript API Reference
-
 Complete reference for Campaign Cart's JavaScript API.
 
 ## Global Object

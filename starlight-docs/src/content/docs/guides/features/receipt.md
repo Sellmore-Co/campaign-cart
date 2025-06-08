@@ -1,4 +1,7 @@
-# Receipt Page Guide
+---
+title: Receipt Page Guide
+description: Complete guide to implementing order confirmation receipt pages that automatically display order details
+---
 
 Complete guide to implementing order confirmation receipt pages that automatically display order details.
 

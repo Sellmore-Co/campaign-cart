@@ -1,4 +1,7 @@
-# Google Address Autocomplete Guide
+---
+title: Google Address Autocomplete Guide
+description: Guide to implementing Google Maps address autocomplete for checkout forms
+---
 
 Guide to implementing Google Maps address autocomplete for checkout forms.
 

@@ -1,6 +1,7 @@
-# Page Types & Meta Tags
-
-[← Basic Configuration](basic-config.md) | [Form Validation →](form-validation.md)
+---
+title: Page Types & Meta Tags
+description: Quick reference for essential meta tags required on different types of pages in your funnel
+---
 
 This guide provides a quick reference for the essential `meta` tags required on different types of pages in your funnel. Using the correct `os-page-type` is crucial for the SDK to initialize the correct features for each step.
 

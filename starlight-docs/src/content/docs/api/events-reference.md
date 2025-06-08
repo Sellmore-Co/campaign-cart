@@ -3,8 +3,6 @@ title: Events Reference
 description: Complete reference of all events emitted by Campaign Cart for analytics and custom integrations
 ---
 
-# Events Reference
-
 Complete reference of all events emitted by Campaign Cart.
 
 ## Event System Overview

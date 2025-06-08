@@ -1,4 +1,7 @@
-# Upsells Guide
+---
+title: Upsells Guide
+description: Complete guide to implementing post-purchase upsells to increase average order value
+---
 
 Complete guide to implementing post-purchase upsells to increase average order value.
 

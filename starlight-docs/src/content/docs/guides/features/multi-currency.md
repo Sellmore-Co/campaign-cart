@@ -1,11 +1,7 @@
 ---
 title: Multi-Currency Guide
-description: Complete guide to implementing multi-currency support with automatic country detection
+description: Complete guide to implementing multi-currency support with automatic country detection and campaign switching
 ---
-
-# Multi-Currency Guide
-
-Complete guide to implementing multi-currency support with automatic country detection and campaign switching.
 
 ## Overview
 

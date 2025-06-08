@@ -65,6 +65,12 @@ export default defineConfig({
 						{ label: 'Basic Implementation', slug: 'examples/basic-implementation' },
 					],
 				},
+				{
+					label: 'Release Notes',
+					items: [
+						{ label: 'Changelog', slug: 'changelog' },
+					],
+				},
 			],
 		}),
 	],

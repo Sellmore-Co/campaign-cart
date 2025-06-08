@@ -3,8 +3,6 @@ title: Overview
 description: Introduction to Campaign Cart - A JavaScript SDK for e-commerce integration
 ---
 
-# Overview
-
 ## What is Campaign Cart?
 
 A JavaScript SDK that connects the 29next API to web pages through HTML attributes. Works with Webflow, custom HTML, or any page builder.

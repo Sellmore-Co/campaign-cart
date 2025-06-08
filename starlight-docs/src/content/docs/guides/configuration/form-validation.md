@@ -1,6 +1,7 @@
-# Form Validation Guide
-
-[← Basic Configuration](basic-config.md) | [Payment Configuration →](payment-config.md)
+---
+title: Form Validation Guide
+description: Campaign Cart automatic client-side form validation for checkout fields using HTML5 attributes
+---
 
 Campaign Cart provides automatic, client-side form validation for your checkout fields using standard HTML5 attributes.
 
