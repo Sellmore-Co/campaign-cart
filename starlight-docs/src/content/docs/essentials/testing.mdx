@@ -1,0 +1,388 @@
+---
+title: Testing Your Integration
+description: Learn how to test Campaign Cart implementations during development and before going live
+---
+
+{/* 
+📍 DOCUMENTATION PROGRESS: Phase 1 - Foundation (FIXING NAVIGATION - FINAL STEP)
+✅ COMPLETED: Created testing guide to complete essentials navigation
+🔄 NEXT: Move to Phase 2 content reorganization as requested
+*/}
+
+import { Steps, Aside, Card, CardGrid, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Testing your Campaign Cart integration is essential to ensure everything works correctly before your customers see it. This guide covers the tools and techniques you need to test cart functionality, payment processing, and user flows.
+
+## Test Mode Overview
+
+Campaign Cart includes a comprehensive test mode that simulates all functionality without processing real payments or creating live orders. Test mode lets you validate your entire implementation safely.
+
+<Aside type="tip">
+**Always Test First:** Campaign Cart test mode processes everything exactly like production but uses test payment processors and doesn't charge real money. This gives you confidence your integration works perfectly.
+</Aside>
+
+## Setting Up Test Mode
+
+### Test API Credentials
+
+Configure Campaign Cart with test credentials to enable test mode throughout your site.
+
+<Tabs>
+  <TabItem label="Meta Tags">
+    <Code code={`<!-- Use test API key in development -->
+<meta name="os-api-key" content="test_pk_1234567890abcdef">
+<meta name="os-environment" content="test">
+
+<!-- Your pages will now run in test mode -->`} lang="html" />
+  </TabItem>
+  
+  <TabItem label="JavaScript Config">
+    <Code code={`window.osConfig = {
+  apiKey: 'test_pk_1234567890abcdef',
+  environment: 'test',
+  debug: true // Enable debug logging
+};`} lang="js" />
+  </TabItem>
+</Tabs>
+
+**How to Get Test Credentials:**
+1. Log into your 29next dashboard
+2. Navigate to Settings → API Keys
+3. Copy your Test API Key (starts with `test_pk_`)
+4. Never use live keys during development
+
+### Test Mode Indicators
+
+When test mode is active, Campaign Cart provides visual indicators so you know you're not processing real transactions.
+
+<Code code={`/* Test mode automatically adds CSS classes */
+.os--test-mode {
+  /* Styles applied to test elements */
+  border: 2px dashed orange;
+}
+
+.os--test-mode::before {
+  content: "TEST MODE";
+  background: orange;
+  color: white;
+  padding: 2px 6px;
+  font-size: 12px;
+}`} lang="css" />
+
+## Testing Cart Functionality
+
+### Basic Cart Operations
+
+Test all cart actions to ensure products add, remove, and update correctly.
+
+<Steps>
+1. **Add Products to Cart**
+   
+   Click add-to-cart buttons and verify the cart count updates. Test with different products and quantities.
+
+2. **Remove Products from Cart**
+   
+   Test remove buttons and clear-cart functionality. Ensure cart totals recalculate correctly.
+
+3. **Quantity Changes**
+   
+   If your site supports quantity updates, test increasing and decreasing quantities.
+
+4. **Cart Persistence**
+   
+   Refresh the page and navigate between pages to ensure cart contents persist properly.
+</Steps>
+
+### Testing Product Selectors
+
+For sites using selectors (choose-one interfaces), test the selection behavior thoroughly.
+
+<Code code={`<!-- Test selector with debug attributes -->
+<div data-os-component="selector" 
+     data-os-selection-mode="swap" 
+     data-os-id="main-product"
+     data-os-debug="true">
+  
+  <div data-os-element="card" data-os-package="1" data-os-selected="true">
+    <h3>Basic Plan - $97</h3>
+  </div>
+  
+  <div data-os-element="card" data-os-package="2">
+    <h3>Pro Plan - $197</h3>
+  </div>
+</div>`} lang="html" />
+
+**Selector Test Checklist:**
+- Only one item can be selected at a time
+- Clicking switches selection between items
+- Cart contents update when selection changes
+- Visual state (selected/unselected) works correctly
+
+## Testing Checkout Process
+
+### Test Payment Methods
+
+Campaign Cart integrates with test payment processors so you can simulate transactions without real money.
+
+<CardGrid>
+  <Card title="Test Credit Cards" icon="credit-card">
+    Use test card numbers that simulate different scenarios:
+    
+    - **4242424242424242** - Successful payment
+    - **4000000000000002** - Card declined
+    - **4000000000009995** - Insufficient funds
+  </Card>
+  
+  <Card title="PayPal Sandbox" icon="paypal">
+    PayPal provides sandbox accounts for testing:
+    
+    - Test buyer accounts with fake money
+    - Simulate successful and failed payments
+    - Test PayPal's redirect flow
+  </Card>
+</CardGrid>
+
+### Form Validation Testing
+
+Test all form validation scenarios to ensure proper error handling.
+
+<Code code={`<!-- Test form with validation -->
+<form data-os-checkout-form>
+  <input type="email" name="email" required 
+         data-os-test-id="email-field">
+  <input type="text" name="firstName" required
+         data-os-test-id="first-name-field">
+  <input type="text" name="lastName" required
+         data-os-test-id="last-name-field">
+         
+  <button type="submit" data-os-test-id="checkout-button">
+    Complete Order
+  </button>
+</form>`} lang="html" />
+
+**Form Testing Scenarios:**
+- Submit empty form (should show validation errors)
+- Submit with invalid email format
+- Submit with missing required fields
+- Submit with valid data (should process successfully)
+
+## Testing User Flows
+
+### Complete Purchase Flow
+
+Test the entire customer journey from product selection to receipt.
+
+<Steps>
+1. **Product Page**
+   
+   Add items to cart, test different quantities and product combinations.
+
+2. **Cart Review**
+   
+   Verify cart contents, totals, and any discount codes or shipping calculations.
+
+3. **Checkout Form**
+   
+   Fill out customer information and test form validation.
+
+4. **Payment Processing**
+   
+   Use test payment methods to simulate successful and failed transactions.
+
+5. **Receipt Page**
+   
+   Confirm order details display correctly and any post-purchase actions work.
+</Steps>
+
+### Multi-Page Testing
+
+For sites with separate cart, checkout, and receipt pages, test navigation between pages.
+
+<Code code={`<!-- Page type configuration for testing -->
+<!-- Sales Page -->
+<meta name="os-page-type" content="sales">
+<meta name="os-next-page" content="/checkout.html">
+
+<!-- Checkout Page -->
+<meta name="os-page-type" content="checkout">
+<meta name="os-next-page" content="/receipt.html">
+
+<!-- Receipt Page -->
+<meta name="os-page-type" content="receipt">`} lang="html" />
+
+## Using Browser Developer Tools
+
+### Debug Console
+
+Campaign Cart provides extensive console logging in test mode to help debug issues.
+
+<Code code={`// Enable debug logging
+window.osConfig = {
+  debug: true,
+  logLevel: 'verbose' // Options: 'error', 'warn', 'info', 'verbose'
+};
+
+// Watch for Campaign Cart events in console
+window.addEventListener('os:debug', function(event) {
+  console.log('Campaign Cart Debug:', event.detail);
+});`} lang="js" />
+
+### Network Tab Monitoring
+
+Monitor the Network tab in browser dev tools to see API calls and responses.
+
+**What to Look For:**
+- API calls to 29next endpoints
+- Successful responses (status 200)
+- Error responses and their details
+- Payment processor communication
+
+### Element Inspection
+
+Use the Elements tab to verify Campaign Cart is adding the correct attributes and classes.
+
+<Code code={`/* Campaign Cart adds these classes automatically */
+.os--cart-empty        /* When cart has no items */
+.os--cart-not-empty    /* When cart has items */
+.os--loading           /* During API calls */
+.os--error             /* When errors occur */
+.os--test-mode         /* In test mode */
+
+/* Package-specific classes */
+.os--package-in-cart-1 /* When package ID 1 is in cart */`} lang="css" />
+
+## Testing Checklist
+
+### Before Going Live
+
+<Steps>
+1. **Test All Products**
+   
+   Every product can be added to cart, removed, and purchased successfully.
+
+2. **Test Payment Methods**
+   
+   All enabled payment methods (credit card, PayPal, etc.) work correctly.
+
+3. **Test Form Validation**
+   
+   Required fields are enforced and error messages are clear.
+
+4. **Test Mobile Experience**
+   
+   All functionality works on mobile devices and tablets.
+
+5. **Test Error Scenarios**
+   
+   Declined payments, network errors, and invalid data are handled gracefully.
+
+6. **Verify Analytics**
+   
+   Purchase events and conversion tracking work correctly.
+
+7. **Check Receipt Page**
+   
+   Order information displays correctly and confirmation emails send.
+</Steps>
+
+### Performance Testing
+
+Test your site's performance with Campaign Cart enabled to ensure good user experience.
+
+<Aside type="note">
+**Load Time Impact:** Campaign Cart is optimized for performance, but you should test page load times with the SDK enabled to ensure they meet your standards.
+</Aside>
+
+## Common Testing Issues
+
+### Cart Not Updating
+
+If cart displays don't update when items are added:
+
+<Code code={`// Check for JavaScript errors in console
+// Verify cart display elements have correct attributes
+<span data-os-cart-count>0</span>  <!-- Correct -->
+<span data-cart-count>0</span>     <!-- Incorrect - missing 'os' prefix -->
+
+// Ensure Campaign Cart is loaded before cart actions
+<script src="https://cdn.29next.com/campaign-cart/v1/29next.min.js"></script>`} lang="html" />
+
+### Payment Form Errors
+
+If checkout forms don't submit or show errors:
+
+1. **Check API Key** - Ensure you're using the correct test API key
+2. **Verify Form Fields** - All required fields must have proper `name` attributes
+3. **Test Network** - Check browser network tab for failed API calls
+4. **Review Console** - Look for JavaScript errors or Campaign Cart debug messages
+
+### Mobile Testing Issues
+
+Test thoroughly on actual mobile devices, not just browser dev tools.
+
+**Common Mobile Issues:**
+- Touch events on cart buttons
+- Form field behavior and autocomplete
+- Payment method selection
+- Checkout form usability
+
+## Moving to Production
+
+### Switching to Live Mode
+
+When you're ready to process real payments, update your configuration to use live credentials.
+
+<Tabs>
+  <TabItem label="Production Config">
+    <Code code={`<!-- Replace test key with live key -->
+<meta name="os-api-key" content="pk_live_your_live_key_here">
+<meta name="os-environment" content="live">
+
+<!-- Remove debug mode -->
+<!-- <meta name="os-debug" content="true"> -->`} lang="html" />
+  </TabItem>
+  
+  <TabItem label="Environment Variables">
+    <Code code={`// Use environment variables for different deployments
+const apiKey = process.env.NODE_ENV === 'production' 
+  ? 'pk_live_your_live_key'
+  : 'test_pk_your_test_key';
+
+window.osConfig = {
+  apiKey: apiKey,
+  environment: process.env.NODE_ENV === 'production' ? 'live' : 'test'
+};`} lang="js" />
+  </TabItem>
+</Tabs>
+
+<Aside type="caution">
+**Never Use Live Keys in Development:** Always use test API keys during development and testing. Live keys should only be used in production environments.
+</Aside>
+
+## Next Steps
+
+<CardGrid>
+  <Card title="🚀 Go Live" icon="rocket">
+    Ready to launch? Learn about production deployment
+    
+    → [Production Deployment Guide](/guides/advanced/production-deployment/)
+  </Card>
+  
+  <Card title="🛠️ Troubleshooting" icon="tools">
+    Found issues during testing? Get help fixing them
+    
+    → [Troubleshooting Guide](/essentials/troubleshooting/)
+  </Card>
+  
+  <Card title="📊 Analytics" icon="chart">
+    Track conversions and performance in production
+    
+    → [Analytics Integration](/guides/advanced/analytics/)
+  </Card>
+  
+  <Card title="🔍 Debug Mode" icon="magnifier">
+    Learn advanced debugging techniques
+    
+    → [Debug Mode Reference](/guides/advanced/debugging/)
+  </Card>
+</CardGrid>

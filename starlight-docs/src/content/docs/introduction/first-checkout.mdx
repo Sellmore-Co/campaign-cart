@@ -1,0 +1,447 @@
+---
+title: Your First Checkout
+description: Build a complete e-commerce flow from product selection to order receipt
+---
+
+{/* 
+📍 DOCUMENTATION PROGRESS: Phase 1 - Foundation (Step 3/4)
+✅ COMPLETED: Created end-to-end checkout tutorial
+🔄 NEXT: Create essentials section with installation, testing, troubleshooting
+📋 REMAINING: Enhanced core-concepts, content reorganization (Phase 2)
+*/}
+
+import { Steps, Aside, Card, CardGrid, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Build a **complete e-commerce experience** from product selection to order confirmation. This tutorial walks you through creating a real checkout flow that your customers will love.
+
+## What You'll Build
+
+<CardGrid>
+  <Card title="🛍️ Product Page" icon="package">
+    Product selection with pricing and cart functionality
+  </Card>
+  <Card title="💳 Checkout Page" icon="payment">
+    Complete checkout form with payment processing
+  </Card>
+  <Card title="📄 Receipt Page" icon="document">
+    Order confirmation with customer details
+  </Card>
+</CardGrid>
+
+<Aside type="tip">
+**Time Required:** 15-20 minutes  
+**Skill Level:** Beginner  
+**Prerequisites:** Basic HTML knowledge and [Quick Start](/introduction/quick-start/) completed
+</Aside>
+
+## Page 1: Product Selection
+
+Create your product page with multiple options and cart display:
+
+<Code 
+  code={`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Course Store</title>
+    
+    <!-- Campaign Cart Setup -->
+    <meta name="os-api-key" content="YOUR_API_KEY">
+    <meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
+    <meta name="os-page-type" content="sales">
+    <meta name="os-next-page" content="/checkout.html">
+    
+    <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+    
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .product-card { border: 2px solid #ddd; border-radius: 8px; padding: 20px; margin: 20px 0; cursor: pointer; transition: border-color 0.3s; }
+        .product-card:hover, .product-card.selected { border-color: #007cba; }
+        .cart-summary { background: #f8f9fa; padding: 20px; border-radius: 8px; position: sticky; top: 20px; }
+        .checkout-btn { background: #28a745; color: white; border: none; padding: 15px 30px; border-radius: 5px; font-size: 18px; width: 100%; cursor: pointer; }
+        .checkout-btn:hover { background: #218838; }
+        .addon { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Premium Web Development Course</h1>
+    
+    <!-- Main Product Selector -->
+    <h2>Choose Your Package</h2>
+    <div data-os-component="selector" data-os-selection-mode="swap" data-os-id="course-packages">
+        
+        <!-- Basic Package -->
+        <div class="product-card" data-os-element="card" data-os-package="1" data-os-selected="true">
+            <h3>Basic Course</h3>
+            <p>Core web development fundamentals</p>
+            <ul>
+                <li>20 hours of video content</li>
+                <li>Code examples and exercises</li>
+                <li>Certificate of completion</li>
+            </ul>
+            <div style="font-size: 24px; font-weight: bold; color: #007cba;">
+                $<span data-os-package-price data-os-package-id="1">97</span>
+            </div>
+        </div>
+        
+        <!-- Premium Package -->
+        <div class="product-card" data-os-element="card" data-os-package="2">
+            <h3>Premium Course</h3>
+            <p>Everything in Basic plus advanced topics</p>
+            <ul>
+                <li>40 hours of video content</li>
+                <li>Advanced JavaScript frameworks</li>
+                <li>1-on-1 mentoring session</li>
+                <li>Job placement assistance</li>
+            </ul>
+            <div style="font-size: 24px; font-weight: bold; color: #007cba;">
+                $<span data-os-package-price data-os-package-id="2">197</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add-on Options -->
+    <h2>Add-ons</h2>
+    
+    <div class="addon">
+        <label>
+            <input type="checkbox" data-os-action="toggle-item" data-os-package="3"> 
+            <strong>Bonus: React Masterclass</strong> - $47
+        </label>
+        <p>Deep dive into React with real projects</p>
+    </div>
+    
+    <div class="addon">
+        <label>
+            <input type="checkbox" data-os-action="toggle-item" data-os-package="4">
+            <strong>Source Code Library</strong> - $27
+        </label>
+        <p>Download all course source code and templates</p>
+    </div>
+    
+    <!-- Cart Summary -->
+    <div class="cart-summary">
+        <h3>Your Order</h3>
+        <p>Items: <span data-os-cart-count>0</span></p>
+        <p>Subtotal: <span data-os-cart-subtotal>$0.00</span></p>
+        <p>Savings: <span data-os-cart-summary="savings-amount">$0.00</span></p>
+        <hr>
+        <p style="font-size: 20px; font-weight: bold;">
+            Total: <span data-os-cart-total>$0.00</span>
+        </p>
+        
+        <button class="checkout-btn" os-checkout-payment="combo">
+            Proceed to Checkout
+        </button>
+    </div>
+</body>
+</html>`}
+  lang="html" 
+  title="product-page.html"
+/>
+
+### Key Features Explained
+
+<Tabs>
+  <TabItem label="Product Selector">
+    **`data-os-component="selector"`** creates a group where only one item can be selected at a time. Perfect for main product choices like Basic vs Premium.
+  </TabItem>
+  
+  <TabItem label="Add-on Toggles">
+    **`data-os-action="toggle-item"`** creates independent checkboxes for optional add-ons that customers can include or skip.
+  </TabItem>
+  
+  <TabItem label="Live Cart Updates">
+    Elements with **`data-os-cart-*`** attributes automatically update when customers change their selection - no custom JavaScript needed!
+  </TabItem>
+</Tabs>
+
+## Page 2: Checkout Form
+
+Create a checkout page that handles customer information and payment:
+
+<Code 
+  code={`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Online Course Store</title>
+    
+    <!-- Campaign Cart Setup -->
+    <meta name="os-api-key" content="YOUR_API_KEY">
+    <meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
+    <meta name="os-page-type" content="checkout">
+    <meta name="os-next-page" content="/receipt.html">
+    
+    <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+    
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f8f9fa; }
+        .checkout-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; }
+        .form-row { display: flex; gap: 15px; }
+        .form-row .form-group { flex: 1; }
+        .order-summary { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .submit-btn { background: #28a745; color: white; border: none; padding: 15px 30px; border-radius: 5px; font-size: 18px; width: 100%; cursor: pointer; }
+        .submit-btn:hover { background: #218838; }
+    </style>
+</head>
+<body>
+    <div class="checkout-container">
+        <h1>Complete Your Order</h1>
+        
+        <!-- Order Summary -->
+        <div class="order-summary">
+            <h3>Order Summary</h3>
+            <p>Items: <span data-os-cart-count>0</span></p>
+            <p style="font-size: 18px; font-weight: bold;">
+                Total: <span data-os-cart-total>$0.00</span>
+            </p>
+        </div>
+        
+        <!-- Checkout Form -->
+        <form id="checkout-form">
+            
+            <!-- Customer Information -->
+            <h3>Customer Information</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="first-name">First Name *</label>
+                    <input type="text" id="first-name" name="firstName" required>
+                </div>
+                <div class="form-group">
+                    <label for="last-name">Last Name *</label>
+                    <input type="text" id="last-name" name="lastName" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Address *</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone">
+            </div>
+            
+            <!-- Billing Address -->
+            <h3>Billing Address</h3>
+            <div class="form-group">
+                <label for="address">Address *</label>
+                <input type="text" id="address" name="address" required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="city">City *</label>
+                    <input type="text" id="city" name="city" required>
+                </div>
+                <div class="form-group">
+                    <label for="state">State *</label>
+                    <select id="state" name="state" required>
+                        <option value="">Select State</option>
+                        <option value="CA">California</option>
+                        <option value="NY">New York</option>
+                        <option value="TX">Texas</option>
+                        <!-- Add more states as needed -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="zip">ZIP Code *</label>
+                    <input type="text" id="zip" name="zip" required>
+                </div>
+            </div>
+            
+            <!-- Payment Method -->
+            <h3>Payment Method</h3>
+            <div class="form-group">
+                <label>Choose Payment Method</label>
+                <div style="margin-top: 10px;">
+                    <button type="button" os-checkout-payment="card" style="margin-right: 10px;">
+                        💳 Credit Card
+                    </button>
+                    <button type="button" os-checkout-payment="paypal">
+                        🅿️ PayPal
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Submit Button -->
+            <button type="submit" class="submit-btn" os-checkout-payment="combo">
+                Complete Order
+            </button>
+            
+        </form>
+    </div>
+</body>
+</html>`}
+  lang="html" 
+  title="checkout.html"
+/>
+
+### Checkout Features
+
+<CardGrid>
+  <Card title="🔒 Secure Forms" icon="lock">
+    Form validation happens automatically. Required fields are checked before payment processing.
+  </Card>
+  
+  <Card title="💳 Multiple Payment Methods" icon="payment">
+    Customers can choose credit card, PayPal, or other configured payment methods.
+  </Card>
+  
+  <Card title="📱 Mobile Optimized" icon="mobile">
+    Responsive design works perfectly on phones and tablets.
+  </Card>
+</CardGrid>
+
+## Page 3: Order Receipt
+
+Create a receipt page that displays order confirmation:
+
+<Code 
+  code={`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation</title>
+    
+    <!-- Campaign Cart Setup -->
+    <meta name="os-api-key" content="YOUR_API_KEY">
+    <meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
+    <meta name="os-page-type" content="receipt">
+    
+    <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+    
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .receipt-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .success-header { text-align: center; color: #28a745; margin-bottom: 30px; }
+        .order-details { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .customer-info { border-top: 1px solid #ddd; padding-top: 20px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="receipt-container">
+        <div class="success-header">
+            <h1>✅ Order Confirmed!</h1>
+            <p>Thank you for your purchase. Your order has been processed successfully.</p>
+        </div>
+        
+        <!-- Order Information -->
+        <div class="order-details">
+            <h3>Order Details</h3>
+            <p><strong>Order Number:</strong> <span data-os-receipt="order-id">Loading...</span></p>
+            <p><strong>Order Date:</strong> <span data-os-receipt="order-date">Loading...</span></p>
+            <p><strong>Total Amount:</strong> <span data-os-receipt="order-total">Loading...</span></p>
+        </div>
+        
+        <!-- Items Purchased -->
+        <h3>Items Purchased</h3>
+        <div data-os-receipt="line-items">
+            <!-- Line items will be automatically populated -->
+        </div>
+        
+        <!-- Customer Information -->
+        <div class="customer-info">
+            <h3>Customer Information</h3>
+            <p><strong>Name:</strong> <span data-os-receipt="customer-name">Loading...</span></p>
+            <p><strong>Email:</strong> <span data-os-receipt="customer-email">Loading...</span></p>
+            <p><strong>Phone:</strong> <span data-os-receipt="customer-phone">Loading...</span></p>
+        </div>
+        
+        <!-- Billing Address -->
+        <div class="customer-info">
+            <h3>Billing Address</h3>
+            <div data-os-receipt="billing-address">
+                <!-- Address will be automatically populated -->
+            </div>
+        </div>
+        
+        <!-- Next Steps -->
+        <div style="background: #d4edda; padding: 20px; border-radius: 8px; margin-top: 30px;">
+            <h3>What's Next?</h3>
+            <p>📧 <strong>Check your email</strong> - We've sent your course access details and receipt</p>
+            <p>🎓 <strong>Start learning</strong> - Log in to your student portal to begin</p>
+            <p>❓ <strong>Need help?</strong> - Contact support at help@example.com</p>
+        </div>
+    </div>
+</body>
+</html>`}
+  lang="html" 
+  title="receipt.html"
+/>
+
+## Testing Your Complete Flow
+
+<Steps>
+1. **Start on Product Page** - Select a package and add-ons
+2. **Go to Checkout** - Fill out the form with test information
+3. **Use Test Payment** - Card number: `4111 1111 1111 1111`, any future date, any CVV
+4. **Complete Purchase** - You should reach the receipt page
+5. **Verify Receipt** - All order details should display correctly
+</Steps>
+
+<Aside type="tip">
+**Test Information:**
+- **Email:** Use a real email to receive confirmation
+- **Card:** `4111 1111 1111 1111` (Visa test card)
+- **CVV:** Any 3-digit number
+- **Expiry:** Any future date
+</Aside>
+
+## Common Customizations
+
+<CardGrid>
+  <Card title="🎨 Styling" icon="palette">
+    Customize CSS to match your brand colors and fonts. All Campaign Cart elements can be styled normally.
+  </Card>
+  
+  <Card title="💰 Pricing" icon="currency">
+    Add discount codes, shipping options, or tax calculation using our advanced features.
+  </Card>
+  
+  <Card title="📧 Emails" icon="email">
+    Set up automated email receipts and follow-up sequences in your 29next dashboard.
+  </Card>
+  
+  <Card title="📊 Analytics" icon="chart">
+    Track conversions with Google Analytics, Facebook Pixel, or other analytics tools.
+  </Card>
+</CardGrid>
+
+## What's Next?
+
+You now have a complete checkout flow! Here are some ways to enhance it:
+
+<CardGrid>
+  <Card title="🌍 Go Global" icon="world">
+    Add multi-currency support for international customers
+    
+    → [Multi-Currency Guide](/guides/features/multi-currency/)
+  </Card>
+  
+  <Card title="🎯 Add Upsells" icon="trending-up">
+    Increase revenue with post-purchase upsell offers
+    
+    → [Upsells Guide](/guides/features/upsells/)
+  </Card>
+  
+  <Card title="💳 Express Checkout" icon="rocket">
+    Add PayPal Express, Apple Pay, and Google Pay
+    
+    → [Express Checkout](/guides/features/express-checkout/)
+  </Card>
+  
+  <Card title="🛠️ Advanced Features" icon="cog">
+    Explore timers, product profiles, and custom events
+    
+    → [All Features](/guides/features/shopping-cart/)
+  </Card>
+</CardGrid>

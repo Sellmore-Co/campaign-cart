@@ -1,0 +1,484 @@
+---
+title: Troubleshooting Guide
+description: Common issues and solutions for Campaign Cart implementation
+---
+
+{/* 
+📍 DOCUMENTATION PROGRESS: Phase 1 - Foundation (Step 4/4)
+✅ COMPLETED: Created comprehensive troubleshooting guide
+🔄 NEXT: Update navigation to include essentials section
+📋 REMAINING: Phase 2 content reorganization by workflow
+*/}
+
+import { Steps, Aside, Card, CardGrid, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Fix common Campaign Cart issues quickly with this comprehensive troubleshooting guide. Most problems can be resolved in minutes with the right approach.
+
+## Quick Diagnostic Steps
+
+<Steps>
+1. **Check Browser Console** - Look for JavaScript errors (F12 → Console)
+2. **Verify Installation** - Ensure Campaign Cart script loaded
+3. **Test API Credentials** - Confirm your API key and campaign ID work
+4. **Enable Debug Mode** - Get detailed logging information
+</Steps>
+
+<Aside type="tip">
+**Debug Mode:** Add `<meta name="os-debug" content="true">` to see detailed logging in your browser console. This reveals what Campaign Cart is doing behind the scenes.
+</Aside>
+
+## Installation Issues
+
+### ❌ Campaign Cart Not Loading
+
+**Symptoms:**
+- Nothing happens when clicking buttons
+- `window.twentyNineNext` is undefined
+- No console messages
+
+**Solutions:**
+
+<Tabs>
+  <TabItem label="Check Script Loading">
+    <Code 
+      code={`// Open browser console and run:
+console.log('Campaign Cart loaded:', typeof window.twentyNineNext !== 'undefined');
+
+// Should output: "Campaign Cart loaded: true"`}
+      lang="javascript"
+    />
+    
+    If false, check:
+    - Script URL is correct
+    - No 404 errors in Network tab
+    - Ad blockers aren't blocking the script
+  </TabItem>
+  
+  <TabItem label="Network Issues">
+    Common causes:
+    - **Ad Blockers** - Disable temporarily to test
+    - **Firewall** - Check corporate firewall settings
+    - **HTTPS/HTTP** - Ensure protocol matches your site
+    - **Typos** - Verify script URL spelling
+  </TabItem>
+  
+  <TabItem label="Browser Compatibility">
+    <Code 
+      code={`// Check browser support
+if (!window.fetch) {
+  console.error('Browser too old - needs modern browser');
+}
+
+// Minimum requirements:
+// Chrome 90+, Firefox 88+, Safari 14+, Edge 90+`}
+      lang="javascript"
+    />
+  </TabItem>
+</Tabs>
+
+### ⚠️ Script Loads But Features Don't Work
+
+**Symptoms:**
+- Campaign Cart loads (`window.twentyNineNext` exists)
+- Buttons don't respond
+- Cart doesn't update
+
+**Check Configuration:**
+
+<Code 
+  code={`<!-- Verify meta tags are correct -->
+<meta name="os-api-key" content="YOUR_ACTUAL_API_KEY">
+<meta name="os-campaign-id" content="YOUR_ACTUAL_CAMPAIGN_ID">
+
+<!-- Enable debug mode -->
+<meta name="os-debug" content="true">`}
+  lang="html"
+  title="Configuration Check"
+/>
+
+## API and Credentials Issues
+
+### 🔑 Invalid API Key Errors
+
+**Symptoms:**
+- Console shows "Invalid API key" or 401 errors
+- Products don't load
+- Checkout fails
+
+**Solutions:**
+
+<CardGrid>
+  <Card title="1. Verify API Key" icon="key">
+    - Log in to [29next Dashboard](https://dashboard.29next.com)
+    - Check API Keys section
+    - Ensure key is **active** and **not expired**
+    - Copy exact key (including any prefixes)
+  </Card>
+  
+  <Card title="2. Check Key Format" icon="code">
+    <Code code={`// Correct format examples:
+"live_pk_1234567890abcdef"  // Live key
+"test_pk_abcdef1234567890"  // Test key
+
+// Wrong formats:
+"1234567890abcdef"          // Missing prefix
+"pk_1234567890abcdef"       // Missing environment`} lang="javascript" />
+  </Card>
+</CardGrid>
+
+### 📊 Campaign ID Issues
+
+**Symptoms:**
+- Products show $0.00 or "Loading..."
+- Package IDs don't work
+- Wrong currency displayed
+
+**Diagnostic Steps:**
+
+<Code 
+  code={`// Check campaign data in console
+window.twentyNineNext.ready(() => {
+  const campaign = window.twentyNineNext.getCampaignData();
+  console.log('Campaign:', campaign);
+  
+  // Should show your campaign name, currency, packages
+});`}
+  lang="javascript"
+  title="Campaign Diagnostic"
+/>
+
+## Cart and Product Issues
+
+### 🛒 Cart Count Not Updating
+
+**Symptoms:**
+- Clicking "Add to Cart" does nothing
+- Cart count stays at 0
+- No visual feedback
+
+**Check HTML Attributes:**
+
+<Tabs>
+  <TabItem label="Common Mistakes">
+    <Code 
+      code={`<!-- ❌ Wrong -->
+<button data-action="toggle-item" data-package="1">Add</button>
+<span data-cart-count>0</span>
+
+<!-- ✅ Correct -->
+<button data-os-action="toggle-item" data-os-package="1">Add</button>
+<span data-os-cart-count>0</span>`}
+      lang="html"
+    />
+    
+    **Key Points:**
+    - All attributes must start with `data-os-`
+    - Use exact spelling: `toggle-item`, not `toggle_item`
+  </TabItem>
+  
+  <TabItem label="Package ID Issues">
+    <Code 
+      code={`<!-- Check package ID exists -->
+<button data-os-action="toggle-item" data-os-package="999">
+  This won't work if package 999 doesn't exist
+</button>
+
+<!-- Use product profiles instead -->
+<button data-os-action="toggle-item" data-os-profile="starter-kit">
+  More reliable with profiles
+</button>`}
+      lang="html"
+    />
+  </TabItem>
+</Tabs>
+
+### 💰 Prices Show $0.00
+
+**Symptoms:**
+- All products show $0.00
+- Cart total is always $0.00
+- Package prices don't load
+
+**Solutions:**
+
+<Steps>
+1. **Verify Package IDs**
+   - Check your 29next dashboard for correct package IDs
+   - Ensure packages are active and published
+
+2. **Check Campaign Status**
+   - Campaign must be active
+   - Payment methods must be configured
+   - Tax settings properly configured
+
+3. **Test with Product Profiles**
+   
+   <Code code={`<!-- Instead of package IDs -->
+   <span data-os-profile-price data-os-profile-id="starter-kit">Loading...</span>`} lang="html" />
+</Steps>
+
+## Checkout Issues
+
+### 💳 Checkout Form Won't Appear
+
+**Symptoms:**
+- Clicking checkout does nothing
+- No form appears
+- Console shows errors
+
+**Check Page Configuration:**
+
+<Code 
+  code={`<!-- Required meta tags for checkout -->
+<meta name="os-page-type" content="checkout">
+<meta name="os-next-page" content="/thank-you.html">
+
+<!-- Checkout button -->
+<button os-checkout-payment="combo">Checkout</button>`}
+  lang="html"
+  title="Checkout Configuration"
+/>
+
+### 🔒 Payment Processing Errors
+
+**Symptoms:**
+- Form appears but payment fails
+- "Payment method not available" errors
+- Infinite loading
+
+**Common Causes:**
+
+<CardGrid>
+  <Card title="💳 Payment Methods" icon="payment">
+    **Check in Dashboard:**
+    - Credit card processing enabled
+    - PayPal connected
+    - Test mode vs live mode settings
+  </Card>
+  
+  <Card title="🌍 Currency Issues" icon="world">
+    **Verify:**
+    - Campaign currency matches customer location
+    - Multi-currency configured correctly
+    - Exchange rates updated
+  </Card>
+  
+  <Card title="📋 Required Fields" icon="list">
+    **Ensure:**
+    - All required form fields filled
+    - Valid email format
+    - Phone number format correct
+  </Card>
+</CardGrid>
+
+## Receipt Page Issues
+
+### 📄 Receipt Shows "Loading..."
+
+**Symptoms:**
+- Order completes but receipt is blank
+- Shows "Loading..." indefinitely
+- Missing order details
+
+**Check Receipt Configuration:**
+
+<Code 
+  code={`<!-- Receipt page meta tag -->
+<meta name="os-page-type" content="receipt">
+
+<!-- Receipt elements -->
+<span data-os-receipt="order-id">Loading...</span>
+<span data-os-receipt="order-total">Loading...</span>
+<div data-os-receipt="line-items">Loading...</div>`}
+  lang="html"
+  title="Receipt Setup"
+/>
+
+## Browser Console Debugging
+
+### Enable Detailed Logging
+
+<Code 
+  code={`<!-- Enable maximum debugging -->
+<meta name="os-debug" content="true">
+
+<script>
+// Additional logging
+window.osConfig = {
+  debug: true,
+  verboseLogging: true
+};
+
+// Manual debug commands
+window.twentyNineNext.ready(() => {
+  // Check cart state
+  console.log('Cart:', window.twentyNineNext.getCart());
+  
+  // Check configuration
+  console.log('Config:', window.twentyNineNext.getConfig());
+  
+  // Check campaign data
+  console.log('Campaign:', window.twentyNineNext.getCampaignData());
+});
+</script>`}
+  lang="html"
+  title="Debug Configuration"
+/>
+
+### Common Console Messages
+
+<Tabs>
+  <TabItem label="Normal Messages">
+    <Code 
+      code={`✅ Good messages to see:
+"Campaign Cart initialized successfully"
+"Cart updated: {items: 1, total: 97}"
+"Checkout form loaded"
+"Payment processed successfully"`}
+      lang="text"
+    />
+  </TabItem>
+  
+  <TabItem label="Warning Messages">
+    <Code 
+      code={`⚠️ Warnings (usually okay):
+"Package price not found, using $0"
+"Google Maps API not loaded"
+"Analytics pixel not configured"`}
+      lang="text"
+    />
+  </TabItem>
+  
+  <TabItem label="Error Messages">
+    <Code 
+      code={`❌ Errors that need fixing:
+"Invalid API key"
+"Campaign not found"
+"Network error: Failed to load campaign"
+"Element not found: [data-os-cart-count]"`}
+      lang="text"
+    />
+  </TabItem>
+</Tabs>
+
+## Performance Issues
+
+### 🐌 Slow Loading
+
+**Symptoms:**
+- Cart takes seconds to respond
+- Checkout form loads slowly
+- Price updates are delayed
+
+**Optimization Steps:**
+
+<Steps>
+1. **Use CDN Version**
+   <Code code={`<script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>`} lang="html" />
+
+2. **Optimize Images**
+   - Compress product images
+   - Use appropriate formats (WebP, AVIF)
+   - Implement lazy loading
+
+3. **Reduce DOM Complexity**
+   - Minimize HTML elements
+   - Remove unused CSS
+   - Optimize JavaScript
+</Steps>
+
+## Testing Tools
+
+### Manual Testing Checklist
+
+<CardGrid>
+  <Card title="🛒 Cart Functions" icon="shopping-cart">
+    - [ ] Add items to cart
+    - [ ] Remove items from cart
+    - [ ] Cart count updates
+    - [ ] Cart total updates
+    - [ ] Cart persists on page reload
+  </Card>
+  
+  <Card title="💳 Checkout Process" icon="payment">
+    - [ ] Checkout form appears
+    - [ ] Required field validation
+    - [ ] Test card processing
+    - [ ] Receipt page displays
+    - [ ] Email confirmation sent
+  </Card>
+</CardGrid>
+
+### Test Card Numbers
+
+<Aside type="note">
+**Test Credit Cards:** Use these for testing payments (they won't charge real money):
+
+- **Visa:** 4111 1111 1111 1111
+- **Mastercard:** 5555 5555 5555 4444
+- **American Express:** 3782 8224 6310 005
+- **Discover:** 6011 1111 1111 1117
+
+Use any future expiry date and any 3-4 digit CVV.
+</Aside>
+
+## Getting Additional Help
+
+### Before Contacting Support
+
+<Steps>
+1. **Gather Information**
+   - Browser and version
+   - Console error messages
+   - Steps to reproduce
+   - Screenshots if helpful
+
+2. **Test in Incognito Mode**
+   - Rules out browser extensions
+   - Clears cache issues
+   - Isolates the problem
+
+3. **Try Different Browser**
+   - Tests browser compatibility
+   - Confirms if issue is global
+</Steps>
+
+### Useful Debug Information
+
+<Code 
+  code={`// Copy this debug info when reporting issues
+const debugInfo = {
+  userAgent: navigator.userAgent,
+  url: window.location.href,
+  campaignCartVersion: window.twentyNineNext?.version,
+  campaignId: window.twentyNineNext?.getConfig()?.campaignId,
+  cartState: window.twentyNineNext?.getCart(),
+  consoleErrors: 'Check browser console for any red error messages'
+};
+
+console.log('Debug Info:', debugInfo);`}
+  lang="javascript"
+  title="Debug Information Collection"
+/>
+
+## Quick Fix Summary
+
+<CardGrid>
+  <Card title="🚨 Emergency Fixes" icon="emergency">
+    **Most Common Solutions:**
+    1. Check API key is correct
+    2. Enable debug mode
+    3. Clear browser cache
+    4. Try incognito mode
+    5. Check console for errors
+  </Card>
+  
+  <Card title="🔧 Configuration Check" icon="wrench">
+    **Verify These Always:**
+    1. Script loads without 404
+    2. Meta tags have correct values
+    3. HTML attributes start with `data-os-`
+    4. Package IDs exist in campaign
+    5. Campaign is active
+  </Card>
+</CardGrid>

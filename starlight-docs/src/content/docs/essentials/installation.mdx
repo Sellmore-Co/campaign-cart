@@ -1,0 +1,392 @@
+---
+title: Installation & Setup
+description: Multiple ways to install and configure Campaign Cart for different environments
+---
+
+{/* 
+📍 DOCUMENTATION PROGRESS: Phase 1 - Foundation (Step 4/4)
+✅ COMPLETED: Created installation guide with multiple methods
+🔄 NEXT: Create troubleshooting.mdx and html-attributes.mdx
+📋 REMAINING: Phase 2 content reorganization
+*/}
+
+import { Steps, Aside, Card, CardGrid, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Learn all the ways to install Campaign Cart, from simple copy-paste to advanced build systems. Choose the method that works best for your project.
+
+## Installation Methods
+
+<CardGrid>
+  <Card title="🚀 CDN (Fastest)" icon="rocket">
+    Copy-paste one script tag. Perfect for beginners and quick prototypes.
+  </Card>
+  
+  <Card title="📦 NPM Package" icon="package">
+    Install via npm for modern build systems and frameworks.
+  </Card>
+  
+  <Card title="⬇️ Direct Download" icon="download">
+    Download and host the files yourself for complete control.
+  </Card>
+</CardGrid>
+
+## Method 1: CDN Installation (Recommended)
+
+The fastest way to get started - just add one script tag:
+
+<Tabs>
+  <TabItem label="Production (Minified)">
+    <Code code={`<script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>`} lang="html" />
+    
+    **Use for:** Live websites, production environments
+    
+    **Benefits:** Fastest loading, CDN cached, auto-updates
+  </TabItem>
+  
+  <TabItem label="Development (Full)">
+    <Code code={`<script src="https://rtc2.29next.com/campaign-cart/29next.js"></script>`} lang="html" />
+    
+    **Use for:** Development, debugging, learning
+    
+    **Benefits:** Readable code, detailed error messages, source maps
+  </TabItem>
+</Tabs>
+
+<Aside type="tip">
+**CDN Benefits:** Global CDN delivery, automatic updates, browser caching, and no hosting required. This is the recommended method for most users.
+</Aside>
+
+### Complete CDN Setup
+
+<Code 
+  code={`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Store</title>
+    
+    <!-- Campaign Cart Configuration -->
+    <meta name="os-api-key" content="YOUR_API_KEY">
+    <meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
+    
+    <!-- Campaign Cart Script -->
+    <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+</head>
+<body>
+    <!-- Your store content here -->
+</body>
+</html>`}
+  lang="html" 
+  title="Complete CDN Setup"
+/>
+
+## Method 2: NPM Installation
+
+For modern build systems (Webpack, Vite, Parcel) and frameworks (React, Vue, Svelte):
+
+<Steps>
+1. **Install the package**
+   
+   <Code code={`npm install @29next/campaign-cart`} lang="bash" />
+
+2. **Import in your JavaScript**
+   
+   <Code code={`import { TwentyNineNext } from '@29next/campaign-cart';`} lang="javascript" />
+
+3. **Initialize the SDK**
+   
+   <Code code={`const cart = new TwentyNineNext({
+     apiKey: 'YOUR_API_KEY',
+     campaignId: 'YOUR_CAMPAIGN_ID'
+   });`} lang="javascript" />
+</Steps>
+
+### Framework Examples
+
+<Tabs>
+  <TabItem label="React">
+    <Code 
+      code={`import React, { useEffect } from 'react';
+import { TwentyNineNext } from '@29next/campaign-cart';
+
+function App() {
+  useEffect(() => {
+    const cart = new TwentyNineNext({
+      apiKey: process.env.REACT_APP_CAMPAIGN_CART_API_KEY,
+      campaignId: process.env.REACT_APP_CAMPAIGN_ID
+    });
+    
+    return () => cart.destroy(); // Cleanup
+  }, []);
+
+  return (
+    <div>
+      <button data-os-action="toggle-item" data-os-package="1">
+        Add to Cart
+      </button>
+      <span data-os-cart-count>0</span>
+    </div>
+  );
+}`}
+      lang="javascript" 
+      title="React Component"
+    />
+  </TabItem>
+  
+  <TabItem label="Vue 3">
+    <Code 
+      code={`<template>
+  <div>
+    <button data-os-action="toggle-item" data-os-package="1">
+      Add to Cart
+    </button>
+    <span data-os-cart-count>0</span>
+  </div>
+</template>
+
+<script setup>
+import { onMounted, onUnmounted } from 'vue'
+import { TwentyNineNext } from '@29next/campaign-cart'
+
+let cart = null
+
+onMounted(() => {
+  cart = new TwentyNineNext({
+    apiKey: import.meta.env.VITE_CAMPAIGN_CART_API_KEY,
+    campaignId: import.meta.env.VITE_CAMPAIGN_ID
+  })
+})
+
+onUnmounted(() => {
+  cart?.destroy()
+})
+</script>`}
+      lang="javascript" 
+      title="Vue 3 Component"
+    />
+  </TabItem>
+  
+  <TabItem label="Svelte">
+    <Code 
+      code={`<script>
+  import { onMount, onDestroy } from 'svelte'
+  import { TwentyNineNext } from '@29next/campaign-cart'
+  
+  let cart = null
+  
+  onMount(() => {
+    cart = new TwentyNineNext({
+      apiKey: import.meta.env.VITE_CAMPAIGN_CART_API_KEY,
+      campaignId: import.meta.env.VITE_CAMPAIGN_ID
+    })
+  })
+  
+  onDestroy(() => {
+    cart?.destroy()
+  })
+</script>
+
+<button data-os-action="toggle-item" data-os-package="1">
+  Add to Cart
+</button>
+<span data-os-cart-count>0</span>`}
+      lang="javascript" 
+      title="Svelte Component"
+    />
+  </TabItem>
+</Tabs>
+
+## Method 3: Direct Download
+
+Download and host the files yourself:
+
+<Steps>
+1. **Download the latest release**
+   - Visit [GitHub Releases](https://github.com/29next/campaign-cart/releases)
+   - Download `campaign-cart-latest.zip`
+
+2. **Extract and upload**
+   - Extract the files to your web server
+   - Upload to `/js/` or `/assets/` directory
+
+3. **Include in your HTML**
+   <Code code={`<script src="/js/29next.min.js"></script>`} lang="html" />
+</Steps>
+
+<Aside type="note">
+**Self-hosting:** You'll need to manually update when new versions are released. Consider using CDN for automatic updates.
+</Aside>
+
+## Configuration Options
+
+### Meta Tag Configuration (Simplest)
+
+<Code 
+  code={`<!-- Required -->
+<meta name="os-api-key" content="YOUR_API_KEY">
+<meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
+
+<!-- Optional -->
+<meta name="os-debug" content="true">
+<meta name="os-default-country" content="US">
+<meta name="os-default-currency" content="USD">
+<meta name="os-next-page" content="/thank-you.html">`}
+  lang="html" 
+  title="Meta Tag Configuration"
+/>
+
+### JavaScript Configuration (Advanced)
+
+<Code 
+  code={`window.osConfig = {
+  // Required
+  apiKey: 'YOUR_API_KEY',
+  campaignId: 'YOUR_CAMPAIGN_ID',
+  
+  // Optional
+  debug: true,
+  defaultCountry: 'US',
+  defaultCurrency: 'USD',
+  autoInit: true,
+  
+  // Advanced
+  analytics: {
+    gtm: true,
+    fbPixel: 'YOUR_PIXEL_ID'
+  },
+  
+  // UI Customization
+  ui: {
+    showSavings: true,
+    animateCartChanges: true,
+    loadingText: 'Processing...'
+  }
+};`}
+  lang="javascript" 
+  title="Advanced Configuration"
+/>
+
+## Environment Setup
+
+### Development Environment
+
+<Code 
+  code={`<!-- Development Setup -->
+<meta name="os-api-key" content="test_1234567890">
+<meta name="os-campaign-id" content="dev-campaign">
+<meta name="os-debug" content="true">
+
+<!-- Development Script -->
+<script src="https://rtc2.29next.com/campaign-cart/29next.js"></script>`}
+  lang="html" 
+  title="Development Configuration"
+/>
+
+### Production Environment
+
+<Code 
+  code={`<!-- Production Setup -->
+<meta name="os-api-key" content="live_0987654321">
+<meta name="os-campaign-id" content="prod-campaign">
+
+<!-- Production Script -->
+<script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>`}
+  lang="html" 
+  title="Production Configuration"
+/>
+
+<Aside type="caution">
+**Security Note:** Never expose your live API keys in client-side code during development. Use environment variables or separate development credentials.
+</Aside>
+
+## Verification
+
+### Check Installation
+
+<Code 
+  code={`// Check if Campaign Cart loaded
+if (window.twentyNineNext) {
+  console.log('✅ Campaign Cart loaded successfully');
+  console.log('Version:', window.twentyNineNext.version);
+} else {
+  console.error('❌ Campaign Cart failed to load');
+}`}
+  lang="javascript" 
+  title="Installation Check"
+/>
+
+### Debug Mode
+
+Enable debug mode to see detailed logging:
+
+<Code 
+  code={`<!-- Via Meta Tag -->
+<meta name="os-debug" content="true">
+
+<!-- Via JavaScript -->
+<script>
+window.osConfig = { debug: true };
+</script>`}
+  lang="html" 
+  title="Enable Debug Mode"
+/>
+
+## Common Installation Issues
+
+<CardGrid>
+  <Card title="🚫 Script Not Loading" icon="error">
+    **Symptoms:** Nothing happens, `window.twentyNineNext` is undefined
+    
+    **Solutions:**
+    - Check network tab for 404 errors
+    - Verify script URL is correct
+    - Check for ad blockers
+  </Card>
+  
+  <Card title="⚠️ API Key Errors" icon="warning">
+    **Symptoms:** Cart loads but products don't work
+    
+    **Solutions:**
+    - Verify API key is correct
+    - Check campaign ID exists
+    - Ensure API key has permissions
+  </Card>
+  
+  <Card title="🔧 Configuration Issues" icon="wrench">
+    **Symptoms:** Features missing or not working
+    
+    **Solutions:**
+    - Check meta tag syntax
+    - Verify campaign settings
+    - Enable debug mode for details
+  </Card>
+</CardGrid>
+
+## Next Steps
+
+<CardGrid>
+  <Card title="🎯 Quick Start" icon="rocket">
+    Get a working cart in 5 minutes
+    
+    → [Quick Start Guide](/introduction/quick-start/)
+  </Card>
+  
+  <Card title="🧠 Core Concepts" icon="academic-cap">
+    Understand how Campaign Cart works
+    
+    → [Core Concepts](/introduction/core-concepts/)
+  </Card>
+  
+  <Card title="🔧 Testing" icon="test-tube">
+    Learn how to test your implementation
+    
+    → [Testing Guide](/essentials/testing/)
+  </Card>
+  
+  <Card title="🛠️ Troubleshooting" icon="tools">
+    Fix common issues and problems
+    
+    → [Troubleshooting](/essentials/troubleshooting/)
+  </Card>
+</CardGrid>

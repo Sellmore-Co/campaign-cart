@@ -1,0 +1,425 @@
+---
+title: HTML Attributes Reference
+description: Complete guide to Campaign Cart's data attributes for creating interactive e-commerce elements
+---
+
+{/* 
+📍 DOCUMENTATION PROGRESS: Phase 1 - Foundation (FIXING NAVIGATION)
+✅ COMPLETED: Created HTML attributes reference for essentials section
+🔄 NEXT: Create testing.mdx, then move to Phase 2 content reorganization
+*/}
+
+import { Steps, Aside, Card, CardGrid, Code, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Campaign Cart uses HTML data attributes to create interactive e-commerce functionality without writing JavaScript. This guide covers every attribute you need to build shopping carts, checkout forms, and payment processing.
+
+## Quick Reference
+
+All Campaign Cart attributes start with `data-os-` and are added directly to your HTML elements. The SDK automatically detects these attributes and adds the corresponding functionality.
+
+<Aside type="tip">
+**No JavaScript Required:** Add these attributes to any HTML element and Campaign Cart handles all the interactive functionality automatically.
+</Aside>
+
+## Cart Action Attributes
+
+These attributes make buttons and elements interactive with your shopping cart.
+
+### `data-os-action="toggle-item"`
+
+Adds or removes items from the cart when clicked.
+
+<Tabs>
+  <TabItem label="Basic Usage">
+    <Code code={`<button data-os-action="toggle-item" data-os-package="1">
+  Add to Cart
+</button>`} lang="html" />
+  </TabItem>
+  
+  <TabItem label="With Product Profiles">
+    <Code code={`<button data-os-action="toggle-item" data-os-profile="starter-kit">
+  Add Starter Kit
+</button>`} lang="html" />
+  </TabItem>
+  
+  <TabItem label="With Quantity">
+    <Code code={`<button data-os-action="toggle-item" data-os-package="1" data-os-quantity="2">
+  Add 2 Items
+</button>`} lang="html" />
+  </TabItem>
+</Tabs>
+
+**Required Attributes:**
+- Either `data-os-package="ID"` or `data-os-profile="profile-name"`
+
+**Optional Attributes:**
+- `data-os-quantity="number"` - Quantity to add (default: 1)
+- `data-os-frequency="days"` - For subscription products
+
+### `data-os-action="remove-item"`
+
+Removes specific items from the cart.
+
+<Code code={`<button data-os-action="remove-item" data-os-package="1">
+  Remove Item
+</button>`} lang="html" />
+
+### `data-os-action="clear-cart"`
+
+Removes all items from the cart.
+
+<Code code={`<button data-os-action="clear-cart">
+  Clear Cart
+</button>`} lang="html" />
+
+## Cart Display Attributes
+
+These attributes automatically show cart information and update in real-time.
+
+### Cart Count and Totals
+
+<CardGrid>
+  <Card title="Cart Count" icon="counter">
+    <Code code={`<span data-os-cart-count>0</span>`} lang="html" />
+    
+    Shows the total number of items in the cart.
+  </Card>
+  
+  <Card title="Cart Total" icon="currency">
+    <Code code={`<span data-os-cart-total>$0.00</span>`} lang="html" />
+    
+    Shows the total price of all items in the cart.
+  </Card>
+  
+  <Card title="Cart Subtotal" icon="calculator">
+    <Code code={`<span data-os-cart-subtotal>$0.00</span>`} lang="html" />
+    
+    Shows subtotal before discounts and shipping.
+  </Card>
+  
+  <Card title="Savings Amount" icon="discount">
+    <Code code={`<span data-os-cart-summary="savings-amount">$0.00</span>`} lang="html" />
+    
+    Shows total amount saved from discounts.
+  </Card>
+</CardGrid>
+
+### Product Price Display
+
+<Tabs>
+  <TabItem label="Package Prices">
+    <Code code={`<!-- Show price for package ID 1 -->
+<span data-os-package-price data-os-package-id="1">$97.00</span>
+
+<!-- Show price with currency symbol -->
+<span data-os-package-price data-os-package-id="1" data-os-format="currency">$97</span>`} lang="html" />
+  </TabItem>
+  
+  <TabItem label="Profile Prices">
+    <Code code={`<!-- Show price for product profile -->
+<span data-os-profile-price data-os-profile-id="starter-kit">$97.00</span>
+
+<!-- Show retail price (before discounts) -->
+<span data-os-profile-price data-os-profile-id="starter-kit" data-os-price-type="retail">$197.00</span>`} lang="html" />
+  </TabItem>
+</Tabs>
+
+## Selector Components
+
+Create product selection interfaces where customers choose one option from multiple choices.
+
+### Selector Container
+
+<Code code={`<div data-os-component="selector" data-os-selection-mode="swap" data-os-id="main-product">
+  <!-- Selector cards go here -->
+</div>`} lang="html" />
+
+**Attributes:**
+- `data-os-selection-mode="swap"` - Only one item can be selected at a time
+- `data-os-id="unique-name"` - Unique identifier for this selector group
+
+### Selector Cards
+
+<Code code={`<div class="product-card" data-os-element="card" data-os-package="1" data-os-selected="true">
+  <h3>Basic Plan</h3>
+  <p>Perfect for getting started</p>
+  <div class="price" data-os-package-price data-os-package-id="1">$97</div>
+</div>`} lang="html" />
+
+**Attributes:**
+- `data-os-element="card"` - Marks this as a selectable card
+- `data-os-package="ID"` or `data-os-profile="name"` - Product identifier
+- `data-os-selected="true"` - Pre-select this option (optional)
+
+## Checkout Attributes
+
+These attributes create and control checkout functionality.
+
+### Checkout Buttons
+
+<Tabs>
+  <TabItem label="Combined Checkout">
+    <Code code={`<button os-checkout-payment="combo">
+  Proceed to Checkout
+</button>`} lang="html" />
+    
+    Shows all available payment methods in one interface.
+  </TabItem>
+  
+  <TabItem label="Credit Card Only">
+    <Code code={`<button os-checkout-payment="card">
+  Pay with Credit Card
+</button>`} lang="html" />
+    
+    Opens credit card payment form only.
+  </TabItem>
+  
+  <TabItem label="PayPal Only">
+    <Code code={`<button os-checkout-payment="paypal">
+  Pay with PayPal
+</button>`} lang="html" />
+    
+    Redirects to PayPal payment flow.
+  </TabItem>
+</Tabs>
+
+### Form Field Attributes
+
+Campaign Cart automatically handles form validation and processing when you use standard HTML form elements with proper names.
+
+<Code code={`<!-- Customer Information -->
+<input type="text" name="firstName" required>
+<input type="text" name="lastName" required>
+<input type="email" name="email" required>
+<input type="tel" name="phone">
+
+<!-- Billing Address -->
+<input type="text" name="address" required>
+<input type="text" name="city" required>
+<select name="state" required>
+  <option value="CA">California</option>
+  <!-- more states -->
+</select>
+<input type="text" name="zip" required>`} lang="html" />
+
+## Page Configuration
+
+These meta tags configure Campaign Cart behavior for different page types.
+
+### Page Type Configuration
+
+<Tabs>
+  <TabItem label="Sales Page">
+    <Code code={`<meta name="os-page-type" content="sales">
+<meta name="os-next-page" content="/checkout.html">`} lang="html" />
+  </TabItem>
+  
+  <TabItem label="Checkout Page">
+    <Code code={`<meta name="os-page-type" content="checkout">
+<meta name="os-next-page" content="/receipt.html">`} lang="html" />
+  </TabItem>
+  
+  <TabItem label="Receipt Page">
+    <Code code={`<meta name="os-page-type" content="receipt">`} lang="html" />
+  </TabItem>
+  
+  <TabItem label="Upsell Page">
+    <Code code={`<meta name="os-page-type" content="upsell">
+<meta name="os-next-page" content="/receipt.html">`} lang="html" />
+  </TabItem>
+</Tabs>
+
+## Receipt Page Attributes
+
+Display order information automatically on receipt pages.
+
+### Order Information
+
+<CardGrid>
+  <Card title="Order Details" icon="document">
+    <Code code={`<span data-os-receipt="order-id">Loading...</span>
+<span data-os-receipt="order-date">Loading...</span>
+<span data-os-receipt="order-total">Loading...</span>`} lang="html" />
+  </Card>
+  
+  <Card title="Customer Info" icon="user">
+    <Code code={`<span data-os-receipt="customer-name">Loading...</span>
+<span data-os-receipt="customer-email">Loading...</span>
+<span data-os-receipt="customer-phone">Loading...</span>`} lang="html" />
+  </Card>
+</CardGrid>
+
+### Line Items and Addresses
+
+<Code code={`<!-- Order Line Items -->
+<div data-os-receipt="line-items">
+  <!-- Items will be automatically populated -->
+</div>
+
+<!-- Billing Address -->
+<div data-os-receipt="billing-address">
+  <!-- Address will be automatically populated -->
+</div>
+
+<!-- Shipping Address -->
+<div data-os-receipt="shipping-address">
+  <!-- Address will be automatically populated -->
+</div>`} lang="html" />
+
+## Timer Attributes
+
+Create countdown timers for urgency and limited-time offers.
+
+<Code code={`<!-- Countdown Timer -->
+<div data-os-timer="offer-expires" data-os-duration="3600">
+  <span data-os-timer-hours>01</span>:
+  <span data-os-timer-minutes>00</span>:
+  <span data-os-timer-seconds>00</span>
+</div>
+
+<!-- Timer with auto-action -->
+<div data-os-timer="flash-sale" 
+     data-os-duration="1800" 
+     data-os-expired-action="hide-element" 
+     data-os-target="special-offer">
+  Flash Sale Ends In: <span data-os-timer-formatted>30:00</span>
+</div>`} lang="html" />
+
+## Voucher/Discount Attributes
+
+Add discount code functionality to your checkout.
+
+<Code code={`<!-- Discount Code Input -->
+<input type="text" data-os-voucher-input placeholder="Enter discount code">
+<button data-os-voucher-apply>Apply Code</button>
+
+<!-- Discount Display -->
+<div data-os-voucher-status>
+  <!-- Success/error messages appear here -->
+</div>
+
+<!-- Applied Discount Info -->
+<span data-os-voucher-code>SAVE20</span>
+<span data-os-voucher-amount>$19.40</span>`} lang="html" />
+
+## Advanced Attributes
+
+### Conditional Display
+
+Show or hide elements based on cart state.
+
+<Code code={`<!-- Show only when cart has items -->
+<div data-os-show-when="cart-not-empty">
+  <button os-checkout-payment="combo">Checkout</button>
+</div>
+
+<!-- Show only when cart is empty -->
+<div data-os-show-when="cart-empty">
+  <p>Your cart is empty</p>
+</div>
+
+<!-- Show only when specific item is in cart -->
+<div data-os-show-when="package-in-cart" data-os-package="1">
+  <p>Basic plan selected!</p>
+</div>`} lang="html" />
+
+### Custom Styling Classes
+
+Campaign Cart automatically adds CSS classes based on cart state.
+
+<Code code={`/* CSS classes automatically added */
+.os--cart-empty { /* When cart has no items */ }
+.os--cart-not-empty { /* When cart has items */ }
+.os--package-in-cart-1 { /* When package 1 is in cart */ }
+.os--loading { /* During API calls */ }
+.os--error { /* When errors occur */ }`} lang="css" />
+
+## Common Patterns
+
+### Complete Product Card
+
+<Code code={`<div class="product-card" data-os-element="card" data-os-package="1">
+  <img src="product.jpg" alt="Product">
+  <h3>Starter Kit</h3>
+  <p>Everything you need to get started</p>
+  
+  <!-- Price Display -->
+  <div class="price">
+    <span class="retail-price" data-os-package-price data-os-package-id="1" data-os-price-type="retail">$197</span>
+    <span class="sale-price" data-os-package-price data-os-package-id="1">$97</span>
+  </div>
+  
+  <!-- Add to Cart Button -->
+  <button data-os-action="toggle-item" data-os-package="1">
+    Add to Cart
+  </button>
+</div>`} lang="html" />
+
+### Cart Summary Widget
+
+<Code code={`<div class="cart-summary">
+  <h4>Shopping Cart</h4>
+  
+  <!-- Cart Info -->
+  <p>Items: <span data-os-cart-count>0</span></p>
+  <p>Subtotal: <span data-os-cart-subtotal>$0.00</span></p>
+  <p>Savings: <span data-os-cart-summary="savings-amount">$0.00</span></p>
+  
+  <!-- Total -->
+  <hr>
+  <p class="total">Total: <span data-os-cart-total>$0.00</span></p>
+  
+  <!-- Checkout Button -->
+  <button os-checkout-payment="combo" data-os-show-when="cart-not-empty">
+    Proceed to Checkout
+  </button>
+  
+  <!-- Empty Cart Message -->
+  <p data-os-show-when="cart-empty">Your cart is empty</p>
+</div>`} lang="html" />
+
+## Troubleshooting Attributes
+
+### Debug Information
+
+<Code code={`<!-- Enable debug mode for this element -->
+<div data-os-debug="true">
+  <!-- Campaign Cart will log detailed info about this element -->
+</div>
+
+<!-- Test element (only works in test mode) -->
+<button data-os-test-only data-os-action="toggle-item" data-os-package="999">
+  Test Button (test mode only)
+</button>`} lang="html" />
+
+<Aside type="note">
+**Attribute Naming:** All Campaign Cart attributes use kebab-case (dashes, not underscores) and must start with `data-os-`. The SDK ignores attributes with incorrect naming.
+</Aside>
+
+## Next Steps
+
+<CardGrid>
+  <Card title="🚀 Quick Start" icon="rocket">
+    See these attributes in action with a working example
+    
+    → [Quick Start Guide](/introduction/quick-start/)
+  </Card>
+  
+  <Card title="🛒 Shopping Cart" icon="shopping-cart">
+    Learn how to combine attributes for cart functionality
+    
+    → [Shopping Cart Guide](/guides/features/shopping-cart/)
+  </Card>
+  
+  <Card title="💳 Checkout Setup" icon="payment">
+    Build complete checkout forms with these attributes
+    
+    → [Your First Checkout](/introduction/first-checkout/)
+  </Card>
+  
+  <Card title="🛠️ Troubleshooting" icon="tools">
+    Fix issues with attribute implementation
+    
+    → [Troubleshooting Guide](/essentials/troubleshooting/)
+  </Card>
+</CardGrid>
