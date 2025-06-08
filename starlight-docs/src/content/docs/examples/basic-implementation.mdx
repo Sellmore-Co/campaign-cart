@@ -1,0 +1,587 @@
+---
+title: Basic Implementation Examples
+description: Complete examples showing how to implement Campaign Cart in common scenarios
+---
+
+# Basic Implementation Examples
+
+Complete examples showing how to implement Campaign Cart in common scenarios.
+
+## Interactive Live Examples
+
+Try these interactive examples to see Campaign Cart in action:
+
+- **[Interactive Cart Demo](/examples/basic-cart.html)** - Live cart functionality with add to cart, cart display, and checkout flow
+- **[Checkout Form Demo](/examples/checkout-form.html)** - Complete checkout form with real-time validation
+
+## Related Documentation
+
+- [Getting Started](../introduction/getting-started.md) - Initial setup guide
+- [Shopping Cart Guide](../guides/features/shopping-cart.md) - Cart implementation details
+- [JavaScript API](../api/javascript-api.md) - API reference
+
+## Minimal Setup
+
+The simplest possible implementation:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>My Store</title>
+  
+  <!-- Configuration -->
+  <meta name="os-api-key" content="YOUR_API_KEY">
+  
+  <!-- Campaign Cart -->
+  <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+</head>
+<body>
+  <!-- Add to cart button -->
+  <button data-os-action="toggle-item" data-os-package="1">Add Product</button>
+  
+  <!-- Cart info -->
+  <p>Cart: <span data-os-cart-count>0</span> items</p>
+  <p>Total: <span data-os-cart-total>$0.00</span></p>
+  
+  <!-- Checkout -->
+  <button os-checkout-payment="combo">Checkout</button>
+</body>
+</html>
+```
+
+## Single Product Landing Page
+
+Landing page with one product and immediate checkout:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Amazing Product - Order Now</title>
+  
+  <meta name="os-api-key" content="YOUR_API_KEY">
+  
+  <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+  
+  <style>
+    .product { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      padding: 2rem; 
+      text-align: center; 
+    }
+    .price { 
+      font-size: 2rem; 
+      color: #2ecc71; 
+      margin: 1rem 0; 
+    }
+    .savings { 
+      color: #e74c3c; 
+      font-weight: bold; 
+    }
+    .cta-button { 
+      background: #3498db; 
+      color: white; 
+      padding: 1rem 2rem; 
+      border: none; 
+      border-radius: 5px; 
+      font-size: 1.2rem; 
+      cursor: pointer; 
+    }
+  </style>
+</head>
+<body>
+  <div class="product">
+    <h1>Amazing Weight Loss Kit</h1>
+    <img src="product-hero.jpg" alt="Product" width="400">
+    
+    <p class="price">
+      <span data-os-package-price data-os-package-id="1">$0.00</span>
+      <small data-os-in-cart="display" data-container="true">
+        (Save <span data-os-cart-summary="savings-amount" class="savings">$0</span>!)
+      </small>
+    </p>
+    
+    <p>30-day supply with free shipping</p>
+    
+    <button class="cta-button" data-os-action="toggle-item" data-os-package="1">
+      Order Now - Free Shipping
+    </button>
+    
+    <p><small>✓ 60-day money back guarantee</small></p>
+  </div>
+</body>
+</html>
+```
+
+## Multi-Product Catalog
+
+E-commerce catalog with multiple products:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Health & Beauty Store</title>
+  
+  <meta name="os-api-key" content="YOUR_API_KEY">
+  
+  <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+  
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+  <!-- Header with cart -->
+  <header class="bg-white shadow p-4">
+    <div class="max-w-6xl mx-auto flex justify-between items-center">
+      <h1 class="text-2xl font-bold">Health Store</h1>
+      
+      <div class="cart-summary" data-os-in-cart="display" data-container="true">
+        <span class="bg-blue-500 text-white px-3 py-1 rounded">
+          <span data-os-cart-count>0</span> items - 
+          <span data-os-cart-total>$0.00</span>
+        </span>
+        <button class="ml-2 bg-green-500 text-white px-4 py-1 rounded" os-checkout-payment="combo">
+          Checkout
+        </button>
+      </div>
+    </div>
+  </header>
+  
+  <!-- Products -->
+  <main class="max-w-6xl mx-auto p-4">
+    <div class="grid md:grid-cols-3 gap-6">
+      
+      <!-- Product 1 -->
+      <div class="product-card bg-white rounded-lg shadow p-4">
+        <img src="starter-kit.jpg" alt="Starter Kit" class="w-full h-48 object-cover rounded">
+        <h3 class="text-lg font-semibold mt-4">Starter Kit</h3>
+        <p class="text-gray-600">Perfect for beginners</p>
+        <div class="flex justify-between items-center mt-4">
+          <span class="text-xl font-bold text-green-600" data-os-profile-price data-os-profile-id="starter-kit">
+            $0.00
+          </span>
+          <button 
+            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            data-os-action="toggle-item" data-os-profile="starter-kit">
+            Add to Cart
+          </button>
+        </div>
+      </div>
+      
+      <!-- Product 2 -->
+      <div class="product-card bg-white rounded-lg shadow p-4">
+        <img src="pro-bundle.jpg" alt="Pro Bundle" class="w-full h-48 object-cover rounded">
+        <h3 class="text-lg font-semibold mt-4">Pro Bundle</h3>
+        <p class="text-gray-600">Everything you need</p>
+        <div class="flex justify-between items-center mt-4">
+          <span class="text-xl font-bold text-green-600" data-os-profile-price data-os-profile-id="pro-bundle">
+            $0.00
+          </span>
+          <button 
+            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            data-os-action="toggle-item" data-os-profile="pro-bundle">
+            Add to Cart
+          </button>
+        </div>
+        <p class="text-sm text-red-500 mt-2" data-os-in-cart="display" data-container="true">
+          Save <span data-os-cart-summary="savings-amount">$0</span> vs buying separately!
+        </p>
+      </div>
+      
+      <!-- Product 3 -->
+      <div class="product-card bg-white rounded-lg shadow p-4">
+        <img src="ultimate.jpg" alt="Ultimate Package" class="w-full h-48 object-cover rounded">
+        <h3 class="text-lg font-semibold mt-4">Ultimate Package</h3>
+        <p class="text-gray-600">Our premium offering</p>
+        <div class="flex justify-between items-center mt-4">
+          <span class="text-xl font-bold text-green-600" data-os-profile-price data-os-profile-id="ultimate">
+            $0.00
+          </span>
+          <button 
+            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            data-os-action="toggle-item" data-os-profile="ultimate">
+            Add to Cart
+          </button>
+        </div>
+      </div>
+      
+    </div>
+  </main>
+  
+  <!-- Cart sidebar (hidden by default) -->
+  <div id="cart-sidebar" class="fixed right-0 top-0 h-full w-80 bg-white shadow-lg transform translate-x-full transition-transform" data-os-in-cart="display" data-container="true">
+    <div class="p-4">
+      <h2 class="text-lg font-semibold mb-4">Shopping Cart</h2>
+      <div data-os-cart="summary" class="mb-4"></div>
+      <div class="border-t pt-4">
+        <p class="flex justify-between text-lg font-semibold">
+          <span>Total:</span>
+          <span data-os-cart-total>$0.00</span>
+        </p>
+        <button class="w-full bg-green-500 text-white py-2 mt-4 rounded" os-checkout-payment="combo">
+          Proceed to Checkout
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Show cart sidebar when items added
+    document.addEventListener('cart.updated', (e) => {
+      const sidebar = document.getElementById('cart-sidebar');
+      if (e.detail.count > 0) {
+        sidebar.classList.remove('translate-x-full');
+      } else {
+        sidebar.classList.add('translate-x-full');
+      }
+    });
+  </script>
+</body>
+</html>
+```
+
+## Product Selector Page
+
+Using the [selector component](../guides/features/selectors.md) for multiple product options:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Choose Your Package</title>
+  
+  <meta name="os-api-key" content="YOUR_API_KEY">
+  
+  <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+  
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 2rem; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .selector-card { border: 2px solid #ddd; padding: 1rem; margin: 1rem 0; border-radius: 8px; cursor: pointer; }
+    .selector-card:hover { border-color: #3498db; }
+    .selector-card.selected { border-color: #2ecc71; background: #f8f9fa; }
+    .price { font-size: 1.5rem; font-weight: bold; color: #2ecc71; }
+    .checkout-btn { background: #2ecc71; color: white; padding: 1rem 2rem; border: none; border-radius: 8px; font-size: 1.2rem; cursor: pointer; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Choose Your Package</h1>
+    
+    <!-- Product selector -->
+    <div data-os-component="selector" data-os-selection-mode="swap" data-os-id="package-selector">
+      
+      <div class="selector-card" data-os-element="card" data-os-package="1" data-os-selected="true">
+        <h3>Basic Package</h3>
+        <p class="price" data-os-package-price data-os-package-id="1">$29.99</p>
+        <p>✓ Essential features<br>✓ 1-month supply<br>✓ Email support</p>
+      </div>
+      
+      <div class="selector-card" data-os-element="card" data-os-package="2">
+        <h3>Pro Package</h3>
+        <p class="price" data-os-package-price data-os-package-id="2">$49.99</p>
+        <p>✓ All basic features<br>✓ 3-month supply<br>✓ Phone support<br>✓ Bonus materials</p>
+      </div>
+      
+      <div class="selector-card" data-os-element="card" data-os-package="3">
+        <h3>Ultimate Package</h3>
+        <p class="price" data-os-package-price data-os-package-id="3">$89.99</p>
+        <p>✓ Everything included<br>✓ 6-month supply<br>✓ Priority support<br>✓ Exclusive content<br>✓ Best value!</p>
+      </div>
+      
+    </div>
+    
+    <!-- Cart summary -->
+    <div data-os-in-cart="display" data-container="true">
+      <h3>Your Selection</h3>
+      <p>Items: <span data-os-cart-count>0</span></p>
+      <p>Total: <span data-os-cart-total>$0.00</span></p>
+      <button class="checkout-btn" os-checkout-payment="combo">Complete Order</button>
+    </div>
+    
+  </div>
+  
+  <script>
+    // Add visual feedback for selected cards
+    document.addEventListener('cart.updated', () => {
+      // Remove selected class from all cards
+      document.querySelectorAll('.selector-card').forEach(card => {
+        card.classList.remove('selected');
+      });
+      
+      // Add selected class to cards with items in cart
+      const cart = window.twentyNineNext.getCart();
+      cart.items.forEach(item => {
+        const card = document.querySelector(`[data-os-package="${item.id}"]`);
+        if (card) {
+          card.classList.add('selected');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+```
+
+## Timer-Based Offer Page
+
+Landing page with countdown timer:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Limited Time Offer</title>
+  
+  <meta name="os-api-key" content="YOUR_API_KEY">
+  
+  <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+  
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .container { max-width: 600px; margin: 0 auto; padding: 2rem; text-align: center; }
+    .timer { font-size: 3rem; font-weight: bold; color: #ff6b6b; margin: 2rem 0; }
+    .product { background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 15px; margin: 2rem 0; }
+    .price { font-size: 2rem; color: #ffd93d; margin: 1rem 0; }
+    .cta-button { background: #ff6b6b; color: white; padding: 1rem 2rem; border: none; border-radius: 50px; font-size: 1.3rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔥 Flash Sale - 50% OFF!</h1>
+    
+    <!-- Countdown timer -->
+    <div data-os-element="timer" 
+         data-os-duration="7200" 
+         data-os-format="hh:mm:ss"
+         data-os-persistence-id="flash-sale">
+      <p>This offer expires in:</p>
+      <div class="timer">
+        <span data-os-element="timer-text">02:00:00</span>
+      </div>
+    </div>
+    
+    <div class="product">
+      <h2>Premium Weight Loss Bundle</h2>
+      <p class="price" data-os-package-price data-os-package-id="1">$0.00</p>
+      <p>✓ 90-day supply<br>✓ Free shipping<br>✓ Money-back guarantee</p>
+      
+      <button class="cta-button" data-os-action="toggle-item" data-os-package="1">
+        Claim Your 50% Discount
+      </button>
+    </div>
+    
+    <!-- Cart display for checkout -->
+    <div data-os-in-cart="display" data-container="true">
+      <div data-os-cart="summary"></div>
+      <button class="cta-button" os-checkout-payment="combo" style="margin-top: 1rem;">
+        Complete Order Now
+      </button>
+    </div>
+    
+  </div>
+</body>
+</html>
+```
+
+## WordPress Integration
+
+Example for WordPress sites:
+
+```php
+<?php
+// functions.php
+function add_campaign_cart_scripts() {
+    ?>
+    <script>
+    window.osConfig = {
+        apiKey: '<?php echo get_option('campaign_cart_api_key'); ?>',
+        debug: <?php echo WP_DEBUG ? 'true' : 'false'; ?>
+    };
+    </script>
+    <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+    <?php
+}
+add_action('wp_head', 'add_campaign_cart_scripts');
+
+// Shortcode for product buttons
+function campaign_cart_product_shortcode($atts) {
+    $atts = shortcode_atts(array(
+        'id' => '',
+        'profile' => '',
+        'text' => 'Add to Cart',
+        'class' => 'btn btn-primary'
+    ), $atts);
+    
+    if ($atts['profile']) {
+        $data_attr = 'data-os-action="toggle-item" data-os-profile="' . esc_attr($atts['profile']) . '"';
+    } else {
+        $data_attr = 'data-os-action="toggle-item" data-os-package="' . esc_attr($atts['id']) . '"';
+    }
+    
+    return '<button class="' . esc_attr($atts['class']) . '" ' . $data_attr . '>' . 
+           esc_html($atts['text']) . '</button>';
+}
+add_shortcode('campaign_cart_product', 'campaign_cart_product_shortcode');
+?>
+```
+
+```html
+<!-- Usage in WordPress posts/pages -->
+[campaign_cart_product profile="starter-kit" text="Order Now" class="my-button"]
+
+<!-- Cart widget -->
+<div class="widget cart-widget">
+    <h3>Shopping Cart</h3>
+    <p>Items: <span data-os-cart-count>0</span></p>
+    <p>Total: <span data-os-cart-total>$0.00</span></p>
+    <button os-checkout-payment="combo" class="btn btn-success" data-os-in-cart="display" data-container="true">
+        Checkout
+    </button>
+</div>
+```
+
+## React Integration
+
+Basic React component example:
+
+```jsx
+import React, { useEffect, useState } from 'react';
+
+// Hook for Campaign Cart
+function useCampaignCart() {
+  const [cart, setCart] = useState({ items: [], count: 0, total: 0 });
+  const [isReady, setIsReady] = useState(false);
+  
+  useEffect(() => {
+    // Wait for Campaign Cart to be ready
+    if (window.twentyNineNext) {
+      setIsReady(true);
+      setCart(window.twentyNineNext.getCart());
+    } else {
+      const handleReady = () => {
+        setIsReady(true);
+        setCart(window.twentyNineNext.getCart());
+      };
+      document.addEventListener('29next.ready', handleReady);
+      return () => document.removeEventListener('29next.ready', handleReady);
+    }
+    
+    // Listen for cart updates
+    const handleCartUpdate = (event) => {
+      setCart(event.detail);
+    };
+    
+    document.addEventListener('cart.updated', handleCartUpdate);
+    return () => document.removeEventListener('cart.updated', handleCartUpdate);
+  }, []);
+  
+  return { cart, isReady };
+}
+
+// Product component
+function Product({ profile, name, image }) {
+  const { isReady } = useCampaignCart();
+  const [price, setPrice] = useState('$0.00');
+  
+  useEffect(() => {
+    if (isReady && window.twentyNineNext.profiles) {
+      window.twentyNineNext.profiles.getProfile(profile).then(profileData => {
+        setPrice(profileData.formattedPrice);
+      });
+    }
+  }, [isReady, profile]);
+  
+  const addToCart = () => {
+    if (window.twentyNineNext) {
+      window.twentyNineNext.profiles.addToCart(profile);
+    }
+  };
+  
+  return (
+    <div className="product-card">
+      <img src={image} alt={name} />
+      <h3>{name}</h3>
+      <p className="price">{price}</p>
+      <button onClick={addToCart} disabled={!isReady}>
+        Add to Cart
+      </button>
+    </div>
+  );
+}
+
+// Cart component
+function CartSummary() {
+  const { cart, isReady } = useCampaignCart();
+  
+  const checkout = () => {
+    if (window.twentyNineNext) {
+      window.twentyNineNext.checkout();
+    }
+  };
+  
+  if (!isReady) return <div>Loading...</div>;
+  
+  return (
+    <div className="cart-summary">
+      <h3>Cart ({cart.count} items)</h3>
+      <p>Total: {cart.formattedTotal}</p>
+      {cart.count > 0 && (
+        <button onClick={checkout}>Checkout</button>
+      )}
+    </div>
+  );
+}
+
+// App component
+function App() {
+  return (
+    <div className="app">
+      <h1>My Store</h1>
+      <CartSummary />
+      <div className="products">
+        <Product 
+          profile="starter-kit" 
+          name="Starter Kit" 
+          image="/starter-kit.jpg" 
+        />
+        <Product 
+          profile="pro-bundle" 
+          name="Pro Bundle" 
+          image="/pro-bundle.jpg" 
+        />
+      </div>
+    </div>
+  );
+}
+
+export default App;
+```
+
+## Next Steps
+
+### Feature Guides
+- [Shopping Cart](../guides/features/shopping-cart.md) - Advanced cart features
+- [Product Profiles](../guides/features/product-profiles.md) - Semantic product management
+- [Selectors](../guides/features/selectors.md) - Product selection components
+- [Multi-Currency](../guides/features/multi-currency.md) - International support
+- [Timers](../guides/features/timers.md) - Countdown timers
+
+### Configuration
+- [Basic Configuration](../guides/configuration/basic-config.md) - Configuration options
+- [Form Validation](../guides/configuration/form-validation.md) - Custom validation
+- [Payment Configuration](../guides/configuration/payment-config.md) - Payment setup
+
+### API Reference
+- [JavaScript API](../api/javascript-api.md) - Complete API documentation
+- [HTML Attributes](../api/html-attributes.md) - All data attributes
+- [Events Reference](../api/events-reference.md) - Event handling
+
+These examples show various ways to implement Campaign Cart using the correct HTML attributes and JavaScript API calls.

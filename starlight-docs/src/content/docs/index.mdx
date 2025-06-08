@@ -1,36 +1,84 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
+title: 29next Campaign Cart
+description: A JavaScript SDK for connecting the 29next API to your page builder.
 template: splash
 hero:
-  tagline: Congrats on setting up a new Starlight project!
+  tagline: A JavaScript SDK for connecting the 29next API to your page builder.
   image:
     file: ../../assets/houston.webp
   actions:
-    - text: Example Guide
-      link: /guides/example/
+    - text: Get Started
+      link: /introduction/getting-started/
       icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
+    - text: View Examples
+      link: /examples/basic-implementation/
       icon: external
       variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, Code } from '@astrojs/starlight/components';
 
-## Next steps
+## Quick Setup
+
+Add to any HTML page:
+
+<Code 
+  code={`<script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+<meta name="os-api-key" content="YOUR_API_KEY">
+<meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
+
+<!-- Add products to cart -->
+<button data-os-action="toggle-item" data-os-package="1">Add to Cart</button>
+
+<!-- Show cart info -->
+<span data-os-cart-count>0</span> items
+<span data-os-cart-total>$0.00</span>
+
+<!-- Checkout -->
+<button os-checkout-payment="combo">Checkout</button>`}
+  lang="html"
+  title="Basic Setup"
+/>
+
+That's it. Works with Webflow, HTML, or any page builder.
+
+## What it handles
+
+<CardGrid>
+  <Card title="Shopping Cart" icon="bag">
+    Add/remove/update items with persistent cart across pages
+  </Card>
+  <Card title="Multi-Currency" icon="world">
+    Auto-detect country and support USD, CAD, GBP, EUR, AUD
+  </Card>
+  <Card title="Payment Processing" icon="payment">
+    PayPal, Apple Pay, Google Pay, and credit cards
+  </Card>
+  <Card title="Post-Purchase" icon="rocket">
+    Upsells, discount codes, and analytics
+  </Card>
+</CardGrid>
+
+## Architecture
 
 <CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
-	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
-	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
-	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
-	</Card>
+  <Card title="CartManager" icon="bag">
+    Shopping cart operations and persistence
+  </Card>
+  <Card title="CheckoutManager" icon="payment">
+    Checkout forms and validation
+  </Card>
+  <Card title="PaymentHandler" icon="credit-card">
+    Payment processing integration
+  </Card>
+  <Card title="CurrencyManager" icon="world">
+    Multi-currency support
+  </Card>
+  <Card title="EventManager" icon="broadcast">
+    Analytics and event tracking
+  </Card>
 </CardGrid>
+
+## Browser Support
+
+Chrome, Firefox, Safari, Edge (latest versions)

@@ -1,0 +1,507 @@
+# Shopping Cart Guide
+
+[← Features Overview](../features/README.md) | [Product Profiles →](product-profiles.md)
+
+This guide covers how the Campaign Cart works and how to interact with it using HTML attributes and JavaScript.
+
+## How the Cart Works
+
+The shopping cart is designed to be persistent and accessible across your entire site.
+
+- **Browser Storage**: The cart's state (items, quantities, discounts) is automatically saved in the user's browser `localStorage`. This means the cart survives page reloads and even browser restarts.
+- **Real-time Updates**: All cart displays (`data-os-cart-count`, `data-os-cart-total`, etc.) are updated in real-time whenever a change occurs.
+- **API Sync**: The local cart is periodically synchronized with the 29next API to ensure consistency.
+- **Automatic Clearing**: The cart is automatically cleared after a successful purchase to prepare for the next order.
+
+## Interacting with the Cart
+
+There are two primary ways to add or change items in the cart, designed for different use cases: **Selectors** and **Toggles**.
+
+### 1. Selectors (for Primary Products)
+
+Selectors are used when a customer must choose **one** option from a list of primary products, like different subscription plans, bundle sizes, or package deals. When a new option is selected, it *swaps* the previous selection in the cart.
+
+#### Implementation
+
+To create a selector, you wrap a group of "cards" in a `[data-os-component="selector"]` container.
+
+```html
+<div data-os-component="selector" data-os-selection-mode="swap" data-os-id="plan-selector">
+  
+  <!-- Option 1: Pre-selected by default -->
+  <div class="selector-card" data-os-element="card" data-os-profile="starter-kit" data-os-selected="true">
+    <h3>Starter Kit</h3>
+    <p>Perfect for individuals.</p>
+    <div class="price" data-os-profile-price data-os-profile-id="starter-kit"></div>
+  </div>
+  
+  <!-- Option 2 -->
+  <div class="selector-card" data-os-element="card" data-os-profile="pro-bundle">
+    <h3>Pro Bundle</h3>
+    <p>Includes bonus materials.</p>
+    <div class="price" data-os-profile-price data-os-profile-id="pro-bundle"></div>
+  </div>
+  
+</div>
+```
+
+- `data-os-component="selector"`: Defines the selector group.
+- `data-os-selection-mode="swap"`: Ensures only one item from this group can be in the cart at a time.
+- `data-os-element="card"`: Defines a clickable option. Use `data-os-profile` or `data-os-package` to link it to a product.
+- `data-os-selected="true"`: Sets the default item to be added to the cart on page load.
+
+> For a complete list of options and advanced pricing displays, see the full [**Selectors Guide**](selectors.md).
+
+### 2. Toggles (for Add-ons & Order Bumps)
+
+Toggles are simple buttons used for optional items that can be added to or removed from the cart independently. They are perfect for order bumps, add-ons, and accessories.
+
+#### Implementation
+
+A toggle is a button with `data-os-action="toggle-item"`. Clicking it once adds the item; clicking it again removes it. The button automatically gets an `.os--active` class when the item is in the cart.
+
+```html
+<!-- A simple toggle for an order bump -->
+<div class="order-bump">
+  <button data-os-action="toggle-item" data-os-profile="extended-warranty">
+    Add Extended Warranty (+$9.99)
+  </button>
+</div>
+
+<!-- Styling the active state -->
+<style>
+  [data-os-action="toggle-item"].os--active {
+    background-color: #2ecc71;
+    color: white;
+    border-color: #27ae60;
+  }
+</style>
+```
+
+> For more examples, including how to mark toggled items as upsells, see the full [**Toggles Guide**](toggles.md).
+
+## Displaying Cart Information
+
+You can display cart data anywhere on your page using simple HTML attributes. These elements will update automatically.
+
+- `data-os-cart-count`: Shows the total number of items.
+- `data-os-cart-total`: Shows the final price, including discounts and shipping.
+- `data-os-cart-subtotal`: The price before shipping and taxes.
+- `data-os-cart-summary="line-display"`: A container where a list of cart items will be rendered.
+
+```html
+<div class="cart-widget">
+  <h3>
+    Your Cart (<span data-os-cart-count>0</span> items)
+  </h3>
+  
+  <div data-os-cart-summary="line-display">
+    <!-- Line items will be automatically added here -->
+  </div>
+  
+  <div class="cart-total">
+    <strong>Total: <span data-os-cart-total>$0.00</span></strong>
+  </div>
+
+  <!-- This button will only appear when the cart is not empty -->
+  <button os-checkout-payment="combo" data-os-in-cart="display" data-container="true">
+    Proceed to Checkout
+  </button>
+</div>
+```
+
+## JavaScript API
+
+You can also interact with the cart programmatically.
+
+```javascript
+// Add an item by its profile ID
+window.twentyNineNext.profiles.addToCart('starter-kit');
+
+// Add an item by its package ID
+window.twentyNineNext.addToCart(1, 2); // Adds 2 of package ID 1
+
+// Get the current cart state
+const currentCart = window.twentyNineNext.getCart();
+console.log(currentCart.items);
+
+// Listen for updates
+document.addEventListener('cart.updated', (event) => {
+  console.log('Cart was updated!', event.detail);
+});
+```
+
+> For all available methods, see the [JavaScript API Reference](../../api/javascript-api.md).
+
+## Advanced Cart Display
+
+### Custom Cart Template
+
+Create a custom cart display:
+
+```html
+<div id="custom-cart">
+  <!-- Your custom template -->
+</div>
+
+<script>
+document.addEventListener('cart.updated', (event) => {
+  const cart = event.detail;
+  const customCart = document.getElementById('custom-cart');
+  
+  customCart.innerHTML = cart.items.map(item => `
+    <div class="cart-item">
+      <img src="${item.image}" alt="${item.name}">
+      <h4>${item.name}</h4>
+      <p>${item.quantity} × ${item.formattedPrice}</p>
+      <button onclick="window.twentyNineNext.removeFromCart(${item.id})">
+        Remove
+      </button>
+    </div>
+  `).join('');
+});
+</script>
+```
+
+### Mobile-Responsive Cart
+
+```html
+<div class="cart-container">
+  <!-- Mobile view -->
+  <div data-os-mobile-only class="mobile-cart">
+    <div data-os-cart-count>0</div>
+    <span data-os-cart-total>$0.00</span>
+  </div>
+  
+  <!-- Desktop view -->
+  <div data-os-desktop-only class="desktop-cart">
+    <h3>Shopping Cart</h3>
+    <div data-os-cart="summary"></div>
+    <div class="cart-summary">
+      <p>Items: <span data-os-cart-count>0</span></p>
+      <p>Total: <span data-os-cart-total>$0.00</span></p>
+    </div>
+  </div>
+</div>
+```
+
+## Cart Operations
+
+### Managing Quantities
+
+```javascript
+// Update quantity
+window.twentyNineNext.updateQuantity(packageId, newQuantity);
+
+// Increment
+const current = window.twentyNineNext.getCart().items.find(i => i.id === 1);
+window.twentyNineNext.updateQuantity(1, current.quantity + 1);
+
+// Decrement
+window.twentyNineNext.updateQuantity(1, Math.max(0, current.quantity - 1));
+```
+
+### Bulk Operations
+
+```javascript
+// Add multiple items
+async function addMultipleItems() {
+  await window.twentyNineNext.addToCart(1);
+  await window.twentyNineNext.addToCart(2);
+  await window.twentyNineNext.profiles.addToCart('bonus-item');
+}
+
+// Clear and rebuild cart
+function replaceCart(newItems) {
+  window.twentyNineNext.clearCart();
+  newItems.forEach(item => {
+    window.twentyNineNext.addToCart(item.id, item.quantity);
+  });
+}
+```
+
+## Cart Persistence
+
+### How It Works
+
+1. **Local Storage**: Cart saved to browser storage
+2. **API Sync**: Periodic sync with 29next API
+3. **Cross-Device**: Login to sync across devices
+
+### Managing Persistence
+
+```javascript
+// Force save to storage
+window.twentyNineNext.saveCart();
+
+// Force sync with API
+window.twentyNineNext.syncCart();
+
+// Clear local cart
+window.twentyNineNext.clearCart();
+
+// Clear all storage
+window.twentyNineNext.storage.clear();
+```
+
+## Cart Events
+
+### Available Events
+
+```javascript
+// Cart updated (any change)
+document.addEventListener('cart.updated', (e) => {
+  console.log('Cart updated:', e.detail);
+});
+
+// Item added
+document.addEventListener('cart.item.added', (e) => {
+  console.log('Added:', e.detail.item);
+});
+
+// Item removed
+document.addEventListener('cart.item.removed', (e) => {
+  console.log('Removed:', e.detail.item);
+});
+
+// Cart cleared
+document.addEventListener('cart.cleared', (e) => {
+  console.log('Cart cleared');
+});
+```
+
+### Custom Cart Logic
+
+```javascript
+// Prevent adding more than 5 items
+document.addEventListener('cart.item.adding', (e) => {
+  const cart = window.twentyNineNext.getCart();
+  if (cart.count >= 5) {
+    e.preventDefault();
+    alert('Maximum 5 items allowed');
+  }
+});
+
+// Auto-apply voucher at threshold
+document.addEventListener('cart.updated', (e) => {
+  if (e.detail.total >= 100 && !window.twentyNineNext.getAppliedVoucher()) {
+    window.twentyNineNext.applyVoucher('AUTO100');
+  }
+});
+```
+
+## Cart Display Configuration
+
+### Using osConfig
+
+```javascript
+window.osConfig = {
+  cartDisplayConfig: {
+    showImages: true,
+    showQuantityControls: true,
+    showRemoveButton: true,
+    showSavings: true,
+    emptyMessage: 'Your cart is empty',
+    currency: {
+      symbol: '$',
+      position: 'before',
+      decimals: 2
+    }
+  }
+};
+```
+
+### CSS Customization
+
+```css
+/* Cart display container */
+[data-os-cart="summary"] {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Cart items */
+.cart-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+/* Cart total */
+[data-os-cart-total] {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #2ecc71;
+}
+
+/* Empty cart message */
+[data-os-cart="summary"]:empty::after {
+  content: 'Your cart is empty';
+  display: block;
+  text-align: center;
+  padding: 2rem;
+  color: #999;
+}
+```
+
+## Mini Cart Implementation
+
+Create a hoverable mini cart:
+
+```html
+<div class="mini-cart-container">
+  <button class="mini-cart-trigger">
+    Cart (<span data-os-cart-count>0</span>)
+  </button>
+  
+  <div class="mini-cart-dropdown" data-os-in-cart="display" data-container="true">
+    <div data-os-cart="summary"></div>
+    <div class="mini-cart-footer">
+      <p>Total: <span data-os-cart-total>$0.00</span></p>
+      <button os-checkout-payment="combo">Checkout</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.mini-cart-dropdown {
+  display: none;
+  position: absolute;
+  background: white;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  width: 300px;
+}
+
+.mini-cart-container:hover .mini-cart-dropdown {
+  display: block;
+}
+</style>
+```
+
+## Detailed Cart Summary Elements
+
+Use specific cart summary attributes for fine control:
+
+```html
+<div data-os-cart="summary">
+  <!-- Line items container -->
+  <div data-os-cart-summary="line-display">
+    <!-- Individual line items will be rendered here -->
+    <div data-os-cart-summary="line-item">
+      <span data-os-cart-summary="line-title">Product Name</span>
+      <span data-os-cart-summary="line-sale">$29.99</span>
+      <span data-os-cart-summary="line-compare">$39.99</span>
+      <button data-os-cart-summary="remove-line">Remove</button>
+    </div>
+  </div>
+  
+  <!-- Savings display -->
+  <div data-os-cart-summary="savings">
+    <span data-os-cart-summary="savings-amount">$10.00</span>
+    <span data-os-cart-summary="savings-percentage">25%</span>
+  </div>
+  
+  <!-- Totals -->
+  <div class="cart-totals">
+    <p>Subtotal: <span data-os-cart-summary="subtotal">$0.00</span></p>
+    <p>Discount: -<span data-os-cart-summary="discount-amount">$0.00</span></p>
+    <p><strong>Total: <span data-os-cart-summary="grand-total">$0.00</span></strong></p>
+  </div>
+</div>
+```
+
+## Conditional Display
+
+Show/hide elements based on cart state:
+
+```html
+<!-- Show when cart has items -->
+<div data-os-in-cart="display" data-container="true">
+  <h3>Your Items</h3>
+  <div data-os-cart="summary"></div>
+  <button os-checkout-payment="combo">Checkout</button>
+</div>
+
+<!-- Show when cart is empty -->
+<div class="empty-cart-message" style="display: none;">
+  <h3>Your cart is empty</h3>
+  <p>Add some products to get started!</p>
+</div>
+
+<script>
+document.addEventListener('cart.updated', (e) => {
+  const emptyMessage = document.querySelector('.empty-cart-message');
+  if (e.detail.count === 0) {
+    emptyMessage.style.display = 'block';
+  } else {
+    emptyMessage.style.display = 'none';
+  }
+});
+</script>
+```
+
+## Troubleshooting
+
+### Cart Not Updating
+
+1. Check console for errors
+2. Verify API key and campaign ID
+3. Ensure Campaign Cart is initialized
+4. Check browser storage settings
+
+### Items Not Persisting
+
+```javascript
+// Debug storage
+console.log(window.twentyNineNext.storage.get('cart'));
+
+// Force sync
+window.twentyNineNext.syncCart();
+
+// Check initialization
+console.log(window.twentyNineNext.isInitialized());
+```
+
+### Performance Issues
+
+```javascript
+// Debounce cart updates
+let updateTimeout;
+document.addEventListener('cart.updated', (e) => {
+  clearTimeout(updateTimeout);
+  updateTimeout = setTimeout(() => {
+    updateExpensiveUI(e.detail);
+  }, 100);
+});
+```
+
+## Best Practices
+
+1. **Always show cart status** - Users should see their cart count/total
+2. **Provide clear actions** - Add/remove buttons should be obvious
+3. **Show savings** - Display discounts and savings clearly
+4. **Mobile optimize** - Ensure cart works well on small screens
+5. **Handle errors gracefully** - Show user-friendly error messages
+6. **Use conditional display** - Show/hide relevant elements based on cart state
+7. **Use Product Profiles** - For better maintainability and [multi-currency support](multi-currency.md)
+8. **Implement proper events** - Track cart actions with [event system](../../api/events-reference.md)
+
+## Related Features
+
+### Core Features
+- [Product Profiles](product-profiles.md) - Semantic product management
+- [Selectors](selectors.md) - Product selection components
+- [Multi-Currency](multi-currency.md) - International cart support
+- [Vouchers](vouchers.md) - Apply discount codes
+
+### Configuration
+- [Basic Configuration](../configuration/basic-config.md) - Cart display options
+- [Payment Configuration](../configuration/payment-config.md) - Checkout settings
+- [Form Validation](../configuration/form-validation.md) - Custom validation rules
+
+### Developer Resources
+- [JavaScript API](../../api/javascript-api.md) - Cart methods reference
+- [HTML Attributes](../../api/html-attributes.md) - Cart-related attributes
+- [Events Reference](../../api/events-reference.md) - Cart events and analytics
+- [Examples](../../examples/basic-implementation.md) - Cart implementation examples

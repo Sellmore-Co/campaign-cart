@@ -1,0 +1,421 @@
+---
+title: Basic Configuration Guide
+description: Essential configuration options to get Campaign Cart running on your site
+---
+
+# Basic Configuration Guide
+
+Essential configuration options to get Campaign Cart running on your site.
+
+## Configuration Methods
+
+Campaign Cart can be configured in three ways, in order of precedence:
+
+1. **JavaScript Configuration** (highest priority)
+2. **Meta Tags**
+3. **Default Values** (lowest priority)
+
+## Required Configuration
+
+### Minimum Setup
+
+You need at least these two values:
+
+```html
+<!-- Using meta tags -->
+<meta name="os-api-key" content="YOUR_API_KEY">
+<meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
+```
+
+```javascript
+// Using JavaScript
+window.osConfig = {
+  apiKey: 'YOUR_API_KEY',
+  campaignId: 'YOUR_CAMPAIGN_ID'
+};
+```
+
+## Basic Options
+
+### API Configuration
+
+```javascript
+window.osConfig = {
+  // Required: Your API key from 29next
+  apiKey: 'YOUR_API_KEY',
+  
+  // Required: Your campaign ID
+  campaignId: 'YOUR_CAMPAIGN_ID',
+  
+  // API endpoint (usually not needed)
+  apiUrl: 'https://api.29next.com',
+  
+  // Request timeout in milliseconds
+  apiTimeout: 10000
+};
+```
+
+### Initialization Options
+
+```javascript
+window.osConfig = {
+  // Auto-initialize on page load (default: true)
+  autoInit: true,
+  
+  // Initialize after DOM ready (default: true)
+  waitForDom: true,
+  
+  // Debug mode
+  debug: false,
+  
+  // Test mode
+  testMode: false
+};
+```
+
+### Country & Currency
+
+```javascript
+window.osConfig = {
+  // Default country code
+  defaultCountry: 'US',
+  
+  // Enable automatic country detection
+  enableCountryDetection: true,
+  
+  // Currency symbol position ('before' or 'after')
+  currencyPosition: 'before',
+  
+  // Number of decimal places
+  currencyDecimals: 2
+};
+```
+
+## Meta Tag Configuration
+
+All options can be set via meta tags:
+
+```html
+<head>
+  <!-- Required -->
+  <meta name="os-api-key" content="YOUR_API_KEY">
+  <meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
+  
+  <!-- Optional -->
+  <meta name="os-debug" content="false">
+  <meta name="os-disable-auto-init" content="true">
+  <meta name="os-address-default-country" content="US">
+  <meta name="os-facebook-pixel" content="YOUR_PIXEL_ID">
+</head>
+```
+
+## Common Configurations
+
+### E-commerce Site
+
+```javascript
+window.osConfig = {
+  apiKey: 'YOUR_API_KEY',
+  campaignId: 'YOUR_CAMPAIGN_ID',
+  
+  // Cart settings
+  persistCart: true,
+  cartExpiry: 7 * 24 * 60 * 60 * 1000, // 7 days
+  
+  // Display settings
+  showPricesWithTax: false,
+  hideOutOfStock: true,
+  
+  // Checkout settings
+  requirePhone: true,
+  requireCompany: false,
+  allowGuestCheckout: true
+};
+```
+
+### Landing Page
+
+```javascript
+window.osConfig = {
+  apiKey: 'YOUR_API_KEY',
+  campaignId: 'YOUR_CAMPAIGN_ID',
+  
+  // Simplified setup
+  autoInit: true,
+  skipToCheckout: true,
+  
+  // Pre-select products
+  defaultProducts: [1, 2],
+  
+  // Analytics
+  analytics: {
+    gtm: true,
+    containerId: 'GTM-XXXXXX'
+  }
+};
+```
+
+### Multi-Currency Setup
+
+For international campaigns, see the [Multi-Currency Guide](../features/multi-currency.md):
+
+```javascript
+window.osConfig = {
+  apiKey: 'YOUR_API_KEY',
+  campaignId: 'campaign-us',
+  
+  // Country detection
+  enableCountryDetection: true,
+  defaultCountry: 'US',
+  
+  // Country-specific campaigns
+  countryConfig: {
+    'US': { campaignId: 'campaign-us' },
+    'CA': { campaignId: 'campaign-ca' },
+    'GB': { campaignId: 'campaign-gb' }
+  }
+};
+```
+
+## Display Configuration
+
+### Cart Display
+
+```javascript
+window.osConfig = {
+  cartDisplayConfig: {
+    // Show product images
+    showImages: true,
+    
+    // Image size
+    imageSize: 'thumbnail',
+    
+    // Show quantity controls
+    showQuantityControls: true,
+    
+    // Show remove button
+    showRemoveButton: true,
+    
+    // Show savings/discounts
+    showSavings: true,
+    
+    // Empty cart message
+    emptyMessage: 'Your cart is empty'
+  }
+};
+```
+
+### Price Display
+
+```javascript
+window.osConfig = {
+  priceDisplayConfig: {
+    // Currency format
+    currency: {
+      symbol: '$',
+      position: 'before',
+      decimals: 2,
+      thousandsSeparator: ',',
+      decimalSeparator: '.'
+    },
+    
+    // Show compare at price
+    showComparePrice: true,
+    
+    // Show per-unit price
+    showUnitPrice: false
+  }
+};
+```
+
+## Checkout Configuration
+
+### Address Settings
+
+```javascript
+window.osConfig = {
+  addressConfig: {
+    // Default country for addresses
+    defaultCountry: 'US',
+    
+    // Restrict countries
+    allowedCountries: ['US', 'CA'],
+    
+    // Require state/province
+    requireState: true,
+    
+    // Enable Google autocomplete
+    enableAutocomplete: true,
+    googleMapsApiKey: 'YOUR_GOOGLE_API_KEY'
+  }
+};
+```
+
+### Payment Settings
+
+```javascript
+window.osConfig = {
+  paymentConfig: {
+    // Available payment methods
+    methods: ['credit_card', 'paypal', 'apple_pay'],
+    
+    // Default payment method
+    defaultMethod: 'credit_card',
+    
+    // Spreedly environment key
+    spreedlyEnvironmentKey: 'YOUR_SPREEDLY_KEY',
+    
+    // Enable express checkout
+    enableExpressCheckout: true
+  }
+};
+```
+
+## Security Configuration
+
+### API Security
+
+```javascript
+window.osConfig = {
+  security: {
+    // Require HTTPS
+    requireHttps: true,
+    
+    // CORS settings
+    corsCredentials: true,
+    
+    // API request signing
+    signRequests: true
+  }
+};
+```
+
+### Data Protection
+
+```javascript
+window.osConfig = {
+  privacy: {
+    // Store data in sessionStorage instead of localStorage
+    useSessionStorage: false,
+    
+    // Encrypt stored data
+    encryptStorage: true,
+    
+    // Clear data on logout
+    clearOnLogout: true
+  }
+};
+```
+
+## Development Configuration
+
+### Debug Mode
+
+```javascript
+window.osConfig = {
+  // Enable debug logging
+  debug: true,
+  
+  // Log API requests
+  logApiRequests: true,
+  
+  // Log events
+  logEvents: true,
+  
+  // Show debug panel
+  showDebugPanel: true
+};
+```
+
+For information on testing checkouts and placing test orders, see the [Test Orders Guide](../development/test-orders.md).
+
+## Environment-Specific Config
+
+```javascript
+// Determine environment
+const isDevelopment = window.location.hostname === 'localhost';
+const isStaging = window.location.hostname === 'staging.example.com';
+
+window.osConfig = {
+  apiKey: isDevelopment ? 'DEV_API_KEY' : 'PROD_API_KEY',
+  campaignId: isDevelopment ? 'dev-campaign' : 'prod-campaign',
+  
+  debug: isDevelopment,
+  testMode: isDevelopment || isStaging,
+  
+  apiUrl: isDevelopment 
+    ? 'https://api-dev.29next.com'
+    : 'https://api.29next.com'
+};
+```
+
+## Loading Configuration
+
+### Async Configuration
+
+```javascript
+// Load config from your API
+fetch('/api/campaign-cart-config')
+  .then(res => res.json())
+  .then(config => {
+    window.osConfig = config;
+    
+    // Load Campaign Cart after config is ready
+    const script = document.createElement('script');
+    script.src = 'https://rtc2.29next.com/campaign-cart/29next.min.js';
+    document.head.appendChild(script);
+  });
+```
+
+### Conditional Configuration
+
+```javascript
+window.osConfig = {
+  apiKey: 'YOUR_API_KEY',
+  campaignId: 'YOUR_CAMPAIGN_ID',
+  
+  // Conditional features
+  features: {
+    upsells: true,
+    vouchers: true,
+    expressCheckout: /iPhone|iPad|Mac/.test(navigator.userAgent),
+    multiCurrency: true
+  }
+};
+```
+
+## Validation
+
+Campaign Cart validates configuration on initialization:
+
+```javascript
+// Listen for configuration errors
+document.addEventListener('config.error', (event) => {
+  console.error('Configuration error:', event.detail);
+});
+
+// Check if configured correctly
+window.twentyNineNext.onReady(() => {
+  if (!window.twentyNineNext.isConfigured()) {
+    console.error('Campaign Cart is not properly configured');
+  }
+});
+```
+
+## Related Topics
+
+### Configuration Guides
+- [Form Validation](form-validation.md) - Custom validation rules
+- [Payment Configuration](payment-config.md) - Payment method setup
+- [Google Autocomplete](google-autocomplete.md) - Address autocomplete setup
+
+### Feature Guides
+- [Shopping Cart](../features/shopping-cart.md) - Cart configuration options
+- [Product Profiles](../features/product-profiles.md) - Product configuration
+- [Multi-Currency](../features/multi-currency.md) - International configuration
+- [Express Checkout](../features/express-checkout.md) - Quick checkout setup
+
+### Developer Resources
+- [JavaScript API](../../api/javascript-api.md#configuration-methods) - Config API methods
+- [Events Reference](../../api/events-reference.md) - Analytics and tracking setup
+- [Examples](../../examples/basic-implementation.md) - Configuration examples

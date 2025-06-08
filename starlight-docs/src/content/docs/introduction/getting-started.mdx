@@ -1,0 +1,154 @@
+---
+title: Getting Started
+description: Setup guide for Campaign Cart - Add shopping cart functionality to any HTML page
+---
+
+import { Code, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## Basic Setup
+
+Add this to any HTML page:
+
+<Code 
+  code={`<!DOCTYPE html>
+<html>
+<head>
+    <!-- API Configuration -->
+    <meta name="os-api-key" content="YOUR_API_KEY">
+    <meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
+    
+    <!-- Include SDK -->
+    <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+</head>
+<body>
+    <!-- Product -->
+    <button data-os-action="toggle-item" data-os-package="1">
+        Add Starter Kit - $97
+    </button>
+    
+    <!-- Cart Display -->
+    <div>
+        Cart: <span data-os-cart-count>0</span> items
+        Total: <span data-os-cart-total>$0.00</span>
+    </div>
+    
+    <!-- Checkout -->
+    <button os-checkout-payment="combo">Checkout</button>
+</body>
+</html>`}
+  lang="html"
+  title="Complete Setup Example"
+/>
+
+Replace `YOUR_API_KEY` and `YOUR_CAMPAIGN_ID` with your actual values.
+
+## Using Product Profiles (Recommended)
+
+Instead of package IDs, use semantic profiles:
+
+<Code 
+  code={`<!-- Better: semantic names -->
+<button data-os-action="toggle-item" data-os-profile="starter-kit">
+    Add Starter Kit
+</button>
+
+<!-- Auto-populate price from profile -->
+<span data-os-profile-price data-os-profile-id="starter-kit">Loading...</span>`}
+  lang="html"
+  title="Product Profiles Example"
+/>
+
+<LinkCard
+  title="Setup Product Profiles"
+  href="/guides/features/product-profiles/"
+  description="Learn how to configure and use product profiles for better organization"
+/>
+
+## Manual Initialization
+
+For more control over initialization:
+
+<Code 
+  code={`<script>
+window.osConfig = {
+    apiKey: 'YOUR_API_KEY',
+    campaignId: 'YOUR_CAMPAIGN_ID',
+    autoInit: false
+};
+</script>
+<script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+<script>
+// Initialize when ready
+window.twentyNineNext.init();
+</script>`}
+  lang="html"
+  title="Manual Initialization"
+/>
+
+## Configuration Options
+
+Add these meta tags as needed:
+
+<Code 
+  code={`<!-- Currency/Location -->
+<meta name="os-default-country" content="US">
+<meta name="os-default-currency" content="USD">
+
+<!-- Checkout Pages -->
+<meta name="os-next-page" content="/thank-you">
+
+<!-- Google Places API -->
+<meta name="google-places-api-key" content="YOUR_GOOGLE_KEY">`}
+  lang="html"
+  title="Optional Configuration"
+/>
+
+## What's Next?
+
+<CardGrid>
+  <LinkCard
+    title="Core Concepts"
+    href="/introduction/core-concepts/"
+    description="Packages vs profiles, cart basics"
+  />
+  <LinkCard
+    title="Shopping Cart Guide"
+    href="/guides/features/shopping-cart/"
+    description="Complete cart features"
+  />
+  <LinkCard
+    title="HTML Attributes Reference"
+    href="/api/html-attributes/"
+    description="All data attributes"
+  />
+</CardGrid>
+
+### Popular Features
+
+<CardGrid>
+  <LinkCard
+    title="Multi-Currency"
+    href="/guides/features/multi-currency/"
+    description="International support"
+  />
+  <LinkCard
+    title="Express Checkout"
+    href="/guides/features/express-checkout/"
+    description="PayPal, Apple Pay"
+  />
+  <LinkCard
+    title="Discount Codes"
+    href="/guides/features/vouchers/"
+    description="Vouchers and discounts"
+  />
+</CardGrid>
+
+### Examples
+
+<CardGrid>
+  <LinkCard
+    title="Basic Implementation"
+    href="/examples/basic-implementation/"
+    description="Common patterns and examples"
+  />
+</CardGrid>
