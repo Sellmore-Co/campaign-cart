@@ -1,40 +1,51 @@
 # 29next Campaign Cart
 
-A powerful JavaScript utility that seamlessly connects 29next campaigns with Webflow funnels using simple HTML attributes.
+A JavaScript SDK for connecting the 29next API to your page builder.
 
-## Quick Start
+## Quick Setup
 
-Get up and running with Campaign Cart in minutes:
+Add to any HTML page:
 
-1. **Installation** - Add the script to your page
-2. **Configuration** - Set up your API keys and settings
-3. **Implementation** - Use HTML attributes to connect your forms
+```html
+<script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+<meta name="os-api-key" content="YOUR_API_KEY">
+<meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
 
-[Get Started →](/introduction/getting-started)
+<!-- Add products to cart -->
+<button data-os-action="toggle-item" data-os-package="1">Add to Cart</button>
 
-## Key Features
+<!-- Show cart info -->
+<span data-os-cart-count>0</span> items
+<span data-os-cart-total>$0.00</span>
 
-- **Shopping Cart Management** - Full cart functionality with add, remove, and update operations
-- **Express Checkout** - Streamlined checkout process for better conversions
-- **Multi-Currency Support** - Handle multiple currencies automatically
-- **Product Profiles** - Advanced product configuration and pricing
-- **Event System** - Comprehensive event-driven architecture
-- **Attribution Tracking** - Track user journey and conversion sources
+<!-- Checkout -->
+<button os-checkout-payment="combo">Checkout</button>
+```
+
+That's it. Works with Webflow, HTML, or any page builder.
+
+[View Live Demo →](/examples/basic-cart.html) | [Complete Setup →](/introduction/getting-started)
+
+## What it handles
+
+- Shopping cart with add/remove/update
+- Multi-currency (USD, CAD, GBP, EUR, AUD)
+- Checkout forms with validation
+- PayPal, Apple Pay, Google Pay
+- Post-purchase upsells
+- Discount codes
 
 ## Architecture
 
-Built with a clean **Manager Pattern** architecture:
+Built with 16+ specialized managers:
+- **CartManager** - Cart operations
+- **CheckoutManager** - Checkout forms  
+- **PaymentHandler** - Payment processing
+- **CurrencyManager** - Multi-currency
+- **EventManager** - Analytics integration
 
-- **Modular Design** - 16+ specialized managers handle different domains
-- **Event-Driven** - Loose coupling through comprehensive event system
-- **Service Layer** - Centralized services for common operations
-- **Component-Based** - Reusable checkout components
+## Browser support
 
-## Why Campaign Cart?
+Chrome, Firefox, Safari, Edge (latest versions)
 
-- ✅ **Easy Integration** - HTML attributes, no complex JavaScript required
-- ✅ **Flexible Configuration** - Multiple ways to configure your setup
-- ✅ **Production Ready** - Battle-tested in high-traffic campaigns
-- ✅ **Comprehensive Docs** - Detailed documentation and examples
-
-[View Examples →](/examples/basic-implementation)
+[Documentation →](/introduction/overview) | [Examples →](/examples/basic-implementation)

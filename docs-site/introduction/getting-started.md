@@ -1,166 +1,106 @@
 # Getting Started
 
-[← Back to Introduction](overview.md) | [Core Concepts →](core-concepts.md)
+[← Back to Overview](overview.md) | [Core Concepts →](core-concepts.md)
 
-This guide will help you get Campaign Cart up and running in minutes.
+## Basic Setup
 
-## Prerequisites
-
-- A 29next campaign with API access
-- A website or landing page (Webflow, HTML, etc.)
-- Basic HTML knowledge
-
-## Quick Start
-
-### Step 1: Include the Script
-
-Add Campaign Cart to your HTML pages:
-
-```html
-<script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
-```
-
-### Step 2: Add Configuration
-
-Add meta tags to your `<head>`:
-
-```html
-<!-- Required: Your campaign API key -->
-<meta name="os-api-key" content="YOUR_API_KEY_HERE">
-
-<!-- Required: Your campaign ID -->
-<meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
-
-<!-- Optional: Default country -->
-<meta name="os-default-country" content="US">
-```
-
-### Step 3: Create Your First Cart Element
-
-Add a button to add products to cart:
-
-```html
-<!-- Add product to cart button -->
-<button data-os-action="toggle-item" data-os-package="1">
-  Add to Cart
-</button>
-
-<!-- Display cart count -->
-<span data-os-cart-count>0</span>
-
-<!-- Display cart total -->
-<span data-os-cart-total>$0.00</span>
-```
-
-### Step 4: Add a Checkout Button
-
-```html
-<button os-checkout-payment="combo">
-  Proceed to Checkout
-</button>
-```
-
-That's it! Campaign Cart will automatically initialize and handle all interactions.
-
-## Basic Example
-
-Here's a complete minimal example:
+Add this to any HTML page:
 
 ```html
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>My Store</title>
-    
-    <!-- Campaign Cart Configuration -->
+    <!-- API Configuration -->
     <meta name="os-api-key" content="YOUR_API_KEY">
     <meta name="os-campaign-id" content="YOUR_CAMPAIGN_ID">
     
-    <!-- Include Campaign Cart -->
+    <!-- Include SDK -->
     <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
 </head>
 <body>
-    <h1>Welcome to My Store</h1>
-    
     <!-- Product -->
+    <button data-os-action="toggle-item" data-os-package="1">
+        Add Starter Kit - $97
+    </button>
+    
+    <!-- Cart Display -->
     <div>
-        <h2>Starter Kit</h2>
-        <p>Price: <span data-os-package-price data-os-package-id="1">$0.00</span></p>
-        <button data-os-action="toggle-item" data-os-package="1">Add to Cart</button>
+        Cart: <span data-os-cart-count>0</span> items
+        Total: <span data-os-cart-total>$0.00</span>
     </div>
     
-    <!-- Cart Summary -->
-    <div>
-        <h3>Cart (<span data-os-cart-count>0</span> items)</h3>
-        <p>Total: <span data-os-cart-total>$0.00</span></p>
-        <button os-checkout-payment="combo">Checkout</button>
-    </div>
+    <!-- Checkout -->
+    <button os-checkout-payment="combo">Checkout</button>
 </body>
 </html>
 ```
 
+Replace `YOUR_API_KEY` and `YOUR_CAMPAIGN_ID` with your actual values.
+
 ## Using Product Profiles (Recommended)
 
-Instead of package IDs, use semantic [product profiles](../guides/features/product-profiles.md):
+Instead of package IDs, use semantic profiles:
 
 ```html
-<!-- Add using product profile -->
+<!-- Better: semantic names -->
 <button data-os-action="toggle-item" data-os-profile="starter-kit">
-  Add Starter Kit
+    Add Starter Kit
 </button>
 
-<!-- Display profile price -->
-<span data-os-profile-price data-os-profile-id="starter-kit">$0.00</span>
+<!-- Auto-populate price from profile -->
+<span data-os-profile-price data-os-profile-id="starter-kit">Loading...</span>
 ```
 
-Learn more: [Product Profiles Guide](../guides/features/product-profiles.md)
+[Setup Product Profiles →](../guides/features/product-profiles.md)
 
 ## Manual Initialization
 
-For more control, initialize manually:
+For more control:
 
 ```html
 <script>
 window.osConfig = {
     apiKey: 'YOUR_API_KEY',
     campaignId: 'YOUR_CAMPAIGN_ID',
-    defaultCountry: 'US',
     autoInit: false
 };
 </script>
 <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
 <script>
 // Initialize when ready
-document.addEventListener('DOMContentLoaded', function() {
-    window.twentyNineNext.init();
-});
+window.twentyNineNext.init();
 </script>
+```
+
+## Configuration Options
+
+Add these meta tags as needed:
+
+```html
+<!-- Currency/Location -->
+<meta name="os-default-country" content="US">
+<meta name="os-default-currency" content="USD">
+
+<!-- Checkout Pages -->
+<meta name="os-next-page" content="/thank-you">
+
+<!-- Google Places API -->
+<meta name="google-places-api-key" content="YOUR_GOOGLE_KEY">
 ```
 
 ## What's Next?
 
-Now that you have Campaign Cart running, explore these topics:
-
-### Essential Guides
-- [Core Concepts](core-concepts.md) - Understand packages, profiles, and the architecture
-- [Basic Configuration](../guides/configuration/basic-config.md) - All configuration options
-- [Shopping Cart Guide](../guides/features/shopping-cart.md) - Advanced cart features and customization
-
-### Popular Features
-- [Product Profiles](../guides/features/product-profiles.md) - Semantic product management
-- [Selectors](../guides/features/selectors.md) - Product selection components
-- [Multi-Currency](../guides/features/multi-currency.md) - International support
-- [Express Checkout](../guides/features/express-checkout.md) - One-click checkout
-
-### Developer Resources
-- [JavaScript API Reference](../api/javascript-api.md) - Complete API documentation
+**Essential reading:**
+- [Core Concepts](core-concepts.md) - Packages vs profiles, cart basics
+- [Shopping Cart Guide](../guides/features/shopping-cart.md) - Cart features
 - [HTML Attributes Reference](../api/html-attributes.md) - All data attributes
-- [Events Reference](../api/events-reference.md) - Event handling and analytics
-- [Examples](../examples/basic-implementation.md) - More implementation examples
 
-## Need Help?
+**Popular features:**
+- [Multi-Currency](../guides/features/multi-currency.md) - International support
+- [Express Checkout](../guides/features/express-checkout.md) - PayPal, Apple Pay
+- [Discount Codes](../guides/features/vouchers.md) - Vouchers and discounts
 
-- Review the [JavaScript API Reference](../api/javascript-api.md)
-- Check [Examples](../examples/basic-implementation.md) for common patterns
-- Contact support at support@29next.com
+**Examples:**
+- [Live Cart Demo](../examples/basic-cart.html) - Interactive example
+- [Checkout Form](../examples/checkout-form.html) - Complete checkout
+- [More Examples](../examples/basic-implementation.md) - Additional patterns
