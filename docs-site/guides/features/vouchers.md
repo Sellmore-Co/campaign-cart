@@ -1,0 +1,586 @@
+# Vouchers & Discounts Guide
+
+Complete guide to implementing discount coupons and vouchers for reducing cart totals and providing special offers.
+
+## Overview
+
+Campaign Cart's voucher system supports multiple discount types including percentage discounts, fixed amount reductions, and free shipping offers. Vouchers can be applied to the entire cart or restricted to specific products.
+
+## Supported Discount Types
+
+- **Percentage Discounts** - Apply a percentage off (e.g., 20% off)
+- **Fixed Amount Discounts** - Apply a fixed dollar amount off (e.g., $10 off)
+- **Free Shipping** - Remove shipping charges
+- **Product-Specific** - Apply discounts only to selected products
+
+## Basic Implementation
+
+### Applying Vouchers with JavaScript
+
+```javascript
+// Apply a 20% discount coupon
+window.twentyNineNext.cart.applyCoupon('SAVE20', 'percentage', 20);
+
+// Apply a $10 fixed discount
+window.twentyNineNext.cart.applyCoupon('SAVE10', 'fixed', 10);
+
+// Apply free shipping
+window.twentyNineNext.cart.applyCoupon('FREESHIP', 'free_shipping');
+
+// Remove current coupon
+window.twentyNineNext.cart.removeCoupon();
+```
+
+### Coupon Input Form
+
+```html
+<div class="coupon-form">
+  <h3>Have a Coupon Code?</h3>
+  <div class="coupon-input-container">
+    <input type="text" id="coupon-code" placeholder="Enter coupon code" />
+    <button onclick="applyCouponCode()">Apply</button>
+  </div>
+  
+  <!-- Coupon display area -->
+  <div data-os-cart-coupon-container class="coupon-applied hidden">
+    <span>Coupon applied: </span>
+    <span data-os-cart-coupon></span>
+    <button onclick="removeCouponCode()">Remove</button>
+  </div>
+  
+  <!-- Error message area -->
+  <div id="coupon-error" class="coupon-error hidden"></div>
+</div>
+
+<script>
+function applyCouponCode() {
+  const couponCode = document.getElementById('coupon-code').value.trim();
+  const errorEl = document.getElementById('coupon-error');
+  
+  if (!couponCode) {
+    showCouponError('Please enter a coupon code');
+    return;
+  }
+  
+  try {
+    // For demo purposes - in real implementation, you'd validate with your API
+    if (couponCode === 'SAVE20') {
+      window.twentyNineNext.cart.applyCoupon('SAVE20', 'percentage', 20);
+    } else if (couponCode === 'SAVE10') {
+      window.twentyNineNext.cart.applyCoupon('SAVE10', 'fixed', 10);
+    } else if (couponCode === 'FREESHIP') {
+      window.twentyNineNext.cart.applyCoupon('FREESHIP', 'free_shipping');
+    } else {
+      showCouponError('Invalid coupon code');
+      return;
+    }
+    
+    // Clear input and hide error
+    document.getElementById('coupon-code').value = '';
+    hideError();
+    
+  } catch (error) {
+    console.error('Error applying coupon:', error);
+    showCouponError('Error applying coupon. Please try again.');
+  }
+}
+
+function removeCouponCode() {
+  try {
+    window.twentyNineNext.cart.removeCoupon();
+    hideError();
+  } catch (error) {
+    console.error('Error removing coupon:', error);
+  }
+}
+
+function showCouponError(message) {
+  const errorEl = document.getElementById('coupon-error');
+  errorEl.textContent = message;
+  errorEl.classList.remove('hidden');
+}
+
+function hideError() {
+  document.getElementById('coupon-error').classList.add('hidden');
+}
+</script>
+```
+
+## Advanced Coupon Features
+
+### Product-Specific Coupons
+
+```javascript
+// Apply 15% discount only to specific products
+window.twentyNineNext.cart.applyCoupon('CATEGORY15', 'percentage', 15, ['product_1', 'product_2']);
+
+// Apply $5 off only to premium products
+window.twentyNineNext.cart.applyCoupon('PREMIUM5', 'fixed', 5, ['premium_kit', 'pro_bundle']);
+```
+
+### Coupon Validation with API
+
+```javascript
+async function validateAndApplyCoupon(couponCode) {
+  const errorEl = document.getElementById('coupon-error');
+  
+  try {
+    // Show loading state
+    const button = document.querySelector('.coupon-form button');
+    button.textContent = 'Validating...';
+    button.disabled = true;
+    
+    // Validate with your API
+    const response = await fetch('/api/validate-coupon', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        code: couponCode,
+        cart: window.twentyNineNext.cart.getCartForApi() 
+      })
+    });
+    
+    const couponData = await response.json();
+    
+    if (couponData.valid) {
+      // Apply the validated coupon
+      window.twentyNineNext.cart.applyCoupon(
+        couponCode,
+        couponData.type,
+        couponData.value,
+        couponData.applicable_product_ids || []
+      );
+      
+      document.getElementById('coupon-code').value = '';
+      hideError();
+    } else {
+      showCouponError(couponData.message || 'Invalid coupon code');
+    }
+    
+  } catch (error) {
+    console.error('Error validating coupon:', error);
+    showCouponError('Error validating coupon. Please try again.');
+  } finally {
+    // Reset button state
+    const button = document.querySelector('.coupon-form button');
+    button.textContent = 'Apply';
+    button.disabled = false;
+  }
+}
+```
+
+## Cart Display with Discounts
+
+### Discount Display Elements
+
+```html
+<div class="cart-summary">
+  <h3>Order Summary</h3>
+  
+  <!-- Cart items -->
+  <div data-os-cart="summary"></div>
+  
+  <!-- Pricing breakdown -->
+  <div class="cart-totals">
+    
+    <!-- Original subtotal (before discounts) -->
+    <div class="cart-line">
+      <span>Subtotal:</span>
+      <span data-os-cart-original-subtotal>$0.00</span>
+    </div>
+    
+    <!-- Coupon discount -->
+    <div data-os-cart-coupon-container class="cart-line coupon-line hidden">
+      <span>
+        Coupon (<span data-os-cart-coupon></span>):
+      </span>
+      <span class="discount-amount">-<span data-os-cart-coupon-savings>$0.00</span></span>
+    </div>
+    
+    <!-- Package savings -->
+    <div class="cart-line savings-line" data-os-cart-savings-container>
+      <span>Package Savings:</span>
+      <span class="discount-amount">-<span data-os-cart-savings>$0.00</span></span>
+    </div>
+    
+    <!-- New subtotal (after discounts) -->
+    <div class="cart-line">
+      <span>Discounted Subtotal:</span>
+      <span data-os-cart-subtotal>$0.00</span>
+    </div>
+    
+    <!-- Shipping -->
+    <div class="cart-line">
+      <span>Shipping:</span>
+      <span data-os-cart-shipping>$0.00</span>
+    </div>
+    
+    <!-- Final total -->
+    <div class="cart-line total-line">
+      <span><strong>Total:</strong></span>
+      <span><strong data-os-cart-total>$0.00</strong></span>
+    </div>
+    
+  </div>
+</div>
+```
+
+### Styling for Discount Display
+
+```css
+.cart-totals {
+  border-top: 1px solid #ddd;
+  padding-top: 1rem;
+}
+
+.cart-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+}
+
+.coupon-line {
+  color: #2ecc71;
+  font-weight: bold;
+}
+
+.savings-line {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.discount-amount {
+  color: #2ecc71;
+}
+
+.total-line {
+  border-top: 1px solid #ddd;
+  padding-top: 0.5rem;
+  font-size: 1.2rem;
+}
+
+.coupon-form {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.coupon-input-container {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.coupon-input-container input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.coupon-input-container button {
+  padding: 0.5rem 1rem;
+  background: #2ecc71;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.coupon-applied {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+}
+
+.coupon-error {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+}
+
+.hidden {
+  display: none;
+}
+```
+
+## Complete Coupon Implementation
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Coupon System Example</title>
+  
+  <meta name="os-api-key" content="YOUR_API_KEY">
+  
+  <script src="https://rtc2.29next.com/campaign-cart/29next.min.js"></script>
+  
+  <style>
+    .checkout-container { max-width: 600px; margin: 2rem auto; padding: 2rem; }
+    .product-section { margin-bottom: 2rem; }
+    .product-card { border: 1px solid #ddd; padding: 1rem; margin: 1rem 0; border-radius: 8px; }
+    .cart-section { border: 1px solid #ddd; padding: 1rem; border-radius: 8px; }
+    
+    /* Copy coupon styling from above */
+    .cart-totals { border-top: 1px solid #ddd; padding-top: 1rem; }
+    .cart-line { display: flex; justify-content: space-between; padding: 0.5rem 0; }
+    .coupon-line { color: #2ecc71; font-weight: bold; }
+    .discount-amount { color: #2ecc71; }
+    .total-line { border-top: 1px solid #ddd; padding-top: 0.5rem; font-size: 1.2rem; }
+    
+    .coupon-form { margin: 1rem 0; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
+    .coupon-input-container { display: flex; gap: 0.5rem; margin: 0.5rem 0; }
+    .coupon-input-container input { flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; }
+    .coupon-input-container button { padding: 0.5rem 1rem; background: #2ecc71; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .coupon-applied { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; }
+    .coupon-error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="checkout-container">
+    
+    <!-- Products -->
+    <div class="product-section">
+      <h2>Products</h2>
+      
+      <div class="product-card">
+        <h3>Starter Kit</h3>
+        <p>Perfect for beginners</p>
+        <p><strong>$29.99</strong></p>
+        <button data-os-action="toggle-item" data-os-package="1">Add to Cart</button>
+      </div>
+      
+      <div class="product-card">
+        <h3>Pro Bundle</h3>
+        <p>Everything you need</p>
+        <p><strong>$49.99</strong></p>
+        <button data-os-action="toggle-item" data-os-package="2">Add to Cart</button>
+      </div>
+    </div>
+    
+    <!-- Cart with Coupons -->
+    <div class="cart-section">
+      <h2>Shopping Cart (<span data-os-cart-count>0</span> items)</h2>
+      
+      <!-- Cart items -->
+      <div data-os-cart="summary"></div>
+      
+      <!-- Coupon form -->
+      <div class="coupon-form">
+        <h3>Have a Coupon Code?</h3>
+        <div class="coupon-input-container">
+          <input type="text" id="coupon-code" placeholder="Try: SAVE20, SAVE10, or FREESHIP" />
+          <button onclick="applyCouponCode()">Apply</button>
+        </div>
+        
+        <!-- Coupon applied display -->
+        <div data-os-cart-coupon-container class="coupon-applied hidden">
+          <span>✅ Coupon applied: </span>
+          <span data-os-cart-coupon></span>
+          <button onclick="removeCouponCode()" style="float: right;">Remove</button>
+        </div>
+        
+        <!-- Error display -->
+        <div id="coupon-error" class="coupon-error hidden"></div>
+      </div>
+      
+      <!-- Cart totals -->
+      <div class="cart-totals">
+        
+        <div class="cart-line">
+          <span>Original Subtotal:</span>
+          <span data-os-cart-original-subtotal>$0.00</span>
+        </div>
+        
+        <div data-os-cart-coupon-container class="cart-line coupon-line hidden">
+          <span>Coupon Discount:</span>
+          <span class="discount-amount">-<span data-os-cart-coupon-savings>$0.00</span></span>
+        </div>
+        
+        <div class="cart-line">
+          <span>Subtotal:</span>
+          <span data-os-cart-subtotal>$0.00</span>
+        </div>
+        
+        <div class="cart-line">
+          <span>Shipping:</span>
+          <span data-os-cart-shipping>$5.99</span>
+        </div>
+        
+        <div class="cart-line total-line">
+          <span><strong>Total:</strong></span>
+          <span><strong data-os-cart-total>$0.00</strong></span>
+        </div>
+        
+      </div>
+      
+      <!-- Checkout button -->
+      <button os-checkout-payment="combo" style="width: 100%; padding: 1rem; background: #2ecc71; color: white; border: none; border-radius: 4px; margin-top: 1rem; font-size: 1.1rem;">
+        Proceed to Checkout
+      </button>
+      
+    </div>
+    
+  </div>
+  
+  <script>
+    function applyCouponCode() {
+      const couponCode = document.getElementById('coupon-code').value.trim().toUpperCase();
+      const errorEl = document.getElementById('coupon-error');
+      
+      if (!couponCode) {
+        showCouponError('Please enter a coupon code');
+        return;
+      }
+      
+      try {
+        // Demo coupon codes - replace with your API validation
+        if (couponCode === 'SAVE20') {
+          window.twentyNineNext.cart.applyCoupon('SAVE20', 'percentage', 20);
+        } else if (couponCode === 'SAVE10') {
+          window.twentyNineNext.cart.applyCoupon('SAVE10', 'fixed', 10);
+        } else if (couponCode === 'FREESHIP') {
+          window.twentyNineNext.cart.applyCoupon('FREESHIP', 'free_shipping');
+        } else {
+          showCouponError('Invalid coupon code. Try: SAVE20, SAVE10, or FREESHIP');
+          return;
+        }
+        
+        // Success - clear input and hide error
+        document.getElementById('coupon-code').value = '';
+        hideError();
+        
+      } catch (error) {
+        console.error('Error applying coupon:', error);
+        showCouponError('Error applying coupon. Please try again.');
+      }
+    }
+    
+    function removeCouponCode() {
+      try {
+        window.twentyNineNext.cart.removeCoupon();
+        hideError();
+      } catch (error) {
+        console.error('Error removing coupon:', error);
+      }
+    }
+    
+    function showCouponError(message) {
+      const errorEl = document.getElementById('coupon-error');
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+    }
+    
+    function hideError() {
+      document.getElementById('coupon-error').classList.add('hidden');
+    }
+    
+    // Allow Enter key to apply coupon
+    document.getElementById('coupon-code').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        applyCouponCode();
+      }
+    });
+  </script>
+</body>
+</html>
+```
+
+## Coupon Events
+
+```javascript
+// Listen for coupon application events
+document.addEventListener('cart.updated', (e) => {
+  const cart = e.detail.cart;
+  if (cart.couponCode) {
+    console.log('Coupon applied:', cart.couponCode);
+    console.log('Discount amount:', cart.totals.coupon_savings);
+  }
+});
+
+// Custom coupon validation
+document.addEventListener('coupon.applying', (e) => {
+  const { couponCode } = e.detail;
+  
+  // Prevent application of invalid coupons
+  if (couponCode === 'EXPIRED') {
+    e.preventDefault();
+    alert('This coupon has expired');
+  }
+});
+```
+
+## API Integration
+
+### Coupon Data Structure
+
+```javascript
+// Get current coupon details
+const couponDetails = window.twentyNineNext.cart.getCouponDetails();
+console.log(couponDetails);
+// Returns:
+// {
+//   code: 'SAVE20',
+//   type: 'percentage',
+//   value: 20,
+//   applicable_product_ids: []
+// }
+
+// Cart data for API submission includes vouchers
+const cartData = window.twentyNineNext.cart.getCartForApi();
+console.log(cartData.vouchers);
+// Returns:
+// [
+//   {
+//     code: 'SAVE20',
+//     type: 'percentage', 
+//     value: 20
+//   }
+// ]
+```
+
+## Best Practices
+
+1. **Validate server-side** - Always validate coupons on your backend
+2. **Clear error messages** - Provide helpful feedback for invalid codes
+3. **Expiration handling** - Check coupon validity dates
+4. **Usage limits** - Implement per-customer usage restrictions
+5. **Stackable coupons** - Decide if multiple coupons can be combined
+6. **Product restrictions** - Use applicable_product_ids for targeted discounts
+7. **Visual feedback** - Show applied coupons and savings clearly
+
+## Troubleshooting
+
+### Coupon Not Applying
+```javascript
+// Check if coupon methods are available
+console.log('Cart manager:', window.twentyNineNext.cart);
+console.log('Apply coupon method:', typeof window.twentyNineNext.cart.applyCoupon);
+
+// Check current cart state
+console.log('Current cart:', window.twentyNineNext.cart.getState());
+```
+
+### Discount Not Calculating
+```javascript
+// Verify discount manager is working
+const cart = window.twentyNineNext.cart.getState();
+console.log('Coupon details:', cart.couponDetails);
+console.log('Coupon savings:', cart.totals.coupon_savings);
+```
+
+## Next Steps
+
+- [Shopping Cart Guide](shopping-cart.md) - Cart management and display
+- [Checkout Guide](../checkout/basic-checkout.md) - Completing orders with discounts
+- [API Reference](../../api/javascript-api.md) - Complete method documentation

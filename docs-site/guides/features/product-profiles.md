@@ -1,0 +1,467 @@
+# Product Profiles Guide
+
+Complete guide to using semantic product profiles for better product management and multi-currency support.
+
+## Overview
+
+Product Profiles provide a semantic way to reference products using meaningful IDs (like `starter-kit`) instead of numeric package IDs. This system is especially powerful for multi-currency setups and provides better maintainability.
+
+## Benefits of Product Profiles
+
+- **Semantic naming** - Use `starter-kit` instead of `1`
+- **Multi-currency support** - Automatic package mapping by country
+- **Better maintainability** - Clear, descriptive product references
+- **Rich metadata** - Categories, tags, descriptions
+- **Backward compatibility** - Works alongside legacy package system
+
+## Basic Implementation
+
+### Profile-Based Cart Actions
+
+```html
+<!-- Add product profile to cart -->
+<button data-os-action="toggle-item" data-os-profile="starter-kit">
+  Add Starter Kit
+</button>
+
+<!-- Profile-specific pricing -->
+<span data-os-profile-price data-os-profile-id="starter-kit">$0.00</span>
+
+<!-- Multiple profiles -->
+<button data-os-action="toggle-item" data-os-profile="pro-bundle">
+  Add Pro Bundle
+</button>
+<span data-os-profile-price data-os-profile-id="pro-bundle">$0.00</span>
+```
+
+### JavaScript API
+
+```javascript
+// Add profile to cart
+window.twentyNineNext.profiles.addToCart('starter-kit');
+
+// Get profile information
+const profile = await window.twentyNineNext.profiles.getProfile('starter-kit');
+console.log(profile.name, profile.price);
+
+// Get all profiles
+const allProfiles = await window.twentyNineNext.profiles.getAll();
+```
+
+## Profile Configuration
+
+### Basic Profile Setup
+
+```javascript
+window.osConfig = {
+  productProfiles: {
+    'starter-kit': {
+      name: 'Starter Kit',
+      description: 'Perfect for beginners',
+      packageId: 1,
+      price: 29.99,
+      image: '/images/starter-kit.jpg'
+    },
+    'pro-bundle': {
+      name: 'Pro Bundle', 
+      description: 'Everything you need',
+      packageId: 2,
+      price: 49.99,
+      image: '/images/pro-bundle.jpg'
+    },
+    'ultimate': {
+      name: 'Ultimate Package',
+      description: 'Our premium offering',
+      packageId: 3,
+      price: 89.99,
+      image: '/images/ultimate.jpg'
+    }
+  }
+};
+```
+
+### Multi-Currency Profile Configuration
+
+```javascript
+window.osConfig = {
+  productProfiles: {
+    'starter-kit': {
+      name: 'Starter Kit',
+      description: 'Perfect for beginners',
+      category: 'essentials',
+      tags: ['beginner', 'popular'],
+      
+      // Country-specific mappings
+      campaigns: {
+        'US': { 
+          packageId: 1, 
+          price: 29.99,
+          currency: 'USD' 
+        },
+        'CA': { 
+          packageId: 101, 
+          price: 39.99,
+          currency: 'CAD' 
+        },
+        'GB': { 
+          packageId: 201, 
+          price: 24.99,
+          currency: 'GBP' 
+        },
+        'EU': { 
+          packageId: 301, 
+          price: 27.99,
+          currency: 'EUR' 
+        }
+      }
+    },
+    
+    'pro-bundle': {
+      name: 'Pro Bundle',
+      description: 'Complete solution',
+      category: 'bundles',
+      tags: ['popular', 'value'],
+      
+      campaigns: {
+        'US': { packageId: 2, price: 49.99 },
+        'CA': { packageId: 102, price: 64.99 },
+        'GB': { packageId: 202, price: 44.99 },
+        'EU': { packageId: 302, price: 47.99 }
+      }
+    }
+  }
+};
+```
+
+## Advanced Profile Features
+
+### Profile Metadata
+
+```javascript
+window.osConfig = {
+  productProfiles: {
+    'starter-kit': {
+      name: 'Starter Kit',
+      description: 'Perfect for beginners',
+      
+      // Categorization
+      category: 'essentials',
+      tags: ['beginner', 'popular', 'recommended'],
+      
+      // Detailed information
+      features: [
+        '30-day supply',
+        'Free shipping',
+        'Money-back guarantee'
+      ],
+      
+      // Variants
+      variants: {
+        size: ['small', 'medium', 'large'],
+        color: ['blue', 'red', 'green']
+      },
+      
+      // Pricing details
+      compareAtPrice: 39.99,
+      savings: 10.00,
+      savingsPercentage: 25,
+      
+      // Media
+      images: [
+        '/images/starter-kit-1.jpg',
+        '/images/starter-kit-2.jpg'
+      ],
+      video: '/videos/starter-kit-demo.mp4',
+      
+      // SEO
+      seo: {
+        title: 'Starter Kit - Perfect for Beginners',
+        description: 'Get started with our beginner-friendly starter kit'
+      }
+    }
+  }
+};
+```
+
+### Bundle Profiles
+
+```javascript
+window.osConfig = {
+  productProfiles: {
+    'complete-bundle': {
+      name: 'Complete Bundle',
+      type: 'bundle',
+      
+      // Bundle components
+      includes: [
+        { profile: 'starter-kit', quantity: 1 },
+        { profile: 'bonus-item', quantity: 2 },
+        { profile: 'exclusive-addon', quantity: 1 }
+      ],
+      
+      // Bundle pricing
+      bundlePrice: 79.99,
+      individualPrice: 99.99,
+      savings: 20.00,
+      
+      campaigns: {
+        'US': { packageId: 10, price: 79.99 }
+      }
+    }
+  }
+};
+```
+
+## Profile-Based Components
+
+### Product Catalog with Profiles
+
+```html
+<div class="product-catalog">
+  
+  <!-- Profile-based product cards -->
+  <div class="product-card" data-profile="starter-kit">
+    <img data-os-profile-image data-os-profile-id="starter-kit" alt="Starter Kit">
+    <h3 data-os-profile-name data-os-profile-id="starter-kit">Starter Kit</h3>
+    <p data-os-profile-description data-os-profile-id="starter-kit">Perfect for beginners</p>
+    
+    <div class="pricing">
+      <span class="price" data-os-profile-price data-os-profile-id="starter-kit">$29.99</span>
+      <span class="compare-price" data-os-profile-compare-price data-os-profile-id="starter-kit">$39.99</span>
+      <span class="savings" data-os-profile-savings data-os-profile-id="starter-kit">Save $10</span>
+    </div>
+    
+    <button data-os-action="toggle-item" data-os-profile="starter-kit" class="add-to-cart">
+      Add to Cart
+    </button>
+  </div>
+  
+  <div class="product-card" data-profile="pro-bundle">
+    <img data-os-profile-image data-os-profile-id="pro-bundle" alt="Pro Bundle">
+    <h3 data-os-profile-name data-os-profile-id="pro-bundle">Pro Bundle</h3>
+    <p data-os-profile-description data-os-profile-id="pro-bundle">Everything you need</p>
+    
+    <div class="pricing">
+      <span class="price" data-os-profile-price data-os-profile-id="pro-bundle">$49.99</span>
+    </div>
+    
+    <button data-os-action="toggle-item" data-os-profile="pro-bundle" class="add-to-cart">
+      Add to Cart
+    </button>
+  </div>
+  
+</div>
+```
+
+### Profile Selector
+
+```html
+<div data-os-component="selector" data-os-selection-mode="swap" data-os-id="profile-selector">
+  
+  <div data-os-element="card" data-os-profile="starter-kit" data-os-selected="true">
+    <h3>Starter Kit</h3>
+    <p>Perfect for beginners</p>
+    <span data-os-profile-price data-os-profile-id="starter-kit">$29.99</span>
+    <ul data-os-profile-features data-os-profile-id="starter-kit">
+      <li>30-day supply</li>
+      <li>Free shipping</li>
+    </ul>
+  </div>
+  
+  <div data-os-element="card" data-os-profile="pro-bundle">
+    <h3>Pro Bundle</h3>
+    <p>Complete solution</p>
+    <span data-os-profile-price data-os-profile-id="pro-bundle">$49.99</span>
+    <span class="popular-badge">Most Popular</span>
+  </div>
+  
+  <div data-os-element="card" data-os-profile="ultimate">
+    <h3>Ultimate Package</h3>
+    <p>Premium offering</p>
+    <span data-os-profile-price data-os-profile-id="ultimate">$89.99</span>
+    <span class="best-value-badge">Best Value</span>
+  </div>
+  
+</div>
+```
+
+## Profile Management
+
+### Dynamic Profile Loading
+
+```javascript
+// Load profiles from API
+async function loadProfiles() {
+  try {
+    const profiles = await window.twentyNineNext.profiles.getAll();
+    
+    profiles.forEach(profile => {
+      createProductCard(profile);
+    });
+  } catch (error) {
+    console.error('Failed to load profiles:', error);
+  }
+}
+
+// Create product card from profile
+function createProductCard(profile) {
+  const card = document.createElement('div');
+  card.className = 'product-card';
+  card.innerHTML = `
+    <h3>${profile.name}</h3>
+    <p>${profile.description}</p>
+    <span class="price">${profile.formattedPrice}</span>
+    <button data-os-action="toggle-item" data-os-profile="${profile.id}">
+      Add to Cart
+    </button>
+  `;
+  
+  document.querySelector('.product-catalog').appendChild(card);
+}
+```
+
+### Profile Filtering and Search
+
+```javascript
+// Filter profiles by category
+function filterByCategory(category) {
+  const profiles = window.twentyNineNext.profiles.getAll();
+  return profiles.filter(profile => profile.category === category);
+}
+
+// Search profiles
+function searchProfiles(query) {
+  const profiles = window.twentyNineNext.profiles.getAll();
+  return profiles.filter(profile => 
+    profile.name.toLowerCase().includes(query.toLowerCase()) ||
+    profile.description.toLowerCase().includes(query.toLowerCase()) ||
+    profile.tags.includes(query.toLowerCase())
+  );
+}
+
+// Sort profiles by price
+function sortByPrice(ascending = true) {
+  const profiles = window.twentyNineNext.profiles.getAll();
+  return profiles.sort((a, b) => 
+    ascending ? a.price - b.price : b.price - a.price
+  );
+}
+```
+
+## Profile Events
+
+```javascript
+// Profile loaded
+document.addEventListener('profile.loaded', (e) => {
+  const { profile } = e.detail;
+  console.log('Profile loaded:', profile.name);
+});
+
+// Profile added to cart
+document.addEventListener('profile.added', (e) => {
+  const { profile, quantity } = e.detail;
+  console.log(`Added ${quantity} of ${profile.name}`);
+});
+
+// All profiles loaded
+document.addEventListener('profiles.loaded', (e) => {
+  const { profiles } = e.detail;
+  console.log(`Loaded ${profiles.length} profiles`);
+});
+```
+
+## Migration from Packages to Profiles
+
+### Gradual Migration
+
+```javascript
+// Support both packages and profiles
+window.osConfig = {
+  // Legacy package support
+  packages: {
+    1: { name: 'Starter Kit', price: 29.99 },
+    2: { name: 'Pro Bundle', price: 49.99 }
+  },
+  
+  // New profile system
+  productProfiles: {
+    'starter-kit': {
+      name: 'Starter Kit',
+      packageId: 1, // Maps to legacy package
+      price: 29.99
+    },
+    'pro-bundle': {
+      name: 'Pro Bundle', 
+      packageId: 2, // Maps to legacy package
+      price: 49.99
+    }
+  }
+};
+```
+
+### Migration Helper
+
+```javascript
+// Helper to migrate from package to profile references
+function migrateToProfiles() {
+  // Find all package-based buttons
+  document.querySelectorAll('[data-os-package]').forEach(button => {
+    const packageId = button.getAttribute('data-os-package');
+    const profile = findProfileByPackageId(packageId);
+    
+    if (profile) {
+      // Update to use profile
+      button.removeAttribute('data-os-package');
+      button.setAttribute('data-os-profile', profile.id);
+    }
+  });
+}
+
+function findProfileByPackageId(packageId) {
+  const profiles = window.twentyNineNext.profiles.getAll();
+  return profiles.find(profile => profile.packageId == packageId);
+}
+```
+
+## Best Practices
+
+1. **Use descriptive IDs** - `starter-kit` not `sk1`
+2. **Consistent naming** - Follow a naming convention
+3. **Rich metadata** - Include categories, tags, descriptions
+4. **Multi-currency ready** - Define country-specific mappings
+5. **Backward compatibility** - Support both systems during migration
+6. **Performance** - Cache profile data when possible
+
+## Troubleshooting
+
+### Profile Not Found
+
+```javascript
+// Check if profile exists
+const profile = await window.twentyNineNext.profiles.getProfile('starter-kit');
+if (!profile) {
+  console.error('Profile not found: starter-kit');
+}
+
+// List all available profiles
+const allProfiles = await window.twentyNineNext.profiles.getAll();
+console.log('Available profiles:', allProfiles.map(p => p.id));
+```
+
+### Country Mapping Issues
+
+```javascript
+// Debug country-specific profile mapping
+const country = window.twentyNineNext.getCountry();
+const profile = await window.twentyNineNext.profiles.getProfile('starter-kit');
+
+console.log('Current country:', country);
+console.log('Profile mapping for country:', profile.campaigns[country]);
+```
+
+## Next Steps
+
+- [Multi-Currency Guide](multi-currency.md) - Use profiles with multiple currencies
+- [Shopping Cart Guide](shopping-cart.md) - Cart operations with profiles  
+- [Selectors Guide](../components/selectors.md) - Profile-based selectors
+- [Migration Guide](../../reference/migration-guide.md) - Package to profile migration
