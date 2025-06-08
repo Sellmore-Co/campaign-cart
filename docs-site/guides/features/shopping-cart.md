@@ -2,73 +2,136 @@
 
 [← Features Overview](../features/README.md) | [Product Profiles →](product-profiles.md)
 
-Complete guide to implementing and customizing the shopping cart functionality.
+This guide covers how the Campaign Cart works and how to interact with it using HTML attributes and JavaScript.
 
-## Overview
+## How the Cart Works
 
-Campaign Cart provides a full-featured shopping cart that:
-- Persists across page loads
-- Syncs with the 29next API
-- Updates in real-time
-- Supports multiple display formats
+The shopping cart is designed to be persistent and accessible across your entire site.
 
-## Basic Implementation
+- **Browser Storage**: The cart's state (items, quantities, discounts) is automatically saved in the user's browser `localStorage`. This means the cart survives page reloads and even browser restarts.
+- **Real-time Updates**: All cart displays (`data-os-cart-count`, `data-os-cart-total`, etc.) are updated in real-time whenever a change occurs.
+- **API Sync**: The local cart is periodically synchronized with the 29next API to ensure consistency.
+- **Automatic Clearing**: The cart is automatically cleared after a successful purchase to prepare for the next order.
 
-### Adding Items to Cart
+## Interacting with the Cart
 
-#### Using Packages
-```html
-<!-- Toggle button (add/remove) -->
-<button data-os-action="toggle-item" data-os-package="1">Add to Cart</button>
+There are two primary ways to add or change items in the cart, designed for different use cases: **Selectors** and **Toggles**.
 
-<!-- With quantity -->
-<button data-os-action="toggle-item" data-os-package="1" data-os-quantity="2">
-  Add 2 Units
-</button>
+### 1. Selectors (for Primary Products)
 
-<!-- With JavaScript -->
-<script>
-window.twentyNineNext.addToCart(1);
-window.twentyNineNext.addToCart(1, 2); // Add 2 units
-</script>
-```
+Selectors are used when a customer must choose **one** option from a list of primary products, like different subscription plans, bundle sizes, or package deals. When a new option is selected, it *swaps* the previous selection in the cart.
 
-#### Using Product Profiles
+#### Implementation
 
-For better maintainability and multi-currency support, use [Product Profiles](product-profiles.md):
+To create a selector, you wrap a group of "cards" in a `[data-os-component="selector"]` container.
 
 ```html
-<!-- Toggle button -->
-<button data-os-action="toggle-item" data-os-profile="starter-kit">
-  Add Starter Kit
-</button>
-
-<!-- With JavaScript -->
-<script>
-window.twentyNineNext.profiles.addToCart('starter-kit');
-</script>
-```
-
-See [Product Profiles Guide](product-profiles.md) for detailed information.
-
-### Displaying Cart Information
-
-#### Cart Count
-```html
-<span data-os-cart-count>0</span>
-```
-
-#### Cart Total
-```html
-<span data-os-cart-total>$0.00</span>
-```
-
-#### Full Cart Display
-```html
-<div data-os-cart="summary">
-  <!-- Cart items will be rendered here -->
+<div data-os-component="selector" data-os-selection-mode="swap" data-os-id="plan-selector">
+  
+  <!-- Option 1: Pre-selected by default -->
+  <div class="selector-card" data-os-element="card" data-os-profile="starter-kit" data-os-selected="true">
+    <h3>Starter Kit</h3>
+    <p>Perfect for individuals.</p>
+    <div class="price" data-os-profile-price data-os-profile-id="starter-kit"></div>
+  </div>
+  
+  <!-- Option 2 -->
+  <div class="selector-card" data-os-element="card" data-os-profile="pro-bundle">
+    <h3>Pro Bundle</h3>
+    <p>Includes bonus materials.</p>
+    <div class="price" data-os-profile-price data-os-profile-id="pro-bundle"></div>
+  </div>
+  
 </div>
 ```
+
+- `data-os-component="selector"`: Defines the selector group.
+- `data-os-selection-mode="swap"`: Ensures only one item from this group can be in the cart at a time.
+- `data-os-element="card"`: Defines a clickable option. Use `data-os-profile` or `data-os-package` to link it to a product.
+- `data-os-selected="true"`: Sets the default item to be added to the cart on page load.
+
+> For a complete list of options and advanced pricing displays, see the full [**Selectors Guide**](selectors.md).
+
+### 2. Toggles (for Add-ons & Order Bumps)
+
+Toggles are simple buttons used for optional items that can be added to or removed from the cart independently. They are perfect for order bumps, add-ons, and accessories.
+
+#### Implementation
+
+A toggle is a button with `data-os-action="toggle-item"`. Clicking it once adds the item; clicking it again removes it. The button automatically gets an `.os--active` class when the item is in the cart.
+
+```html
+<!-- A simple toggle for an order bump -->
+<div class="order-bump">
+  <button data-os-action="toggle-item" data-os-profile="extended-warranty">
+    Add Extended Warranty (+$9.99)
+  </button>
+</div>
+
+<!-- Styling the active state -->
+<style>
+  [data-os-action="toggle-item"].os--active {
+    background-color: #2ecc71;
+    color: white;
+    border-color: #27ae60;
+  }
+</style>
+```
+
+> For more examples, including how to mark toggled items as upsells, see the full [**Toggles Guide**](toggles.md).
+
+## Displaying Cart Information
+
+You can display cart data anywhere on your page using simple HTML attributes. These elements will update automatically.
+
+- `data-os-cart-count`: Shows the total number of items.
+- `data-os-cart-total`: Shows the final price, including discounts and shipping.
+- `data-os-cart-subtotal`: The price before shipping and taxes.
+- `data-os-cart-summary="line-display"`: A container where a list of cart items will be rendered.
+
+```html
+<div class="cart-widget">
+  <h3>
+    Your Cart (<span data-os-cart-count>0</span> items)
+  </h3>
+  
+  <div data-os-cart-summary="line-display">
+    <!-- Line items will be automatically added here -->
+  </div>
+  
+  <div class="cart-total">
+    <strong>Total: <span data-os-cart-total>$0.00</span></strong>
+  </div>
+
+  <!-- This button will only appear when the cart is not empty -->
+  <button os-checkout-payment="combo" data-os-in-cart="display" data-container="true">
+    Proceed to Checkout
+  </button>
+</div>
+```
+
+## JavaScript API
+
+You can also interact with the cart programmatically.
+
+```javascript
+// Add an item by its profile ID
+window.twentyNineNext.profiles.addToCart('starter-kit');
+
+// Add an item by its package ID
+window.twentyNineNext.addToCart(1, 2); // Adds 2 of package ID 1
+
+// Get the current cart state
+const currentCart = window.twentyNineNext.getCart();
+console.log(currentCart.items);
+
+// Listen for updates
+document.addEventListener('cart.updated', (event) => {
+  console.log('Cart was updated!', event.detail);
+});
+```
+
+> For all available methods, see the [JavaScript API Reference](../../api/javascript-api.md).
 
 ## Advanced Cart Display
 

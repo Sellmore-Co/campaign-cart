@@ -324,24 +324,7 @@ window.osConfig = {
 };
 ```
 
-### Test Mode
-
-```javascript
-window.osConfig = {
-  // Enable test mode
-  testMode: true,
-  
-  // Test credit card numbers
-  testCards: {
-    visa: '4111111111111111',
-    mastercard: '5555555555554444',
-    amex: '378282246310005'
-  },
-  
-  // Skip payment processing
-  skipPayment: true
-};
-```
+For information on testing checkouts and placing test orders, see the [Test Orders Guide](../development/test-orders.md).
 
 ## Environment-Specific Config
 

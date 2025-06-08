@@ -72,6 +72,10 @@ window.twentyNineNext.init();
 </script>
 ```
 
+## Configuration
+
+The basic setup uses meta tags for the API key and campaign ID. For all other options, including JavaScript configuration and currency settings, see the [Basic Configuration Guide](../guides/configuration/basic-config.md).
+
 ## Configuration Options
 
 Add these meta tags as needed:

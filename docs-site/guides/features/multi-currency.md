@@ -33,27 +33,15 @@ Create separate campaigns in 29next for each country:
 - Campaign GB: Products priced in GBP
 - etc.
 
-### 2. Set Up Country Detection
+### 2. Map Packages Between Campaigns
 
-Campaign Cart uses a Cloudflare Worker at `/location` endpoint:
+Multi-currency functionality relies on Product Profiles to automatically map products between your different country-specific campaigns.
 
-```javascript
-// Automatic detection happens on initialization
-window.osConfig = {
-  apiKey: 'YOUR_API_KEY',
-  campaignId: 'YOUR_DEFAULT_CAMPAIGN',
-  enableCountryDetection: true // Default: true
-};
-```
+See the [Product Profiles Guide](product-profiles.md) for detailed setup instructions.
 
-### 3. Map Packages Between Campaigns
-
-⚠️ **Important**: Multi-currency requires [Product Profiles](product-profiles.md) for automatic package mapping between campaigns.
-
-Use Product Profiles for automatic mapping:
+A typical multi-currency profile configuration looks like this:
 
 ```javascript
-// In your configuration
 window.osConfig = {
   productProfiles: {
     'starter-kit': {

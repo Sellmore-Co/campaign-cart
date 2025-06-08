@@ -2,11 +2,9 @@
 
 [← Multi-Currency](multi-currency.md) | [Selectors →](selectors.md)
 
-Complete guide to using semantic product profiles for better product management and multi-currency support.
+Product Profiles provide a semantic way to reference products using meaningful IDs (like `starter-kit`) instead of numeric package IDs. This is the recommended approach for all implementations, especially for multi-currency support.
 
-## Overview
-
-Product Profiles provide a semantic way to reference products using meaningful IDs (like `starter-kit`) instead of numeric package IDs. This system is especially powerful for multi-currency setups and provides better maintainability.
+For a high-level overview of how profiles differ from packages, see the [Core Concepts guide](../introduction/core-concepts.md).
 
 ## Benefits of Product Profiles
 

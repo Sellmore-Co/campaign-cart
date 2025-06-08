@@ -17,42 +17,6 @@ Try these interactive examples to see Campaign Cart in action:
 - [Shopping Cart Guide](../guides/features/shopping-cart.md) - Cart implementation details
 - [JavaScript API](../api/javascript-api.md) - API reference
 
-## Script Loading and Configuration
-
-### CDN Loading
-```html
-<script src="https://cdn.jsdelivr.net/gh/your-repo/campaign-cart@latest/dist/29next.min.js"></script>
-```
-
-### Configuration Options
-```html
-<!-- Option 1: Meta Tags -->
-<meta name="29next:api-key" content="your-api-key">
-<meta name="29next:campaign-id" content="your-campaign-id">
-
-<!-- Option 2: JavaScript Configuration -->
-<script>
-window.osConfig = {
-    apiKey: 'your-api-key',
-    campaignId: 'your-campaign-id',
-    debug: true
-};
-</script>
-```
-
-### Event Handling
-```html
-<script>
-document.addEventListener('29next:cart:updated', function(event) {
-    console.log('Cart updated:', event.detail);
-});
-
-document.addEventListener('29next:checkout:complete', function(event) {
-    console.log('Checkout complete:', event.detail);
-});
-</script>
-```
-
 ## Minimal Setup
 
 The simplest possible implementation:
