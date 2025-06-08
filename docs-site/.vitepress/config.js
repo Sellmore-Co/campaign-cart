@@ -33,6 +33,7 @@ export default defineConfig({
               text: 'Configuration',
               collapsed: true,
               items: [
+                { text: 'Page Types & Meta Tags', link: '/guides/configuration/page-types' },
                 { text: 'Basic Configuration', link: '/guides/configuration/basic-config' },
                 { text: 'Form Validation', link: '/guides/configuration/form-validation' },
                 { text: 'Google Autocomplete', link: '/guides/configuration/google-autocomplete' },

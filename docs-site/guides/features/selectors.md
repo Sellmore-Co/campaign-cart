@@ -187,7 +187,7 @@ Selectors work seamlessly with [Product Profiles](product-profiles.md) and [Mult
      data-os-package="product-id" 
      data-os-quantity="1" 
      data-os-selected="true"
-     data-os-shipping-id="express">
+     data-os-shipping-id="4">
   <!-- Card content -->
 </div>
 ```
@@ -198,7 +198,7 @@ Selectors work seamlessly with [Product Profiles](product-profiles.md) and [Mult
 | `data-os-package` | ✅ | Package/product ID |
 | `data-os-quantity` | | Quantity to add (default: 1) |
 | `data-os-selected` | | Pre-select this card (`"true"`) |
-| `data-os-shipping-id` | | Shipping method to apply when selected |
+| `data-os-shipping-id` | | Shipping method id to apply when selected |
 
 ## Dynamic Pricing with Unit Calculations
 
@@ -441,7 +441,7 @@ Campaign Cart automatically applies these classes:
   <!-- Monthly Plan -->
   <div data-os-element="card" 
        data-os-package="monthly-plan" 
-       data-os-shipping-id="standard">
+       data-os-shipping-id="1">
     <h3>Monthly Subscription</h3>
     <div class="pricing">
       <span data-card-price="total-sale">$19.99</span>
@@ -453,7 +453,7 @@ Campaign Cart automatically applies these classes:
   <!-- Quarterly Plan -->
   <div data-os-element="card" 
        data-os-package="quarterly-plan" 
-       data-os-shipping-id="express"
+       data-os-shipping-id="2"
        data-os-selected="true">
     <h3>Quarterly Subscription</h3>
     <div class="pricing">
@@ -470,7 +470,7 @@ Campaign Cart automatically applies these classes:
   <!-- Annual Plan -->
   <div data-os-element="card" 
        data-os-package="annual-plan" 
-       data-os-shipping-id="priority">
+       data-os-shipping-id="3">
     <h3>Annual Subscription</h3>
     <div class="pricing">
       <span data-card-price="total-sale">$199.99</span>
