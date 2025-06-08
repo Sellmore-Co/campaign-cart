@@ -123,6 +123,19 @@ The checkout process follows these steps:
 6. **Processing** - Payment processing
 7. **Receipt** - Order confirmation
 
+## Typical Funnel Workflow
+
+The primary goal of Campaign Cart is to let you quickly power a sales funnel on any website. Here is the typical step-by-step workflow from a developer's perspective.
+
+```mermaid
+graph TD
+    A["<b>Step 1: Get Product IDs</b><br/>Get Package IDs from your<br/>29next Campaign Admin"] --> B;
+    B["<b>Step 2: Build Sales Page</b><br/>Use HTML attributes to add products to the cart.<br/>- Use <b>Selectors</b> for primary choices (e.g., plans)<br/>- Use <b>Toggles</b> for add-ons (e.g., order bumps)"] --> C;
+    C["<b>Step 3: Build Checkout Page</b><br/>Set meta tags:<br/>- <i>os-page-type='checkout'</i><br/>- <i>os-next-page='/path/to/upsell'</i><br/>The SDK handles form validation and payment processing."] --> D;
+    D["<b>Step 4: Build Upsell Page (Optional)</b><br/>Set meta tags:<br/>- <i>os-page-type='upsell'</i><br/>- <i>os-next-page='/path/to/receipt'</i><br/>Use <i>data-os-upsell</i> attributes for one-click offers."] --> E;
+    E["<b>Step 5: Build Receipt Page</b><br/>Set meta tag:<br/>- <i>os-page-type='receipt'</i><br/>The SDK automatically fetches and displays all order data."]
+```
+
 ## Upsells
 
 Post-purchase upsells extend the checkout:
