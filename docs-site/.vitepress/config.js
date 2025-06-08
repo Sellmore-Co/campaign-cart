@@ -26,47 +26,54 @@ export default defineConfig({
           ]
         },
         {
-          text: '⚙️ Configuration',
+          text: '🛠️ Guides',
           collapsed: false,
           items: [
-            { text: 'Basic Configuration', link: '/guides/configuration/basic-config' },
-            { text: 'Form Validation', link: '/guides/configuration/form-validation' },
-            { text: 'Google Autocomplete', link: '/guides/configuration/google-autocomplete' },
-            { text: 'Payment Configuration', link: '/guides/configuration/payment-config' }
-          ]
-        },
-        {
-          text: '🛒 Shopping & Cart',
-          collapsed: true,
-          items: [
-            { text: 'Shopping Cart', link: '/guides/features/shopping-cart' },
-            { text: 'Product Profiles', link: '/guides/features/product-profiles' },
-            { text: 'Selectors', link: '/guides/features/selectors' }
-          ]
-        },
-        {
-          text: '💳 Checkout & Payment',
-          collapsed: true,
-          items: [
-            { text: 'Express Checkout', link: '/guides/features/express-checkout' },
-            { text: 'Multi-Currency', link: '/guides/features/multi-currency' },
-            { text: 'Receipt Pages', link: '/guides/features/receipt' }
-          ]
-        },
-        {
-          text: '🎯 Marketing Tools',
-          collapsed: true,
-          items: [
-            { text: 'Timers', link: '/guides/features/timers' },
-            { text: 'Vouchers & Discounts', link: '/guides/features/vouchers' },
-            { text: 'Upsells', link: '/guides/features/upsells' }
-          ]
-        },
-        {
-          text: '🧪 Development',
-          collapsed: true,
-          items: [
-            { text: 'Test Orders', link: '/guides/development/test-orders' }
+            {
+              text: 'Configuration',
+              collapsed: true,
+              items: [
+                { text: 'Basic Configuration', link: '/guides/configuration/basic-config' },
+                { text: 'Form Validation', link: '/guides/configuration/form-validation' },
+                { text: 'Google Autocomplete', link: '/guides/configuration/google-autocomplete' },
+                { text: 'Payment Configuration', link: '/guides/configuration/payment-config' }
+              ]
+            },
+            {
+              text: 'Shopping & Cart',
+              collapsed: true,
+              items: [
+                { text: 'Shopping Cart', link: '/guides/features/shopping-cart' },
+                { text: 'Product Profiles', link: '/guides/features/product-profiles' },
+                { text: 'Selectors', link: '/guides/features/selectors' },
+                { text: 'Toggles', link: '/guides/features/toggles' }
+              ]
+            },
+            {
+              text: 'Checkout & Payment',
+              collapsed: true,
+              items: [
+                { text: 'Express Checkout', link: '/guides/features/express-checkout' },
+                { text: 'Multi-Currency', link: '/guides/features/multi-currency' },
+                { text: 'Receipt Pages', link: '/guides/features/receipt' }
+              ]
+            },
+            {
+              text: 'Marketing Tools',
+              collapsed: true,
+              items: [
+                { text: 'Timers', link: '/guides/features/timers' },
+                { text: 'Vouchers & Discounts', link: '/guides/features/vouchers' },
+                { text: 'Upsells', link: '/guides/features/upsells' }
+              ]
+            },
+            {
+              text: 'Development',
+              collapsed: true,
+              items: [
+                { text: 'Test Orders', link: '/guides/development/test-orders' }
+              ]
+            }
           ]
         },
         {
