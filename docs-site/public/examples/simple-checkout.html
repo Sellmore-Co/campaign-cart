@@ -50,10 +50,27 @@
             packages: [
                 {
                     id: 1,
-                    name: "Sample Product",
-                    price: 7499,
-                    compare_price: 9999,
-                    currency: "USD"
+                    name: "Buy 1",
+                    price: 3999,
+                    compare_price: 4999,
+                    currency: "USD",
+                    quantity: 1
+                },
+                {
+                    id: 2,
+                    name: "Buy 2 Get 1 Free",
+                    price: 5332,
+                    compare_price: 11997,
+                    currency: "USD",
+                    quantity: 3
+                },
+                {
+                    id: 3,
+                    name: "Buy 3 Get 2 Free", 
+                    price: 4798,
+                    compare_price: 19995,
+                    currency: "USD",
+                    quantity: 5
                 }
             ]
         };
@@ -85,21 +102,43 @@
     
     <style>
         body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
-            background: #f5f5f5;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .product-selector-section {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .product-selector-section h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+            font-size: 2.5rem;
+            font-weight: 700;
         }
         
         .checkout-container {
             display: grid;
-            grid-template-columns: 1fr 400px;
+            grid-template-columns: 1fr 420px;
             gap: 40px;
             background: white;
             padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         
         .form-section {
@@ -215,36 +254,201 @@
             font-size: 18px;
         }
         
-        .upsell-offer {
+        /* Checkout Bump Styles */
+        .checkout-bump__head {
             border: 2px solid #28a745;
-            border-radius: 8px;
-            padding: 20px;
+            border-radius: 12px;
             margin: 20px 0;
-            background: #f8fff9;
+            background: linear-gradient(135deg, #f0fff4, #dcfce7);
             cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .upsell-offer:hover {
-            background: #f0fff1;
-        }
-        
-        .upsell-offer[data-os-active="true"] {
-            background: #e6ffed;
-            border-color: #1e7e34;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(34,197,94,0.1);
         }
 
-        .shipping-methods, .payment-modes {
+        .checkout-bump__head:hover {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            box-shadow: 0 6px 20px rgba(34,197,94,0.15);
+            transform: translateY(-2px);
+        }
+
+        .checkout-bump__head[data-os-active="true"] {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            border-color: #16a34a;
+            box-shadow: 0 6px 25px rgba(34,197,94,0.2);
+        }
+
+        .checkout_bump-head__content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            background: rgba(255,255,255,0.7);
+            border-bottom: 1px solid rgba(34,197,94,0.2);
+        }
+
+        .pb-component-checkmark {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pb-component__icon {
+            width: 24px;
+            height: 24px;
+            padding: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .checkout-bump__head[data-os-active="true"] .pb-component__icon {
+            background: #16a34a;
+            transform: scale(1.1);
+        }
+
+        .checkout-bump__head-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #166534;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 12px;
+        }
+
+        .icon-bump {
+            width: 20px;
+            height: 20px;
+            color: #22c55e;
+            opacity: 0.8;
+        }
+
+        .checkout-bump__body {
+            padding: 20px;
+        }
+
+        .bump-content h3 {
+            margin: 0 0 12px 0;
+            color: #166534;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .bump-content p {
+            margin: 0;
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        /* Shipping Method Styles */
+        .payment-flds-box {
             margin: 20px 0;
         }
 
-        .shipping-options, .payment-modes {
+        .heading-checkout {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .shipping_method-wrapper {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e1e5e9;
+        }
+
+        .shipping_method-wrapper div {
+            color: #64748b;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .shipping-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .shipping-method {
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .shipping-method:hover {
+            border-color: #007cba;
+            box-shadow: 0 2px 8px rgba(0,123,186,0.1);
+        }
+
+        .shipping-method:has(input:checked) {
+            border-color: #007cba;
+            background: #f8fcff;
+            box-shadow: 0 2px 12px rgba(0,123,186,0.15);
+        }
+
+        .radio-select-shipping {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .radio-form {
+            width: 20px;
+            height: 20px;
+            margin-right: 15px;
+            accent-color: #007cba;
+            cursor: pointer;
+        }
+
+        .shipping-method-rleft {
+            flex: 1;
+            margin-left: 10px;
+        }
+
+        .shipping-method-rleft > div:first-child {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1.1rem;
+            margin-bottom: 6px;
+        }
+
+        .text-block-369 {
+            color: #64748b;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .shipping_price {
+            font-weight: 700;
+            color: #007cba;
+            font-size: 1.2rem;
+            text-align: right;
+            min-width: 80px;
+        }
+
+        .shipping-method.cc-last {
+            margin-bottom: 0;
+        }
+
+        .payment-modes {
+            margin: 20px 0;
             display: flex;
             flex-direction: column;
             gap: 10px;
         }
 
-        .shipping-option, .payment-mode-option {
+        .payment-mode-option {
             display: flex;
             align-items: center;
             padding: 15px;
@@ -254,29 +458,240 @@
             transition: all 0.3s;
         }
 
-        .shipping-option:hover, .payment-mode-option:hover {
+        .payment-mode-option:hover {
             border-color: #007cba;
         }
 
-        .shipping-option input, .payment-mode-option input {
+        .payment-mode-option input {
             margin-right: 10px;
         }
 
-        .shipping-option small {
-            display: block;
-            color: #666;
-            font-size: 12px;
-            margin-top: 5px;
-        }
-
-        .shipping-option:has(input:checked), .payment-mode-option:has(input:checked) {
+        .payment-mode-option:has(input:checked) {
             border-color: #007cba;
             background: #f0f8ff;
         }
+
+        /* Product Selector Styles */
+        .pb-quantity {
+            margin: 20px 0;
+        }
+
+        .pb-quantity__wrapper {
+            padding-top: 0.55rem;
+        }
+
+        .os-option__wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .pb-quantity__card {
+            border: 3px solid #e1e5e9;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            background: white;
+        }
+
+        .pb-quantity__card:hover {
+            border-color: #007cba;
+            box-shadow: 0 4px 15px rgba(0,123,186,0.1);
+        }
+
+        .pb-quantity__card.os--selected {
+            border-color: #007cba;
+            background: #f8fcff;
+            box-shadow: 0 4px 20px rgba(0,123,186,0.15);
+        }
+
+        .os-card__wrapper {
+            width: 100%;
+        }
+
+        .pb-quantity__card-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .pb-quantity__radio {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ddd;
+            border-radius: 50%;
+            background: white;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .pb-quantity__card.os--selected .pb-quantity__radio {
+            border: 3px solid white;
+            background-color: #007cba;
+            box-shadow: 0 0 0 2px #007cba;
+        }
+
+        .os-card__content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .pb-quantity__details {
+            flex: 1;
+        }
+
+        .pb-quantity__title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .save-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .save-label {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .cc-voucher-saving {
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .pb-quantity__price-wrapper {
+            text-align: right;
+        }
+
+        .card-reg-price {
+            text-decoration: line-through;
+            color: #999;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+
+        .pb-quantity__price-container {
+            margin-bottom: 4px;
+        }
+
+        .pb-quantity__price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .card-price {
+            color: #007cba;
+        }
+
+        .ea-price {
+            font-size: 1rem;
+            color: #666;
+            font-weight: 400;
+        }
+
+        .fs-price {
+            color: #28a745;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .pb-quantity__label-container {
+            position: absolute;
+            top: -8px;
+            left: 20px;
+        }
+
+        .pb-quantity__label-middle {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #333;
+            padding: 6px 16px;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(255,215,0,0.3);
+        }
+
+        .pb-quantity__label-middle.most-popular {
+            background: linear-gradient(135deg, #007cba, #0ea5e9);
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,123,186,0.3);
+        }
+
+        /* Enhanced Form Styling */
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+
+        .checkout-btn {
+            background: linear-gradient(135deg, #007cba, #0ea5e9);
+            box-shadow: 0 4px 15px rgba(0,123,186,0.3);
+            transform: translateY(0);
+            transition: all 0.3s ease;
+        }
+
+        .checkout-btn:hover {
+            background: linear-gradient(135deg, #005a87, #0284c7);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,123,186,0.4);
+        }
+
+        .order-summary {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            border: 1px solid #e1e5e9;
+        }
+
+        .upsell-offer {
+            background: linear-gradient(135deg, #f0fff4, #dcfce7);
+            border: 2px solid #22c55e;
+            box-shadow: 0 4px 15px rgba(34,197,94,0.1);
+        }
+
+        .upsell-offer[data-os-active="true"] {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            box-shadow: 0 4px 20px rgba(34,197,94,0.2);
+        }
         
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
             .checkout-container {
                 grid-template-columns: 1fr;
+                padding: 30px;
+            }
+
+            .product-selector-section {
+                padding: 30px;
+            }
+
+            .product-selector-section h1 {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .checkout-container, .product-selector-section {
                 padding: 20px;
             }
             
@@ -287,14 +702,149 @@
             .form-row.three {
                 grid-template-columns: 1fr;
             }
+
+            .os-option__wrapper {
+                gap: 12px;
+            }
+
+            .pb-quantity__card {
+                padding: 16px;
+            }
+
+            .os-card__content {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .pb-quantity__price-wrapper {
+                text-align: left;
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="checkout-container">
-        <!-- Main Checkout Form -->
-        <div class="form-section">
-            <h1>Secure Checkout</h1>
+    <div class="main-container">
+        <!-- Product Selector Section -->
+        <div class="product-selector-section">
+            <h1>Choose Your Package</h1>
+            
+            <div data-os-id="QS04" data-os-component="selector" data-os-selection-mode="swap" class="pb-quantity">
+                <div class="pb-quantity__wrapper">
+                    <div class="os-option__wrapper pb--gap-m">
+                        <div data-os-shipping-id="2" role="button" data-os-selected="false" data-os-package="3" data-os-quantity="1" data-os-element="card" class="pb-quantity__card" data-os-active="false">
+                            <div class="os-card__wrapper">
+                                <div class="pb-quantity__card-info">
+                                    <div pb-element="radio" class="pb-quantity__radio pb--center"></div>
+                                    <div class="os-card__content pb--y-center">
+                                        <div class="pb-quantity__details">
+                                            <div class="pb-quantity__header">
+                                                <div pb-element="title" class="pb-quantity__title">Buy 3 Get 2 Free</div>
+                                            </div>
+                                            <div class="save-pill">
+                                                <div class="save-label">Save&nbsp; <span data-card-price="total-savings-percentage">60%</span></div>
+                                                <div os-component="voucher-pill" class="cc-voucher-saving" style="display: none;">+ 5%</div>
+                                            </div>
+                                        </div>
+                                        <div class="pb-quantity__right">
+                                            <div class="pb-quantity__price-wrapper">
+                                                <div data-card-price="total-regular" class="card-reg-price">$199.95</div>
+                                                <div class="pb-quantity__price-container">
+                                                    <p class="pb-quantity__price">
+                                                        <span data-card-price="each-sale" class="card-price">$23.99</span>
+                                                        <span class="ea-price">/ea</span>
+                                                    </p>
+                                                </div>
+                                                <div class="fs-price">+FREE SHIPPING</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pb-quantity__label-container">
+                                <div class="pb-quantity__label-middle pb--left">
+                                    <div>BEST DEAL</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div data-os-shipping-id="2" role="button" data-os-selected="true" data-os-package="2" data-os-quantity="1" data-os-element="card" class="pb-quantity__card os--selected os--active" data-os-active="true">
+                            <div class="os-card__wrapper">
+                                <div class="pb-quantity__card-info">
+                                    <div pb-element="radio" class="pb-quantity__radio pb--center"></div>
+                                    <div class="os-card__content pb--y-center">
+                                        <div class="pb-quantity__details">
+                                            <div class="pb-quantity__header">
+                                                <div pb-element="title" class="pb-quantity__title">Buy 2 Get 1 Free</div>
+                                            </div>
+                                            <div class="save-pill">
+                                                <div class="save-label">Save&nbsp; <span data-card-price="total-savings-percentage">33%</span></div>
+                                                <div os-component="voucher-pill" class="cc-voucher-saving" style="display: none;">+ 5%</div>
+                                            </div>
+                                        </div>
+                                        <div class="pb-quantity__right">
+                                            <div class="pb-quantity__price-wrapper">
+                                                <div data-card-price="total-regular" class="card-reg-price">$119.97</div>
+                                                <div class="pb-quantity__price-container">
+                                                    <p class="pb-quantity__price">
+                                                        <span data-card-price="each-sale" class="card-price">$26.66</span>
+                                                        <span class="ea-price">/ea</span>
+                                                    </p>
+                                                </div>
+                                                <div class="fs-price">+FREE SHIPPING</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pb-quantity__label-container">
+                                <div class="pb-quantity__label-middle pb--left most-popular">
+                                    <div>MOST POPULAR</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div data-os-shipping-id="1" role="button" data-os-selected="false" data-os-package="1" data-os-quantity="1" data-os-element="card" class="pb-quantity__card" data-os-active="false">
+                            <div class="os-card__wrapper">
+                                <div class="pb-quantity__card-info">
+                                    <div pb-element="radio" class="pb-quantity__radio pb--center"></div>
+                                    <div class="os-card__content pb--y-center">
+                                        <div class="pb-quantity__details">
+                                            <div class="pb-quantity__header">
+                                                <div pb-element="title" class="pb-quantity__title">Buy 1</div>
+                                            </div>
+                                            <div class="save-pill">
+                                                <div class="save-label">Save&nbsp; <span data-card-price="total-savings-percentage">20%</span></div>
+                                                <div os-component="voucher-pill" class="cc-voucher-saving" style="display: none;">+ 5%</div>
+                                            </div>
+                                        </div>
+                                        <div class="pb-quantity__right">
+                                            <div class="pb-quantity__price-wrapper">
+                                                <div data-card-price="total-regular" class="card-reg-price">$49.99</div>
+                                                <div class="pb-quantity__price-container">
+                                                    <p class="pb-quantity__price">
+                                                        <span data-divide-by="1" data-card-price="each-sale" class="card-price">$39.99</span>
+                                                        <span class="ea-price">/ea</span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pb-quantity__label-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Checkout Form Section -->
+        <div class="checkout-container">
+            <!-- Main Checkout Form -->
+            <div class="form-section">
+                <h2>Complete Your Order</h2>
             
             <form os-checkout="form" method="post" novalidate>
                 
@@ -441,32 +991,112 @@
                 </div>
                 
                 <!-- Shipping Method Selector -->
-                <div os-component="shipping-mode" class="shipping-methods">
-                    <h2>Shipping Method</h2>
-                    <div class="shipping-options">
-                        <label class="shipping-option">
-                            <input type="radio" name="shipping_method" value="standard" checked>
-                            <span>Standard Shipping - FREE</span>
-                            <small>5-7 business days</small>
-                        </label>
-                        <label class="shipping-option">
-                            <input type="radio" name="shipping_method" value="express">
-                            <span>Express Shipping - $9.99</span>
-                            <small>2-3 business days</small>
-                        </label>
+                <div pb-checkout-section="shipping" class="payment-flds-box">
+                    <h1 class="heading-checkout">Shipping Method</h1>
+                    <div class="shipping_method-wrapper">
+                        <div>Enter your shipping address to view available shipping methods.</div>
+                    </div>
+                    <div os-component="shipping-mode" class="shipping-selector">
+                        <div class="shipping-method">
+                            <label id="combo_mode_shipping_1" shipping_mode="1" class="radio-select-shipping">
+                                <input type="radio" name="shipping_method" id="shipping_method_1" data-name="Shipping Method" class="radio-form" checked="" value="1">
+                                <div class="shipping-method-rleft">
+                                    <div>Standard Shipping</div>
+                                    <div class="text-block-369">Free standard shipping on all orders. Delivery in 5-7 business days.</div>
+                                </div>
+                                <div class="shipping_price">
+                                    <div>$0.00</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="shipping-method">
+                            <label id="combo_mode_shipping_2" shipping_mode="2" class="radio-select-shipping">
+                                <input type="radio" name="shipping_method" id="shipping_method_2" data-name="Shipping Method" class="radio-form" value="2">
+                                <div class="shipping-method-rleft">
+                                    <div>Priority Shipping</div>
+                                    <div class="text-block-369">Faster delivery with tracking and insurance. Delivery in 2-3 business days.</div>
+                                </div>
+                                <div class="shipping_price">
+                                    <div>$9.99</div>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="shipping-method cc-last">
+                            <label id="combo_mode_shipping_3" shipping_mode="3" class="radio-select-shipping">
+                                <input type="radio" name="shipping_method" id="shipping_method_3" data-name="Shipping Method" class="radio-form" value="3">
+                                <div class="shipping-method-rleft">
+                                    <div>Expedited: Standard Overnight</div>
+                                    <div class="text-block-369">Get the fastest shipping with our premium insured expedited shipping service.</div>
+                                </div>
+                                <div class="shipping_price">
+                                    <div>$28.00</div>
+                                </div>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Upsell Offer -->
-                <div 
-                    class="upsell-offer"
-                    data-os-upsell="true"
-                    data-os-action="toggle-item"
-                    data-os-package="2"
-                    data-os-id="express-shipping"
-                    data-os-active="false">
-                    <h3>🚀 Express Shipping - Only $9.99</h3>
-                    <p>Get your order 2-3 days faster with priority shipping!</p>
+                <div data-os-upsell="true" data-os-action="toggle-item" data-os-package="4" data-os-id="shipping-guarantee" class="checkout-bump__head" data-os-active="false">
+                    <div class="checkout_bump-head__content">
+                        <div class="pb-component-checkmark">
+                            <div os-component="check" class="pb-component__icon w-embed">
+                                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--fe" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
+                                    <path fill="currentColor" fill-rule="evenodd" d="m6 10l-2 2l6 6L20 8l-2-2l-8 8z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="checkout-bump__head-title">YES, &nbsp;I Will Take It</div>
+                        <div data-animate="right" class="icon-bump w-embed">
+                            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--bx" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
+                                <path d="M5.536 21.886a1.004 1.004 0 0 0 1.033-.064l13-9a1 1 0 0 0 0-1.644l-13-9A1 1 0 0 0 5 3v18a1 1 0 0 0 .536.886z" fill="currentColor"></path>
+                            </svg>
+                        </div>
+                        <div data-animate="left" class="icon-bump cc-right w-embed">
+                            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--bx" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
+                                <path d="M4.431 12.822l13 9A1 1 0 0 0 19 21V3a1 1 0 0 0-1.569-.823l-13 9a1.003 1.003 0 0 0 0 1.645z" fill="currentColor"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div class="checkout-bump__body">
+                        <div class="bump-content">
+                            <h3>🛡️ Shipping Protection Guarantee</h3>
+                            <p>Get peace of mind with our Shipping Guarantee in the event your delivery is damaged, stolen, or lost during transit for only $1.99</p>
+                        </div>
+                    </div>
+                    
+                    <div class="custom-css w-embed">
+                        <style>
+                            /* Define the animations */
+                            @keyframes moveRightLeft {
+                                0%, 100% {
+                                    transform: translateX(0);
+                                }
+                                50% {
+                                    transform: translateX(10px);
+                                }
+                            }
+
+                            @keyframes moveLeftRight {
+                                0%, 100% {
+                                    transform: translateX(0);
+                                }
+                                50% {
+                                    transform: translateX(-10px);
+                                }
+                            }
+
+                            /* Apply animations to the elements based on their data-animate attributes */
+                            [data-animate="right"] {
+                                animation: moveRightLeft 1.5s infinite ease-in-out;
+                            }
+
+                            [data-animate="left"] {
+                                animation: moveLeftRight 1.5s infinite ease-in-out;
+                            }
+                        </style>
+                    </div>
                 </div>
                 
                 <!-- Payment Methods -->
@@ -720,6 +1350,7 @@
             <div style="margin-top: 20px; text-align: center; color: #666; font-size: 14px;">
                 🔒 Secure 256-bit SSL encryption
             </div>
+        </div>
         </div>
     </div>
 </body>
