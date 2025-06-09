@@ -3389,12 +3389,12 @@ var TwentyNineNext = (() => {
   };
   _detectDeviceSupport = new WeakSet();
   detectDeviceSupport_fn = function() {
-    if (window.ApplePaySession && window.ApplePaySession.canMakePayments) {
-      __privateGet(this, _deviceSupport).applePay = window.ApplePaySession.canMakePayments();
-      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Apple Pay support: ${__privateGet(this, _deviceSupport).applePay}`);
-    }
-    __privateGet(this, _deviceSupport).googlePay = !!(window.chrome && window.chrome.runtime);
-    __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Google Pay support: ${__privateGet(this, _deviceSupport).googlePay}`);
+    const isLargeScreen = window.innerWidth > 786;
+    __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Screen width > 786px: ${isLargeScreen}`);
+    __privateGet(this, _deviceSupport).applePay = isLargeScreen;
+    __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Apple Pay support (for QR code flow): ${__privateGet(this, _deviceSupport).applePay}`);
+    __privateGet(this, _deviceSupport).googlePay = isLargeScreen;
+    __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Google Pay support (for QR code flow): ${__privateGet(this, _deviceSupport).googlePay}`);
   };
   _hasActiveExpressButtons = new WeakSet();
   hasActiveExpressButtons_fn = function() {

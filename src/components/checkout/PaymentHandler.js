@@ -1075,15 +1075,15 @@ export class PaymentHandler {
    * Detect which payment methods are supported by the device/browser
    */
   #detectDeviceSupport() {
-    // Check for Apple Pay support
-    if (window.ApplePaySession && window.ApplePaySession.canMakePayments) {
-      this.#deviceSupport.applePay = window.ApplePaySession.canMakePayments();
-      this.#safeLog('debug', `Apple Pay support: ${this.#deviceSupport.applePay}`);
-    }
+    const isLargeScreen = window.innerWidth > 786;
+    this.#safeLog('debug', `Screen width > 786px: ${isLargeScreen}`);
 
-    // Basic Google Pay support check
-    this.#deviceSupport.googlePay = !!(window.chrome && window.chrome.runtime);
-    this.#safeLog('debug', `Google Pay support: ${this.#deviceSupport.googlePay}`);
+    // For QR code flow, show express buttons on large screens regardless of browser support.
+    this.#deviceSupport.applePay = isLargeScreen;
+    this.#safeLog('debug', `Apple Pay support (for QR code flow): ${this.#deviceSupport.applePay}`);
+
+    this.#deviceSupport.googlePay = isLargeScreen;
+    this.#safeLog('debug', `Google Pay support (for QR code flow): ${this.#deviceSupport.googlePay}`);
   }
 
   /**
