@@ -1,84 +1,57 @@
-# Product Profile System
+# Product Profile System (Simplified)
 
-The Product Profile System provides a powerful abstraction layer for managing products programmatically while maintaining full backward compatibility with the existing package system.
+The Product Profile System provides a powerful abstraction layer for managing products programmatically with semantic names instead of package IDs.
 
 ## 🎯 Key Benefits
 
-- **Easier programmatic cart operations**: `client.profiles.addToCart('starter-kit')`
-- **Country-aware mappings**: Automatically use correct packages per country
+- **Easier programmatic cart operations**: `client.profiles.addToCart('discreet-packaging')`
+- **Semantic naming**: Use meaningful names instead of package IDs
 - **Multi-package profiles**: Bundle multiple packages into one profile
 - **Rich metadata**: Categories, tags, descriptions for business logic
 - **Seamless pricing**: Display profile prices anywhere on the page
 - **Backward compatible**: Existing package system continues to work unchanged
 
-## 🚀 Configuration
+## 🚀 Simple Configuration
 
-Add product profiles to your existing `osConfig`:
+Add product profiles to your `osConfig` using the simplified format:
 
 ```javascript
 window.osConfig = {
-  // Existing functionality (unchanged)
-  countryCampaigns: {
-    campaignIds: {
-      'US': 'your-us-campaign-id',
-      'CA': 'your-ca-campaign-id'
-    },
-    packageMaps: {
-      'US': { '12': '12' },
-      'CA': { '12': '1' }
-    }
-  },
-  
-  // NEW: Product Profiles
+  // Simplified Product Profiles (no country mappings!)
   productProfiles: {
-    'starter-kit': {
-      name: 'Starter Facial Kit',
-      description: 'Perfect for first-time users',
-      campaignMappings: {
-        'US': { packageId: '12', quantity: 1 },
-        'CA': { packageId: '1', quantity: 1 },
-        'GB': { packageId: '5', quantity: 1 }
-      },
-      metadata: {
-        category: 'kits',
-        featured: true,
-        tags: ['beginner', 'popular'],
-        displayOrder: 1
-      }
+    'lem': {
+      name: 'LEM',
+      packageId: '1',
+      quantity: 1,
+      description: 'Core product offering'
     },
     
-    'monthly-subscription': {
-      name: 'Monthly Subscription',
-      description: 'Auto-delivery every month',
-      campaignMappings: {
-        'US': { packageId: '6', quantity: 1 },
-        'CA': { packageId: '3', quantity: 1 }
-      },
-      metadata: {
-        category: 'subscriptions',
-        recurring: true,
-        tags: ['subscription', 'savings']
-      }
+    'discreet-packaging': {
+      name: 'Discreet Packaging',
+      packageId: '3',
+      quantity: 1,
+      description: 'Private shipping option'
+    },
+    
+    'avo-upsell': {
+      name: 'Avo Upsell',
+      packageId: '11',
+      quantity: 1,
+      description: 'Premium upgrade option'
     },
     
     // Multi-package profile example
-    'ultimate-bundle': {
-      name: 'Ultimate Bundle',
-      description: 'Everything you need',
-      campaignMappings: {
-        'US': [
-          { packageId: '12', quantity: 1 },  // Main product
-          { packageId: '8', quantity: 2 }   // Add-on items
-        ],
-        'CA': [
-          { packageId: '1', quantity: 1 },
-          { packageId: '4', quantity: 2 }
-        ]
-      },
+    'starter-bundle': {
+      name: 'Starter Bundle',
+      packages: [
+        { packageId: '1', quantity: 1 },   // Main product
+        { packageId: '3', quantity: 1 }    // Add-on
+      ],
+      description: 'Perfect starter combination',
       metadata: {
         category: 'bundles',
-        bestValue: true,
-        tags: ['comprehensive', 'savings']
+        featured: true,
+        tags: ['popular', 'savings']
       }
     }
   }
@@ -90,13 +63,16 @@ window.osConfig = {
 ### Add Profile to Cart
 ```javascript
 // Simple add to cart
-await client.profiles.addToCart('starter-kit');
+await client.profiles.addToCart('discreet-packaging');
 
 // Add with custom quantity
-await client.profiles.addToCart('monthly-subscription', { quantity: 2 });
+await client.profiles.addToCart('lem', { quantity: 2 });
+
+// Mark as upsell
+await client.profiles.addToCart('avo-upsell', { is_upsell: true });
 
 // Check if operation was successful
-const success = await client.profiles.addToCart('ultimate-bundle');
+const success = await client.profiles.addToCart('starter-bundle');
 if (success) {
   console.log('Profile added successfully!');
 }
@@ -105,7 +81,7 @@ if (success) {
 ### Remove Profile from Cart
 ```javascript
 // Remove specific profile
-await client.profiles.removeFromCart('starter-kit');
+await client.profiles.removeFromCart('discreet-packaging');
 
 // Clear all profiles from cart
 await client.profiles.clearProfilesFromCart();
@@ -114,8 +90,8 @@ await client.profiles.clearProfilesFromCart();
 ### Check Cart Status
 ```javascript
 // Check if profile is in cart
-if (client.profiles.isInCart('starter-kit')) {
-  console.log('Starter kit is in cart');
+if (client.profiles.isInCart('lem')) {
+  console.log('LEM is in cart');
 }
 
 // Get all profiles currently in cart
@@ -128,15 +104,15 @@ console.log('Profiles in cart:', cartProfiles);
 ### Get Profile Information
 ```javascript
 // Get specific profile
-const profile = client.profiles.getProfile('starter-kit');
+const profile = client.profiles.getProfile('lem');
 console.log(profile.name, profile.description);
 
 // Get all profiles
 const allProfiles = client.profiles.getProfiles();
 
 // Get profiles by category
-const kits = client.profiles.getProfilesByCategory('kits');
-const subscriptions = client.profiles.getProfilesByCategory('subscriptions');
+const bundles = client.profiles.getProfilesByCategory('bundles');
+const addons = client.profiles.getProfilesByCategory('add-ons');
 
 // Get featured profiles
 const featured = client.profiles.getFeaturedProfiles();
@@ -145,13 +121,13 @@ const featured = client.profiles.getFeaturedProfiles();
 ### Profile Pricing
 ```javascript
 // Get profile prices
-const salePrice = client.profiles.getPrice('starter-kit', 'total-sale');
-const regularPrice = client.profiles.getPrice('starter-kit', 'total-regular');
-const savings = client.profiles.getPrice('starter-kit', 'total-saving-amount');
+const salePrice = client.profiles.getPrice('lem', 'total-sale');
+const regularPrice = client.profiles.getPrice('lem', 'total-regular');
+const savings = client.profiles.getPrice('lem', 'total-saving-amount');
 
 // Get formatted price strings
-const formattedPrice = client.profiles.getFormattedPrice('starter-kit', 'total-sale');
-const priceWithDecimals = client.profiles.getFormattedPrice('starter-kit', 'total-sale', { 
+const formattedPrice = client.profiles.getFormattedPrice('lem', 'total-sale');
+const priceWithDecimals = client.profiles.getFormattedPrice('lem', 'total-sale', { 
   showDecimals: true 
 });
 
@@ -166,100 +142,40 @@ Display profile prices anywhere on your page using data attributes:
 ### Basic Usage
 ```html
 <!-- Display profile sale price -->
-<span data-os-profile-price="total-sale" data-os-profile-id="starter-kit">$89</span>
+<span data-os-profile-price="total-sale" data-os-profile-id="lem">$89</span>
 
 <!-- Display profile savings -->
-<span data-os-profile-price="total-saving-percentage" data-os-profile-id="starter-kit">20% OFF</span>
+<span data-os-profile-price="total-saving-percentage" data-os-profile-id="lem">20% OFF</span>
 ```
 
-### All Available Attributes
-```html
-<span data-os-profile-price="total-sale" 
-      data-os-profile-id="starter-kit"
-      data-os-show-decimals="true"
-      data-os-hide-if-zero="true"
-      data-os-format="default">$89.00</span>
-```
-
-### Supported Price Types
-Same as package pricing:
-- `total-sale`, `total-regular`, `total-saving-amount`, `total-saving-percentage`
-- `unit-sale`, `unit-regular`, `unit-saving-amount`, `unit-saving-percentage`
-
-### Profile Pricing Examples
+### Complete Example
 ```html
 <div class="product-card">
-  <h3 data-os-profile-name="starter-kit">Starter Facial Kit</h3>
+  <h3>LEM Core Product</h3>
   
   <!-- Main pricing -->
   <div class="price-display">
     <span class="current-price" 
           data-os-profile-price="total-sale" 
-          data-os-profile-id="starter-kit">$89</span>
+          data-os-profile-id="lem">$89</span>
     <span class="original-price" 
           data-os-profile-price="total-regular" 
-          data-os-profile-id="starter-kit">$118</span>
+          data-os-profile-id="lem">$118</span>
   </div>
   
   <!-- Savings badge -->
   <div class="savings" data-container="true">
     Save <span data-os-profile-price="total-saving-amount" 
-               data-os-profile-id="starter-kit" 
+               data-os-profile-id="lem" 
                data-os-hide-if-zero="true">$29</span>
   </div>
   
-  <!-- Per unit pricing for multi-item profiles -->
-  <div class="per-item">
-    Only <span data-os-profile-price="unit-sale" 
-               data-os-profile-id="starter-kit" 
-               data-os-divide-by="4">$22.25</span> per facial
-  </div>
-  
-  <!-- Add to cart button -->
-  <button onclick="addProfileToCart('starter-kit')">Add to Cart</button>
+  <!-- Toggle button -->
+  <button data-os-action="toggle-item" 
+          data-os-profile="lem">
+    Add to Cart
+  </button>
 </div>
-```
-
-## 🌍 Country Integration
-
-Profiles automatically adapt to the current country:
-
-```javascript
-// When country changes to CA:
-// - Profile 'starter-kit' uses package '1' instead of '12'
-// - Prices update to Canadian prices with C$ currency
-// - All profile pricing displays refresh automatically
-
-// Force country for testing
-// ?forceCountry=CA
-const currentCountry = client.countryCampaign.getCurrentCountry(); // "CA"
-const mapping = client.profiles.getCurrentMapping('starter-kit');
-console.log(mapping); // { packageId: '1', quantity: 1 }
-```
-
-## 📦 Multi-Package Profiles
-
-Profiles can contain multiple packages:
-
-```javascript
-window.osConfig.productProfiles = {
-  'mega-bundle': {
-    name: 'Mega Bundle Deal',
-    campaignMappings: {
-      'US': [
-        { packageId: '12', quantity: 1 },  // Main kit
-        { packageId: '8', quantity: 2 },   // Refills
-        { packageId: '15', quantity: 1 }   // Bonus item
-      ]
-    }
-  }
-};
-
-// Adding to cart will add all 3 packages
-await client.profiles.addToCart('mega-bundle');
-
-// Pricing automatically calculates total of all packages
-const totalPrice = client.profiles.getPrice('mega-bundle', 'total-sale');
 ```
 
 ## 🎪 Event System
@@ -280,150 +196,114 @@ document.addEventListener('os:profile.removed', (event) => {
 });
 ```
 
-## 🔄 Migration from Package System
+## 🔧 Toggle Integration
 
-### Before (Package System)
-```javascript
-// Manual cart operations
-await client.cart.addToCart({
-  id: '12',  // Hard-coded package ID
-  name: 'Starter Kit',
-  price: 89,
-  quantity: 1,
-  type: 'package'
-});
+Profiles work seamlessly with the toggle system:
 
-// Country switching required manual package ID translation
-const countryMaps = window.osConfig.countryCampaigns.packageMaps;
-const currentCountry = client.countryCampaign.getCurrentCountry();
-const translatedId = countryMaps[currentCountry]['12']; // Manual translation
-```
-
-### After (Profile System)
-```javascript
-// Simple profile operations
-await client.profiles.addToCart('starter-kit');
-
-// Automatic country handling
-// Profile system automatically:
-// - Detects current country
-// - Maps to correct package ID
-// - Uses correct campaign pricing
-// - Handles currency display
-```
-
-### Backward Compatibility
 ```html
-<!-- Existing package pricing (continues to work) -->
-<span data-os-package-price="total-sale" data-os-package-id="12">$89</span>
+<!-- Profile toggles (recommended) -->
+<button data-os-action="toggle-item" 
+        data-os-profile="discreet-packaging"
+        data-os-upsell="true">
+  Add Discreet Packaging
+</button>
 
-<!-- New profile pricing (works alongside) -->
-<span data-os-profile-price="total-sale" data-os-profile-id="starter-kit">$89</span>
+<!-- Package toggles (still works) -->
+<button data-os-action="toggle-item" 
+        data-os-package="3">
+  Add Package 3
+</button>
 ```
 
-## 🛠️ Advanced Use Cases
+## 📊 Configuration Options
 
-### Dynamic Profile Creation
+### Single Package Profile
 ```javascript
-// Add profiles dynamically (for admin interfaces)
-window.osConfig.productProfiles['limited-edition'] = {
-  name: 'Limited Edition Set',
-  campaignMappings: {
-    'US': { packageId: '99', quantity: 1 }
-  },
-  metadata: {
-    category: 'limited',
+'profile-name': {
+  name: 'Display Name',
+  packageId: '1',              // Required: package ID
+  quantity: 1,                 // Optional: default 1
+  description: 'Description',  // Optional
+  metadata: {                  // Optional
+    category: 'category-name',
     featured: true,
-    endDate: '2024-12-31'
+    tags: ['tag1', 'tag2']
   }
-};
-
-// Refresh profile manager to pick up changes
-client.profiles.refresh(); // If we add this method
-```
-
-### Conditional Profile Display
-```javascript
-// Show profiles based on metadata
-const availableProfiles = client.profiles.getProfiles().filter(profile => {
-  const endDate = profile.metadata?.endDate;
-  return !endDate || new Date(endDate) > new Date();
-});
-
-const featuredKits = client.profiles.getProfilesByCategory('kits')
-  .filter(profile => profile.metadata?.featured);
-```
-
-### Custom Checkout Flows
-```javascript
-// Build custom checkout experiences
-async function createCustomBundle() {
-  // Clear existing cart
-  await client.cart.clearCart();
-  
-  // Add multiple profiles
-  await client.profiles.addToCart('starter-kit');
-  await client.profiles.addToCart('monthly-subscription');
-  
-  // Get total price
-  const cartProfiles = client.profiles.getCartProfiles();
-  let totalPrice = 0;
-  for (const profileId of cartProfiles) {
-    totalPrice += client.profiles.getPrice(profileId, 'total-sale');
-  }
-  
-  console.log(`Custom bundle total: $${totalPrice}`);
-  
-  // Proceed to checkout
-  window.location.href = '/checkout';
 }
 ```
+
+### Multi-Package Profile
+```javascript
+'bundle-name': {
+  name: 'Bundle Display Name',
+  packages: [                  // Array of packages
+    { packageId: '1', quantity: 1 },
+    { packageId: '3', quantity: 2 }
+  ],
+  description: 'Bundle description',
+  metadata: {
+    category: 'bundles',
+    featured: true
+  }
+}
+```
+
+### Metadata Options
+```javascript
+metadata: {
+  category: 'bundles',         // For filtering: getProfilesByCategory()
+  featured: true,              // For filtering: getFeaturedProfiles()
+  tags: ['popular', 'new'],    // For custom filtering
+  displayOrder: 1,             // For sorting
+  hidden: false                // For hiding in lists
+}
+```
+
 
 ## 🎯 Best Practices
 
 ### Profile Naming
-- Use descriptive, kebab-case IDs: `starter-kit`, `monthly-subscription`
+- Use descriptive, kebab-case IDs: `starter-kit`, `discreet-packaging`
 - Keep names business-friendly, not technical
-
-### Campaign Mappings
-- Always include fallback mappings for primary markets
-- Test with `?forceCountry=XX` URL parameter
-- Validate package IDs exist in target campaigns
-
-### Metadata Usage
-- Use `category` for filtering and organization
-- Use `featured` for highlighting important products
-- Use `tags` for flexible filtering and search
-- Use `displayOrder` for sorting
+- Use semantic names that describe the purpose
 
 ### Error Handling
 ```javascript
 // Always check operation success
-const success = await client.profiles.addToCart('starter-kit');
+const success = await client.profiles.addToCart('lem');
 if (!success) {
   console.error('Failed to add profile to cart');
   // Show user-friendly error message
 }
 
 // Validate profile exists before operations
-const profile = client.profiles.getProfile('starter-kit');
+const profile = client.profiles.getProfile('lem');
 if (!profile) {
   console.error('Profile not found');
   return;
 }
 ```
 
+### HTML Integration
+```html
+<!-- Use semantic profile names in HTML -->
+<div data-os-profile="discreet-packaging" class="add-on-option">
+  <input type="checkbox" data-os-action="toggle-item" data-os-profile="discreet-packaging">
+  <label>Add Discreet Packaging (+<span data-os-profile-price="total-sale" data-os-profile-id="discreet-packaging">$5</span>)</label>
+</div>
+```
+
 ## 🎉 Summary
 
-The Product Profile System provides:
+The Simplified Product Profile System provides:
 
-✅ **Backward Compatible**: Existing package system unchanged  
-✅ **Powerful API**: Easy programmatic cart operations  
-✅ **Country Aware**: Automatic package mapping per country  
-✅ **Multi-Package**: Bundle multiple packages into profiles  
+✅ **No Country Complexity**: One package ID per profile  
+✅ **Semantic Names**: Use meaningful names instead of IDs  
+✅ **Easy Integration**: Drop-in replacement for package IDs  
+✅ **Multi-Package Support**: Bundle multiple packages  
 ✅ **Rich Metadata**: Categories, tags, descriptions  
 ✅ **Pricing Display**: Show profile prices anywhere  
 ✅ **Event Driven**: Listen for profile cart changes  
-✅ **Testing Support**: Force country via URL parameters  
+✅ **Backward Compatible**: Works alongside existing package system  
 
-This system makes it much easier to build dynamic product experiences while maintaining the flexibility and power of the underlying campaign system! 
+This simplified system removes all the country mapping complexity while keeping the powerful semantic profile functionality! 

@@ -48,25 +48,23 @@ export class CartDisplayManager {
   }
 
   /**
-   * Setup listener for country changes
+   * Setup listener for country changes (OPTIMIZED - reduced duplication)
    */
   #setupCountryChangeListener() {
     document.addEventListener('os:country.changed', (event) => {
-      const { country, campaignData } = event.detail;
+      const { country } = event.detail;
       this.#logger.infoWithTime(`Country changed to ${country}, updating cart display`);
       
-      // Refresh cart display with new currency/prices
-      this.updateCartDisplay();
+      // In single campaign mode, only currency needs updating (no price changes)
+      this.#updateCurrencySymbols();
     });
 
-    // ALSO listen for when country campaign initialization is complete
-    // This ensures currency elements are correct on page load/refresh
+    // Listen for initialization to set currency on page load
     document.addEventListener('os:country-campaign.initialized', (event) => {
-      this.#logger.infoWithTime(`🔔 [CartDisplay] Received country-campaign.initialized event for ${event.detail.country}`);
+      this.#logger.infoWithTime(`🔔 [CartDisplay] Country campaign initialized for ${event.detail.country}`);
       
-      // Force update currency elements to match the initialized country
+      // Update currency elements for the initialized country
       this.#updateCurrencySymbols();
-      this.#logger.infoWithTime(`🔔 [CartDisplay] Currency elements updated after country campaign initialization`);
     });
   }
 

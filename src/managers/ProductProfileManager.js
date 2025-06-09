@@ -25,7 +25,8 @@ export class ProductProfileManager {
   }
 
   /**
-   * Initialize product profiles from configuration
+   * Initialize product profiles from configuration (SIMPLIFIED)
+   * Loads profiles but ignores country mappings - uses single campaign mode
    */
   #initializeProfiles() {
     const profilesConfig = window.osConfig?.productProfiles;
@@ -35,10 +36,10 @@ export class ProductProfileManager {
       return;
     }
 
-    // Load and validate profiles
+    // Load profiles but ignore complex country mappings
     Object.entries(profilesConfig).forEach(([profileId, profileData]) => {
       try {
-        this.#validateProfile(profileId, profileData);
+        this.#validateProfileSimple(profileId, profileData);
         this.#profiles.set(profileId, {
           ...profileData,
           id: profileId
@@ -49,49 +50,56 @@ export class ProductProfileManager {
       }
     });
 
-    this.#logger.infoWithTime(`Loaded ${this.#profiles.size} product profiles`);
+    this.#logger.infoWithTime(`Loaded ${this.#profiles.size} product profiles (single campaign mode)`);
   }
 
   /**
-   * Validate profile configuration
+   * Validate profile configuration (SIMPLIFIED for single campaign)
    * @param {string} profileId - Profile ID
    * @param {Object} profileData - Profile configuration
    */
-  #validateProfile(profileId, profileData) {
+  #validateProfileSimple(profileId, profileData) {
     if (!profileData.name) {
       throw new Error('Profile must have a name');
     }
 
-    if (!profileData.campaignMappings || typeof profileData.campaignMappings !== 'object') {
-      throw new Error('Profile must have campaignMappings object');
+    // New simplified format: single package
+    if (profileData.packageId) {
+      return;
     }
 
-    // Validate each country mapping
-    Object.entries(profileData.campaignMappings).forEach(([country, mapping]) => {
-      if (Array.isArray(mapping)) {
-        // Multiple packages per profile
-        mapping.forEach((pkg, index) => {
-          if (!pkg.packageId) {
-            throw new Error(`Package ${index} in ${country} mapping must have packageId`);
-          }
-        });
-      } else {
-        // Single package per profile
-        if (!mapping.packageId) {
-          throw new Error(`${country} mapping must have packageId`);
-        }
+    // New simplified format: multiple packages
+    if (profileData.packages && Array.isArray(profileData.packages)) {
+      if (profileData.packages.length === 0) {
+        throw new Error('Profile packages array cannot be empty');
       }
-    });
+      // Validate each package has packageId
+      profileData.packages.forEach((pkg, index) => {
+        if (!pkg.packageId) {
+          throw new Error(`Package ${index} must have packageId`);
+        }
+      });
+      return;
+    }
+
+    // Legacy format: campaignMappings (backward compatibility)
+    if (profileData.campaignMappings && typeof profileData.campaignMappings === 'object') {
+      const mappings = Object.values(profileData.campaignMappings);
+      if (mappings.length === 0) {
+        throw new Error('Profile must have at least one package mapping');
+      }
+      return;
+    }
+
+    throw new Error('Profile must have packageId, packages array, or campaignMappings (legacy)');
   }
 
   /**
-   * Setup listener for country changes
+   * Setup listener for country changes (DISABLED - single campaign mode)
    */
   #setupCountryChangeListener() {
-    document.addEventListener('os:country.changed', (event) => {
-      const { country } = event.detail;
-      this.#logger.debugWithTime(`Country changed to ${country}, profile mappings updated`);
-    });
+    // No longer needed in single campaign mode - profiles don't use country mappings
+    this.#logger.debugWithTime('Country change listener disabled (single campaign mode)');
   }
 
   /**
@@ -133,9 +141,9 @@ export class ProductProfileManager {
   }
 
   /**
-   * Get current country's package mapping for a profile
+   * Get package mapping for a profile (SIMPLIFIED for single campaign)
    * @param {string} profileId - Profile ID
-   * @returns {Array|Object|null} Package mapping(s) for current country
+   * @returns {Array|Object|null} Package mapping(s)
    */
   getCurrentMapping(profileId) {
     const profile = this.getProfile(profileId);
@@ -144,15 +152,31 @@ export class ProductProfileManager {
       return null;
     }
 
-    const currentCountry = this.#getCurrentCountry();
-    const mapping = profile.campaignMappings[currentCountry];
-    
-    if (!mapping) {
-      this.#logger.warnWithTime(`No mapping found for profile ${profileId} in country ${currentCountry}`);
-      return null;
+    // New simplified format: direct packageId
+    if (profile.packageId) {
+      return {
+        packageId: profile.packageId,
+        quantity: profile.quantity || 1
+      };
     }
 
-    return mapping;
+    // New simplified format: multiple packages array
+    if (profile.packages && Array.isArray(profile.packages)) {
+      return profile.packages;
+    }
+
+    // Legacy format: campaignMappings - use first available mapping (backward compatibility)
+    if (profile.campaignMappings) {
+      const mappings = Object.values(profile.campaignMappings);
+      if (mappings.length > 0) {
+        const mapping = mappings[0]; // Use first available mapping
+        this.#logger.debugWithTime(`Using legacy mapping format for profile ${profileId} (consider upgrading to simplified format)`);
+        return mapping;
+      }
+    }
+
+    this.#logger.warnWithTime(`No valid mapping found for profile ${profileId}`);
+    return null;
   }
 
   /**

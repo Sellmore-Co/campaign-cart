@@ -40,16 +40,11 @@ export class ToggleManager {
   }
 
   /**
-   * Setup listener for country changes
+   * Setup listener for country changes (DISABLED - single campaign mode)
    */
   #setupCountryChangeListener() {
-    document.addEventListener('os:country.changed', (event) => {
-      const { country, previousCountry } = event.detail;
-      this.#logger.info(`Country changed from ${previousCountry} to ${country}, updating toggle UI`);
-      
-      // Update all toggle UI to reflect new package mappings
-      this.#updateAllToggleUIs();
-    });
+    // No longer needed in single campaign mode - package IDs don't change between countries
+    this.#logger.debug('Country change listener disabled (single campaign mode)');
   }
 
   #registerToggleElement(toggleElement) {
@@ -236,60 +231,14 @@ export class ToggleManager {
   }
 
   /**
-   * Translate package ID using product profiles configuration
-   * @param {string} originalPackageId - The original package ID from the HTML data attribute (canonical ID)
-   * @returns {string} - The translated package ID for the current country's campaign
+   * Package ID translation (simplified - no longer translating between campaigns)
+   * @param {string} originalPackageId - The package ID from the HTML data attribute
+   * @returns {string} - Returns the original package ID (no translation needed)
    */
   #translatePackageId(originalPackageId) {
-    // Check if CountryCampaignManager is available
-    const countryCampaignManager = this.#app.countryCampaign;
-    
-    if (!countryCampaignManager || !countryCampaignManager.getCurrentCountry()) {
-      this.#logger.debug(`CountryCampaignManager not available or no current country, using original package ID: ${originalPackageId}`);
-      return originalPackageId;
-    }
-
-    try {
-      const currentCountry = countryCampaignManager.getCurrentCountry();
-      
-      // Use product profiles for translation
-      const profiles = window.osConfig?.productProfiles;
-      
-      if (!profiles) {
-        this.#logger.debug('No product profiles configuration found, using original package ID');
-        return originalPackageId;
-      }
-
-      // Look through all profiles to find which one should be used for this canonical package ID
-      // The originalPackageId might be a canonical ID that maps to different campaign IDs per country
-      for (const [profileId, profile] of Object.entries(profiles)) {
-        // Check if ANY country mapping in this profile matches the original package ID
-        // This helps us identify which profile this canonical ID belongs to
-        const hasMatchingMapping = Object.values(profile.campaignMappings || {}).some(mapping => 
-          mapping.packageId?.toString() === originalPackageId?.toString()
-        );
-        
-        if (hasMatchingMapping) {
-          // Found the profile! Now get the package ID for the current country
-          const currentMapping = profile.campaignMappings?.[currentCountry];
-          if (currentMapping) {
-            const translatedId = currentMapping.packageId?.toString();
-            this.#logger.debug(`Translated package ID via profile ${profileId}: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
-            return translatedId;
-      } else {
-            this.#logger.warn(`Profile ${profileId} found but no mapping for country ${currentCountry}`);
-        return originalPackageId;
-          }
-        }
-      }
-
-      // If no profile mapping found, this package might not be profile-based
-      this.#logger.debug(`No profile mapping found for package ${originalPackageId}, using original ID`);
-      return originalPackageId;
-    } catch (error) {
-      this.#logger.error('Error translating package ID:', error);
-      return originalPackageId;
-    }
+    // Since we're no longer switching campaigns based on country,
+    // we just return the original package ID without translation
+    return originalPackageId;
   }
 
   #getPackageDataFromCampaign(packageId) {

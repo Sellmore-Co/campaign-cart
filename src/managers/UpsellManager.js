@@ -55,19 +55,11 @@ export class UpsellManager {
   }
 
   /**
-   * Setup listener for country changes
+   * Setup listener for country changes (DISABLED - single campaign mode)
    */
   #setupCountryChangeListener() {
-    document.addEventListener('os:country.changed', (event) => {
-      const { country, previousCountry, campaignData } = event.detail;
-      this.#logger.info(`Country changed from ${previousCountry} to ${country}, upsell system updated`);
-      
-      // Log country change for upsell context
-      this.#logger.debug('Updated campaign data available for upsell operations', {
-        currency: campaignData?.currency,
-        packages: campaignData?.packages?.length || 0
-      });
-    });
+    // No longer needed in single campaign mode - upsell packages don't change between countries
+    this.#logger.debug('Country change listener disabled (single campaign mode)');
   }
   
   /**

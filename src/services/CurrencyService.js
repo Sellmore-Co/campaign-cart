@@ -227,19 +227,14 @@ export class CurrencyService {
   }
 
   /**
-   * Check if a country is supported by our country campaigns configuration
+   * Check if a country is supported (SIMPLIFIED - all countries supported)
+   * Since we're using single campaign mode, all countries are supported
    * @param {string} countryCode - Country code to check
-   * @returns {boolean} True if country is supported
+   * @returns {boolean} Always returns true
    */
   #isCountrySupported(countryCode) {
-    if (!countryCode) return false;
-    
-    // Check if country campaigns are configured and this country is supported
-    const campaignIds = window.osConfig?.countryCampaigns?.campaignIds || {};
-    const isSupported = !!campaignIds[countryCode.toUpperCase()];
-    
-    this.#logger.debugWithTime(`💱 [CurrencyService] Country "${countryCode}" supported: ${isSupported}`);
-    return isSupported;
+    // In single campaign mode, all countries are supported
+    return true;
   }
 
   /**

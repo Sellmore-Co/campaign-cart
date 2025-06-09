@@ -48,10 +48,19 @@ export class AddressHandler {
 
   async #init() {
     await this.#loadCountriesAndInitialState();
+    
+    // Initialize both country selects (without applying config yet)
     await Promise.all([
       this.#elements.shippingCountry && this.#initCountrySelect(this.#elements.shippingCountry, this.#elements.shippingState),
       this.#elements.billingCountry && this.#initCountrySelect(this.#elements.billingCountry, this.#elements.billingState),
     ]);
+    
+    // Apply default country configuration once after both selects are initialized
+    const defaultCountry = this.#addressConfig.defaultCountry;
+    if (defaultCountry) {
+      await this.#applyCountryConfig(defaultCountry);
+    }
+    
     this.#setupCountryChangeListeners();
     this.#setupAutocompleteDetection();
     this.#setupPostcodeValidation();
@@ -180,13 +189,10 @@ export class AddressHandler {
     countrySelect.innerHTML = '<option value="">Select Country</option>' + 
       this.#countries.map(c => `<option value="${c.iso2}">${c.name}</option>`).join('');
     
-    // Set default country
+    // Set default country (but don't apply config here - that happens once in #init)
     const defaultCountry = this.#addressConfig.defaultCountry;
     if (defaultCountry) {
       countrySelect.value = defaultCountry;
-      
-      // Apply country configuration if available
-      await this.#applyCountryConfig(defaultCountry);
       
       // Load and populate states for default country
       if (stateSelect) {

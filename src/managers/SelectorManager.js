@@ -38,18 +38,11 @@ export class SelectorManager {
   }
 
   /**
-   * Setup listener for country changes
+   * Setup listener for country changes (DISABLED - single campaign mode)
    */
   #setupCountryChangeListener() {
-    document.addEventListener('os:country.changed', (event) => {
-      const { country, campaignData } = event.detail;
-      this.#logger.info(`Country changed to ${country}, refreshing selector unit pricing`);
-      
-      // Refresh unit pricing with new campaign data
-      setTimeout(() => {
-        this.refreshUnitPricing();
-      }, 100);
-    });
+    // No longer needed in single campaign mode - pricing doesn't change between countries
+    this.#logger.debug('Country change listener disabled (single campaign mode)');
   }
 
   #initSelector(selectorElement) {

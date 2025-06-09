@@ -1107,6 +1107,10 @@ var TwentyNineNext = (() => {
       __privateGet(this, _elements).shippingCountry && __privateMethod(this, _initCountrySelect, initCountrySelect_fn).call(this, __privateGet(this, _elements).shippingCountry, __privateGet(this, _elements).shippingState),
       __privateGet(this, _elements).billingCountry && __privateMethod(this, _initCountrySelect, initCountrySelect_fn).call(this, __privateGet(this, _elements).billingCountry, __privateGet(this, _elements).billingState)
     ]);
+    const defaultCountry = __privateGet(this, _addressConfig).defaultCountry;
+    if (defaultCountry) {
+      await __privateMethod(this, _applyCountryConfig, applyCountryConfig_fn).call(this, defaultCountry);
+    }
     __privateMethod(this, _setupCountryChangeListeners, setupCountryChangeListeners_fn).call(this);
     __privateMethod(this, _setupAutocompleteDetection, setupAutocompleteDetection_fn).call(this);
     __privateMethod(this, _setupPostcodeValidation, setupPostcodeValidation_fn).call(this);
@@ -1202,7 +1206,6 @@ var TwentyNineNext = (() => {
     const defaultCountry = __privateGet(this, _addressConfig).defaultCountry;
     if (defaultCountry) {
       countrySelect.value = defaultCountry;
-      await __privateMethod(this, _applyCountryConfig, applyCountryConfig_fn).call(this, defaultCountry);
       if (stateSelect) {
         await __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, stateSelect, defaultCountry);
       }
@@ -6484,7 +6487,7 @@ var TwentyNineNext = (() => {
   var StateManager = class {
     constructor(app) {
       /**
-       * Setup listener for country changes
+       * Setup listener for country changes (SIMPLIFIED - currency only)
        */
       __privateAdd(this, _setupCountryChangeListener2);
       __privateAdd(this, _initDefaultState);
@@ -6763,18 +6766,15 @@ var TwentyNineNext = (() => {
   _setupCountryChangeListener2 = new WeakSet();
   setupCountryChangeListener_fn2 = function() {
     document.addEventListener("os:country.changed", (event) => {
-      const { country, campaignData, previousCountry } = event.detail;
-      __privateGet(this, _logger14).info(`Country changed from ${previousCountry} to ${country}, recalculating cart`);
-      if (campaignData?.currency) {
-        const oldCurrency = this.getState("cart.totals.currency");
-        const oldSymbol = this.getState("cart.totals.currency_symbol");
-        const newCurrency = campaignData.currency;
-        const newSymbol = __privateGet(this, _app9).currency.getCurrencySymbol(campaignData.currency);
-        this.setState("cart.totals.currency", newCurrency, false);
-        this.setState("cart.totals.currency_symbol", newSymbol, false);
-        __privateGet(this, _logger14).info(`💱 [StateManager] Cart currency updated: "${oldCurrency}" (${oldSymbol}) → "${newCurrency}" (${newSymbol})`);
-      }
-      __privateMethod(this, _processCartUpdates, processCartUpdates_fn).call(this, true, "country.changed");
+      const { country, previousCountry } = event.detail;
+      __privateGet(this, _logger14).info(`Country changed from ${previousCountry} to ${country}, updating currency`);
+      const newCurrency = __privateGet(this, _app9).currency.getCurrencyCode();
+      const newSymbol = __privateGet(this, _app9).currency.getCurrencySymbol();
+      this.setState("cart.totals.currency", newCurrency, false);
+      this.setState("cart.totals.currency_symbol", newSymbol, false);
+      __privateGet(this, _logger14).info(`💱 [StateManager] Cart currency updated to: ${newCurrency} (${newSymbol})`);
+      __privateMethod(this, _saveState, saveState_fn).call(this);
+      __privateMethod(this, _notifySubscribers, notifySubscribers_fn).call(this, "cart", this.getState("cart"));
     });
   };
   _initDefaultState = new WeakSet();
@@ -7605,7 +7605,7 @@ var TwentyNineNext = (() => {
     constructor(app) {
       __privateAdd(this, _initSelectors);
       /**
-       * Setup listener for country changes
+       * Setup listener for country changes (DISABLED - single campaign mode)
        */
       __privateAdd(this, _setupCountryChangeListener3);
       __privateAdd(this, _initSelector);
@@ -7737,13 +7737,7 @@ var TwentyNineNext = (() => {
   };
   _setupCountryChangeListener3 = new WeakSet();
   setupCountryChangeListener_fn3 = function() {
-    document.addEventListener("os:country.changed", (event) => {
-      const { country, campaignData } = event.detail;
-      __privateGet(this, _logger16).info(`Country changed to ${country}, refreshing selector unit pricing`);
-      setTimeout(() => {
-        this.refreshUnitPricing();
-      }, 100);
-    });
+    __privateGet(this, _logger16).debug("Country change listener disabled (single campaign mode)");
   };
   _initSelector = new WeakSet();
   initSelector_fn = function(selectorElement) {
@@ -8125,7 +8119,7 @@ var TwentyNineNext = (() => {
     constructor(app) {
       __privateAdd(this, _initAndRegisterToggleElements);
       /**
-       * Setup listener for country changes
+       * Setup listener for country changes (DISABLED - single campaign mode)
        */
       __privateAdd(this, _setupCountryChangeListener4);
       __privateAdd(this, _registerToggleElement);
@@ -8135,9 +8129,9 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _processProfileToggle);
       __privateAdd(this, _processPackageToggle);
       /**
-       * Translate package ID using product profiles configuration
-       * @param {string} originalPackageId - The original package ID from the HTML data attribute (canonical ID)
-       * @returns {string} - The translated package ID for the current country's campaign
+       * Package ID translation (simplified - no longer translating between campaigns)
+       * @param {string} originalPackageId - The package ID from the HTML data attribute
+       * @returns {string} - Returns the original package ID (no translation needed)
        */
       __privateAdd(this, _translatePackageId);
       __privateAdd(this, _getPackageDataFromCampaign);
@@ -8184,11 +8178,7 @@ var TwentyNineNext = (() => {
   };
   _setupCountryChangeListener4 = new WeakSet();
   setupCountryChangeListener_fn4 = function() {
-    document.addEventListener("os:country.changed", (event) => {
-      const { country, previousCountry } = event.detail;
-      __privateGet(this, _logger17).info(`Country changed from ${previousCountry} to ${country}, updating toggle UI`);
-      __privateMethod(this, _updateAllToggleUIs, updateAllToggleUIs_fn).call(this);
-    });
+    __privateGet(this, _logger17).debug("Country change listener disabled (single campaign mode)");
   };
   _registerToggleElement = new WeakSet();
   registerToggleElement_fn = function(toggleElement) {
@@ -8330,40 +8320,7 @@ var TwentyNineNext = (() => {
   };
   _translatePackageId = new WeakSet();
   translatePackageId_fn = function(originalPackageId) {
-    const countryCampaignManager = __privateGet(this, _app12).countryCampaign;
-    if (!countryCampaignManager || !countryCampaignManager.getCurrentCountry()) {
-      __privateGet(this, _logger17).debug(`CountryCampaignManager not available or no current country, using original package ID: ${originalPackageId}`);
-      return originalPackageId;
-    }
-    try {
-      const currentCountry = countryCampaignManager.getCurrentCountry();
-      const profiles = window.osConfig?.productProfiles;
-      if (!profiles) {
-        __privateGet(this, _logger17).debug("No product profiles configuration found, using original package ID");
-        return originalPackageId;
-      }
-      for (const [profileId, profile] of Object.entries(profiles)) {
-        const hasMatchingMapping = Object.values(profile.campaignMappings || {}).some(
-          (mapping) => mapping.packageId?.toString() === originalPackageId?.toString()
-        );
-        if (hasMatchingMapping) {
-          const currentMapping = profile.campaignMappings?.[currentCountry];
-          if (currentMapping) {
-            const translatedId = currentMapping.packageId?.toString();
-            __privateGet(this, _logger17).debug(`Translated package ID via profile ${profileId}: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
-            return translatedId;
-          } else {
-            __privateGet(this, _logger17).warn(`Profile ${profileId} found but no mapping for country ${currentCountry}`);
-            return originalPackageId;
-          }
-        }
-      }
-      __privateGet(this, _logger17).debug(`No profile mapping found for package ${originalPackageId}, using original ID`);
-      return originalPackageId;
-    } catch (error) {
-      __privateGet(this, _logger17).error("Error translating package ID:", error);
-      return originalPackageId;
-    }
+    return originalPackageId;
   };
   _getPackageDataFromCampaign = new WeakSet();
   getPackageDataFromCampaign_fn = function(packageId) {
@@ -9039,7 +8996,7 @@ var TwentyNineNext = (() => {
     // For standalone package pricing
     constructor(app) {
       /**
-       * Setup listener for country changes
+       * Setup listener for country changes (DISABLED - single campaign mode)
        */
       __privateAdd(this, _setupCountryChangeListener5);
       /**
@@ -9079,9 +9036,9 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _updateProfilePricing);
       /**
-       * Translate package ID using product profiles configuration
-       * @param {string} originalPackageId - The original package ID from the HTML data attribute (canonical ID)
-       * @returns {string} - The translated package ID for the current country's campaign
+       * Package ID translation (simplified - no longer translating between campaigns)
+       * @param {string} originalPackageId - The package ID from the HTML data attribute
+       * @returns {string} - Returns the original package ID (no translation needed)
        */
       __privateAdd(this, _translatePackageId2);
       /**
@@ -9181,12 +9138,7 @@ var TwentyNineNext = (() => {
   _priceElements = new WeakMap();
   _setupCountryChangeListener5 = new WeakSet();
   setupCountryChangeListener_fn5 = function() {
-    document.addEventListener("os:country.changed", (event) => {
-      const { country, campaignData } = event.detail;
-      __privateGet(this, _logger20).infoWithTime(`Country changed to ${country}, refreshing display elements and pricing`);
-      this.refreshDisplayElements();
-      this.refreshPackagePricing();
-    });
+    __privateGet(this, _logger20).debugWithTime("Country change listener disabled (single campaign mode)");
   };
   _initDisplayElements = new WeakSet();
   initDisplayElements_fn = function() {
@@ -9372,40 +9324,7 @@ var TwentyNineNext = (() => {
   };
   _translatePackageId2 = new WeakSet();
   translatePackageId_fn2 = function(originalPackageId) {
-    const countryCampaignManager = __privateGet(this, _app15).countryCampaign;
-    if (!countryCampaignManager || !countryCampaignManager.getCurrentCountry()) {
-      __privateGet(this, _logger20).debug(`CountryCampaignManager not available or no current country, using original package ID: ${originalPackageId}`);
-      return originalPackageId;
-    }
-    try {
-      const currentCountry = countryCampaignManager.getCurrentCountry();
-      const profiles = window.osConfig?.productProfiles;
-      if (!profiles) {
-        __privateGet(this, _logger20).debug("No product profiles configuration found, using original package ID");
-        return originalPackageId;
-      }
-      for (const [profileId, profile] of Object.entries(profiles)) {
-        const hasMatchingMapping = Object.values(profile.campaignMappings || {}).some(
-          (mapping) => mapping.packageId?.toString() === originalPackageId?.toString()
-        );
-        if (hasMatchingMapping) {
-          const currentMapping = profile.campaignMappings?.[currentCountry];
-          if (currentMapping) {
-            const translatedId = currentMapping.packageId?.toString();
-            __privateGet(this, _logger20).debug(`Translated package ID via profile ${profileId}: ${originalPackageId} -> ${translatedId} for country ${currentCountry}`);
-            return translatedId;
-          } else {
-            __privateGet(this, _logger20).warn(`Profile ${profileId} found but no mapping for country ${currentCountry}`);
-            return originalPackageId;
-          }
-        }
-      }
-      __privateGet(this, _logger20).debug(`No profile mapping found for package ${originalPackageId}, using original ID`);
-      return originalPackageId;
-    } catch (error) {
-      __privateGet(this, _logger20).error("Error translating package ID:", error);
-      return originalPackageId;
-    }
+    return originalPackageId;
   };
   _getPackageData = new WeakSet();
   getPackageData_fn = function(packageId) {
@@ -9487,7 +9406,7 @@ var TwentyNineNext = (() => {
   var CartDisplayManager = class {
     constructor(app) {
       /**
-       * Setup listener for country changes
+       * Setup listener for country changes (OPTIMIZED - reduced duplication)
        */
       __privateAdd(this, _setupCountryChangeListener6);
       /**
@@ -9650,14 +9569,13 @@ var TwentyNineNext = (() => {
   _setupCountryChangeListener6 = new WeakSet();
   setupCountryChangeListener_fn6 = function() {
     document.addEventListener("os:country.changed", (event) => {
-      const { country, campaignData } = event.detail;
+      const { country } = event.detail;
       __privateGet(this, _logger21).infoWithTime(`Country changed to ${country}, updating cart display`);
-      this.updateCartDisplay();
+      __privateMethod(this, _updateCurrencySymbols, updateCurrencySymbols_fn).call(this);
     });
     document.addEventListener("os:country-campaign.initialized", (event) => {
-      __privateGet(this, _logger21).infoWithTime(`🔔 [CartDisplay] Received country-campaign.initialized event for ${event.detail.country}`);
+      __privateGet(this, _logger21).infoWithTime(`🔔 [CartDisplay] Country campaign initialized for ${event.detail.country}`);
       __privateMethod(this, _updateCurrencySymbols, updateCurrencySymbols_fn).call(this);
-      __privateGet(this, _logger21).infoWithTime(`🔔 [CartDisplay] Currency elements updated after country campaign initialization`);
     });
   };
   _initCartDisplay = new WeakSet();
@@ -12702,7 +12620,7 @@ var TwentyNineNext = (() => {
     constructor(app) {
       __privateAdd(this, _init10);
       /**
-       * Setup listener for country changes
+       * Setup listener for country changes (DISABLED - single campaign mode)
        */
       __privateAdd(this, _setupCountryChangeListener7);
       /**
@@ -12878,14 +12796,7 @@ var TwentyNineNext = (() => {
   };
   _setupCountryChangeListener7 = new WeakSet();
   setupCountryChangeListener_fn7 = function() {
-    document.addEventListener("os:country.changed", (event) => {
-      const { country, previousCountry, campaignData } = event.detail;
-      __privateGet(this, _logger25).info(`Country changed from ${previousCountry} to ${country}, upsell system updated`);
-      __privateGet(this, _logger25).debug("Updated campaign data available for upsell operations", {
-        currency: campaignData?.currency,
-        packages: campaignData?.packages?.length || 0
-      });
-    });
+    __privateGet(this, _logger25).debug("Country change listener disabled (single campaign mode)");
   };
   _getOrderReferenceId = new WeakSet();
   getOrderReferenceId_fn = function() {
@@ -13166,87 +13077,62 @@ var TwentyNineNext = (() => {
   _logger26 = new WeakMap();
 
   // src/managers/CountryCampaignManager.js
-  var _app22, _logger27, _currentCountry2, _config3, _isInitialized2, _loadConfig2, loadConfig_fn2, _detectUserCountry, detectUserCountry_fn, _updateCartForNewCountry, updateCartForNewCountry_fn, _triggerCountryChangedEvent, triggerCountryChangedEvent_fn, _translatePackageIdUsingProfiles, translatePackageIdUsingProfiles_fn;
+  var _app22, _logger27, _currentCountry2, _isInitialized2, _detectUserCountry, detectUserCountry_fn, _validateCountryAgainstConfig, validateCountryAgainstConfig_fn, _getStoredCountry, getStoredCountry_fn, _storeCountrySelection, storeCountrySelection_fn, _clearStoredCountry, clearStoredCountry_fn, _triggerCountryEvent, triggerCountryEvent_fn;
   var CountryCampaignManager = class {
     constructor(app) {
       /**
-       * Load configuration from window.osConfig
-       */
-      __privateAdd(this, _loadConfig2);
-      /**
-       * Detect user's country using globally cached localization data
+       * Detect user's country using cached localization data
        */
       __privateAdd(this, _detectUserCountry);
       /**
-       * Update cart items when switching countries using product profiles
+       * Validate detected country against addressConfig settings
+       * @param {string} countryCode - Country code to validate
+       * @returns {string} Valid country code (may be fallback)
        */
-      __privateAdd(this, _updateCartForNewCountry);
+      __privateAdd(this, _validateCountryAgainstConfig);
       /**
-       * Trigger country changed event
+       * Get stored country if still valid (within 24 hours)
        */
-      __privateAdd(this, _triggerCountryChangedEvent);
+      __privateAdd(this, _getStoredCountry);
       /**
-       * Translate package ID using product profiles configuration
-       * @param {string} packageId - The package ID to translate
-       * @param {string} fromCountry - Source country code
-       * @param {string} toCountry - Target country code
-       * @returns {string} Translated package ID
+       * Store country selection for persistence
        */
-      __privateAdd(this, _translatePackageIdUsingProfiles);
+      __privateAdd(this, _storeCountrySelection);
+      /**
+       * Clear stored country selection
+       */
+      __privateAdd(this, _clearStoredCountry);
+      /**
+       * Trigger country-related events
+       */
+      __privateAdd(this, _triggerCountryEvent);
       __privateAdd(this, _app22, void 0);
       __privateAdd(this, _logger27, void 0);
       __privateAdd(this, _currentCountry2, null);
-      __privateAdd(this, _config3, {});
       __privateAdd(this, _isInitialized2, false);
       __privateSet(this, _app22, app);
       __privateSet(this, _logger27, app.logger.createModuleLogger("COUNTRY_CAMPAIGN"));
-      __privateMethod(this, _loadConfig2, loadConfig_fn2).call(this);
       __privateGet(this, _logger27).info("CountryCampaignManager initialized");
     }
     /**
-     * Initialize the country campaign system
+     * Initialize the country system
      */
     async init() {
-      __privateGet(this, _logger27).info("Initializing country campaign system");
+      __privateGet(this, _logger27).info("Initializing country system");
       try {
         const detectedCountry = await __privateMethod(this, _detectUserCountry, detectUserCountry_fn).call(this);
-        __privateGet(this, _logger27).info(`🌍 [CountryCampaign] Detected country: ${detectedCountry}`);
+        __privateGet(this, _logger27).info(`🌍 Detected country: ${detectedCountry}`);
         __privateSet(this, _currentCountry2, detectedCountry);
         __privateSet(this, _isInitialized2, true);
-        __privateGet(this, _logger27).info(`✅ [CountryCampaign] System initialized - Country: ${detectedCountry}`);
-        __privateGet(this, _logger27).info(`🔔 [CountryCampaign] Firing country-campaign.initialized event for: ${detectedCountry}`);
-        const event = new CustomEvent("os:country-campaign.initialized", {
-          bubbles: true,
-          detail: {
-            country: detectedCountry,
-            campaignId: null,
-            // No longer switching campaigns
-            manager: this
-          }
-        });
-        document.dispatchEvent(event);
-        __privateGet(this, _logger27).info(`🔔 [CountryCampaign] Event dispatched successfully`);
-        return {
-          country: detectedCountry,
-          campaignId: null
-        };
+        __privateMethod(this, _triggerCountryEvent, triggerCountryEvent_fn).call(this, "initialized", detectedCountry);
+        return { country: detectedCountry };
       } catch (error) {
-        __privateGet(this, _logger27).error("Failed to initialize country campaign system:", error);
+        __privateGet(this, _logger27).error("Failed to initialize country system:", error);
+        const fallbackCountry = "US";
+        __privateSet(this, _currentCountry2, fallbackCountry);
         __privateSet(this, _isInitialized2, true);
-        const event = new CustomEvent("os:country-campaign.initialized", {
-          bubbles: true,
-          detail: {
-            country: "US",
-            // Safe fallback
-            campaignId: null,
-            manager: this
-          }
-        });
-        document.dispatchEvent(event);
-        return {
-          country: "US",
-          campaignId: null
-        };
+        __privateMethod(this, _triggerCountryEvent, triggerCountryEvent_fn).call(this, "initialized", fallbackCountry);
+        return { country: fallbackCountry };
       }
     }
     /**
@@ -13255,44 +13141,25 @@ var TwentyNineNext = (() => {
     async switchCountry(newCountryCode) {
       if (!newCountryCode) {
         __privateGet(this, _logger27).error("Cannot switch country: no country code provided");
-        return {
-          success: false,
-          message: "No country code provided"
-        };
+        return { success: false, message: "No country code provided" };
       }
       const upperCountryCode = newCountryCode.toUpperCase();
       if (upperCountryCode === __privateGet(this, _currentCountry2)) {
-        __privateGet(this, _logger27).debug(`Country is already ${upperCountryCode}, no switch needed.`);
-        return {
-          success: true,
-          newCountry: upperCountryCode,
-          campaignData: __privateGet(this, _app22).campaignData,
-          message: "Already current country"
-        };
+        __privateGet(this, _logger27).debug(`Country is already ${upperCountryCode}, no switch needed`);
+        return { success: true, country: upperCountryCode, message: "Already current country" };
       }
-      __privateGet(this, _logger27).info(`Switching country to: ${upperCountryCode}`);
-      __privateGet(this, _logger27).info(`Switching country to: ${upperCountryCode}`);
+      __privateGet(this, _logger27).info(`Switching country: ${__privateGet(this, _currentCountry2)} → ${upperCountryCode}`);
       try {
-        await __privateMethod(this, _updateCartForNewCountry, updateCartForNewCountry_fn).call(this, __privateGet(this, _currentCountry2), upperCountryCode, __privateGet(this, _app22).campaignData);
         const previousCountry = __privateGet(this, _currentCountry2);
         __privateSet(this, _currentCountry2, upperCountryCode);
-        localStorage.setItem("os-forced-country", upperCountryCode);
-        localStorage.setItem("os-forced-country-timestamp", Date.now().toString());
-        __privateMethod(this, _triggerCountryChangedEvent, triggerCountryChangedEvent_fn).call(this, upperCountryCode, __privateGet(this, _app22).campaignData, previousCountry);
-        __privateGet(this, _logger27).info(`Successfully switched country from ${previousCountry} to ${upperCountryCode}`);
-        return {
-          success: true,
-          previousCountry,
-          newCountry: upperCountryCode,
-          campaignData: __privateGet(this, _app22).campaignData
-        };
+        __privateMethod(this, _storeCountrySelection, storeCountrySelection_fn).call(this, upperCountryCode);
+        this.syncCountrySelection();
+        __privateMethod(this, _triggerCountryEvent, triggerCountryEvent_fn).call(this, "changed", upperCountryCode, previousCountry);
+        __privateGet(this, _logger27).info(`✅ Successfully switched country: ${previousCountry} → ${upperCountryCode}`);
+        return { success: true, previousCountry, country: upperCountryCode };
       } catch (error) {
         __privateGet(this, _logger27).error(`Failed to switch country to ${upperCountryCode}:`, error);
-        return {
-          success: false,
-          error: error.message,
-          message: `Failed to switch to ${upperCountryCode}: ${error.message}`
-        };
+        return { success: false, error: error.message };
       }
     }
     /**
@@ -13302,24 +13169,19 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _currentCountry2);
     }
     /**
-     * Get current campaign ID (deprecated - always returns null)
-     * @deprecated No longer switching campaigns based on country
-     */
-    getCurrentCampaignId() {
-      return null;
-    }
-    /**
      * Get current campaign data
+     * @returns {Object} Current campaign data from the app
      */
     getCurrentCampaignData() {
       return __privateGet(this, _app22).campaignData;
     }
     /**
-     * Get cached campaigns (deprecated - no longer caching campaigns)
-     * @deprecated No longer caching campaigns per country
+     * Get current campaign ID (deprecated - always returns null)
+     * @deprecated No longer switching campaigns based on country
+     * @returns {null} Always returns null since we don't switch campaigns
      */
-    getCachedCampaigns() {
-      return {};
+    getCurrentCampaignId() {
+      return null;
     }
     /**
      * Check if manager is initialized
@@ -13329,7 +13191,6 @@ var TwentyNineNext = (() => {
     }
     /**
      * Sync country selection with checkout forms
-     * Call this to ensure country selects show the current country
      */
     syncCountrySelection() {
       if (!__privateGet(this, _currentCountry2))
@@ -13348,230 +13209,123 @@ var TwentyNineNext = (() => {
     }
     /**
      * Clear stored country selection and detect fresh
-     * @returns {Promise<Object>} Result of country detection
      */
-    async clearStoredCountry() {
-      __privateGet(this, _logger27).info("Clearing stored country selection");
-      localStorage.removeItem("os-forced-country");
-      localStorage.removeItem("os-forced-country-timestamp");
+    async resetCountryDetection() {
+      __privateGet(this, _logger27).info("Resetting country detection");
+      __privateMethod(this, _clearStoredCountry, clearStoredCountry_fn).call(this);
       const detectedCountry = await __privateMethod(this, _detectUserCountry, detectUserCountry_fn).call(this);
       if (detectedCountry !== __privateGet(this, _currentCountry2)) {
         return await this.switchCountry(detectedCountry);
       }
-      return {
-        success: true,
-        country: detectedCountry,
-        message: "Country selection cleared"
-      };
-    }
-    /**
-     * Get available countries from configuration
-     * @deprecated All countries are now supported
-     */
-    getAvailableCountries() {
-      return ["US", "CA", "GB", "AU", "DE", "FR", "ES", "IT", "NL", "SE", "NO", "DK", "FI"];
-    }
-    /**
-     * Check if a country is supported
-     * @deprecated All countries are now supported
-     */
-    isCountrySupported(countryCode) {
-      return true;
-    }
-    /**
-     * Translate package ID from one country to another using product profiles
-     */
-    translatePackageId(packageId, fromCountry, toCountry) {
-      const sourceCountry = fromCountry || __privateGet(this, _currentCountry2);
-      const targetCountry = toCountry || __privateGet(this, _currentCountry2);
-      if (!sourceCountry || !targetCountry) {
-        __privateGet(this, _logger27).debug(`Cannot translate package ID: missing country info`);
-        return packageId;
-      }
-      return __privateMethod(this, _translatePackageIdUsingProfiles, translatePackageIdUsingProfiles_fn).call(this, packageId, sourceCountry, targetCountry);
-    }
-    /**
-     * Get the current country's package ID for a specific profile
-     * @param {string} profileId - Profile ID
-     * @returns {string|null} Package ID for current country
-     */
-    getPackageIdForProfile(profileId) {
-      const profiles = window.osConfig?.productProfiles;
-      if (!profiles || !profiles[profileId]) {
-        __privateGet(this, _logger27).warn(`Profile ${profileId} not found in configuration`);
-        return null;
-      }
-      const currentCountry = __privateGet(this, _currentCountry2);
-      if (!currentCountry) {
-        __privateGet(this, _logger27).warn("No current country set");
-        return null;
-      }
-      const mapping = profiles[profileId].campaignMappings?.[currentCountry];
-      return mapping?.packageId?.toString() || null;
+      return { success: true, country: detectedCountry };
     }
   };
   _app22 = new WeakMap();
   _logger27 = new WeakMap();
   _currentCountry2 = new WeakMap();
-  _config3 = new WeakMap();
   _isInitialized2 = new WeakMap();
-  _loadConfig2 = new WeakSet();
-  loadConfig_fn2 = function() {
-    if (window.osConfig?.productProfiles) {
-      const profiles = Object.keys(window.osConfig.productProfiles);
-      __privateGet(this, _logger27).info("Found product profiles configuration:", {
-        profiles
-      });
-    } else {
-      __privateGet(this, _logger27).warn("No productProfiles configuration found in window.osConfig");
-    }
-  };
   _detectUserCountry = new WeakSet();
   detectUserCountry_fn = async function() {
-    __privateGet(this, _logger27).info("🔍 [CountryCampaign] Starting country detection...");
+    __privateGet(this, _logger27).info("🔍 Starting country detection...");
     const urlParams = new URLSearchParams(window.location.search);
     const forceCountry = urlParams.get("forceCountry");
     if (forceCountry) {
-      __privateGet(this, _logger27).info(`🔧 [CountryCampaign] Using forced country from URL parameter: ${forceCountry}`);
-      localStorage.setItem("os-forced-country", forceCountry.toUpperCase());
-      localStorage.setItem("os-forced-country-timestamp", Date.now().toString());
-      return forceCountry.toUpperCase();
+      const forcedCountry = forceCountry.toUpperCase();
+      __privateGet(this, _logger27).info(`🔧 Using forced country from URL: ${forcedCountry} (bypassing validation)`);
+      __privateMethod(this, _storeCountrySelection, storeCountrySelection_fn).call(this, forcedCountry);
+      return forcedCountry;
     }
-    const storedCountry = localStorage.getItem("os-forced-country");
-    const storedTimestamp = localStorage.getItem("os-forced-country-timestamp");
-    if (storedCountry && storedTimestamp) {
-      const hoursSinceStored = (Date.now() - parseInt(storedTimestamp)) / (1e3 * 60 * 60);
-      if (hoursSinceStored < 24) {
-        __privateGet(this, _logger27).info(`💾 [CountryCampaign] Using previously selected country: ${storedCountry} (${Math.round(hoursSinceStored)}h ago)`);
-        return storedCountry;
-      } else {
-        localStorage.removeItem("os-forced-country");
-        localStorage.removeItem("os-forced-country-timestamp");
-        __privateGet(this, _logger27).info(`⏰ [CountryCampaign] Stored country expired after ${Math.round(hoursSinceStored)} hours, detecting fresh`);
-      }
+    const storedCountry = __privateMethod(this, _getStoredCountry, getStoredCountry_fn).call(this);
+    if (storedCountry) {
+      __privateGet(this, _logger27).info(`💾 Using previously selected country: ${storedCountry}`);
+      return __privateMethod(this, _validateCountryAgainstConfig, validateCountryAgainstConfig_fn).call(this, storedCountry);
     }
     const localizationData = window.osLocalizationData;
     if (localizationData && localizationData.detectedCountryCode) {
       const detectedCountry = localizationData.detectedCountryCode;
-      __privateGet(this, _logger27).info(`🌐 [CountryCampaign] Using cached localization data for country: ${detectedCountry}`);
-      __privateGet(this, _logger27).info(`✅ [CountryCampaign] Using detected country: ${detectedCountry}`);
-      return detectedCountry;
+      __privateGet(this, _logger27).info(`🌐 Using cached localization data: ${detectedCountry}`);
+      return __privateMethod(this, _validateCountryAgainstConfig, validateCountryAgainstConfig_fn).call(this, detectedCountry);
     }
-    __privateGet(this, _logger27).error("❌ [CountryCampaign] No global localization data available! TwentyNineNext should have loaded this first.");
-    return window.osConfig?.addressConfig?.defaultCountry || "US";
+    const defaultCountry = window.osConfig?.addressConfig?.defaultCountry || "US";
+    __privateGet(this, _logger27).warn(`❌ No localization data available, using fallback: ${defaultCountry}`);
+    return defaultCountry;
   };
-  _updateCartForNewCountry = new WeakSet();
-  updateCartForNewCountry_fn = async function(fromCountry, toCountry, newCampaignData) {
-    if (!__privateGet(this, _app22).state) {
-      __privateGet(this, _logger27).warn("State manager not available, cannot update cart");
-      return;
+  _validateCountryAgainstConfig = new WeakSet();
+  validateCountryAgainstConfig_fn = function(countryCode) {
+    const addressConfig = window.osConfig?.addressConfig;
+    const showCountries = addressConfig?.showCountries;
+    const defaultCountry = addressConfig?.defaultCountry || "US";
+    if (!showCountries || !Array.isArray(showCountries)) {
+      __privateGet(this, _logger27).debug(`No showCountries restriction, using detected: ${countryCode}`);
+      return countryCode;
     }
-    const cart = __privateGet(this, _app22).state.getState("cart");
-    if (!cart?.items?.length) {
-      __privateGet(this, _logger27).debug("No cart items to update");
-      return;
+    if (showCountries.includes(countryCode)) {
+      __privateGet(this, _logger27).info(`✅ Detected country ${countryCode} is in allowed list`);
+      return countryCode;
     }
-    __privateGet(this, _logger27).info(`Updating ${cart.items.length} cart items for country switch: ${fromCountry} -> ${toCountry}`);
-    const newPackages = newCampaignData.packages || [];
-    const updatedItems = [];
-    for (const item of cart.items) {
-      try {
-        const currentPackageId = item.package_id?.toString() || item.id?.toString();
-        const newPackageId = __privateMethod(this, _translatePackageIdUsingProfiles, translatePackageIdUsingProfiles_fn).call(this, currentPackageId, fromCountry, toCountry);
-        const newPackageData = newPackages.find(
-          (pkg) => pkg.ref_id?.toString() === newPackageId || pkg.id?.toString() === newPackageId
-        );
-        if (!newPackageData) {
-          __privateGet(this, _logger27).warn(`Package not found in new campaign: translated ID ${newPackageId} (original: ${currentPackageId})`);
-          continue;
-        }
-        const updatedItem = {
-          ...item,
-          // This preserves profileId, profileName, is_upsell, and other metadata
-          id: newPackageData.ref_id?.toString() || newPackageId,
-          package_id: newPackageData.ref_id,
-          name: newPackageData.name,
-          price: parseFloat(newPackageData.price) || item.price,
-          price_total: parseFloat(newPackageData.price) * (item.quantity || 1),
-          retail_price: parseFloat(newPackageData.price_retail) || parseFloat(newPackageData.price),
-          retail_price_total: parseFloat(newPackageData.price_retail || newPackageData.price) * (item.quantity || 1),
-          currency: newCampaignData.currency || "USD",
-          image: newPackageData.image || item.image
-        };
-        updatedItems.push(updatedItem);
-        __privateGet(this, _logger27).debug(`Mapped item using profiles: ${currentPackageId} (${fromCountry}) -> ${newPackageId} (${toCountry})`);
-      } catch (error) {
-        __privateGet(this, _logger27).error(`Error updating cart item:`, error, item);
+    __privateGet(this, _logger27).info(`🚫 Detected country ${countryCode} not in allowed list [${showCountries.join(", ")}], falling back to: ${defaultCountry}`);
+    return defaultCountry;
+  };
+  _getStoredCountry = new WeakSet();
+  getStoredCountry_fn = function() {
+    const storedCountry = localStorage.getItem("os-selected-country");
+    const storedTimestamp = localStorage.getItem("os-selected-country-timestamp");
+    if (storedCountry && storedTimestamp) {
+      const hoursSinceStored = (Date.now() - parseInt(storedTimestamp)) / (1e3 * 60 * 60);
+      if (hoursSinceStored < 24) {
+        return storedCountry;
+      } else {
+        __privateMethod(this, _clearStoredCountry, clearStoredCountry_fn).call(this);
+        __privateGet(this, _logger27).info(`⏰ Stored country expired after ${Math.round(hoursSinceStored)} hours`);
       }
     }
-    if (updatedItems.length > 0) {
-      __privateGet(this, _app22).state.setState("cart.items", updatedItems, false);
-      const updatedCart = __privateGet(this, _app22).state.getState("cart");
-      __privateGet(this, _app22).state.setState("cart", updatedCart, true);
-      __privateGet(this, _logger27).info(`Updated ${updatedItems.length} cart items for new country using product profiles`);
-    }
+    return null;
   };
-  _triggerCountryChangedEvent = new WeakSet();
-  triggerCountryChangedEvent_fn = function(newCountry, campaignData, previousCountry) {
-    const currency = campaignData?.currency || "Unknown";
-    __privateGet(this, _logger27).info(`🔄 [CountryCampaign] Triggering country change: ${previousCountry} → ${newCountry} (${currency})`);
+  _storeCountrySelection = new WeakSet();
+  storeCountrySelection_fn = function(countryCode) {
+    localStorage.setItem("os-selected-country", countryCode);
+    localStorage.setItem("os-selected-country-timestamp", Date.now().toString());
+  };
+  _clearStoredCountry = new WeakSet();
+  clearStoredCountry_fn = function() {
+    localStorage.removeItem("os-selected-country");
+    localStorage.removeItem("os-selected-country-timestamp");
+  };
+  _triggerCountryEvent = new WeakSet();
+  triggerCountryEvent_fn = function(eventType, country, previousCountry = null) {
     const eventDetail = {
-      country: newCountry,
+      country,
       previousCountry,
-      campaignData,
       manager: this
     };
     if (__privateGet(this, _app22).triggerEvent) {
-      __privateGet(this, _app22).triggerEvent("country.changed", eventDetail);
+      __privateGet(this, _app22).triggerEvent(`country.${eventType}`, eventDetail);
     }
-    const event = new CustomEvent("os:country.changed", {
+    const event = new CustomEvent(`os:country.${eventType}`, {
       bubbles: true,
       detail: eventDetail
     });
     document.dispatchEvent(event);
-    __privateGet(this, _logger27).info(`✅ [CountryCampaign] Country changed event triggered: ${previousCountry} → ${newCountry} (${currency})`);
-  };
-  _translatePackageIdUsingProfiles = new WeakSet();
-  translatePackageIdUsingProfiles_fn = function(packageId, fromCountry, toCountry) {
-    const profiles = window.osConfig?.productProfiles;
-    if (!profiles) {
-      __privateGet(this, _logger27).debug("No product profiles configuration found, using original package ID");
-      return packageId;
-    }
-    for (const [profileId, profile] of Object.entries(profiles)) {
-      const sourceMapping = profile.campaignMappings?.[fromCountry];
-      if (sourceMapping && sourceMapping.packageId?.toString() === packageId?.toString()) {
-        const targetMapping = profile.campaignMappings?.[toCountry];
-        if (targetMapping) {
-          const translatedId = targetMapping.packageId?.toString();
-          __privateGet(this, _logger27).debug(`Translated package ID via profile ${profileId}: ${packageId} (${fromCountry}) -> ${translatedId} (${toCountry})`);
-          return translatedId;
-        } else {
-          __privateGet(this, _logger27).warn(`Profile ${profileId} has no mapping for target country ${toCountry}`);
-          return packageId;
-        }
-      }
-    }
-    __privateGet(this, _logger27).debug(`No profile mapping found for package ${packageId} in country ${fromCountry}, using original ID`);
-    return packageId;
+    __privateGet(this, _logger27).info(`🔔 Country ${eventType} event triggered: ${country}${previousCountry ? ` (from ${previousCountry})` : ""}`);
   };
 
   // src/managers/ProductProfileManager.js
-  var _app23, _logger28, _profiles, _initializeProfiles, initializeProfiles_fn, _validateProfile, validateProfile_fn, _setupCountryChangeListener8, setupCountryChangeListener_fn8, _getCurrentCountry, getCurrentCountry_fn, _getPackageData2, getPackageData_fn2, _getPackageDataSync, getPackageDataSync_fn, _calculatePackagePricing2, calculatePackagePricing_fn2, _getCurrencySymbol2, getCurrencySymbol_fn2, _triggerProfileEvent, triggerProfileEvent_fn;
+  var _app23, _logger28, _profiles, _initializeProfiles, initializeProfiles_fn, _validateProfileSimple, validateProfileSimple_fn, _setupCountryChangeListener8, setupCountryChangeListener_fn8, _getCurrentCountry, getCurrentCountry_fn, _getPackageData2, getPackageData_fn2, _getPackageDataSync, getPackageDataSync_fn, _calculatePackagePricing2, calculatePackagePricing_fn2, _getCurrencySymbol2, getCurrencySymbol_fn2, _triggerProfileEvent, triggerProfileEvent_fn;
   var ProductProfileManager = class {
     constructor(app) {
       /**
-       * Initialize product profiles from configuration
+       * Initialize product profiles from configuration (SIMPLIFIED)
+       * Loads profiles but ignores country mappings - uses single campaign mode
        */
       __privateAdd(this, _initializeProfiles);
       /**
-       * Validate profile configuration
+       * Validate profile configuration (SIMPLIFIED for single campaign)
        * @param {string} profileId - Profile ID
        * @param {Object} profileData - Profile configuration
        */
-      __privateAdd(this, _validateProfile);
+      __privateAdd(this, _validateProfileSimple);
       /**
-       * Setup listener for country changes
+       * Setup listener for country changes (DISABLED - single campaign mode)
        */
       __privateAdd(this, _setupCountryChangeListener8);
       /**
@@ -13653,9 +13407,9 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _profiles).get(profileId) || null;
     }
     /**
-     * Get current country's package mapping for a profile
+     * Get package mapping for a profile (SIMPLIFIED for single campaign)
      * @param {string} profileId - Profile ID
-     * @returns {Array|Object|null} Package mapping(s) for current country
+     * @returns {Array|Object|null} Package mapping(s)
      */
     getCurrentMapping(profileId) {
       const profile = this.getProfile(profileId);
@@ -13663,13 +13417,25 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger28).warnWithTime(`Profile not found: ${profileId}`);
         return null;
       }
-      const currentCountry = __privateMethod(this, _getCurrentCountry, getCurrentCountry_fn).call(this);
-      const mapping = profile.campaignMappings[currentCountry];
-      if (!mapping) {
-        __privateGet(this, _logger28).warnWithTime(`No mapping found for profile ${profileId} in country ${currentCountry}`);
-        return null;
+      if (profile.packageId) {
+        return {
+          packageId: profile.packageId,
+          quantity: profile.quantity || 1
+        };
       }
-      return mapping;
+      if (profile.packages && Array.isArray(profile.packages)) {
+        return profile.packages;
+      }
+      if (profile.campaignMappings) {
+        const mappings = Object.values(profile.campaignMappings);
+        if (mappings.length > 0) {
+          const mapping = mappings[0];
+          __privateGet(this, _logger28).debugWithTime(`Using legacy mapping format for profile ${profileId} (consider upgrading to simplified format)`);
+          return mapping;
+        }
+      }
+      __privateGet(this, _logger28).warnWithTime(`No valid mapping found for profile ${profileId}`);
+      return null;
     }
     /**
      * Add profile to cart
@@ -13834,7 +13600,7 @@ var TwentyNineNext = (() => {
     }
     Object.entries(profilesConfig).forEach(([profileId, profileData]) => {
       try {
-        __privateMethod(this, _validateProfile, validateProfile_fn).call(this, profileId, profileData);
+        __privateMethod(this, _validateProfileSimple, validateProfileSimple_fn).call(this, profileId, profileData);
         __privateGet(this, _profiles).set(profileId, {
           ...profileData,
           id: profileId
@@ -13844,36 +13610,39 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger28).warnWithTime(`Invalid profile configuration for ${profileId}:`, error.message);
       }
     });
-    __privateGet(this, _logger28).infoWithTime(`Loaded ${__privateGet(this, _profiles).size} product profiles`);
+    __privateGet(this, _logger28).infoWithTime(`Loaded ${__privateGet(this, _profiles).size} product profiles (single campaign mode)`);
   };
-  _validateProfile = new WeakSet();
-  validateProfile_fn = function(profileId, profileData) {
+  _validateProfileSimple = new WeakSet();
+  validateProfileSimple_fn = function(profileId, profileData) {
     if (!profileData.name) {
       throw new Error("Profile must have a name");
     }
-    if (!profileData.campaignMappings || typeof profileData.campaignMappings !== "object") {
-      throw new Error("Profile must have campaignMappings object");
+    if (profileData.packageId) {
+      return;
     }
-    Object.entries(profileData.campaignMappings).forEach(([country, mapping]) => {
-      if (Array.isArray(mapping)) {
-        mapping.forEach((pkg, index) => {
-          if (!pkg.packageId) {
-            throw new Error(`Package ${index} in ${country} mapping must have packageId`);
-          }
-        });
-      } else {
-        if (!mapping.packageId) {
-          throw new Error(`${country} mapping must have packageId`);
-        }
+    if (profileData.packages && Array.isArray(profileData.packages)) {
+      if (profileData.packages.length === 0) {
+        throw new Error("Profile packages array cannot be empty");
       }
-    });
+      profileData.packages.forEach((pkg, index) => {
+        if (!pkg.packageId) {
+          throw new Error(`Package ${index} must have packageId`);
+        }
+      });
+      return;
+    }
+    if (profileData.campaignMappings && typeof profileData.campaignMappings === "object") {
+      const mappings = Object.values(profileData.campaignMappings);
+      if (mappings.length === 0) {
+        throw new Error("Profile must have at least one package mapping");
+      }
+      return;
+    }
+    throw new Error("Profile must have packageId, packages array, or campaignMappings (legacy)");
   };
   _setupCountryChangeListener8 = new WeakSet();
   setupCountryChangeListener_fn8 = function() {
-    document.addEventListener("os:country.changed", (event) => {
-      const { country } = event.detail;
-      __privateGet(this, _logger28).debugWithTime(`Country changed to ${country}, profile mappings updated`);
-    });
+    __privateGet(this, _logger28).debugWithTime("Country change listener disabled (single campaign mode)");
   };
   _getCurrentCountry = new WeakSet();
   getCurrentCountry_fn = function() {
@@ -13957,9 +13726,10 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _setupEventListeners7);
       /**
-       * Check if a country is supported by our country campaigns configuration
+       * Check if a country is supported (SIMPLIFIED - all countries supported)
+       * Since we're using single campaign mode, all countries are supported
        * @param {string} countryCode - Country code to check
-       * @returns {boolean} True if country is supported
+       * @returns {boolean} Always returns true
        */
       __privateAdd(this, _isCountrySupported);
       /**
@@ -14149,12 +13919,7 @@ var TwentyNineNext = (() => {
   };
   _isCountrySupported = new WeakSet();
   isCountrySupported_fn = function(countryCode) {
-    if (!countryCode)
-      return false;
-    const campaignIds = window.osConfig?.countryCampaigns?.campaignIds || {};
-    const isSupported = !!campaignIds[countryCode.toUpperCase()];
-    __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] Country "${countryCode}" supported: ${isSupported}`);
-    return isSupported;
+    return true;
   };
   _getHardcodedSymbol = new WeakSet();
   getHardcodedSymbol_fn = function(currencyCode) {
@@ -14446,10 +14211,10 @@ var TwentyNineNext = (() => {
   };
 
   // src/core/TwentyNineNext.js
-  var _isInitialized3, _isCheckoutPage, _campaignData, _localizationData, _loadConfig3, loadConfig_fn3, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _loadLocalizationData, loadLocalizationData_fn, _getLocalizationCache, getLocalizationCache_fn, _saveLocalizationCache, saveLocalizationCache_fn, _initCountryCampaignSystem, initCountryCampaignSystem_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn;
+  var _isInitialized3, _isCheckoutPage, _campaignData, _localizationData, _loadConfig2, loadConfig_fn2, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _loadLocalizationData, loadLocalizationData_fn, _getLocalizationCache, getLocalizationCache_fn, _saveLocalizationCache, saveLocalizationCache_fn, _initCountryCampaignSystem, initCountryCampaignSystem_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn;
   var TwentyNineNext = class {
     constructor(options = {}) {
-      __privateAdd(this, _loadConfig3);
+      __privateAdd(this, _loadConfig2);
       /**
        * Initialize Spreedly configuration from global config
        * This allows users to customize Spreedly iframe behavior
@@ -14506,7 +14271,7 @@ var TwentyNineNext = (() => {
       this.logger = new Logger(this.options.debug);
       this.coreLogger = this.logger.createModuleLogger("CORE");
       this.api = new ApiClient(this);
-      this.config = __privateMethod(this, _loadConfig3, loadConfig_fn3).call(this);
+      this.config = __privateMethod(this, _loadConfig2, loadConfig_fn2).call(this);
       this.coreLogger.info("Initializing CountryCampaignManager for country detection");
       this.countryCampaign = new CountryCampaignManager(this);
       this.profiles = new ProductProfileManager(this);
@@ -14685,8 +14450,8 @@ var TwentyNineNext = (() => {
   _isCheckoutPage = new WeakMap();
   _campaignData = new WeakMap();
   _localizationData = new WeakMap();
-  _loadConfig3 = new WeakSet();
-  loadConfig_fn3 = function() {
+  _loadConfig2 = new WeakSet();
+  loadConfig_fn2 = function() {
     const config = { apiKey: null, campaignId: null, debug: this.options.debug };
     const urlParams = new URLSearchParams(window.location.search);
     const urlCampaignId = urlParams.get("campaignId");

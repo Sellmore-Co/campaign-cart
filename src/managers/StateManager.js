@@ -25,28 +25,25 @@ export class StateManager {
   }
 
   /**
-   * Setup listener for country changes
+   * Setup listener for country changes (SIMPLIFIED - currency only)
    */
   #setupCountryChangeListener() {
     document.addEventListener('os:country.changed', (event) => {
-      const { country, campaignData, previousCountry } = event.detail;
-      this.#logger.info(`Country changed from ${previousCountry} to ${country}, recalculating cart`);
+      const { country, previousCountry } = event.detail;
+      this.#logger.info(`Country changed from ${previousCountry} to ${country}, updating currency`);
       
-      // Update currency in cart totals
-      if (campaignData?.currency) {
-        const oldCurrency = this.getState('cart.totals.currency');
-        const oldSymbol = this.getState('cart.totals.currency_symbol');
-        const newCurrency = campaignData.currency;
-        const newSymbol = this.#app.currency.getCurrencySymbol(campaignData.currency);
-        
-        this.setState('cart.totals.currency', newCurrency, false);
-        this.setState('cart.totals.currency_symbol', newSymbol, false);
-        
-        this.#logger.info(`💱 [StateManager] Cart currency updated: "${oldCurrency}" (${oldSymbol}) → "${newCurrency}" (${newSymbol})`);
-      }
+      // Only update currency display - no cart recalculation needed in single campaign mode
+      const newCurrency = this.#app.currency.getCurrencyCode();
+      const newSymbol = this.#app.currency.getCurrencySymbol();
       
-      // Recalculate cart totals with new campaign data
-      this.#processCartUpdates(true, 'country.changed');
+      this.setState('cart.totals.currency', newCurrency, false);
+      this.setState('cart.totals.currency_symbol', newSymbol, false);
+      
+      this.#logger.info(`💱 [StateManager] Cart currency updated to: ${newCurrency} (${newSymbol})`);
+      
+      // Save state and notify subscribers without full cart recalculation
+      this.#saveState();
+      this.#notifySubscribers('cart', this.getState('cart'));
     });
   }
 
