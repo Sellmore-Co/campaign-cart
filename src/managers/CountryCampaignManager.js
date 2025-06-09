@@ -1,21 +1,17 @@
 /**
- * CountryCampaignManager - Manages country-specific campaigns and currency
+ * CountryCampaignManager - Manages country detection and currency
  * 
  * This class handles:
  * - Country detection via Cloudflare Worker /location endpoint
- * - Fetching country-specific campaign data
- * - Package ID translation between campaigns
- * - Dynamic country switching with cart updates
+ * - Package ID translation using product profiles
+ * - Country switching for UI/display purposes
  */
 
 export class CountryCampaignManager {
   #app;
   #logger;
   #currentCountry = null;
-  #cachedCampaigns = new Map(); // Map of country -> campaign data
-  #config = {
-    campaignIds: {}
-  };
+  #config = {};
   #isInitialized = false;
 
   constructor(app) {
@@ -29,16 +25,6 @@ export class CountryCampaignManager {
    * Load configuration from window.osConfig
    */
   #loadConfig() {
-    if (window.osConfig?.countryCampaigns) {
-      this.#config.campaignIds = window.osConfig.countryCampaigns.campaignIds || {};
-      
-      this.#logger.info('Loaded country campaigns configuration:', {
-        countries: Object.keys(this.#config.campaignIds)
-      });
-    } else {
-      this.#logger.warn('No countryCampaigns configuration found in window.osConfig');
-    }
-
     // Check for product profiles configuration
     if (window.osConfig?.productProfiles) {
       const profiles = Object.keys(window.osConfig.productProfiles);
@@ -57,22 +43,15 @@ export class CountryCampaignManager {
     this.#logger.info('Initializing country campaign system');
     
     try {
-      // Step 1: Detect user's country
+      // Detect user's country
       const detectedCountry = await this.#detectUserCountry();
       this.#logger.info(`🌍 [CountryCampaign] Detected country: ${detectedCountry}`);
       
-      // Step 2: Get the appropriate campaign ID
-      const campaignId = this.#getCampaignIdForCountry(detectedCountry);
-      this.#logger.info(`📋 [CountryCampaign] Campaign ID for ${detectedCountry}: ${campaignId}`);
-      
-      // Step 3: Update API client to use this campaign
-      this.#updateApiClientCampaign(campaignId);
-      
-      // Step 4: Set current country
+      // Set current country
       this.#currentCountry = detectedCountry;
       
       this.#isInitialized = true;
-      this.#logger.info(`✅ [CountryCampaign] System initialized - Country: ${detectedCountry}, Campaign: ${campaignId}`);
+      this.#logger.info(`✅ [CountryCampaign] System initialized - Country: ${detectedCountry}`);
       
       // Fire initialization complete event for other managers to sync
       this.#logger.info(`🔔 [CountryCampaign] Firing country-campaign.initialized event for: ${detectedCountry}`);
@@ -80,7 +59,7 @@ export class CountryCampaignManager {
         bubbles: true,
         detail: {
           country: detectedCountry,
-          campaignId: campaignId,
+          campaignId: null, // No longer switching campaigns
           manager: this
         }
       });
@@ -89,7 +68,7 @@ export class CountryCampaignManager {
       
       return {
         country: detectedCountry,
-        campaignId: campaignId
+        campaignId: null
       };
     } catch (error) {
       this.#logger.error('Failed to initialize country campaign system:', error);
@@ -107,7 +86,10 @@ export class CountryCampaignManager {
       });
       document.dispatchEvent(event);
       
-      return null;
+      return {
+        country: 'US',
+        campaignId: null
+      };
     }
   }
 
@@ -153,16 +135,9 @@ export class CountryCampaignManager {
       const detectedCountry = localizationData.detectedCountryCode;
       this.#logger.info(`🌐 [CountryCampaign] Using cached localization data for country: ${detectedCountry}`);
       
-      // CHECK: Is this detected country actually supported by our configuration?
-      if (this.#config.campaignIds[detectedCountry]) {
-        this.#logger.info(`✅ [CountryCampaign] Detected country ${detectedCountry} is supported`);
-        return detectedCountry;
-      } else {
-        // Country not supported, use configured default
-        const defaultCountry = window.osConfig?.addressConfig?.defaultCountry || 'US';
-        this.#logger.warn(`⚠️ [CountryCampaign] Detected country ${detectedCountry} not supported, using default: ${defaultCountry}`);
-        return defaultCountry;
-      }
+      // Return the detected country (all countries are now supported since we're not switching campaigns)
+      this.#logger.info(`✅ [CountryCampaign] Using detected country: ${detectedCountry}`);
+      return detectedCountry;
     }
 
     // Should not happen since TwentyNineNext loads this first
@@ -170,52 +145,6 @@ export class CountryCampaignManager {
     return window.osConfig?.addressConfig?.defaultCountry || 'US'; // Safe fallback
   }
 
-  /**
-   * Get campaign ID for a specific country
-   */
-  #getCampaignIdForCountry(countryCode) {
-    const campaignId = this.#config.campaignIds[countryCode];
-    
-    if (campaignId) {
-      this.#logger.debug(`Found campaign ID for ${countryCode}: ${campaignId}`);
-      return campaignId;
-    }
-
-    // Fall back to US campaign or first available campaign
-    const fallbackCampaignId = this.#config.campaignIds['US'] || Object.values(this.#config.campaignIds)[0];
-    
-    if (fallbackCampaignId) {
-      this.#logger.warn(`No campaign found for ${countryCode}, using fallback: ${fallbackCampaignId}`);
-      return fallbackCampaignId;
-    }
-
-    this.#logger.error(`No campaign configuration found for ${countryCode} and no fallback available`);
-    return null;
-  }
-
-  /**
-   * Update the API client to use a specific campaign ID
-   */
-  #updateApiClientCampaign(campaignId) {
-    if (!campaignId) {
-      this.#logger.warn('Cannot update API client: no campaign ID provided');
-      return;
-    }
-
-    // Update the API client's campaign ID by storing in session storage
-    // The API client will pick this up on its next init or request
-    sessionStorage.setItem('os-campaign-id', campaignId);
-    
-    this.#logger.debug(`Updated session storage with campaign ID: ${campaignId}`);
-    
-    // Update API client directly
-    if (this.#app.api && typeof this.#app.api.updateCampaignId === 'function') {
-      this.#app.api.updateCampaignId(campaignId);
-      this.#logger.debug(`Updated API client to use campaign: ${campaignId}`);
-    } else {
-      this.#logger.warn('API client updateCampaignId method not available');
-    }
-  }
 
   /**
    * Switch to a different country
@@ -237,87 +166,20 @@ export class CountryCampaignManager {
       return {
         success: true,
         newCountry: upperCountryCode,
-        campaignData: this.#cachedCampaigns.get(upperCountryCode) || this.#app.campaignData,
+        campaignData: this.#app.campaignData,
         message: 'Already current country'
       };
     }
 
-    // Debounce rapid successive calls to prevent cascading loops
-    if (this._switchTimeout) {
-      this.#logger.debug(`Debouncing country switch to ${upperCountryCode}`);
-      clearTimeout(this._switchTimeout);
-    }
+    this.#logger.info(`Switching country to: ${upperCountryCode}`);
 
-    // Set a flag to prevent additional switches during processing
-    if (this._isSwitching) {
-      this.#logger.debug(`Country switch already in progress, ignoring request for ${upperCountryCode}`);
-      return {
-        success: false,
-        message: 'Switch already in progress'
-      };
-    }
-
-    this._isSwitching = true;
     this.#logger.info(`Switching country to: ${upperCountryCode}`);
 
     try {
-      // Step 1: Get campaign ID for new country
-      const newCampaignId = this.#getCampaignIdForCountry(upperCountryCode);
-      if (!newCampaignId) {
-        // If no campaign ID is found, just update the current country
-        this.#logger.warn(`No campaign found for country: ${upperCountryCode}, but updating current country anyway`);
-        
-        const previousCountry = this.#currentCountry;
-        this.#currentCountry = upperCountryCode;
-        
-        // Store the country selection for persistence
-        localStorage.setItem('os-forced-country', upperCountryCode);
-        localStorage.setItem('os-forced-country-timestamp', Date.now().toString());
+      // Update cart items with new package mappings (using existing campaign data)
+      await this.#updateCartForNewCountry(this.#currentCountry, upperCountryCode, this.#app.campaignData);
 
-        // Trigger country changed event with existing campaign data
-        this.#triggerCountryChangedEvent(upperCountryCode, this.#app.campaignData, previousCountry);
-
-        return {
-          success: true,
-          previousCountry,
-          newCountry: upperCountryCode,
-          campaignData: this.#app.campaignData,
-          message: 'Country updated without campaign switch'
-        };
-      }
-
-      // Step 2: Check if campaign is already cached
-      let campaignData = this.#cachedCampaigns.get(upperCountryCode);
-      
-      if (!campaignData) {
-        // Step 3: Fetch new campaign data
-        this.#logger.info(`Fetching campaign data for ${upperCountryCode}: ${newCampaignId}`);
-        
-        // Temporarily update API client to fetch the new campaign
-        const originalCampaignId = this.#app.api._campaignId;
-        this.#updateApiClientCampaign(newCampaignId);
-        
-        try {
-          campaignData = await this.#app.api.getCampaign();
-          
-          // Cache the campaign data
-          this.#cachedCampaigns.set(upperCountryCode, campaignData);
-          this.#logger.debug(`Cached campaign data for ${upperCountryCode}`);
-        } catch (error) {
-          // Restore original campaign ID on error
-          this.#updateApiClientCampaign(originalCampaignId);
-          throw error;
-        }
-      } else {
-        this.#logger.debug(`Using cached campaign data for ${upperCountryCode}`);
-        // Still need to update API client
-        this.#updateApiClientCampaign(newCampaignId);
-      }
-
-      // Step 4: Update cart items with new package mappings
-      await this.#updateCartForNewCountry(this.#currentCountry, upperCountryCode, campaignData);
-
-      // Step 5: Update current country
+      // Update current country
       const previousCountry = this.#currentCountry;
       this.#currentCountry = upperCountryCode;
       
@@ -325,14 +187,8 @@ export class CountryCampaignManager {
       localStorage.setItem('os-forced-country', upperCountryCode);
       localStorage.setItem('os-forced-country-timestamp', Date.now().toString());
 
-      // Step 6: Update campaign data in app
-      this.#app.campaignData = campaignData;
-      if (window.osConfig) {
-        window.osConfig.campaign = campaignData;
-      }
-
-      // Step 7: Trigger country changed event
-      this.#triggerCountryChangedEvent(upperCountryCode, campaignData, previousCountry);
+      // Trigger country changed event
+      this.#triggerCountryChangedEvent(upperCountryCode, this.#app.campaignData, previousCountry);
 
       this.#logger.info(`Successfully switched country from ${previousCountry} to ${upperCountryCode}`);
       
@@ -340,20 +196,16 @@ export class CountryCampaignManager {
         success: true,
         previousCountry,
         newCountry: upperCountryCode,
-        campaignData
+        campaignData: this.#app.campaignData
       };
     } catch (error) {
       this.#logger.error(`Failed to switch country to ${upperCountryCode}:`, error);
       
-      // Return a more graceful error response instead of throwing
       return {
         success: false,
         error: error.message,
         message: `Failed to switch to ${upperCountryCode}: ${error.message}`
       };
-    } finally {
-      // Always clear the switching flag
-      this._isSwitching = false;
     }
   }
 
@@ -468,38 +320,26 @@ export class CountryCampaignManager {
   }
 
   /**
-   * Get current campaign ID
+   * Get current campaign ID (deprecated - always returns null)
+   * @deprecated No longer switching campaigns based on country
    */
   getCurrentCampaignId() {
-    if (!this.#currentCountry) {
-      return null;
-    }
-    return this.#getCampaignIdForCountry(this.#currentCountry);
+    return null;
   }
 
   /**
    * Get current campaign data
    */
   getCurrentCampaignData() {
-    if (!this.#currentCountry) {
-      return null;
-    }
-    return this.#cachedCampaigns.get(this.#currentCountry) || this.#app.campaignData;
+    return this.#app.campaignData;
   }
 
   /**
-   * Get cached campaigns
+   * Get cached campaigns (deprecated - no longer caching campaigns)
+   * @deprecated No longer caching campaigns per country
    */
   getCachedCampaigns() {
-    const cached = {};
-    this.#cachedCampaigns.forEach((data, country) => {
-      cached[country] = {
-        name: data.name,
-        currency: data.currency,
-        packages: data.packages?.length || 0
-      };
-    });
-    return cached;
+    return {};
   }
 
   /**
@@ -561,16 +401,20 @@ export class CountryCampaignManager {
 
   /**
    * Get available countries from configuration
+   * @deprecated All countries are now supported
    */
   getAvailableCountries() {
-    return Object.keys(this.#config.campaignIds);
+    // Return common countries since we no longer have campaign-specific restrictions
+    return ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'ES', 'IT', 'NL', 'SE', 'NO', 'DK', 'FI'];
   }
 
   /**
    * Check if a country is supported
+   * @deprecated All countries are now supported
    */
   isCountrySupported(countryCode) {
-    return !!this.#config.campaignIds[countryCode?.toUpperCase()];
+    // All countries are supported since we're not switching campaigns
+    return true;
   }
 
   /**

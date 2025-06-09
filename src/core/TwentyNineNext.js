@@ -50,14 +50,10 @@ export class TwentyNineNext {
     this.api = new ApiClient(this);
     this.config = this.#loadConfig();
     
-    // Only initialize country campaign manager if country campaigns are configured
-    if (window.osConfig?.countryCampaigns && Object.keys(window.osConfig.countryCampaigns.campaignIds || {}).length > 0) {
-      this.coreLogger.info('Country campaigns configured, initializing CountryCampaignManager');
-      this.countryCampaign = new CountryCampaignManager(this);
-    } else {
-      this.coreLogger.info('No country campaigns configured, skipping CountryCampaignManager');
-      this.countryCampaign = null;
-    }
+    // Initialize country campaign manager (no longer requires countryCampaigns config)
+    // It now handles country detection and currency display without campaign switching
+    this.coreLogger.info('Initializing CountryCampaignManager for country detection');
+    this.countryCampaign = new CountryCampaignManager(this);
     
     // Initialize product profile manager (after country campaign manager)
     this.profiles = new ProductProfileManager(this);
@@ -345,12 +341,8 @@ export class TwentyNineNext {
     // LOAD LOCALIZATION DATA FIRST - before everything else
     await this.#loadLocalizationData();
     
-    // Initialize country campaign system SECOND (only if enabled)
-    if (this.countryCampaign) {
-      await this.#initCountryCampaignSystem();
-    } else {
-      this.coreLogger.info('Country campaigns not configured, skipping country campaign initialization');
-    }
+    // Initialize country campaign system SECOND
+    await this.#initCountryCampaignSystem();
     
     this.api.init();
 
@@ -373,8 +365,7 @@ export class TwentyNineNext {
     if (this.#isCheckoutPage) {
       this.#initCheckoutPage();
       
-      // Sync country selection on checkout pages with a small delay (only if country campaigns enabled)
-      // to ensure DOM elements are ready
+      // Sync country selection on checkout pages with a small delay to ensure DOM elements are ready
       setTimeout(() => {
         if (this.countryCampaign && this.countryCampaign.isInitialized) {
           this.countryCampaign.syncCountrySelection();
@@ -406,7 +397,7 @@ export class TwentyNineNext {
       const result = await this.countryCampaign.init();
       
       if (result) {
-        this.coreLogger.info(`Country campaign system initialized: ${result.country} -> ${result.campaignId}`);
+        this.coreLogger.info(`Country campaign system initialized: ${result.country}`);
       } else {
         this.coreLogger.warn('Country campaign system initialization returned null, using fallback');
       }

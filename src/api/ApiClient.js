@@ -23,25 +23,18 @@ export class ApiClient {
     // Check for campaign ID in URL parameters and save to localStorage if present
     this.#checkForCampaignIdInUrl();
     
-    // First try to get campaign ID from CountryCampaignManager if available
-    if (this.#app.countryCampaign?.getCurrentCampaignId()) {
-      this.#campaignId = this.#app.countryCampaign.getCurrentCampaignId();
+    // Get campaign ID from local storage or meta tag
+    this.#campaignId = this.#getCampaignId();
+    
+    // Use campaign ID as API key if available
+    if (this.#campaignId) {
       this.#apiKey = this.#campaignId;
-      this.#logger.info(`Using campaign ID from CountryCampaignManager: ${this.#apiKey}`);
+      this.#logger.info(`Using campaign ID as API key: ${this.#apiKey}`);
     } else {
-      // Fall back to local storage or meta tag
-      this.#campaignId = this.#getCampaignId();
-      
-      // Use campaign ID as API key if available
-      if (this.#campaignId) {
-        this.#apiKey = this.#campaignId;
-        this.#logger.info(`Using campaign ID as API key: ${this.#apiKey}`);
-      } else {
-        // Fall back to meta tag API key
-        const apiKeyMeta = document.querySelector('meta[name="os-api-key"]');
-        this.#apiKey = apiKeyMeta?.getAttribute('content');
-        this.#logger.info(this.#apiKey ? 'API key retrieved from meta tag' : 'API key is not set');
-      }
+      // Fall back to meta tag API key
+      const apiKeyMeta = document.querySelector('meta[name="os-api-key"]');
+      this.#apiKey = apiKeyMeta?.getAttribute('content');
+      this.#logger.info(this.#apiKey ? 'API key retrieved from meta tag' : 'API key is not set');
     }
     
     const proxyMeta = document.querySelector('meta[name="os-proxy-url"]');
