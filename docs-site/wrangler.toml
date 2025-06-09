@@ -1,0 +1,11 @@
+name = "campaign-cart-docs"
+compatibility_date = "2024-01-15"
+
+# Static assets configuration for Workers
+[assets]
+directory = ".vitepress/dist"
+not_found_handling = "404-page"
+
+# Environment variables (if needed)
+[vars]
+# Add any environment variables your site needs here 

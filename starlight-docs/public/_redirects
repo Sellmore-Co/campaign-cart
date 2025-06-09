@@ -1,0 +1,10 @@
+# Redirects for Cloudflare Pages
+# Add any redirects you need here
+# Format: /old-path /new-path [status-code]
+
+# Example redirects:
+# /old-page /new-page 301
+# /docs/* /documentation/:splat 301
+
+# SPA fallback (uncomment if needed)
+# /* /index.html 200 
