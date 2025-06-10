@@ -25,21 +25,17 @@ export class StateManager {
   }
 
   /**
-   * Setup listener for country changes (SIMPLIFIED - currency only)
+   * Setup listener for display refresh events (SIMPLIFIED)
    */
   #setupCountryChangeListener() {
-    document.addEventListener('os:country.changed', (event) => {
-      const { country, previousCountry } = event.detail;
-      this.#logger.info(`Country changed from ${previousCountry} to ${country}, updating currency`);
+    // SINGLE EVENT: Listen for display refresh events from CurrencyService
+    document.addEventListener('os:display.refresh', (event) => {
+      const { currency, symbol, source } = event.detail;
+      this.#logger.info(`💱 [StateManager] Display refresh from ${source}: ${currency} (${symbol})`);
       
       // Only update currency display - no cart recalculation needed in single campaign mode
-      const newCurrency = this.#app.currency.getCurrencyCode();
-      const newSymbol = this.#app.currency.getCurrencySymbol();
-      
-      this.setState('cart.totals.currency', newCurrency, false);
-      this.setState('cart.totals.currency_symbol', newSymbol, false);
-      
-      this.#logger.info(`💱 [StateManager] Cart currency updated to: ${newCurrency} (${newSymbol})`);
+      this.setState('cart.totals.currency', currency, false);
+      this.setState('cart.totals.currency_symbol', symbol, false);
       
       // Save state and notify subscribers without full cart recalculation
       this.#saveState();

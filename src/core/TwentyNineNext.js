@@ -58,8 +58,26 @@ export class TwentyNineNext {
     // Initialize product profile manager (after country campaign manager)
     this.profiles = new ProductProfileManager(this);
     
-    // Initialize currency service (after country campaign manager)
-    this.currency = new CurrencyService(this);
+    // Initialize currency service conditionally (after country campaign manager)
+    const multiCurrencyConfig = window.osConfig?.multiCurrency;
+    const isMultiCurrencyEnabled = multiCurrencyConfig?.enabled !== false; // Default enabled for backward compatibility
+    
+    if (isMultiCurrencyEnabled) {
+      this.coreLogger.info('Initializing CurrencyService (multi-currency enabled)');
+      this.currency = new CurrencyService(this);
+    } else {
+      this.coreLogger.info('Multi-currency disabled, skipping CurrencyService initialization');
+      // Create basic currency service for backward compatibility
+      this.currency = {
+        getCurrencySymbol: () => '$',
+        getCurrencyCode: () => 'USD',
+        formatPrice: (price) => `$${parseFloat(price || 0).toFixed(2)}`,
+        convertPrice: (amount) => amount,
+        getBaseCurrencyCode: () => 'USD',
+        initializeExchangeRates: () => Promise.resolve(true),
+        forceRefreshCurrency: () => Promise.resolve()
+      };
+    }
     
     this.state = new StateManager(this);
     this.attribution = new AttributionManager(this);
@@ -240,19 +258,39 @@ export class TwentyNineNext {
     this.coreLogger.info('Loading localization data from Cloudflare Worker...');
     
     try {
-      // Check cache first (24 hour TTL)
-      const cached = this.#getLocalizationCache();
-      if (cached) {
-        this.#localizationData = cached;
-        // CRITICAL: Make cached data globally available too!
-        window.osLocalizationData = cached;
-        this.coreLogger.info('Using cached localization data');
-        return cached;
+      // Check for forceCountry parameter first
+      const urlParams = new URLSearchParams(window.location.search);
+      const forceCountry = urlParams.get('forceCountry');
+      const multiCurrencyConfig = window.osConfig?.multiCurrency;
+      const respectForceCountry = multiCurrencyConfig?.respectForceCountry !== false; // Default true
+      
+      if (forceCountry && respectForceCountry) {
+        this.coreLogger.info(`ForceCountry parameter detected: ${forceCountry}, bypassing cache and fetching fresh data`);
+        // Clear existing cache to ensure fresh data
+        this.#clearLocalizationCache();
+      } else {
+        // Check cache first (24 hour TTL) only if no forceCountry
+        const cached = this.#getLocalizationCache();
+        if (cached) {
+          this.#localizationData = cached;
+          // CRITICAL: Make cached data globally available too!
+          window.osLocalizationData = cached;
+          this.coreLogger.info('Using cached localization data');
+          return cached;
+        }
       }
 
       // Load fresh data from worker
       const workerBaseUrl = 'https://cdn-countries.muddy-wind-c7ca.workers.dev';
-      const response = await fetch(`${workerBaseUrl}/location`);
+      let url = `${workerBaseUrl}/location`;
+      
+      // Add forceCountry parameter if present and respected
+      if (forceCountry && respectForceCountry) {
+        url += `?forceCountry=${encodeURIComponent(forceCountry)}`;
+        this.coreLogger.info(`Fetching localization data with forced country: ${forceCountry}`);
+      }
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -335,6 +373,18 @@ export class TwentyNineNext {
     }
   }
 
+  /**
+   * Clear localization cache (used when forceCountry parameter is present)
+   */
+  #clearLocalizationCache() {
+    try {
+      localStorage.removeItem('os_localization_cache');
+      this.coreLogger.debug('Localization cache cleared');
+    } catch (error) {
+      this.coreLogger.error('Error clearing localization cache:', error);
+    }
+  }
+
   async init() {
     this.coreLogger.info('Initializing 29next client (async init phase)');
     
@@ -391,10 +441,25 @@ export class TwentyNineNext {
    */
   async #initializeExchangeRates() {
     try {
+      // Check if multi-currency is enabled
+      const multiCurrencyConfig = window.osConfig?.multiCurrency;
+      const isMultiCurrencyEnabled = multiCurrencyConfig?.enabled !== false;
+      const isExchangeRatesEnabled = multiCurrencyConfig?.enableExchangeRates !== false;
+      
+      if (!isMultiCurrencyEnabled) {
+        this.coreLogger.info('💱 Multi-currency disabled, skipping exchange rates initialization');
+        return;
+      }
+      
+      if (!isExchangeRatesEnabled) {
+        this.coreLogger.info('💱 Exchange rates disabled, skipping rates initialization');
+        return;
+      }
+      
       this.coreLogger.info('🔄 Initializing exchange rates for multi-currency support...');
       this.coreLogger.info(`🔄 Currency service available: ${!!this.currency}`);
       
-      if (!this.currency) {
+      if (!this.currency || typeof this.currency.initializeExchangeRates !== 'function') {
         this.coreLogger.error('❌ Currency service not available during exchange rates initialization');
         return;
       }

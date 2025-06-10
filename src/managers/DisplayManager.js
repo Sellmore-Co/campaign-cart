@@ -31,19 +31,24 @@ export class DisplayManager {
   }
 
   /**
-   * Setup listener for country changes (DISABLED - single campaign mode)
+   * Setup listener for display refresh events (SIMPLIFIED)
    */
   #setupCountryChangeListener() {
-    // No longer needed in single campaign mode - package IDs and pricing don't change between countries
-    this.#logger.debugWithTime('Country change listener disabled (single campaign mode)');
+    // SINGLE EVENT: Listen for display refresh events from CurrencyService
+    document.addEventListener('os:display.refresh', (event) => {
+      const { currency, symbol, source } = event.detail;
+      this.#logger.debugWithTime(`Display refresh from ${source}: ${currency} (${symbol}), refreshing package pricing`);
+      this.refreshPackagePricing();
+    });
   }
 
   /**
-   * Setup listener for currency changes
+   * Setup listener for currency changes (LEGACY - still needed for initial load)
    */
   #setupCurrencyChangeListener() {
+    // Keep this for any remaining currency.changed events during initialization
     document.addEventListener('os:currency.changed', () => {
-      this.#logger.debugWithTime('Currency changed, refreshing package pricing');
+      this.#logger.debugWithTime('Currency changed (legacy event), refreshing package pricing');
       this.refreshPackagePricing();
     });
   }

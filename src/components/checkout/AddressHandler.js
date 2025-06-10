@@ -238,8 +238,8 @@ export class AddressHandler {
           // Update phone input country if PhoneInputHandler is available
           this.#updatePhoneInputCountry(country, selectedCountryCode);
           
-          // Trigger country campaign change if CountryCampaignManager is available
-          this.#triggerCountryCampaignChange(selectedCountryCode);
+          // NOTE: Country campaign changes are now handled via os:localization.updated event
+          // No need to manually trigger country campaign changes here
         } else {
           // Reset to default labels when no country selected
           this.#resetFormLabels();
@@ -1011,49 +1011,13 @@ export class AddressHandler {
   }
 
   /**
-   * Trigger country campaign change when address country changes
-   * @param {string} countryCode - The new country code
+   * REMOVED: Trigger country campaign change when address country changes
+   * 
+   * This method was removed to simplify the event flow. Country campaign changes
+   * are now handled automatically via the os:localization.updated event system.
+   * The CurrencyService listens for localization updates and triggers display
+   * refreshes as needed.
    */
-  #triggerCountryCampaignChange(countryCode) {
-    // Check if CountryCampaignManager is available globally
-    const countryCampaignManager = window.osCountryCampaignManager;
-    
-    if (!countryCampaignManager) {
-      this.#logger.debug('CountryCampaignManager not available - country campaigns not configured');
-      return;
-    }
-
-    // Only switch if it's a different country
-    const currentCountry = countryCampaignManager.getCurrentCountry();
-    if (currentCountry === countryCode.toUpperCase()) {
-      this.#logger.debug(`Country is already ${countryCode}, no switch needed`);
-      return;
-    }
-
-    // Add debouncing to prevent rapid successive calls
-    if (this._countryChangeTimeout) {
-      clearTimeout(this._countryChangeTimeout);
-    }
-    
-    this._countryChangeTimeout = setTimeout(() => {
-      try {
-        this.#logger.info(`Triggering country campaign switch to: ${countryCode}`);
-        
-        // Switch country campaign
-        countryCampaignManager.switchCountry(countryCode).then(result => {
-          if (result && result.success) {
-            this.#logger.info(`Successfully switched country campaign from ${result.previousCountry} to ${result.newCountry}`);
-          } else if (result && !result.success) {
-            this.#logger.warn(`Country campaign switch failed: ${result.message || result.error}`);
-          }
-        }).catch(error => {
-          this.#logger.error('Error switching country campaign:', error);
-        });
-      } catch (error) {
-        this.#logger.error('Error triggering country campaign change:', error);
-      }
-    }, 100); // 100ms debounce
-  }
 
   /**
    * Debug method to check current form element states

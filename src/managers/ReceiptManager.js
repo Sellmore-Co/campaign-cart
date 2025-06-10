@@ -421,21 +421,31 @@ export class ReceiptPage {
   }
   
   /**
-   * Format currency for display
+   * Format currency for display using centralized currency service
    * @param {number} amount - The amount
    * @returns {string} The formatted currency
    */
   #formatCurrency(amount) {
-    const currency = this.#orderData.currency || 'USD';
-    
     // Ensure amount is a number
     const numericAmount = parseFloat(amount);
     
     if (isNaN(numericAmount)) {
       this.#safeLog('warn', `Invalid amount for currency formatting: ${amount}`);
-      return `$0.00 ${currency}`;
+      return '$0.00';
     }
     
+    // Use centralized currency service if available
+    if (this.#app?.currency?.formatPrice) {
+      try {
+        // Format using the order's currency, skipping conversion since receipt shows final amounts
+        return this.#app.currency.formatPrice(numericAmount, this.#orderData.currency, true);
+      } catch (error) {
+        this.#safeLog('error', `Error using currency service: ${error}`);
+      }
+    }
+    
+    // Fallback to basic formatting
+    const currency = this.#orderData.currency || 'USD';
     try {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -443,7 +453,7 @@ export class ReceiptPage {
       }).format(numericAmount);
     } catch (error) {
       this.#safeLog('error', `Error formatting currency: ${error}`);
-      return `$${numericAmount.toFixed(2)} ${currency}`;
+      return `$${numericAmount.toFixed(2)}`;
     }
   }
   

@@ -16,6 +16,10 @@ export class CountryCampaignManager {
   constructor(app) {
     this.#app = app;
     this.#logger = app.logger.createModuleLogger('COUNTRY_CAMPAIGN');
+    
+    // Listen for localization updates from AddressHandler
+    this.#setupLocalizationListener();
+    
     this.#logger.info('CountryCampaignManager initialized');
   }
 
@@ -34,7 +38,7 @@ export class CountryCampaignManager {
       this.#currentCountry = detectedCountry;
       this.#isInitialized = true;
       
-      // Fire initialization complete event
+      // Fire initialization complete event (keep for initial setup)
       this.#triggerCountryEvent('initialized', detectedCountry);
       
       return { country: detectedCountry };
@@ -46,6 +50,7 @@ export class CountryCampaignManager {
       this.#currentCountry = fallbackCountry;
       this.#isInitialized = true;
       
+      // Fire initialization complete event (keep for initial setup)
       this.#triggerCountryEvent('initialized', fallbackCountry);
       
       return { country: fallbackCountry };
@@ -156,7 +161,7 @@ export class CountryCampaignManager {
   }
 
   /**
-   * Switch to a different country
+   * Switch to a different country (SIMPLIFIED - no events)
    */
   async switchCountry(newCountryCode) {
     if (!newCountryCode) {
@@ -184,8 +189,8 @@ export class CountryCampaignManager {
       // Sync with checkout forms
       this.syncCountrySelection();
 
-      // Trigger country changed event
-      this.#triggerCountryEvent('changed', upperCountryCode, previousCountry);
+      // NOTE: No longer triggering country.changed events to reduce event cascade
+      // Currency updates are handled via AddressHandler → os:localization.updated → CurrencyService
 
       this.#logger.info(`✅ Successfully switched country: ${previousCountry} → ${upperCountryCode}`);
       
@@ -270,6 +275,23 @@ export class CountryCampaignManager {
         
         // Trigger change event to update related fields
         select.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+  }
+
+  /**
+   * Setup listener for localization updates from AddressHandler
+   */
+  #setupLocalizationListener() {
+    document.addEventListener('os:localization.updated', (event) => {
+      const { countryCode, source } = event.detail;
+      this.#logger.info(`Localization updated from ${source}: ${countryCode}`);
+      
+      // Update current country silently (no events)
+      if (countryCode && countryCode !== this.#currentCountry) {
+        this.#logger.info(`Updating current country: ${this.#currentCountry} → ${countryCode}`);
+        this.#currentCountry = countryCode;
+        this.#storeCountrySelection(countryCode);
       }
     });
   }

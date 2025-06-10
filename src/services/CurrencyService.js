@@ -39,28 +39,10 @@ export class CurrencyService {
   }
 
   /**
-   * Setup event listeners for cache invalidation
+   * Setup event listeners for localization data updates
    */
   #setupEventListeners() {
-    // Clear cache when country changes
-    document.addEventListener('os:country.changed', () => {
-      this.#clearCache();
-      this.#logger.debugWithTime('Cache cleared due to country change');
-    });
-
-    // Clear cache when campaign data is loaded
-    document.addEventListener('os:campaign.loaded', () => {
-      this.#clearCache();
-      this.#logger.debugWithTime('Cache cleared due to campaign data load');
-    });
-
-    // Clear cache when country campaign is initialized
-    document.addEventListener('os:country-campaign.initialized', () => {
-      this.#clearCache();
-      this.#logger.debugWithTime('Cache cleared due to country campaign initialization');
-    });
-
-    // CRITICAL: Listen for localization data updates from AddressHandler
+    // SINGLE EVENT: Listen for localization data updates from AddressHandler
     document.addEventListener('os:localization.updated', (event) => {
       const { countryCode, countryConfig, source } = event.detail;
       this.#logger.infoWithTime(`💱 [CurrencyService] Localization updated from ${source}: ${countryCode} → ${countryConfig.currencyCode}`);
@@ -68,18 +50,8 @@ export class CurrencyService {
       // Clear cache to force fresh currency detection
       this.#clearCache();
       
-      // Test new currency detection immediately
-      const newCurrency = this.getCurrencyCode();
-      const newSymbol = this.getCurrencySymbol();
-      
-      this.#logger.infoWithTime(`💱 [CurrencyService] Currency refreshed: ${newCurrency} (${newSymbol})`);
-      
-      // Trigger currency change event for UI updates
-      this.#app.triggerEvent('currency.changed', {
-        currency: newCurrency,
-        symbol: newSymbol,
-        country: countryCode
-      });
+      // Update currency data and trigger UI refresh
+      this.#refreshCurrencyData(countryCode, countryConfig);
     });
   }
 
@@ -463,6 +435,21 @@ export class CurrencyService {
    */
   async initializeExchangeRates() {
     try {
+      // Check if multi-currency and exchange rates are enabled
+      const multiCurrencyConfig = window.osConfig?.multiCurrency;
+      const isMultiCurrencyEnabled = multiCurrencyConfig?.enabled !== false;
+      const isExchangeRatesEnabled = multiCurrencyConfig?.enableExchangeRates !== false;
+      
+      if (!isMultiCurrencyEnabled) {
+        this.#logger.info('💱 [CurrencyService] Multi-currency disabled, skipping exchange rates initialization');
+        return true; // Return success since this is intentional
+      }
+      
+      if (!isExchangeRatesEnabled) {
+        this.#logger.info('💱 [CurrencyService] Exchange rates disabled, skipping rates fetch');
+        return true; // Return success since this is intentional
+      }
+      
       this.#logger.info('💱 [CurrencyService] Initializing exchange rates...');
       await this.#fetchExchangeRates();
       return true;
@@ -473,14 +460,26 @@ export class CurrencyService {
   }
 
   /**
-   * Check if a country is supported (SIMPLIFIED - all countries supported)
-   * Since we're using single campaign mode, all countries are supported
+   * Check if a country is supported by checking addressConfig.showCountries
    * @param {string} countryCode - Country code to check
-   * @returns {boolean} Always returns true
+   * @returns {boolean} True if country is supported
    */
   #isCountrySupported(countryCode) {
-    // In single campaign mode, all countries are supported
-    return true;
+    // Get address configuration for country restrictions
+    const addressConfig = window.osConfig?.addressConfig;
+    const showCountries = addressConfig?.showCountries;
+    
+    // If no restriction is configured, all countries are supported
+    if (!showCountries || !Array.isArray(showCountries) || showCountries.length === 0) {
+      this.#logger.debugWithTime(`💱 [CurrencyService] No country restrictions configured, ${countryCode} supported`);
+      return true;
+    }
+    
+    // Check if the country is in the allowed list
+    const isSupported = showCountries.includes(countryCode);
+    this.#logger.debugWithTime(`💱 [CurrencyService] Country ${countryCode} ${isSupported ? 'supported' : 'not supported'} (allowed: ${showCountries.join(', ')})`);
+    
+    return isSupported;
   }
 
   /**
@@ -568,25 +567,51 @@ export class CurrencyService {
   }
 
   /**
+   * Refresh currency data and trigger UI updates
+   * @param {string} countryCode - Country code
+   * @param {Object} countryConfig - Country configuration
+   */
+  #refreshCurrencyData(countryCode, countryConfig) {
+    // Test new detection immediately
+    const newCurrency = this.getCurrencyCode();
+    const newSymbol = this.getCurrencySymbol();
+    
+    this.#logger.infoWithTime(`💱 [CurrencyService] Currency refreshed: ${newCurrency} (${newSymbol})`);
+    
+    // SINGLE EVENT: Trigger display refresh for all UI components
+    this.#app.triggerEvent('display.refresh', {
+      currency: newCurrency,
+      symbol: newSymbol,
+      country: countryCode,
+      source: 'CurrencyService'
+    });
+  }
+
+  /**
    * Force refresh currency detection (for immediate testing)
    */
   forceRefreshCurrency() {
     this.#logger.infoWithTime('💱 [CurrencyService] Force refreshing currency detection...');
     this.#clearCache();
     
-    // Test new detection immediately
-    const newCurrency = this.getCurrencyCode();
-    const newSymbol = this.getCurrencySymbol();
+    // Get current localization data
+    const localizationData = window.osLocalizationData;
+    if (localizationData?.detectedCountryCode && localizationData?.detectedCountryConfig) {
+      this.#refreshCurrencyData(localizationData.detectedCountryCode, localizationData.detectedCountryConfig);
+    } else {
+      // Fallback refresh without specific country data
+      const newCurrency = this.getCurrencyCode();
+      const newSymbol = this.getCurrencySymbol();
+      
+      this.#app.triggerEvent('display.refresh', {
+        currency: newCurrency,
+        symbol: newSymbol,
+        country: 'unknown',
+        source: 'CurrencyService'
+      });
+    }
     
-    this.#logger.infoWithTime(`💱 [CurrencyService] New currency detected: ${newCurrency} (${newSymbol})`);
-    
-    // Trigger currency update events
-    this.#app.triggerEvent('currency.changed', {
-      currency: newCurrency,
-      symbol: newSymbol
-    });
-    
-    return { currency: newCurrency, symbol: newSymbol };
+    return { currency: this.getCurrencyCode(), symbol: this.getCurrencySymbol() };
   }
 
   /**
