@@ -1130,6 +1130,7 @@ var TwentyNineNext = (() => {
     __privateMethod(this, _setupCountryChangeListeners, setupCountryChangeListeners_fn).call(this);
     __privateMethod(this, _setupAutocompleteDetection, setupAutocompleteDetection_fn).call(this);
     __privateMethod(this, _setupPostcodeValidation, setupPostcodeValidation_fn).call(this);
+    window.osAddressHandlerReady = true;
   };
   _getAddressConfig = new WeakSet();
   getAddressConfig_fn = function() {
@@ -1237,15 +1238,6 @@ var TwentyNineNext = (() => {
     pairs.forEach(([country, state]) => {
       country?.addEventListener("change", async (event) => {
         const selectedCountryCode = event.target.value;
-        if (window.osCountryCampaignManager && window.osCountryCampaignManager.isCountryLocked()) {
-          const currentCountry = window.osCountryCampaignManager.getCurrentCountry();
-          const detectionSource = window.osCountryCampaignManager.getDetectionSource();
-          if (selectedCountryCode !== currentCountry) {
-            __privateGet(this, _logger2).warn(`🔒 [AddressHandler] Country change blocked: country locked to ${currentCountry} (source: ${detectionSource})`);
-            event.target.value = currentCountry;
-            return;
-          }
-        }
         __privateGet(this, _logger2).debug(`Country changed to: ${selectedCountryCode}`);
         if (selectedCountryCode) {
           __privateGet(this, _addressConfig).defaultCountry = selectedCountryCode;
@@ -1367,11 +1359,7 @@ var TwentyNineNext = (() => {
         };
         window.osLocalizationData.timestamp = Date.now();
         __privateGet(this, _logger2).info(`🔄 Updated global currency data via AddressHandler: ${countryCode} → ${countryConfig.currencyCode} (${countryConfig.currencySymbol})`);
-        if (window.osAddressHandlerReady) {
-          __privateMethod(this, _triggerLocalizationUpdateEvent, triggerLocalizationUpdateEvent_fn).call(this, countryCode, countryConfig);
-        } else {
-          __privateGet(this, _logger2).debug(`🔇 [AddressHandler] Skipping localization event - this is initial detection, not manual change`);
-        }
+        __privateMethod(this, _triggerLocalizationUpdateEvent, triggerLocalizationUpdateEvent_fn).call(this, countryCode, countryConfig);
       }
     } catch (error) {
       __privateGet(this, _logger2).error("Error updating global localization data:", error);
@@ -13085,7 +13073,7 @@ var TwentyNineNext = (() => {
   _logger26 = new WeakMap();
 
   // src/managers/CountryCampaignManager.js
-  var _app22, _logger27, _currentCountry2, _isInitialized2, _countryLocked, _detectionSource, _detectUserCountry, detectUserCountry_fn, _validateCountryAgainstConfig, validateCountryAgainstConfig_fn, _getStoredCountry, getStoredCountry_fn, _storeCountrySelection, storeCountrySelection_fn, _clearStoredCountry, clearStoredCountry_fn, _triggerCountryEvent, triggerCountryEvent_fn, _setupLocalizationListener, setupLocalizationListener_fn, _getSessionId, getSessionId_fn;
+  var _app22, _logger27, _currentCountry2, _isInitialized2, _detectionSource, _detectUserCountry, detectUserCountry_fn, _validateCountryAgainstConfig, validateCountryAgainstConfig_fn, _getStoredCountry, getStoredCountry_fn, _storeCountrySelection, storeCountrySelection_fn, _clearStoredCountry, clearStoredCountry_fn, _triggerCountryEvent, triggerCountryEvent_fn, _setupLocalizationListener, setupLocalizationListener_fn, _getSessionId, getSessionId_fn;
   var CountryCampaignManager = class {
     // Track how country was detected
     constructor(app) {
@@ -13127,8 +13115,6 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _logger27, void 0);
       __privateAdd(this, _currentCountry2, null);
       __privateAdd(this, _isInitialized2, false);
-      __privateAdd(this, _countryLocked, false);
-      // Prevent overriding detected country
       __privateAdd(this, _detectionSource, null);
       __privateSet(this, _app22, app);
       __privateSet(this, _logger27, app.logger.createModuleLogger("COUNTRY_CAMPAIGN"));
@@ -13157,7 +13143,7 @@ var TwentyNineNext = (() => {
       }
     }
     /**
-     * Switch to a different country (with country locking protection)
+     * Switch to a different country
      */
     async switchCountry(newCountryCode, force = false) {
       if (!newCountryCode) {
@@ -13169,22 +13155,12 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger27).debug(`Country is already ${upperCountryCode}, no switch needed`);
         return { success: true, country: upperCountryCode, message: "Already current country" };
       }
-      if (__privateGet(this, _countryLocked) && !force) {
-        __privateGet(this, _logger27).warn(`Country switch blocked: ${__privateGet(this, _currentCountry2)} is locked (source: ${__privateGet(this, _detectionSource)}). Use force=true to override.`);
-        return {
-          success: false,
-          message: `Country locked from ${__privateGet(this, _detectionSource)}`,
-          lockedCountry: __privateGet(this, _currentCountry2),
-          lockedSource: __privateGet(this, _detectionSource)
-        };
-      }
-      __privateGet(this, _logger27).info(`Switching country: ${__privateGet(this, _currentCountry2)} → ${upperCountryCode}${force ? " (forced)" : ""}`);
+      __privateGet(this, _logger27).info(`Switching country: ${__privateGet(this, _currentCountry2)} → ${upperCountryCode}`);
       try {
         const previousCountry = __privateGet(this, _currentCountry2);
         __privateSet(this, _currentCountry2, upperCountryCode);
         const newSource = force ? "manual_forced" : "manual";
         __privateSet(this, _detectionSource, newSource);
-        __privateSet(this, _countryLocked, force);
         __privateMethod(this, _storeCountrySelection, storeCountrySelection_fn).call(this, upperCountryCode, newSource);
         this.syncCountrySelection();
         __privateGet(this, _logger27).info(`✅ Successfully switched country: ${previousCountry} → ${upperCountryCode}`);
@@ -13252,10 +13228,10 @@ var TwentyNineNext = (() => {
       return { success: true, country: detectedCountry };
     }
     /**
-     * Check if country is currently locked from changes
+     * Check if country is currently locked from changes (DEPRECATED - always returns false)
      */
     isCountryLocked() {
-      return __privateGet(this, _countryLocked);
+      return false;
     }
     /**
      * Get the source of current country detection
@@ -13264,20 +13240,18 @@ var TwentyNineNext = (() => {
       return __privateGet(this, _detectionSource);
     }
     /**
-     * Force unlock country (for admin/testing purposes)
+     * Force unlock country (DEPRECATED - no longer needed)
      */
     forceUnlockCountry() {
-      __privateGet(this, _logger27).warn("Force unlocking country detection");
-      __privateSet(this, _countryLocked, false);
+      __privateGet(this, _logger27).warn("Force unlock country called (deprecated - country locking removed)");
       __privateSet(this, _detectionSource, "manual");
-      return { success: true, message: "Country unlocked" };
+      return { success: true, message: "Country locking disabled" };
     }
   };
   _app22 = new WeakMap();
   _logger27 = new WeakMap();
   _currentCountry2 = new WeakMap();
   _isInitialized2 = new WeakMap();
-  _countryLocked = new WeakMap();
   _detectionSource = new WeakMap();
   _detectUserCountry = new WeakSet();
   detectUserCountry_fn = async function() {
@@ -13286,9 +13260,8 @@ var TwentyNineNext = (() => {
     const forceCountry = urlParams.get("forceCountry");
     if (forceCountry) {
       const forcedCountry = forceCountry.toUpperCase();
-      __privateGet(this, _logger27).info(`🔧 Using forced country from URL: ${forcedCountry} (bypassing validation)`);
+      __privateGet(this, _logger27).info(`🔧 Using forced country from URL: ${forcedCountry}`);
       __privateSet(this, _detectionSource, "url_force");
-      __privateSet(this, _countryLocked, true);
       __privateMethod(this, _storeCountrySelection, storeCountrySelection_fn).call(this, forcedCountry, "url_force");
       return forcedCountry;
     }
@@ -13296,7 +13269,6 @@ var TwentyNineNext = (() => {
     if (storedCountry) {
       __privateGet(this, _logger27).info(`💾 Using previously selected country: ${storedCountry.country} (source: ${storedCountry.source})`);
       __privateSet(this, _detectionSource, storedCountry.source);
-      __privateSet(this, _countryLocked, storedCountry.source === "url_force" || storedCountry.source === "detection");
       return __privateMethod(this, _validateCountryAgainstConfig, validateCountryAgainstConfig_fn).call(this, storedCountry.country);
     }
     const localizationData = window.osLocalizationData;
@@ -13304,7 +13276,6 @@ var TwentyNineNext = (() => {
       const detectedCountry = localizationData.detectedCountryCode;
       __privateGet(this, _logger27).info(`🌐 Using cached localization data: ${detectedCountry}`);
       __privateSet(this, _detectionSource, "detection");
-      __privateSet(this, _countryLocked, true);
       const validatedCountry = __privateMethod(this, _validateCountryAgainstConfig, validateCountryAgainstConfig_fn).call(this, detectedCountry);
       __privateMethod(this, _storeCountrySelection, storeCountrySelection_fn).call(this, validatedCountry, "detection");
       return validatedCountry;
@@ -13312,7 +13283,6 @@ var TwentyNineNext = (() => {
     const defaultCountry = window.osConfig?.addressConfig?.defaultCountry || "US";
     __privateGet(this, _logger27).warn(`❌ No localization data available, using fallback: ${defaultCountry}`);
     __privateSet(this, _detectionSource, "fallback");
-    __privateSet(this, _countryLocked, false);
     return defaultCountry;
   };
   _validateCountryAgainstConfig = new WeakSet();
@@ -13396,15 +13366,10 @@ var TwentyNineNext = (() => {
       const { countryCode, source } = event.detail;
       __privateGet(this, _logger27).info(`Localization updated from ${source}: ${countryCode}`);
       if (countryCode && countryCode !== __privateGet(this, _currentCountry2)) {
-        if (__privateGet(this, _countryLocked) && source === "AddressHandler") {
-          __privateGet(this, _logger27).info(`Ignoring address handler update - country locked to ${__privateGet(this, _currentCountry2)} (source: ${__privateGet(this, _detectionSource)})`);
-          return;
-        }
         __privateGet(this, _logger27).info(`Updating current country: ${__privateGet(this, _currentCountry2)} → ${countryCode}`);
         __privateSet(this, _currentCountry2, countryCode);
         if (source === "AddressHandler") {
           __privateSet(this, _detectionSource, "manual");
-          __privateSet(this, _countryLocked, false);
         }
         __privateMethod(this, _storeCountrySelection, storeCountrySelection_fn).call(this, countryCode, __privateGet(this, _detectionSource) || "manual");
       }
@@ -14884,15 +14849,19 @@ var TwentyNineNext = (() => {
       /* @__PURE__ */ console.log("🔧 Current Currency Code:", this.currency?.getCurrencyCode());
       /* @__PURE__ */ console.log("🔧 Base Currency Code:", this.currency?.getBaseCurrencyCode());
       /* @__PURE__ */ console.log("🔧 Currency Symbol:", this.currency?.getCurrencySymbol());
-      /* @__PURE__ */ console.log("🔧 Cache Status:", this.currency?.getCacheStatus());
+      /* @__PURE__ */ console.log("🔧 Cache Status:", this.currency?.getCacheStatus?.());
       /* @__PURE__ */ console.log("🔧 Localization Data:", window.osLocalizationData);
       /* @__PURE__ */ console.log("🔧 Country Campaign Manager:", this.countryCampaign?.getCurrentCountry());
+      /* @__PURE__ */ console.log("🔧 Country Locked (deprecated):", false);
+      /* @__PURE__ */ console.log("🔧 Detection Source:", this.countryCampaign?.getDetectionSource());
       return {
         currencyService: !!this.currency,
         currentCurrency: this.currency?.getCurrencyCode(),
         baseCurrency: this.currency?.getBaseCurrencyCode(),
         symbol: this.currency?.getCurrencySymbol(),
-        country: this.countryCampaign?.getCurrentCountry()
+        country: this.countryCampaign?.getCurrentCountry(),
+        countryLocked: false,
+        detectionSource: this.countryCampaign?.getDetectionSource()
       };
     }
     /**
@@ -15063,7 +15032,7 @@ var TwentyNineNext = (() => {
         if (cached) {
           __privateSet(this, _localizationData, cached);
           window.osLocalizationData = cached;
-          this.coreLogger.info("Using cached localization data");
+          this.coreLogger.info(`Using cached localization data for country: ${cached.detectedCountryCode}`);
           return cached;
         }
       }
@@ -15185,6 +15154,10 @@ var TwentyNineNext = (() => {
       const result = await this.countryCampaign.init();
       if (result) {
         this.coreLogger.info(`Country campaign system initialized: ${result.country}`);
+        if (this.currency && typeof this.currency.refreshCurrency === "function") {
+          this.coreLogger.info(`Refreshing currency for country: ${result.country}`);
+          await this.currency.refreshCurrency();
+        }
       } else {
         this.coreLogger.warn("Country campaign system initialization returned null, using fallback");
       }
@@ -15488,3 +15461,4 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
+//# sourceMappingURL=29next.js.map

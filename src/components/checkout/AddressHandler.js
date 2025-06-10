@@ -64,6 +64,9 @@ export class AddressHandler {
     this.#setupCountryChangeListeners();
     this.#setupAutocompleteDetection();
     this.#setupPostcodeValidation();
+    
+    // Mark AddressHandler as ready for localization events
+    window.osAddressHandlerReady = true;
   }
 
   #getAddressConfig() {
@@ -212,19 +215,6 @@ export class AddressHandler {
     pairs.forEach(([country, state]) => {
       country?.addEventListener('change', async (event) => {
         const selectedCountryCode = event.target.value;
-        
-        // Check if this change should be ignored due to country locking
-        if (window.osCountryCampaignManager && window.osCountryCampaignManager.isCountryLocked()) {
-          const currentCountry = window.osCountryCampaignManager.getCurrentCountry();
-          const detectionSource = window.osCountryCampaignManager.getDetectionSource();
-          
-          if (selectedCountryCode !== currentCountry) {
-            this.#logger.warn(`🔒 [AddressHandler] Country change blocked: country locked to ${currentCountry} (source: ${detectionSource})`);
-            // Revert the select to the locked country
-            event.target.value = currentCountry;
-            return;
-          }
-        }
         
         this.#logger.debug(`Country changed to: ${selectedCountryCode}`);
         
@@ -397,13 +387,8 @@ export class AddressHandler {
 
         this.#logger.info(`🔄 Updated global currency data via AddressHandler: ${countryCode} → ${countryConfig.currencyCode} (${countryConfig.currencySymbol})`);
         
-        // CRITICAL: Trigger event to notify CurrencyService that localization data changed
-        // BUT only if this is a manual address change, not initial detection
-        if (window.osAddressHandlerReady) {
-          this.#triggerLocalizationUpdateEvent(countryCode, countryConfig);
-        } else {
-          this.#logger.debug(`🔇 [AddressHandler] Skipping localization event - this is initial detection, not manual change`);
-        }
+        // ALWAYS trigger event to notify CurrencyService that localization data changed
+        this.#triggerLocalizationUpdateEvent(countryCode, countryConfig);
       }
     } catch (error) {
       this.#logger.error('Error updating global localization data:', error);

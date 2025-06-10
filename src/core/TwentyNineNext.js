@@ -278,7 +278,7 @@ export class TwentyNineNext {
           this.#localizationData = cached;
           // CRITICAL: Make cached data globally available too!
           window.osLocalizationData = cached;
-          this.coreLogger.info('Using cached localization data');
+          this.coreLogger.info(`Using cached localization data for country: ${cached.detectedCountryCode}`);
           return cached;
         }
       }
@@ -505,6 +505,12 @@ export class TwentyNineNext {
       
       if (result) {
         this.coreLogger.info(`Country campaign system initialized: ${result.country}`);
+        
+        // CRITICAL: Trigger initial currency update based on detected/forced country
+        if (this.currency && typeof this.currency.refreshCurrency === 'function') {
+          this.coreLogger.info(`Refreshing currency for country: ${result.country}`);
+          await this.currency.refreshCurrency();
+        }
       } else {
         this.coreLogger.warn('Country campaign system initialization returned null, using fallback');
       }
@@ -761,15 +767,19 @@ export class TwentyNineNext {
     console.log('🔧 Current Currency Code:', this.currency?.getCurrencyCode());
     console.log('🔧 Base Currency Code:', this.currency?.getBaseCurrencyCode());
     console.log('🔧 Currency Symbol:', this.currency?.getCurrencySymbol());
-    console.log('🔧 Cache Status:', this.currency?.getCacheStatus());
+    console.log('🔧 Cache Status:', this.currency?.getCacheStatus?.());
     console.log('🔧 Localization Data:', window.osLocalizationData);
     console.log('🔧 Country Campaign Manager:', this.countryCampaign?.getCurrentCountry());
+    console.log('🔧 Country Locked (deprecated):', false);
+    console.log('🔧 Detection Source:', this.countryCampaign?.getDetectionSource());
     return {
       currencyService: !!this.currency,
       currentCurrency: this.currency?.getCurrencyCode(),
       baseCurrency: this.currency?.getBaseCurrencyCode(),
       symbol: this.currency?.getCurrencySymbol(),
-      country: this.countryCampaign?.getCurrentCountry()
+      country: this.countryCampaign?.getCurrentCountry(),
+      countryLocked: false,
+      detectionSource: this.countryCampaign?.getDetectionSource()
     };
   }
 

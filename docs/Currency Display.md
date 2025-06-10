@@ -273,38 +273,38 @@ window.osConfig.addressConfig = {
 
 ## Robust Features
 
-### Country Locking System
+### Country Detection System
 
-The multi-currency system now includes advanced country locking to prevent unwanted currency changes during a user's session.
+The multi-currency system includes intelligent country detection that allows for flexible currency switching.
 
-#### **How Country Locking Works**
+#### **How Country Detection Works**
 
 1. **Initial Detection**: Country is detected via IP geolocation or forceCountry parameter
 2. **Source Tracking**: System tracks detection source (detection, url_force, manual, fallback)
-3. **Session Locking**: Once detected, country is locked for the session
+3. **Dynamic Updates**: Country can be changed at any time via forms or URL parameters
 4. **Persistence**: Country choice persists across page refreshes for 24 hours
 
 ```javascript
-// Check if country is currently locked
-const isLocked = window.osApp.countryCampaign.isCountryLocked();
-console.log('Country locked:', isLocked); // true/false
+// Check current country
+const country = window.osApp.countryCampaign.getCurrentCountry();
+console.log('Current country:', country); // 'CA', 'US', etc.
 
 // Get detection source
 const source = window.osApp.countryCampaign.getDetectionSource();
 console.log('Detection source:', source); // 'detection', 'url_force', 'manual', 'fallback'
 
-// Force unlock country (for testing)
-window.osApp.countryCampaign.forceUnlockCountry();
+// Switch country manually
+window.osApp.countryCampaign.switchCountry('CA');
 ```
 
 #### **Detection Sources Priority**
 
-| Source | Priority | Description | Lockable |
-|--------|----------|-------------|----------|
+| Source | Priority | Description | Changeable |
+|--------|----------|-------------|------------|
 | `url_force` | Highest | forceCountry parameter | ✅ Yes |
 | `detection` | High | IP-based detection | ✅ Yes |
-| `manual` | Medium | User form selection | ❌ No |
-| `fallback` | Lowest | Default country | ❌ No |
+| `manual` | Medium | User form selection | ✅ Yes |
+| `fallback` | Lowest | Default country | ✅ Yes |
 
 ### Event Deduplication
 
@@ -384,21 +384,20 @@ document.addEventListener('os:currency.initialized', () => {
 
 ### Advanced Debug Methods
 
-#### **Country Locking Debug**
+#### **Country Detection Debug**
 
 ```javascript
-// Check country lock status
-window.osApp.countryCampaign.isCountryLocked(); // true/false
+// Check country lock status (deprecated - always returns false)
+window.osApp.countryCampaign.isCountryLocked(); // false
 
-// Get detailed country info
-window.osApp.countryCampaign.getCountryInfo();
-// Returns: { country: 'CA', source: 'detection', locked: true, timestamp: ... }
+// Get current country
+window.osApp.countryCampaign.getCurrentCountry(); // 'CA', 'US', etc.
 
-// Force unlock (for testing)
-window.osApp.countryCampaign.forceUnlockCountry();
+// Get detection source
+window.osApp.countryCampaign.getDetectionSource(); // 'detection', 'url_force', 'manual', etc.
 
 // Force specific country (for testing)
-window.osApp.countryCampaign.forceCountry('GB', 'manual');
+window.osApp.countryCampaign.switchCountry('GB');
 ```
 
 #### **Event System Debug**
@@ -507,27 +506,25 @@ window.osConfig.addressConfig = {
 3. **Cache Issues**: Old data cached
    - forceCountry parameter automatically clears cache
 
-#### **Currency Keeps Reverting** (NEW)
+#### **Currency Keeps Reverting** (FIXED)
 
 **Problem**: Currency switches from detected country back to default
 
-**Causes & Solutions**:
-1. **Country not locked**: Check if country locking is working
+**Solution**: Country locking has been removed in the latest version. Currency should now update immediately when:
+- Using `?forceCountry=XX` parameter
+- Manually changing country in checkout forms
+- Switching between countries
+
+If currency still doesn't update:
+1. **Check browser console** for any JavaScript errors
+2. **Verify multi-currency is enabled**:
    ```javascript
-   // Check lock status
-   console.log('Locked:', window.osApp.countryCampaign.isCountryLocked());
-   
-   // Check detection source
-   console.log('Source:', window.osApp.countryCampaign.getDetectionSource());
+   console.log('Multi-currency enabled:', window.osConfig?.multiCurrency?.enabled !== false);
    ```
-
-2. **Form default overriding**: Country dropdown default value conflicts
-   - System now prevents this automatically with country locking
-   - Use debug methods to verify locking is active
-
-3. **Multiple rapid events**: Event cascade causing reversion
-   - System now includes automatic deduplication
-   - Check console for event filtering logs
+3. **Force refresh currency**:
+   ```javascript
+   window.osApp.currency.forceRefreshCurrency();
+   ```
 
 #### **Duplicate Currency Events** (NEW)
 

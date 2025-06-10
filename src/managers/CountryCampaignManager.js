@@ -12,7 +12,6 @@ export class CountryCampaignManager {
   #logger;
   #currentCountry = null;
   #isInitialized = false;
-  #countryLocked = false; // Prevent overriding detected country
   #detectionSource = null; // Track how country was detected
 
   constructor(app) {
@@ -71,9 +70,8 @@ export class CountryCampaignManager {
     
     if (forceCountry) {
       const forcedCountry = forceCountry.toUpperCase();
-      this.#logger.info(`🔧 Using forced country from URL: ${forcedCountry} (bypassing validation)`);
+      this.#logger.info(`🔧 Using forced country from URL: ${forcedCountry}`);
       this.#detectionSource = 'url_force';
-      this.#countryLocked = true; // Lock to prevent overriding
       this.#storeCountrySelection(forcedCountry, 'url_force');
       return forcedCountry;
     }
@@ -83,7 +81,6 @@ export class CountryCampaignManager {
     if (storedCountry) {
       this.#logger.info(`💾 Using previously selected country: ${storedCountry.country} (source: ${storedCountry.source})`);
       this.#detectionSource = storedCountry.source;
-      this.#countryLocked = storedCountry.source === 'url_force' || storedCountry.source === 'detection';
       return this.#validateCountryAgainstConfig(storedCountry.country);
     }
 
@@ -93,18 +90,16 @@ export class CountryCampaignManager {
       const detectedCountry = localizationData.detectedCountryCode;
       this.#logger.info(`🌐 Using cached localization data: ${detectedCountry}`);
       this.#detectionSource = 'detection';
-      this.#countryLocked = true; // Lock detected country to prevent form overrides
       
       const validatedCountry = this.#validateCountryAgainstConfig(detectedCountry);
       this.#storeCountrySelection(validatedCountry, 'detection');
       return validatedCountry;
     }
 
-    // Fallback to config default (not locked)
+    // Fallback to config default
     const defaultCountry = window.osConfig?.addressConfig?.defaultCountry || 'US';
     this.#logger.warn(`❌ No localization data available, using fallback: ${defaultCountry}`);
     this.#detectionSource = 'fallback';
-    this.#countryLocked = false; // Allow changing from fallback
     return defaultCountry;
   }
 
@@ -195,7 +190,7 @@ export class CountryCampaignManager {
   }
 
   /**
-   * Switch to a different country (with country locking protection)
+   * Switch to a different country
    */
   async switchCountry(newCountryCode, force = false) {
     if (!newCountryCode) {
@@ -211,27 +206,15 @@ export class CountryCampaignManager {
       return { success: true, country: upperCountryCode, message: 'Already current country' };
     }
 
-    // PROTECTION: Check if country is locked (from detection or URL force)
-    if (this.#countryLocked && !force) {
-      this.#logger.warn(`Country switch blocked: ${this.#currentCountry} is locked (source: ${this.#detectionSource}). Use force=true to override.`);
-      return { 
-        success: false, 
-        message: `Country locked from ${this.#detectionSource}`, 
-        lockedCountry: this.#currentCountry,
-        lockedSource: this.#detectionSource
-      };
-    }
-
-    this.#logger.info(`Switching country: ${this.#currentCountry} → ${upperCountryCode}${force ? ' (forced)' : ''}`);
+    this.#logger.info(`Switching country: ${this.#currentCountry} → ${upperCountryCode}`);
 
     try {
       const previousCountry = this.#currentCountry;
       this.#currentCountry = upperCountryCode;
       
-      // Update detection source and lock status
+      // Update detection source
       const newSource = force ? 'manual_forced' : 'manual';
       this.#detectionSource = newSource;
-      this.#countryLocked = force; // Only lock if forced
       
       // Store the selection for persistence
       this.#storeCountrySelection(upperCountryCode, newSource);
@@ -341,20 +324,14 @@ export class CountryCampaignManager {
       const { countryCode, source } = event.detail;
       this.#logger.info(`Localization updated from ${source}: ${countryCode}`);
       
-      // PROTECTION: Only update if country is not locked or if this is an address change
+      // Update country if it's different
       if (countryCode && countryCode !== this.#currentCountry) {
-        if (this.#countryLocked && source === 'AddressHandler') {
-          this.#logger.info(`Ignoring address handler update - country locked to ${this.#currentCountry} (source: ${this.#detectionSource})`);
-          return;
-        }
-        
         this.#logger.info(`Updating current country: ${this.#currentCountry} → ${countryCode}`);
         this.#currentCountry = countryCode;
         
         // Update source tracking if this is a manual address change
         if (source === 'AddressHandler') {
           this.#detectionSource = 'manual';
-          this.#countryLocked = false; // Manual changes unlock the country
         }
         
         this.#storeCountrySelection(countryCode, this.#detectionSource || 'manual');
@@ -393,10 +370,10 @@ export class CountryCampaignManager {
   }
   
   /**
-   * Check if country is currently locked from changes
+   * Check if country is currently locked from changes (DEPRECATED - always returns false)
    */
   isCountryLocked() {
-    return this.#countryLocked;
+    return false;
   }
   
   /**
@@ -407,12 +384,11 @@ export class CountryCampaignManager {
   }
   
   /**
-   * Force unlock country (for admin/testing purposes)
+   * Force unlock country (DEPRECATED - no longer needed)
    */
   forceUnlockCountry() {
-    this.#logger.warn('Force unlocking country detection');
-    this.#countryLocked = false;
+    this.#logger.warn('Force unlock country called (deprecated - country locking removed)');
     this.#detectionSource = 'manual';
-    return { success: true, message: 'Country unlocked' };
+    return { success: true, message: 'Country locking disabled' };
   }
 } 
