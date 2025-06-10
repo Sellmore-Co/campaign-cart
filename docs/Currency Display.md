@@ -344,8 +344,7 @@ Countries and currencies persist across browser sessions for seamless user exper
   "detectedCountry": "CA",
   "detectionSource": "detection",
   "currency": "CAD",
-  "timestamp": 1704067200000,
-  "isLocked": true
+  "timestamp": 1704067200000
 }
 ```
 
