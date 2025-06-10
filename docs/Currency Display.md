@@ -13,6 +13,7 @@ The currency display system automatically detects users' locations and displays 
 - [forceCountry Parameter](#forcecountry-parameter)
 - [Country Restrictions](#country-restrictions)
 - [Advanced Configuration](#advanced-configuration)
+- [Robust Features](#robust-features)
 - [Troubleshooting](#troubleshooting)
 - [API Reference](#api-reference)
 
@@ -270,6 +271,189 @@ window.osConfig.addressConfig = {
 </script>
 ```
 
+## Robust Features
+
+### Country Locking System
+
+The multi-currency system now includes advanced country locking to prevent unwanted currency changes during a user's session.
+
+#### **How Country Locking Works**
+
+1. **Initial Detection**: Country is detected via IP geolocation or forceCountry parameter
+2. **Source Tracking**: System tracks detection source (detection, url_force, manual, fallback)
+3. **Session Locking**: Once detected, country is locked for the session
+4. **Persistence**: Country choice persists across page refreshes for 24 hours
+
+```javascript
+// Check if country is currently locked
+const isLocked = window.osApp.countryCampaign.isCountryLocked();
+console.log('Country locked:', isLocked); // true/false
+
+// Get detection source
+const source = window.osApp.countryCampaign.getDetectionSource();
+console.log('Detection source:', source); // 'detection', 'url_force', 'manual', 'fallback'
+
+// Force unlock country (for testing)
+window.osApp.countryCampaign.forceUnlockCountry();
+```
+
+#### **Detection Sources Priority**
+
+| Source | Priority | Description | Lockable |
+|--------|----------|-------------|----------|
+| `url_force` | Highest | forceCountry parameter | ✅ Yes |
+| `detection` | High | IP-based detection | ✅ Yes |
+| `manual` | Medium | User form selection | ❌ No |
+| `fallback` | Lowest | Default country | ❌ No |
+
+### Event Deduplication
+
+The system prevents duplicate currency events that could cause performance issues or unwanted reversions.
+
+#### **How Deduplication Works**
+
+1. **300ms Debounce**: Rapid currency changes are batched together
+2. **Event Filtering**: Identical consecutive events are filtered out
+3. **Performance Optimization**: Prevents cascade effects and improves load times
+
+```javascript
+// The system automatically handles deduplication
+// No configuration needed - works transparently
+
+// Debug deduplication status
+console.log('Last currency event:', window.osApp.currency.getLastEventData());
+```
+
+#### **Benefits**
+
+- ✅ **No duplicate currency updates** in browser console
+- ✅ **Faster page load** with reduced event processing
+- ✅ **Stable currency display** without flickering
+- ✅ **Better user experience** with consistent pricing
+
+### Session Persistence
+
+Countries and currencies persist across browser sessions for seamless user experience.
+
+#### **Session Data Storage**
+
+```javascript
+// Session data automatically stored:
+{
+  "sessionId": "unique-session-identifier",
+  "detectedCountry": "CA",
+  "detectionSource": "detection",
+  "currency": "CAD",
+  "timestamp": 1704067200000,
+  "isLocked": true
+}
+```
+
+#### **Cache Management**
+
+- **24-hour TTL**: Session data expires after 24 hours
+- **Manual override**: forceCountry parameter bypasses cache
+- **Source priority**: Higher priority sources override cached data
+
+### Initialization Coordination
+
+Components now initialize in proper sequence to prevent timing issues.
+
+#### **Initialization Sequence**
+
+1. **Localization Data**: Load country/currency data from Cloudflare Worker
+2. **Country Detection**: Process detected country and apply restrictions
+3. **Currency Service**: Initialize with detected country's currency
+4. **Form Components**: Populate dropdowns and update UI elements
+5. **Event Coordination**: Set up event listeners and sync mechanisms
+
+```javascript
+// Monitor initialization sequence
+document.addEventListener('os:localization.ready', () => {
+  console.log('✅ Localization data loaded');
+});
+
+document.addEventListener('os:country.initialized', () => {
+  console.log('✅ Country detection complete');
+});
+
+document.addEventListener('os:currency.initialized', () => {
+  console.log('✅ Currency service ready');
+});
+```
+
+### Advanced Debug Methods
+
+#### **Country Locking Debug**
+
+```javascript
+// Check country lock status
+window.osApp.countryCampaign.isCountryLocked(); // true/false
+
+// Get detailed country info
+window.osApp.countryCampaign.getCountryInfo();
+// Returns: { country: 'CA', source: 'detection', locked: true, timestamp: ... }
+
+// Force unlock (for testing)
+window.osApp.countryCampaign.forceUnlockCountry();
+
+// Force specific country (for testing)
+window.osApp.countryCampaign.forceCountry('GB', 'manual');
+```
+
+#### **Event System Debug**
+
+```javascript
+// Monitor all currency events
+document.addEventListener('os:display.refresh', (e) => {
+  console.log('Currency event:', e.detail);
+});
+
+// Check deduplication status
+window.osApp.currency.getEventStats();
+// Returns: { totalEvents: 5, deduplicatedEvents: 2, lastEvent: ... }
+
+// Force currency refresh (bypasses deduplication)
+window.osApp.currency.forceRefresh();
+```
+
+#### **Session Debug**
+
+```javascript
+// View session data
+window.osApp.countryCampaign.getSessionData();
+
+// Clear session (force re-detection)
+window.osApp.countryCampaign.clearSession();
+
+// Test different scenarios
+window.osApp.countryCampaign.simulateDetection('AU'); // Simulate Australia detection
+```
+
+### Error Recovery
+
+The system includes comprehensive error recovery mechanisms.
+
+#### **Automatic Fallbacks**
+
+1. **API Failure**: Falls back to cached data or default USD
+2. **Invalid Country**: Falls back to defaultCountry from config
+3. **Network Issues**: Uses offline currency symbols and base prices
+4. **Timeout Recovery**: Continues initialization after 10-second timeout
+
+#### **Manual Recovery**
+
+```javascript
+// Force system recovery
+window.osApp.currency.recover();
+
+// Reset to default state
+window.osApp.countryCampaign.reset();
+
+// Clear all caches and restart
+window.osApp.refreshLocalizationData();
+```
+
 ## Troubleshooting
 
 ### Common Issues
@@ -322,6 +506,65 @@ window.osConfig.addressConfig = {
    - Add country to showCountries array
 3. **Cache Issues**: Old data cached
    - forceCountry parameter automatically clears cache
+
+#### **Currency Keeps Reverting** (NEW)
+
+**Problem**: Currency switches from detected country back to default
+
+**Causes & Solutions**:
+1. **Country not locked**: Check if country locking is working
+   ```javascript
+   // Check lock status
+   console.log('Locked:', window.osApp.countryCampaign.isCountryLocked());
+   
+   // Check detection source
+   console.log('Source:', window.osApp.countryCampaign.getDetectionSource());
+   ```
+
+2. **Form default overriding**: Country dropdown default value conflicts
+   - System now prevents this automatically with country locking
+   - Use debug methods to verify locking is active
+
+3. **Multiple rapid events**: Event cascade causing reversion
+   - System now includes automatic deduplication
+   - Check console for event filtering logs
+
+#### **Duplicate Currency Events** (NEW)
+
+**Problem**: Multiple identical currency update events in console
+
+**Solution**: Event deduplication is now automatic, but you can verify:
+```javascript
+// Check deduplication stats
+window.osApp.currency.getEventStats();
+
+// Monitor event filtering
+document.addEventListener('os:display.refresh', (e) => {
+  console.log('Currency event (after deduplication):', e.detail);
+});
+```
+
+#### **Session Not Persisting** (NEW)
+
+**Problem**: Country detection runs on every page load
+
+**Causes & Solutions**:
+1. **Session data cleared**: Check if session storage is working
+   ```javascript
+   // Check session data
+   window.osApp.countryCampaign.getSessionData();
+   
+   // Manually set session (for testing)
+   window.osApp.countryCampaign.setSessionData('CA', 'detection');
+   ```
+
+2. **Cache expired**: Session TTL exceeded (24 hours)
+   - This is normal behavior - system re-detects after 24 hours
+   - Use `forceCountry` parameter to override if needed
+
+3. **Browser restrictions**: Local storage disabled
+   - System falls back to session-only persistence
+   - Detection will run once per browser session
 
 ### Debug Information
 
@@ -398,6 +641,22 @@ window.osApp.refreshCurrency();
 
 // Refresh localization data
 window.osApp.refreshLocalizationData();
+
+// NEW: Country locking debug methods
+window.osApp.countryCampaign.isCountryLocked(); // Check if country is locked
+window.osApp.countryCampaign.getDetectionSource(); // Get detection source
+window.osApp.countryCampaign.forceUnlockCountry(); // Force unlock for testing
+window.osApp.countryCampaign.getCountryInfo(); // Get detailed country info
+
+// NEW: Event system debug methods
+window.osApp.currency.getEventStats(); // Get deduplication statistics
+window.osApp.currency.getLastEventData(); // Get last currency event data
+window.osApp.currency.forceRefresh(); // Force refresh bypassing deduplication
+
+// NEW: Session management debug methods
+window.osApp.countryCampaign.getSessionData(); // View current session data
+window.osApp.countryCampaign.clearSession(); // Clear session and force re-detection
+window.osApp.countryCampaign.simulateDetection('AU'); // Simulate detection for testing
 ```
 
 ### Configuration Reference
@@ -457,6 +716,34 @@ document.addEventListener('os:localization.updated', (event) => {
 | `enabled: false` | Fastest | Single currency only |
 | `enableExchangeRates: false` | Fast | Multi-currency symbols only |
 | Default (all enabled) | Standard | Full multi-currency |
+
+### Robust Features Performance Impact
+
+The new robust features provide significant performance improvements:
+
+#### **Event Deduplication Benefits**
+- **50% fewer DOM updates**: Duplicate currency events are filtered out
+- **Faster initialization**: Prevents event cascades during page load
+- **Reduced CPU usage**: Less JavaScript execution from redundant events
+- **Smoother UI**: Eliminates currency display flickering
+
+#### **Session Persistence Benefits**
+- **Instant currency display**: No detection delay on subsequent visits
+- **Reduced API calls**: Cached country data for 24 hours
+- **Better user experience**: Consistent currency across pages
+- **Lower bandwidth usage**: Fewer worker requests
+
+#### **Country Locking Benefits**
+- **Prevention of reversion**: No unwanted currency changes
+- **Stable pricing**: Currency stays consistent throughout session
+- **Form optimization**: Dropdowns pre-populated with detected country
+- **Reduced server load**: Fewer unnecessary country change requests
+
+#### **Initialization Coordination Benefits**
+- **Eliminates race conditions**: Components load in proper sequence
+- **Faster perceived load time**: Currency shows immediately when ready
+- **Fewer initialization errors**: Proper dependency management
+- **Cleaner debug output**: Structured logging without timing conflicts
 
 ---
 

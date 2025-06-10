@@ -55,6 +55,9 @@ export class TwentyNineNext {
     this.coreLogger.info('Initializing CountryCampaignManager for country detection');
     this.countryCampaign = new CountryCampaignManager(this);
     
+    // Make country campaign manager globally accessible early
+    window.osCountryCampaignManager = this.countryCampaign;
+    
     // Initialize product profile manager (after country campaign manager)
     this.profiles = new ProductProfileManager(this);
     
@@ -388,11 +391,14 @@ export class TwentyNineNext {
   async init() {
     this.coreLogger.info('Initializing 29next client (async init phase)');
     
-    // LOAD LOCALIZATION DATA FIRST - before everything else
+    // STEP 1: LOAD LOCALIZATION DATA FIRST - before everything else
     await this.#loadLocalizationData();
     
-    // Initialize country campaign system SECOND
+    // STEP 2: Initialize country campaign system SECOND
     await this.#initCountryCampaignSystem();
+    
+    // STEP 3: Signal that localization is ready for components
+    this.#signalLocalizationReady();
     
     this.api.init();
 
@@ -418,13 +424,16 @@ export class TwentyNineNext {
     if (this.#isCheckoutPage) {
       this.#initCheckoutPage();
       
-      // Sync country selection on checkout pages with a small delay to ensure DOM elements are ready
-      // FIXED: Now syncs silently without triggering events that cause currency reversion
+      // CRITICAL: Wait for localization to be fully processed before syncing country
+      // This prevents form defaults from overriding detected country
+      await this.#waitForLocalizationProcessing();
+      
+      // Sync country selection on checkout pages with country persistence
       setTimeout(() => {
         if (this.countryCampaign && this.countryCampaign.isInitialized) {
           this.countryCampaign.syncCountrySelection();
         }
-      }, 500);
+      }, 100); // Reduced delay since we now wait for processing
     }
 
     this.#initUIUtilities();
@@ -769,6 +778,51 @@ export class TwentyNineNext {
    */
   refreshCurrency() {
     return this.currency?.forceRefreshCurrency();
+  }
+
+  /**
+   * Signal that localization data is ready for components
+   */
+  #signalLocalizationReady() {
+    this.coreLogger.info('Signaling localization data is ready for components');
+    
+    // Set global flag that components can check
+    window.osLocalizationReady = true;
+    
+    // Trigger event for components that are waiting
+    this.triggerEvent('localization.ready', {
+      localizationData: this.#localizationData,
+      timestamp: Date.now()
+    });
+  }
+
+  /**
+   * Wait for localization data to be fully processed by all components
+   */
+  async #waitForLocalizationProcessing() {
+    return new Promise((resolve) => {
+      // Check if AddressHandler has finished processing
+      const checkProcessing = () => {
+        const addressHandlerReady = window.osAddressHandlerReady === true;
+        
+        if (addressHandlerReady) {
+          this.coreLogger.info('Localization processing complete, proceeding with country sync');
+          resolve();
+        } else {
+          // Check again in 50ms
+          setTimeout(checkProcessing, 50);
+        }
+      };
+      
+      // Start checking
+      checkProcessing();
+      
+      // Safety timeout after 2 seconds
+      setTimeout(() => {
+        this.coreLogger.warn('Localization processing timeout, proceeding anyway');
+        resolve();
+      }, 2000);
+    });
   }
 
   /**

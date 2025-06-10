@@ -21,6 +21,15 @@ export class CurrencyService {
     lastCountry: null,
     lastCampaignCurrency: null
   };
+  
+  // Event deduplication tracking
+  #eventDeduplication = {
+    lastEventTimestamp: null,
+    lastEventCountry: null,
+    lastEventCurrency: null,
+    pendingRefresh: null,
+    debounceDelay: 300 // 300ms debounce
+  };
 
   // Exchange rates cache TTL (4 hours)
   #EXCHANGE_RATES_TTL = 4 * 60 * 60 * 1000;
@@ -45,13 +54,23 @@ export class CurrencyService {
     // SINGLE EVENT: Listen for localization data updates from AddressHandler
     document.addEventListener('os:localization.updated', (event) => {
       const { countryCode, countryConfig, source } = event.detail;
+      
+      // DEDUPLICATION: Check if this is a duplicate event
+      if (this.#isDuplicateEvent(countryCode, countryConfig.currencyCode)) {
+        this.#logger.debugWithTime(`💱 [CurrencyService] Ignoring duplicate localization event: ${countryCode} → ${countryConfig.currencyCode}`);
+        return;
+      }
+      
       this.#logger.infoWithTime(`💱 [CurrencyService] Localization updated from ${source}: ${countryCode} → ${countryConfig.currencyCode}`);
+      
+      // Update deduplication tracking
+      this.#updateEventTracking(countryCode, countryConfig.currencyCode);
       
       // Clear cache to force fresh currency detection
       this.#clearCache();
       
-      // Update currency data and trigger UI refresh
-      this.#refreshCurrencyData(countryCode, countryConfig);
+      // DEBOUNCED: Update currency data and trigger UI refresh
+      this.#debouncedRefreshCurrencyData(countryCode, countryConfig);
     });
   }
 
@@ -554,6 +573,23 @@ export class CurrencyService {
     this.#cache.lastCampaignCurrency = null;
     this.#logger.debugWithTime('💱 [CurrencyService] Cache cleared');
   }
+  
+  /**
+   * Clear event deduplication tracking
+   */
+  #clearEventDeduplication() {
+    if (this.#eventDeduplication.pendingRefresh) {
+      clearTimeout(this.#eventDeduplication.pendingRefresh);
+    }
+    this.#eventDeduplication = {
+      lastEventTimestamp: null,
+      lastEventCountry: null,
+      lastEventCurrency: null,
+      pendingRefresh: null,
+      debounceDelay: 300
+    };
+    this.#logger.debugWithTime('💱 [CurrencyService] Event deduplication tracking cleared');
+  }
 
   /**
    * Manually refresh cached data (useful for testing or debugging)
@@ -561,9 +597,62 @@ export class CurrencyService {
   refresh() {
     this.#logger.infoWithTime('💱 [CurrencyService] Manual refresh requested');
     this.#clearCache();
+    this.#clearEventDeduplication();
     // Also refresh exchange rates
     this.#cache.exchangeRates.clear();
     this.#cache.exchangeRatesTimestamp = null;
+  }
+
+  /**
+   * Check if this is a duplicate event that should be ignored
+   * @param {string} countryCode - Country code
+   * @param {string} currencyCode - Currency code
+   * @returns {boolean} True if this is a duplicate event
+   */
+  #isDuplicateEvent(countryCode, currencyCode) {
+    const now = Date.now();
+    const timeSinceLastEvent = this.#eventDeduplication.lastEventTimestamp ? 
+      now - this.#eventDeduplication.lastEventTimestamp : Infinity;
+    
+    // If same country and currency within debounce window, it's a duplicate
+    if (timeSinceLastEvent < this.#eventDeduplication.debounceDelay &&
+        this.#eventDeduplication.lastEventCountry === countryCode &&
+        this.#eventDeduplication.lastEventCurrency === currencyCode) {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Update event tracking for deduplication
+   * @param {string} countryCode - Country code
+   * @param {string} currencyCode - Currency code
+   */
+  #updateEventTracking(countryCode, currencyCode) {
+    this.#eventDeduplication.lastEventTimestamp = Date.now();
+    this.#eventDeduplication.lastEventCountry = countryCode;
+    this.#eventDeduplication.lastEventCurrency = currencyCode;
+  }
+  
+  /**
+   * Debounced currency data refresh to prevent rapid successive updates
+   * @param {string} countryCode - Country code
+   * @param {Object} countryConfig - Country configuration
+   */
+  #debouncedRefreshCurrencyData(countryCode, countryConfig) {
+    // Clear any pending refresh
+    if (this.#eventDeduplication.pendingRefresh) {
+      clearTimeout(this.#eventDeduplication.pendingRefresh);
+    }
+    
+    // Schedule new refresh
+    this.#eventDeduplication.pendingRefresh = setTimeout(() => {
+      this.#refreshCurrencyData(countryCode, countryConfig);
+      this.#eventDeduplication.pendingRefresh = null;
+    }, this.#eventDeduplication.debounceDelay);
+    
+    this.#logger.debugWithTime(`💱 [CurrencyService] Currency refresh debounced for ${this.#eventDeduplication.debounceDelay}ms`);
   }
 
   /**
