@@ -13206,7 +13206,7 @@ var TwentyNineNext = (() => {
         if (select && select.value !== __privateGet(this, _currentCountry2)) {
           __privateGet(this, _logger27).info(`Syncing country select to: ${__privateGet(this, _currentCountry2)}`);
           select.value = __privateGet(this, _currentCountry2);
-          select.dispatchEvent(new Event("change", { bubbles: true }));
+          __privateGet(this, _logger27).debug(`Country select synced to ${__privateGet(this, _currentCountry2)} without triggering events`);
         }
       });
     }

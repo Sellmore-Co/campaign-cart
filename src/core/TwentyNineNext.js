@@ -419,6 +419,7 @@ export class TwentyNineNext {
       this.#initCheckoutPage();
       
       // Sync country selection on checkout pages with a small delay to ensure DOM elements are ready
+      // FIXED: Now syncs silently without triggering events that cause currency reversion
       setTimeout(() => {
         if (this.countryCampaign && this.countryCampaign.isInitialized) {
           this.countryCampaign.syncCountrySelection();

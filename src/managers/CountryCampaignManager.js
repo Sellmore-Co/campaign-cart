@@ -271,10 +271,14 @@ export class CountryCampaignManager {
     countrySelects.forEach(select => {
       if (select && select.value !== this.#currentCountry) {
         this.#logger.info(`Syncing country select to: ${this.#currentCountry}`);
+        
+        // Set value silently without triggering events that could cause currency reversion
         select.value = this.#currentCountry;
         
-        // Trigger change event to update related fields
-        select.dispatchEvent(new Event('change', { bubbles: true }));
+        // DO NOT trigger change event - this was causing currency to revert
+        // select.dispatchEvent(new Event('change', { bubbles: true }));
+        
+        this.#logger.debug(`Country select synced to ${this.#currentCountry} without triggering events`);
       }
     });
   }
