@@ -323,17 +323,8 @@ export class ProductProfileManager {
     const price = this.getPrice(profileId, priceType);
     if (price === null) return '';
 
-    const currencySymbol = this.#getCurrencySymbol();
-    const showDecimals = options.showDecimals || false;
-    
-    let formattedValue;
-    if (showDecimals) {
-      formattedValue = price.toFixed(2);
-    } else {
-      formattedValue = parseFloat(price.toFixed(2)).toString();
-    }
-
-    return `${currencySymbol}${formattedValue}`;
+    // Use CurrencyService for proper multi-currency conversion and formatting
+    return this.#app.currency.formatPrice(price, null, false, options);
   }
 
   /**

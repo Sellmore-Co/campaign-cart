@@ -24,6 +24,9 @@ export class DisplayManager {
     // Listen for country changes
     this.#setupCountryChangeListener();
     
+    // Listen for currency changes to refresh pricing
+    this.#setupCurrencyChangeListener();
+    
     this.#logger.infoWithTime('DisplayManager initialized');
   }
 
@@ -33,6 +36,16 @@ export class DisplayManager {
   #setupCountryChangeListener() {
     // No longer needed in single campaign mode - package IDs and pricing don't change between countries
     this.#logger.debugWithTime('Country change listener disabled (single campaign mode)');
+  }
+
+  /**
+   * Setup listener for currency changes
+   */
+  #setupCurrencyChangeListener() {
+    document.addEventListener('os:currency.changed', () => {
+      this.#logger.debugWithTime('Currency changed, refreshing package pricing');
+      this.refreshPackagePricing();
+    });
   }
 
   /**
@@ -232,9 +245,6 @@ export class DisplayManager {
       return;
     }
     
-    // Get currency symbol from campaign data or default
-    const currencySymbol = this.#getCurrencySymbol();
-    
     this.#logger.debugWithTime(`Processing ${this.#priceElements.size} unique element groups for pricing updates`);
     
     // Update each package's and profile's pricing elements
@@ -245,9 +255,9 @@ export class DisplayManager {
       this.#logger.debugWithTime(`Updating ${isProfile ? 'profile' : 'package'} "${elementId}" with ${elements.length} elements`);
       
       if (isProfile) {
-        this.#updateProfilePricing(elementId, elements, currencySymbol);
+        this.#updateProfilePricing(elementId, elements);
       } else {
-        this.#updatePackagePricing(elementId, elements, currencySymbol);
+        this.#updatePackagePricing(elementId, elements);
       }
     });
   }
@@ -256,9 +266,8 @@ export class DisplayManager {
    * Update pricing elements for a specific package
    * @param {string} packageId - The package ID (original from HTML)
    * @param {Array} elements - Array of element objects for this package
-   * @param {string} currencySymbol - Currency symbol to use
    */
-  #updatePackagePricing(packageId, elements, currencySymbol) {
+  #updatePackagePricing(packageId, elements) {
     // Translate package ID using CountryCampaignManager if available
     const translatedPackageId = this.#translatePackageId(packageId);
     
@@ -299,7 +308,7 @@ export class DisplayManager {
       }
       
       // Format and display value
-      const displayValue = this.#formatPriceValue(value, priceType, format, currencySymbol, showDecimals);
+      const displayValue = this.#formatPriceValue(value, priceType, format, showDecimals);
       element.textContent = displayValue;
       
       this.#logger.debugWithTime(`Updated pricing: Package ${packageId} -> ${translatedPackageId}, Type ${priceType}, Value: ${displayValue}`);
@@ -310,9 +319,8 @@ export class DisplayManager {
    * Update pricing elements for a specific profile
    * @param {string} profileId - The profile ID
    * @param {Array} elements - Array of element objects for this profile
-   * @param {string} currencySymbol - Currency symbol to use
    */
-  #updateProfilePricing(profileId, elements, currencySymbol) {
+  #updateProfilePricing(profileId, elements) {
     // Get profile pricing using ProductProfileManager
     if (!this.#app.profiles) {
       this.#logger.warnWithTime('ProductProfileManager not available for profile pricing');
@@ -357,7 +365,7 @@ export class DisplayManager {
       }
       
       // Format and display value
-      const displayValue = this.#formatPriceValue(value, priceType, format, currencySymbol, showDecimals);
+      const displayValue = this.#formatPriceValue(value, priceType, format, showDecimals);
       element.textContent = displayValue;
       
       this.#logger.debugWithTime(`Updated profile pricing [${index + 1}/${elements.length}]: ${profileId}, Type ${priceType}, Value: ${displayValue}, Element: ${element.className || 'no-class'}`);
@@ -456,11 +464,10 @@ export class DisplayManager {
    * @param {number} value - Raw price value
    * @param {string} priceType - Type of price
    * @param {string} format - Format style
-   * @param {string} currencySymbol - Currency symbol
    * @param {boolean} showDecimals - Whether to show decimal places
    * @returns {string} Formatted price string
    */
-  #formatPriceValue(value, priceType, format, currencySymbol, showDecimals = false) {
+  #formatPriceValue(value, priceType, format, showDecimals = false) {
     // Handle percentage types
     if (priceType.includes('percentage')) {
       const percentValue = Math.round(value);
@@ -479,17 +486,8 @@ export class DisplayManager {
     // Handle monetary values
     if (value <= 0) return '';
     
-    // Format the number based on showDecimals setting
-    let formattedValue;
-    if (showDecimals) {
-      // Always show 2 decimal places
-      formattedValue = value.toFixed(2);
-    } else {
-      // Remove trailing zeros (current behavior)
-      formattedValue = parseFloat(value.toFixed(2)).toString();
-    }
-    
-    return `${currencySymbol}${formattedValue}`;
+    // Use CurrencyService for proper multi-currency conversion and formatting
+    return this.#app.currency.formatPrice(value, null, false, { showDecimals });
   }
 
   /**

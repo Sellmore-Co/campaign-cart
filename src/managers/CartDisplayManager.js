@@ -66,6 +66,15 @@ export class CartDisplayManager {
       // Update currency elements for the initialized country
       this.#updateCurrencySymbols();
     });
+
+    // CRITICAL: Listen for currency changes (from CurrencyService)
+    document.addEventListener('os:currency.changed', (event) => {
+      const { currency, symbol, country } = event.detail;
+      this.#logger.infoWithTime(`💱 [CartDisplay] Currency changed to ${currency} (${symbol}) for country ${country}, updating display`);
+      
+      // Update currency elements and refresh cart display with new prices
+      this.updateCartDisplay();
+    });
   }
 
 
@@ -125,8 +134,7 @@ export class CartDisplayManager {
     }
     
     this.#initSummaryToggle();
-    this.updateCartDisplay();
-    this.#updateCurrencySymbols(); // Set currency symbols on init
+    this.updateCartDisplay(); // This already calls #updateCurrencySymbols(), so no need to call it again
   }
 
   /**

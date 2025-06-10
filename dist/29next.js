@@ -944,7 +944,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/AddressHandler.js
-  var _form, _logger2, _addressConfig, _countries, _states, _countryConfigs, _elements, _workerBaseUrl, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _loadCountriesAndInitialState, loadCountriesAndInitialState_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadStates, loadStates_fn, _updateGlobalLocalizationData, updateGlobalLocalizationData_fn, _applyCountryConfig, applyCountryConfig_fn, _updateFormLabels, updateFormLabels_fn, _resetFormLabels, resetFormLabels_fn, _updatePostcodeValidation, updatePostcodeValidation_fn, _setupPostcodeValidation, setupPostcodeValidation_fn, _clearInputRestrictions, clearInputRestrictions_fn, _getCountryForField, getCountryForField_fn, _isPostcodeNumericOnly, isPostcodeNumericOnly_fn, _handlePostcodeInput, handlePostcodeInput_fn, _validatePostcodeField, validatePostcodeField_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStatesFallback, loadCountriesAndStatesFallback_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn, _checkForForcedCountry, checkForForcedCountry_fn, _handleForcedCountry, handleForcedCountry_fn, _loadStatesForForcedCountry, loadStatesForForcedCountry_fn, _updatePhoneInputCountry, updatePhoneInputCountry_fn, _triggerCountryCampaignChange, triggerCountryCampaignChange_fn, _debugFormElementStates, debugFormElementStates_fn;
+  var _form, _logger2, _addressConfig, _countries, _states, _countryConfigs, _elements, _workerBaseUrl, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _loadCountriesAndInitialState, loadCountriesAndInitialState_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadStates, loadStates_fn, _updateGlobalLocalizationData, updateGlobalLocalizationData_fn, _triggerLocalizationUpdateEvent, triggerLocalizationUpdateEvent_fn, _applyCountryConfig, applyCountryConfig_fn, _updateFormLabels, updateFormLabels_fn, _resetFormLabels, resetFormLabels_fn, _updatePostcodeValidation, updatePostcodeValidation_fn, _setupPostcodeValidation, setupPostcodeValidation_fn, _clearInputRestrictions, clearInputRestrictions_fn, _getCountryForField, getCountryForField_fn, _isPostcodeNumericOnly, isPostcodeNumericOnly_fn, _handlePostcodeInput, handlePostcodeInput_fn, _validatePostcodeField, validatePostcodeField_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStatesFallback, loadCountriesAndStatesFallback_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn, _checkForForcedCountry, checkForForcedCountry_fn, _handleForcedCountry, handleForcedCountry_fn, _loadStatesForForcedCountry, loadStatesForForcedCountry_fn, _updatePhoneInputCountry, updatePhoneInputCountry_fn, _triggerCountryCampaignChange, triggerCountryCampaignChange_fn, _debugFormElementStates, debugFormElementStates_fn;
   var AddressHandler = class {
     constructor(form, logger) {
       __privateAdd(this, _init);
@@ -961,6 +961,12 @@ var TwentyNineNext = (() => {
        * @param {Object} countryConfig - The country configuration from the API
        */
       __privateAdd(this, _updateGlobalLocalizationData);
+      /**
+       * Trigger event to notify other systems that localization data was updated
+       * @param {string} countryCode - The country code
+       * @param {Object} countryConfig - The country configuration
+       */
+      __privateAdd(this, _triggerLocalizationUpdateEvent);
       __privateAdd(this, _applyCountryConfig);
       __privateAdd(this, _updateFormLabels);
       __privateAdd(this, _resetFormLabels);
@@ -1347,9 +1353,27 @@ var TwentyNineNext = (() => {
         };
         window.osLocalizationData.timestamp = Date.now();
         __privateGet(this, _logger2).info(`🔄 Updated global currency data via AddressHandler: ${countryCode} → ${countryConfig.currencyCode} (${countryConfig.currencySymbol})`);
+        __privateMethod(this, _triggerLocalizationUpdateEvent, triggerLocalizationUpdateEvent_fn).call(this, countryCode, countryConfig);
       }
     } catch (error) {
       __privateGet(this, _logger2).error("Error updating global localization data:", error);
+    }
+  };
+  _triggerLocalizationUpdateEvent = new WeakSet();
+  triggerLocalizationUpdateEvent_fn = function(countryCode, countryConfig) {
+    try {
+      const event = new CustomEvent("os:localization.updated", {
+        bubbles: true,
+        detail: {
+          countryCode,
+          countryConfig,
+          source: "AddressHandler"
+        }
+      });
+      document.dispatchEvent(event);
+      __privateGet(this, _logger2).debug(`🔔 Triggered localization update event for ${countryCode}`);
+    } catch (error) {
+      __privateGet(this, _logger2).error("Error triggering localization update event:", error);
     }
   };
   _applyCountryConfig = new WeakSet();
@@ -8991,7 +9015,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/managers/DisplayManager.js
-  var _app15, _logger20, _displayElements, _priceElements, _setupCountryChangeListener5, setupCountryChangeListener_fn5, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn, _initPriceElements, initPriceElements_fn, _updatePackagePricing, updatePackagePricing_fn, _updateProfilePricing, updateProfilePricing_fn, _translatePackageId2, translatePackageId_fn2, _getPackageData, getPackageData_fn, _calculatePackagePricing, calculatePackagePricing_fn, _getPriceValue, getPriceValue_fn, _formatPriceValue, formatPriceValue_fn, _getCurrencySymbol, getCurrencySymbol_fn;
+  var _app15, _logger20, _displayElements, _priceElements, _setupCountryChangeListener5, setupCountryChangeListener_fn5, _setupCurrencyChangeListener, setupCurrencyChangeListener_fn, _initDisplayElements, initDisplayElements_fn, _updateContainerDisplay, updateContainerDisplay_fn, _triggerDisplayEvent, triggerDisplayEvent_fn, _initPriceElements, initPriceElements_fn, _updatePackagePricing, updatePackagePricing_fn, _updateProfilePricing, updateProfilePricing_fn, _translatePackageId2, translatePackageId_fn2, _getPackageData, getPackageData_fn, _calculatePackagePricing, calculatePackagePricing_fn, _getPriceValue, getPriceValue_fn, _formatPriceValue, formatPriceValue_fn, _getCurrencySymbol, getCurrencySymbol_fn;
   var DisplayManager = class {
     // For standalone package pricing
     constructor(app) {
@@ -8999,6 +9023,10 @@ var TwentyNineNext = (() => {
        * Setup listener for country changes (DISABLED - single campaign mode)
        */
       __privateAdd(this, _setupCountryChangeListener5);
+      /**
+       * Setup listener for currency changes
+       */
+      __privateAdd(this, _setupCurrencyChangeListener);
       /**
        * Initialize all display elements on the page
        */
@@ -9025,14 +9053,12 @@ var TwentyNineNext = (() => {
        * Update pricing elements for a specific package
        * @param {string} packageId - The package ID (original from HTML)
        * @param {Array} elements - Array of element objects for this package
-       * @param {string} currencySymbol - Currency symbol to use
        */
       __privateAdd(this, _updatePackagePricing);
       /**
        * Update pricing elements for a specific profile
        * @param {string} profileId - The profile ID
        * @param {Array} elements - Array of element objects for this profile
-       * @param {string} currencySymbol - Currency symbol to use
        */
       __privateAdd(this, _updateProfilePricing);
       /**
@@ -9066,7 +9092,6 @@ var TwentyNineNext = (() => {
        * @param {number} value - Raw price value
        * @param {string} priceType - Type of price
        * @param {string} format - Format style
-       * @param {string} currencySymbol - Currency symbol
        * @param {boolean} showDecimals - Whether to show decimal places
        * @returns {string} Formatted price string
        */
@@ -9086,6 +9111,7 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _initPriceElements, initPriceElements_fn).call(this);
       __privateGet(this, _app15).state.subscribe("cart", () => this.refreshDisplayElements());
       __privateMethod(this, _setupCountryChangeListener5, setupCountryChangeListener_fn5).call(this);
+      __privateMethod(this, _setupCurrencyChangeListener, setupCurrencyChangeListener_fn).call(this);
       __privateGet(this, _logger20).infoWithTime("DisplayManager initialized");
     }
     /**
@@ -9108,15 +9134,14 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger20).warnWithTime("Campaign data not available for pricing refresh");
         return;
       }
-      const currencySymbol = __privateMethod(this, _getCurrencySymbol, getCurrencySymbol_fn).call(this);
       __privateGet(this, _logger20).debugWithTime(`Processing ${__privateGet(this, _priceElements).size} unique element groups for pricing updates`);
       __privateGet(this, _priceElements).forEach((elements, elementId) => {
         const isProfile = elements[0]?.isProfile || false;
         __privateGet(this, _logger20).debugWithTime(`Updating ${isProfile ? "profile" : "package"} "${elementId}" with ${elements.length} elements`);
         if (isProfile) {
-          __privateMethod(this, _updateProfilePricing, updateProfilePricing_fn).call(this, elementId, elements, currencySymbol);
+          __privateMethod(this, _updateProfilePricing, updateProfilePricing_fn).call(this, elementId, elements);
         } else {
-          __privateMethod(this, _updatePackagePricing, updatePackagePricing_fn).call(this, elementId, elements, currencySymbol);
+          __privateMethod(this, _updatePackagePricing, updatePackagePricing_fn).call(this, elementId, elements);
         }
       });
     }
@@ -9139,6 +9164,13 @@ var TwentyNineNext = (() => {
   _setupCountryChangeListener5 = new WeakSet();
   setupCountryChangeListener_fn5 = function() {
     __privateGet(this, _logger20).debugWithTime("Country change listener disabled (single campaign mode)");
+  };
+  _setupCurrencyChangeListener = new WeakSet();
+  setupCurrencyChangeListener_fn = function() {
+    document.addEventListener("os:currency.changed", () => {
+      __privateGet(this, _logger20).debugWithTime("Currency changed, refreshing package pricing");
+      this.refreshPackagePricing();
+    });
   };
   _initDisplayElements = new WeakSet();
   initDisplayElements_fn = function() {
@@ -9245,7 +9277,7 @@ var TwentyNineNext = (() => {
     this.refreshPackagePricing();
   };
   _updatePackagePricing = new WeakSet();
-  updatePackagePricing_fn = function(packageId, elements, currencySymbol) {
+  updatePackagePricing_fn = function(packageId, elements) {
     const translatedPackageId = __privateMethod(this, _translatePackageId2, translatePackageId_fn2).call(this, packageId);
     const packageData = __privateMethod(this, _getPackageData, getPackageData_fn).call(this, translatedPackageId);
     if (!packageData) {
@@ -9275,13 +9307,13 @@ var TwentyNineNext = (() => {
         if (container)
           container.style.display = "";
       }
-      const displayValue = __privateMethod(this, _formatPriceValue, formatPriceValue_fn).call(this, value, priceType, format, currencySymbol, showDecimals);
+      const displayValue = __privateMethod(this, _formatPriceValue, formatPriceValue_fn).call(this, value, priceType, format, showDecimals);
       element.textContent = displayValue;
       __privateGet(this, _logger20).debugWithTime(`Updated pricing: Package ${packageId} -> ${translatedPackageId}, Type ${priceType}, Value: ${displayValue}`);
     });
   };
   _updateProfilePricing = new WeakSet();
-  updateProfilePricing_fn = function(profileId, elements, currencySymbol) {
+  updateProfilePricing_fn = function(profileId, elements) {
     if (!__privateGet(this, _app15).profiles) {
       __privateGet(this, _logger20).warnWithTime("ProductProfileManager not available for profile pricing");
       return;
@@ -9317,7 +9349,7 @@ var TwentyNineNext = (() => {
         if (container)
           container.style.display = "";
       }
-      const displayValue = __privateMethod(this, _formatPriceValue, formatPriceValue_fn).call(this, value, priceType, format, currencySymbol, showDecimals);
+      const displayValue = __privateMethod(this, _formatPriceValue, formatPriceValue_fn).call(this, value, priceType, format, showDecimals);
       element.textContent = displayValue;
       __privateGet(this, _logger20).debugWithTime(`Updated profile pricing [${index + 1}/${elements.length}]: ${profileId}, Type ${priceType}, Value: ${displayValue}, Element: ${element.className || "no-class"}`);
     });
@@ -9372,7 +9404,7 @@ var TwentyNineNext = (() => {
     return value;
   };
   _formatPriceValue = new WeakSet();
-  formatPriceValue_fn = function(value, priceType, format, currencySymbol, showDecimals = false) {
+  formatPriceValue_fn = function(value, priceType, format, showDecimals = false) {
     if (priceType.includes("percentage")) {
       const percentValue = Math.round(value);
       if (percentValue <= 0)
@@ -9388,13 +9420,7 @@ var TwentyNineNext = (() => {
     }
     if (value <= 0)
       return "";
-    let formattedValue;
-    if (showDecimals) {
-      formattedValue = value.toFixed(2);
-    } else {
-      formattedValue = parseFloat(value.toFixed(2)).toString();
-    }
-    return `${currencySymbol}${formattedValue}`;
+    return __privateGet(this, _app15).currency.formatPrice(value, null, false, { showDecimals });
   };
   _getCurrencySymbol = new WeakSet();
   getCurrencySymbol_fn = function() {
@@ -9577,6 +9603,11 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger21).infoWithTime(`🔔 [CartDisplay] Country campaign initialized for ${event.detail.country}`);
       __privateMethod(this, _updateCurrencySymbols, updateCurrencySymbols_fn).call(this);
     });
+    document.addEventListener("os:currency.changed", (event) => {
+      const { currency, symbol, country } = event.detail;
+      __privateGet(this, _logger21).infoWithTime(`💱 [CartDisplay] Currency changed to ${currency} (${symbol}) for country ${country}, updating display`);
+      this.updateCartDisplay();
+    });
   };
   _initCartDisplay = new WeakSet();
   initCartDisplay_fn = function() {
@@ -9622,7 +9653,6 @@ var TwentyNineNext = (() => {
     }
     __privateMethod(this, _initSummaryToggle, initSummaryToggle_fn).call(this);
     this.updateCartDisplay();
-    __privateMethod(this, _updateCurrencySymbols, updateCurrencySymbols_fn).call(this);
   };
   _initSummaryToggle = new WeakSet();
   initSummaryToggle_fn = function() {
@@ -13546,15 +13576,7 @@ var TwentyNineNext = (() => {
       const price = this.getPrice(profileId, priceType);
       if (price === null)
         return "";
-      const currencySymbol = __privateMethod(this, _getCurrencySymbol2, getCurrencySymbol_fn2).call(this);
-      const showDecimals = options.showDecimals || false;
-      let formattedValue;
-      if (showDecimals) {
-        formattedValue = price.toFixed(2);
-      } else {
-        formattedValue = parseFloat(price.toFixed(2)).toString();
-      }
-      return `${currencySymbol}${formattedValue}`;
+      return __privateGet(this, _app23).currency.formatPrice(price, null, false, options);
     }
     /**
      * Get profiles that are currently in cart
@@ -13718,13 +13740,40 @@ var TwentyNineNext = (() => {
   };
 
   // src/services/CurrencyService.js
-  var _app24, _logger29, _cache, _setupEventListeners7, setupEventListeners_fn7, _isCountrySupported, isCountrySupported_fn, _getHardcodedSymbol, getHardcodedSymbol_fn, _isCacheValid, isCacheValid_fn, _updateCacheValidation, updateCacheValidation_fn, _clearCache, clearCache_fn;
+  var _app24, _logger29, _cache, _EXCHANGE_RATES_TTL, _CURRENCY_WORKER_URL, _setupEventListeners7, setupEventListeners_fn7, _getExchangeRate, getExchangeRate_fn, _fetchExchangeRates, fetchExchangeRates_fn, _cacheExchangeRates, cacheExchangeRates_fn, _getCachedExchangeRates, getCachedExchangeRates_fn, _isExchangeRateCacheValid, isExchangeRateCacheValid_fn, _isCountrySupported, isCountrySupported_fn, _getHardcodedSymbol, getHardcodedSymbol_fn, _isCacheValid, isCacheValid_fn, _updateCacheValidation, updateCacheValidation_fn, _clearCache, clearCache_fn;
   var CurrencyService = class {
     constructor(app) {
       /**
        * Setup event listeners for cache invalidation
        */
       __privateAdd(this, _setupEventListeners7);
+      /**
+       * Get exchange rate between two currencies
+       * @param {string} fromCurrency - Source currency code
+       * @param {string} toCurrency - Target currency code
+       * @returns {number} Exchange rate
+       */
+      __privateAdd(this, _getExchangeRate);
+      /**
+       * Fetch exchange rates from Cloudflare Worker
+       * @returns {Promise<Object>} Exchange rates data
+       */
+      __privateAdd(this, _fetchExchangeRates);
+      /**
+       * Cache exchange rates data
+       * @param {Object} exchangeRates - Exchange rates object
+       */
+      __privateAdd(this, _cacheExchangeRates);
+      /**
+       * Get cached exchange rates as object
+       * @returns {Object} Cached exchange rates
+       */
+      __privateAdd(this, _getCachedExchangeRates);
+      /**
+       * Check if exchange rate cache is valid
+       * @returns {boolean} True if cache is valid
+       */
+      __privateAdd(this, _isExchangeRateCacheValid);
       /**
        * Check if a country is supported (SIMPLIFIED - all countries supported)
        * Since we're using single campaign mode, all countries are supported
@@ -13733,7 +13782,7 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _isCountrySupported);
       /**
-       * Get hardcoded currency symbol mapping
+       * Get hardcoded currency symbol mapping (updated with correct symbols)
        * @param {string} currencyCode - Currency code
        * @returns {string} Currency symbol
        */
@@ -13756,13 +13805,19 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _cache, {
         symbols: /* @__PURE__ */ new Map(),
         codes: /* @__PURE__ */ new Map(),
+        exchangeRates: /* @__PURE__ */ new Map(),
+        exchangeRatesTimestamp: null,
         lastCountry: null,
         lastCampaignCurrency: null
       });
+      // Exchange rates cache TTL (4 hours)
+      __privateAdd(this, _EXCHANGE_RATES_TTL, 4 * 60 * 60 * 1e3);
+      // Cloudflare Worker base URL for currency data
+      __privateAdd(this, _CURRENCY_WORKER_URL, "https://cdn-countries.muddy-wind-c7ca.workers.dev");
       __privateSet(this, _app24, app);
       __privateSet(this, _logger29, app.logger.createModuleLogger("CURRENCY"));
       __privateMethod(this, _setupEventListeners7, setupEventListeners_fn7).call(this);
-      __privateGet(this, _logger29).infoWithTime("CurrencyService initialized");
+      __privateGet(this, _logger29).infoWithTime("CurrencyService initialized with multi-currency support");
     }
     /**
      * Get currency symbol with priority logic
@@ -13824,30 +13879,50 @@ var TwentyNineNext = (() => {
         return cachedCode;
       }
       let currency, source;
-      if (__privateGet(this, _app24).countryCampaign && __privateGet(this, _app24).countryCampaign.isInitialized) {
-        const currentCountry = __privateGet(this, _app24).countryCampaign.getCurrentCountry();
-        const currentCampaignData = __privateGet(this, _app24).countryCampaign.getCurrentCampaignData();
-        if (currentCountry && currentCampaignData?.currency) {
-          currency = currentCampaignData.currency;
-          source = `country campaign manager (${currentCountry})`;
-        }
+      if (__privateGet(this, _logger29).isDebugEnabled) {
+        __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] getCurrencyCode() - Starting currency detection...`);
       }
-      if (!currency) {
-        const currentLocalizationData = window.osLocalizationData || __privateGet(this, _app24).getLocalizationData();
-        const localizationCurrency = currentLocalizationData?.detectedCountryConfig?.currencyCode;
-        const detectedCountry = currentLocalizationData?.detectedCountryCode;
-        if (localizationCurrency && detectedCountry) {
-          const isCountrySupported = __privateMethod(this, _isCountrySupported, isCountrySupported_fn).call(this, detectedCountry);
-          if (isCountrySupported) {
-            currency = localizationCurrency;
-            source = `current localization (${detectedCountry})`;
-          } else {
-            __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] Detected country "${detectedCountry}" not supported, skipping its currency code`);
+      const currentLocalizationData = window.osLocalizationData || __privateGet(this, _app24).getLocalizationData();
+      const localizationCurrency = currentLocalizationData?.detectedCountryConfig?.currencyCode;
+      const detectedCountry = currentLocalizationData?.detectedCountryCode;
+      if (__privateGet(this, _logger29).isDebugEnabled) {
+        __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] Localization - Country: "${detectedCountry}", Currency: "${localizationCurrency}"`);
+        if (detectedCountry && detectedCountry !== "CA") {
+          const urlParams = new URLSearchParams(window.location.search);
+          const forcedCountry = urlParams.get("forceCountry");
+          if (forcedCountry) {
+            __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] ⚠️ STALE DATA: forceCountry=${forcedCountry} but localization shows ${detectedCountry}`);
           }
         }
       }
+      if (localizationCurrency && detectedCountry) {
+        const isCountrySupported = __privateMethod(this, _isCountrySupported, isCountrySupported_fn).call(this, detectedCountry);
+        if (isCountrySupported) {
+          currency = localizationCurrency;
+          source = `current localization (${detectedCountry})`;
+        } else {
+          __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] Detected country "${detectedCountry}" not supported, skipping its currency code`);
+        }
+      }
+      if (!currency && __privateGet(this, _app24).countryCampaign && __privateGet(this, _app24).countryCampaign.isInitialized) {
+        const currentCountry = __privateGet(this, _app24).countryCampaign.getCurrentCountry();
+        const currentCampaignData = __privateGet(this, _app24).countryCampaign.getCurrentCampaignData();
+        if (__privateGet(this, _logger29).isDebugEnabled) {
+          __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] CountryCampaign - Country: "${currentCountry}", Campaign Currency: "${currentCampaignData?.currency}"`);
+        }
+        const baseCampaignData = __privateGet(this, _app24).getCampaignData();
+        if (currentCountry && currentCampaignData?.currency && currentCampaignData.currency !== baseCampaignData?.currency) {
+          currency = currentCampaignData.currency;
+          source = `country campaign manager (${currentCountry})`;
+        }
+      } else if (!currency && __privateGet(this, _logger29).isDebugEnabled) {
+        __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] CountryCampaign not available or not initialized`);
+      }
       if (!currency) {
         const campaignData = __privateGet(this, _app24).getCampaignData();
+        if (__privateGet(this, _logger29).isDebugEnabled) {
+          __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] Campaign fallback - Currency: "${campaignData?.currency}"`);
+        }
         if (campaignData?.currency) {
           currency = campaignData.currency;
           source = "campaign data";
@@ -13859,24 +13934,78 @@ var TwentyNineNext = (() => {
       }
       __privateGet(this, _cache).codes.set("current", currency);
       __privateMethod(this, _updateCacheValidation, updateCacheValidation_fn).call(this);
-      __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] getCurrencyCode() → "${currency}" (from ${source})`);
+      __privateGet(this, _logger29).infoWithTime(`💱 [CurrencyService] getCurrencyCode() → "${currency}" (from ${source})`);
       return currency;
     }
     /**
-     * Format a price with currency symbol
-     * @param {number} price - Price to format
-     * @param {string} currencyCode - Optional currency code
+     * Get base currency code from campaign data
+     * @returns {string} Base currency code
+     */
+    getBaseCurrencyCode() {
+      const campaignData = __privateGet(this, _app24).getCampaignData();
+      return campaignData?.currency || "USD";
+    }
+    /**
+     * Format a price with currency symbol and conversion
+     * @param {number} price - Price to format (in base currency)
+     * @param {string} currencyCode - Optional currency code to convert to
+     * @param {boolean} skipConversion - Skip currency conversion
      * @returns {string} Formatted price
      */
-    formatPrice(price, currencyCode = null) {
+    formatPrice(price, currencyCode = null, skipConversion = false) {
       if (typeof price !== "number" || isNaN(price)) {
         __privateGet(this, _logger29).warnWithTime(`Invalid price provided: ${price}, defaulting to 0`);
         price = 0;
       }
-      const symbol = this.getCurrencySymbol(currencyCode);
-      const formatted = `${symbol}${price.toFixed(2)}`;
-      __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] formatPrice(${price}, ${currencyCode || "auto"}) → "${formatted}"`);
+      const targetCurrency = currencyCode || this.getCurrencyCode();
+      const baseCurrency = this.getBaseCurrencyCode();
+      let convertedPrice = price;
+      if (!skipConversion && targetCurrency !== baseCurrency) {
+        convertedPrice = this.convertPrice(price, baseCurrency, targetCurrency);
+      }
+      const symbol = this.getCurrencySymbol(targetCurrency);
+      const formatted = `${symbol}${convertedPrice.toFixed(2)}`;
+      __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] formatPrice(${price}, ${currencyCode || "auto"}) → "${formatted}" ${!skipConversion && targetCurrency !== baseCurrency ? `(converted from ${baseCurrency})` : ""}`);
       return formatted;
+    }
+    /**
+     * Convert price from one currency to another
+     * @param {number} amount - Amount to convert
+     * @param {string} fromCurrency - Source currency code
+     * @param {string} toCurrency - Target currency code
+     * @returns {number} Converted amount
+     */
+    convertPrice(amount, fromCurrency, toCurrency) {
+      if (typeof amount !== "number" || isNaN(amount)) {
+        __privateGet(this, _logger29).warnWithTime(`Invalid amount for conversion: ${amount}`);
+        return 0;
+      }
+      if (fromCurrency === toCurrency) {
+        return amount;
+      }
+      try {
+        const exchangeRate = __privateMethod(this, _getExchangeRate, getExchangeRate_fn).call(this, fromCurrency, toCurrency);
+        const convertedAmount = amount * exchangeRate;
+        __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] convertPrice(${amount} ${fromCurrency} → ${toCurrency}) = ${convertedAmount.toFixed(2)} (rate: ${exchangeRate})`);
+        return convertedAmount;
+      } catch (error) {
+        __privateGet(this, _logger29).error(`Failed to convert ${amount} from ${fromCurrency} to ${toCurrency}:`, error);
+        return amount;
+      }
+    }
+    /**
+     * Initialize exchange rates (call this during app initialization)
+     * @returns {Promise<boolean>} Success status
+     */
+    async initializeExchangeRates() {
+      try {
+        __privateGet(this, _logger29).info("💱 [CurrencyService] Initializing exchange rates...");
+        await __privateMethod(this, _fetchExchangeRates, fetchExchangeRates_fn).call(this);
+        return true;
+      } catch (error) {
+        __privateGet(this, _logger29).error("💱 [CurrencyService] Failed to initialize exchange rates:", error);
+        return false;
+      }
     }
     /**
      * Manually refresh cached data (useful for testing or debugging)
@@ -13884,6 +14013,23 @@ var TwentyNineNext = (() => {
     refresh() {
       __privateGet(this, _logger29).infoWithTime("💱 [CurrencyService] Manual refresh requested");
       __privateMethod(this, _clearCache, clearCache_fn).call(this);
+      __privateGet(this, _cache).exchangeRates.clear();
+      __privateGet(this, _cache).exchangeRatesTimestamp = null;
+    }
+    /**
+     * Force refresh currency detection (for immediate testing)
+     */
+    forceRefreshCurrency() {
+      __privateGet(this, _logger29).infoWithTime("💱 [CurrencyService] Force refreshing currency detection...");
+      __privateMethod(this, _clearCache, clearCache_fn).call(this);
+      const newCurrency = this.getCurrencyCode();
+      const newSymbol = this.getCurrencySymbol();
+      __privateGet(this, _logger29).infoWithTime(`💱 [CurrencyService] New currency detected: ${newCurrency} (${newSymbol})`);
+      __privateGet(this, _app24).triggerEvent("currency.changed", {
+        currency: newCurrency,
+        symbol: newSymbol
+      });
+      return { currency: newCurrency, symbol: newSymbol };
     }
     /**
      * Get cache status for debugging
@@ -13893,6 +14039,9 @@ var TwentyNineNext = (() => {
       return {
         symbolsCached: __privateGet(this, _cache).symbols.size,
         codesCached: __privateGet(this, _cache).codes.size,
+        exchangeRatesCached: __privateGet(this, _cache).exchangeRates.size,
+        exchangeRatesAge: __privateGet(this, _cache).exchangeRatesTimestamp ? Date.now() - __privateGet(this, _cache).exchangeRatesTimestamp : null,
+        exchangeRatesValid: __privateMethod(this, _isExchangeRateCacheValid, isExchangeRateCacheValid_fn).call(this),
         lastCountry: __privateGet(this, _cache).lastCountry,
         lastCampaignCurrency: __privateGet(this, _cache).lastCampaignCurrency,
         isValid: __privateMethod(this, _isCacheValid, isCacheValid_fn).call(this)
@@ -13902,6 +14051,8 @@ var TwentyNineNext = (() => {
   _app24 = new WeakMap();
   _logger29 = new WeakMap();
   _cache = new WeakMap();
+  _EXCHANGE_RATES_TTL = new WeakMap();
+  _CURRENCY_WORKER_URL = new WeakMap();
   _setupEventListeners7 = new WeakSet();
   setupEventListeners_fn7 = function() {
     document.addEventListener("os:country.changed", () => {
@@ -13916,6 +14067,90 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _clearCache, clearCache_fn).call(this);
       __privateGet(this, _logger29).debugWithTime("Cache cleared due to country campaign initialization");
     });
+    document.addEventListener("os:localization.updated", (event) => {
+      const { countryCode, countryConfig, source } = event.detail;
+      __privateGet(this, _logger29).infoWithTime(`💱 [CurrencyService] Localization updated from ${source}: ${countryCode} → ${countryConfig.currencyCode}`);
+      __privateMethod(this, _clearCache, clearCache_fn).call(this);
+      const newCurrency = this.getCurrencyCode();
+      const newSymbol = this.getCurrencySymbol();
+      __privateGet(this, _logger29).infoWithTime(`💱 [CurrencyService] Currency refreshed: ${newCurrency} (${newSymbol})`);
+      __privateGet(this, _app24).triggerEvent("currency.changed", {
+        currency: newCurrency,
+        symbol: newSymbol,
+        country: countryCode
+      });
+    });
+  };
+  _getExchangeRate = new WeakSet();
+  getExchangeRate_fn = function(fromCurrency, toCurrency) {
+    const rateKey = `${fromCurrency}_${toCurrency}`;
+    if (__privateGet(this, _cache).exchangeRates.has(rateKey) && __privateMethod(this, _isExchangeRateCacheValid, isExchangeRateCacheValid_fn).call(this)) {
+      return __privateGet(this, _cache).exchangeRates.get(rateKey);
+    }
+    __privateMethod(this, _fetchExchangeRates, fetchExchangeRates_fn).call(this);
+    __privateGet(this, _logger29).debugWithTime(`💱 [CurrencyService] Exchange rate not available for ${rateKey}, using fallback rate of 1`);
+    return 1;
+  };
+  _fetchExchangeRates = new WeakSet();
+  fetchExchangeRates_fn = async function() {
+    try {
+      if (__privateMethod(this, _isExchangeRateCacheValid, isExchangeRateCacheValid_fn).call(this) && __privateGet(this, _cache).exchangeRates.size > 0) {
+        __privateGet(this, _logger29).debugWithTime("💱 [CurrencyService] Using cached exchange rates");
+        return __privateMethod(this, _getCachedExchangeRates, getCachedExchangeRates_fn).call(this);
+      }
+      __privateGet(this, _logger29).info("💱 [CurrencyService] Fetching fresh exchange rates from worker...");
+      const response = await fetch(`${__privateGet(this, _CURRENCY_WORKER_URL)}/currencies/rates`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.rates) {
+        const exchangeRates = {};
+        const baseCurrency = data.base || "USD";
+        Object.entries(data.rates).forEach(([targetCurrency, rate]) => {
+          exchangeRates[`${baseCurrency}_${targetCurrency}`] = rate;
+          if (rate > 0) {
+            exchangeRates[`${targetCurrency}_${baseCurrency}`] = 1 / rate;
+          }
+        });
+        __privateMethod(this, _cacheExchangeRates, cacheExchangeRates_fn).call(this, exchangeRates);
+        __privateGet(this, _logger29).info(`💱 [CurrencyService] Exchange rates cached: ${Object.keys(exchangeRates).length} rates`);
+        return exchangeRates;
+      } else {
+        throw new Error("No rates in response");
+      }
+    } catch (error) {
+      __privateGet(this, _logger29).error("💱 [CurrencyService] Failed to fetch exchange rates:", error);
+      if (__privateGet(this, _cache).exchangeRates.size > 0) {
+        __privateGet(this, _logger29).warn("💱 [CurrencyService] Using expired cached exchange rates");
+        return __privateMethod(this, _getCachedExchangeRates, getCachedExchangeRates_fn).call(this);
+      }
+      return {};
+    }
+  };
+  _cacheExchangeRates = new WeakSet();
+  cacheExchangeRates_fn = function(exchangeRates) {
+    __privateGet(this, _cache).exchangeRates.clear();
+    __privateGet(this, _cache).exchangeRatesTimestamp = Date.now();
+    Object.entries(exchangeRates).forEach(([currencyPair, rate]) => {
+      __privateGet(this, _cache).exchangeRates.set(currencyPair, rate);
+    });
+  };
+  _getCachedExchangeRates = new WeakSet();
+  getCachedExchangeRates_fn = function() {
+    const rates = {};
+    __privateGet(this, _cache).exchangeRates.forEach((rate, pair) => {
+      rates[pair] = rate;
+    });
+    return rates;
+  };
+  _isExchangeRateCacheValid = new WeakSet();
+  isExchangeRateCacheValid_fn = function() {
+    if (!__privateGet(this, _cache).exchangeRatesTimestamp) {
+      return false;
+    }
+    const age = Date.now() - __privateGet(this, _cache).exchangeRatesTimestamp;
+    return age < __privateGet(this, _EXCHANGE_RATES_TTL);
   };
   _isCountrySupported = new WeakSet();
   isCountrySupported_fn = function(countryCode) {
@@ -13925,15 +14160,26 @@ var TwentyNineNext = (() => {
   getHardcodedSymbol_fn = function(currencyCode) {
     const symbols = {
       "USD": "$",
-      "GBP": "$",
-      "EUR": "$",
-      "CAD": "$",
-      "AUD": "$",
-      "JPY": "$",
-      "CHF": "$",
-      "SEK": "$",
-      "NOK": "$",
-      "DKK": "$"
+      "GBP": "£",
+      "EUR": "€",
+      "CAD": "C$",
+      "AUD": "A$",
+      "JPY": "¥",
+      "CHF": "CHF",
+      "SEK": "kr",
+      "NOK": "kr",
+      "DKK": "kr",
+      "PLN": "zł",
+      "CZK": "Kč",
+      "HUF": "Ft",
+      "BRL": "R$",
+      "MXN": "$",
+      "INR": "₹",
+      "CNY": "¥",
+      "KRW": "₩",
+      "SGD": "S$",
+      "NZD": "NZ$",
+      "ZAR": "R"
     };
     return symbols[currencyCode] || "$";
   };
@@ -14211,7 +14457,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/core/TwentyNineNext.js
-  var _isInitialized3, _isCheckoutPage, _campaignData, _localizationData, _loadConfig2, loadConfig_fn2, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _loadLocalizationData, loadLocalizationData_fn, _getLocalizationCache, getLocalizationCache_fn, _saveLocalizationCache, saveLocalizationCache_fn, _initCountryCampaignSystem, initCountryCampaignSystem_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn;
+  var _isInitialized3, _isCheckoutPage, _campaignData, _localizationData, _loadConfig2, loadConfig_fn2, _initSpreedlyConfig, initSpreedlyConfig_fn, _loadGoogleMapsApi, loadGoogleMapsApi_fn, _loadLocalizationData, loadLocalizationData_fn, _getLocalizationCache, getLocalizationCache_fn, _saveLocalizationCache, saveLocalizationCache_fn, _initializeExchangeRates, initializeExchangeRates_fn, _initCountryCampaignSystem, initCountryCampaignSystem_fn, _fetchCampaignData, fetchCampaignData_fn, _initializeManagers, initializeManagers_fn, _finalizeInitialization, finalizeInitialization_fn, _hidePreloader, hidePreloader_fn, _detectCheckoutPage, detectCheckoutPage_fn, _initCheckoutPage, initCheckoutPage_fn, _initReceiptPage, initReceiptPage_fn, _initUpsellPage, initUpsellPage_fn, _initUIUtilities, initUIUtilities_fn, _checkForPendingPurchaseEvents, checkForPendingPurchaseEvents_fn, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn;
   var TwentyNineNext = class {
     constructor(options = {}) {
       __privateAdd(this, _loadConfig2);
@@ -14233,6 +14479,10 @@ var TwentyNineNext = (() => {
        * Save localization data to cache
        */
       __privateAdd(this, _saveLocalizationCache);
+      /**
+       * Initialize exchange rates for multi-currency support
+       */
+      __privateAdd(this, _initializeExchangeRates);
       /**
        * Initialize the country campaign system
        */
@@ -14337,6 +14587,7 @@ var TwentyNineNext = (() => {
       }
       await __privateMethod(this, _fetchCampaignData, fetchCampaignData_fn).call(this);
       await __privateMethod(this, _loadGoogleMapsApi, loadGoogleMapsApi_fn).call(this);
+      await __privateMethod(this, _initializeExchangeRates, initializeExchangeRates_fn).call(this);
       __privateMethod(this, _initializeManagers, initializeManagers_fn).call(this);
       await __privateMethod(this, _checkForPendingUpsellPurchase, checkForPendingUpsellPurchase_fn).call(this);
       __privateSet(this, _isCheckoutPage, __privateMethod(this, _detectCheckoutPage, detectCheckoutPage_fn).call(this));
@@ -14387,12 +14638,56 @@ var TwentyNineNext = (() => {
     }
     /**
      * Format a price with currency symbol from centralized currency service
-     * @param {number} price - Price to format
-     * @param {string} currencyCode - Optional currency code
+     * @param {number} price - Price to format (in base currency)
+     * @param {string} currencyCode - Optional currency code to convert to
+     * @param {boolean} skipConversion - Skip currency conversion
      * @returns {string} Formatted price
      */
-    formatPrice(price, currencyCode = null) {
-      return this.currency.formatPrice(price, currencyCode);
+    formatPrice(price, currencyCode = null, skipConversion = false) {
+      return this.currency.formatPrice(price, currencyCode, skipConversion);
+    }
+    /**
+     * Convert price from one currency to another
+     * @param {number} amount - Amount to convert
+     * @param {string} fromCurrency - Source currency code
+     * @param {string} toCurrency - Target currency code
+     * @returns {number} Converted amount
+     */
+    convertPrice(amount, fromCurrency, toCurrency) {
+      return this.currency.convertPrice(amount, fromCurrency, toCurrency);
+    }
+    /**
+     * Get base currency code from campaign data
+     * @returns {string} Base currency code
+     */
+    getBaseCurrencyCode() {
+      return this.currency.getBaseCurrencyCode();
+    }
+    /**
+     * Debug method to test currency service
+     */
+    debugCurrency() {
+      /* @__PURE__ */ console.log("🔧 [DEBUG] Testing CurrencyService...");
+      /* @__PURE__ */ console.log("🔧 Currency Service exists:", !!this.currency);
+      /* @__PURE__ */ console.log("🔧 Current Currency Code:", this.currency?.getCurrencyCode());
+      /* @__PURE__ */ console.log("🔧 Base Currency Code:", this.currency?.getBaseCurrencyCode());
+      /* @__PURE__ */ console.log("🔧 Currency Symbol:", this.currency?.getCurrencySymbol());
+      /* @__PURE__ */ console.log("🔧 Cache Status:", this.currency?.getCacheStatus());
+      /* @__PURE__ */ console.log("🔧 Localization Data:", window.osLocalizationData);
+      /* @__PURE__ */ console.log("🔧 Country Campaign Manager:", this.countryCampaign?.getCurrentCountry());
+      return {
+        currencyService: !!this.currency,
+        currentCurrency: this.currency?.getCurrencyCode(),
+        baseCurrency: this.currency?.getBaseCurrencyCode(),
+        symbol: this.currency?.getCurrencySymbol(),
+        country: this.countryCampaign?.getCurrentCountry()
+      };
+    }
+    /**
+     * Force refresh currency detection (for testing)
+     */
+    refreshCurrency() {
+      return this.currency?.forceRefreshCurrency();
     }
     /**
      * Force refresh of localization data
@@ -14612,6 +14907,28 @@ var TwentyNineNext = (() => {
       this.coreLogger.debug("Localization data cached");
     } catch (error) {
       this.coreLogger.error("Error caching localization data:", error);
+    }
+  };
+  _initializeExchangeRates = new WeakSet();
+  initializeExchangeRates_fn = async function() {
+    try {
+      this.coreLogger.info("🔄 Initializing exchange rates for multi-currency support...");
+      this.coreLogger.info(`🔄 Currency service available: ${!!this.currency}`);
+      if (!this.currency) {
+        this.coreLogger.error("❌ Currency service not available during exchange rates initialization");
+        return;
+      }
+      const success = await this.currency.initializeExchangeRates();
+      if (success) {
+        this.coreLogger.info("✅ Exchange rates initialized successfully");
+        const detectedCurrency = this.currency.getCurrencyCode();
+        const baseCurrency = this.currency.getBaseCurrencyCode();
+        this.coreLogger.info(`🔄 Post-init currency check - Detected: "${detectedCurrency}", Base: "${baseCurrency}"`);
+      } else {
+        this.coreLogger.warn("⚠️ Exchange rates initialization failed, will use fallback rates");
+      }
+    } catch (error) {
+      this.coreLogger.error("❌ Failed to initialize exchange rates:", error);
     }
   };
   _initCountryCampaignSystem = new WeakSet();

@@ -355,6 +355,9 @@ export class TwentyNineNext {
     await this.#fetchCampaignData();
     await this.#loadGoogleMapsApi();
     
+    // Initialize exchange rates for multi-currency support
+    await this.#initializeExchangeRates();
+    
     // Initialize managers early
     this.#initializeManagers();
     
@@ -381,6 +384,35 @@ export class TwentyNineNext {
     this.#isInitialized = true;
     this.triggerEvent('initialized', { client: this });
     await this.#finalizeInitialization();
+  }
+
+  /**
+   * Initialize exchange rates for multi-currency support
+   */
+  async #initializeExchangeRates() {
+    try {
+      this.coreLogger.info('🔄 Initializing exchange rates for multi-currency support...');
+      this.coreLogger.info(`🔄 Currency service available: ${!!this.currency}`);
+      
+      if (!this.currency) {
+        this.coreLogger.error('❌ Currency service not available during exchange rates initialization');
+        return;
+      }
+      
+      const success = await this.currency.initializeExchangeRates();
+      if (success) {
+        this.coreLogger.info('✅ Exchange rates initialized successfully');
+        
+        // Test currency detection after rates are loaded
+        const detectedCurrency = this.currency.getCurrencyCode();
+        const baseCurrency = this.currency.getBaseCurrencyCode();
+        this.coreLogger.info(`🔄 Post-init currency check - Detected: "${detectedCurrency}", Base: "${baseCurrency}"`);
+      } else {
+        this.coreLogger.warn('⚠️ Exchange rates initialization failed, will use fallback rates');
+      }
+    } catch (error) {
+      this.coreLogger.error('❌ Failed to initialize exchange rates:', error);
+    }
   }
 
   /**
@@ -617,12 +649,60 @@ export class TwentyNineNext {
 
   /**
    * Format a price with currency symbol from centralized currency service
-   * @param {number} price - Price to format
-   * @param {string} currencyCode - Optional currency code
+   * @param {number} price - Price to format (in base currency)
+   * @param {string} currencyCode - Optional currency code to convert to
+   * @param {boolean} skipConversion - Skip currency conversion
    * @returns {string} Formatted price
    */
-  formatPrice(price, currencyCode = null) {
-    return this.currency.formatPrice(price, currencyCode);
+  formatPrice(price, currencyCode = null, skipConversion = false) {
+    return this.currency.formatPrice(price, currencyCode, skipConversion);
+  }
+
+  /**
+   * Convert price from one currency to another
+   * @param {number} amount - Amount to convert
+   * @param {string} fromCurrency - Source currency code
+   * @param {string} toCurrency - Target currency code
+   * @returns {number} Converted amount
+   */
+  convertPrice(amount, fromCurrency, toCurrency) {
+    return this.currency.convertPrice(amount, fromCurrency, toCurrency);
+  }
+
+  /**
+   * Get base currency code from campaign data
+   * @returns {string} Base currency code
+   */
+  getBaseCurrencyCode() {
+    return this.currency.getBaseCurrencyCode();
+  }
+
+  /**
+   * Debug method to test currency service
+   */
+  debugCurrency() {
+    console.log('🔧 [DEBUG] Testing CurrencyService...');
+    console.log('🔧 Currency Service exists:', !!this.currency);
+    console.log('🔧 Current Currency Code:', this.currency?.getCurrencyCode());
+    console.log('🔧 Base Currency Code:', this.currency?.getBaseCurrencyCode());
+    console.log('🔧 Currency Symbol:', this.currency?.getCurrencySymbol());
+    console.log('🔧 Cache Status:', this.currency?.getCacheStatus());
+    console.log('🔧 Localization Data:', window.osLocalizationData);
+    console.log('🔧 Country Campaign Manager:', this.countryCampaign?.getCurrentCountry());
+    return {
+      currencyService: !!this.currency,
+      currentCurrency: this.currency?.getCurrencyCode(),
+      baseCurrency: this.currency?.getBaseCurrencyCode(),
+      symbol: this.currency?.getCurrencySymbol(),
+      country: this.countryCampaign?.getCurrentCountry()
+    };
+  }
+
+  /**
+   * Force refresh currency detection (for testing)
+   */
+  refreshCurrency() {
+    return this.currency?.forceRefreshCurrency();
   }
 
   /**

@@ -388,9 +388,36 @@ export class AddressHandler {
         window.osLocalizationData.timestamp = Date.now();
 
         this.#logger.info(`🔄 Updated global currency data via AddressHandler: ${countryCode} → ${countryConfig.currencyCode} (${countryConfig.currencySymbol})`);
+        
+        // CRITICAL: Trigger event to notify CurrencyService that localization data changed
+        this.#triggerLocalizationUpdateEvent(countryCode, countryConfig);
       }
     } catch (error) {
       this.#logger.error('Error updating global localization data:', error);
+    }
+  }
+
+  /**
+   * Trigger event to notify other systems that localization data was updated
+   * @param {string} countryCode - The country code
+   * @param {Object} countryConfig - The country configuration
+   */
+  #triggerLocalizationUpdateEvent(countryCode, countryConfig) {
+    try {
+      // Trigger DOM event that CurrencyService can listen to
+      const event = new CustomEvent('os:localization.updated', {
+        bubbles: true,
+        detail: {
+          countryCode,
+          countryConfig,
+          source: 'AddressHandler'
+        }
+      });
+      document.dispatchEvent(event);
+      
+      this.#logger.debug(`🔔 Triggered localization update event for ${countryCode}`);
+    } catch (error) {
+      this.#logger.error('Error triggering localization update event:', error);
     }
   }
 
