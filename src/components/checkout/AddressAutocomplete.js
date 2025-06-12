@@ -3,6 +3,7 @@ export class AddressAutocomplete {
     #fieldsShown = false;
     #elements;
     #enableAutocomplete;
+    #autocompleteInstances = {};
   
     constructor(logger, options = {}) {
       this.#logger = logger;
@@ -89,14 +90,49 @@ export class AddressAutocomplete {
           this.#logger.debug(`Autocomplete set up for ${fields.address.getAttribute('os-checkout-field')}`);
         }
       });
+      
+      // Listen for country changes to update restrictions
+      if (shipping.country) {
+        shipping.country.addEventListener('change', () => {
+          const autocomplete = this.#autocompleteInstances['address1'];
+          if (autocomplete && shipping.country.value && shipping.country.value.length === 2) {
+            autocomplete.setComponentRestrictions({ country: shipping.country.value });
+          }
+        });
+      }
+      
+      if (billing.country) {
+        billing.country.addEventListener('change', () => {
+          const autocomplete = this.#autocompleteInstances['billing-address1'];
+          if (autocomplete && billing.country.value && billing.country.value.length === 2) {
+            autocomplete.setComponentRestrictions({ country: billing.country.value });
+          }
+        });
+      }
     }
   
     #setupAutocomplete(input, fields) {
       try {
-        const autocomplete = new google.maps.places.Autocomplete(input, {
+        // Get country value - either from field or default config (same as AddressHandler)
+        const countryValue = fields.country?.value || 
+          window.osConfig?.addressConfig?.defaultCountry || 
+          document.querySelector('meta[name="os-address-default-country"]')?.content || 
+          'US';
+        
+        const options = {
           types: ['address'],
           fields: ['address_components', 'formatted_address'],
-        });
+        };
+        
+        // Always set country restriction
+        options.componentRestrictions = { country: countryValue };
+        this.#logger.debug(`Autocomplete for ${input.getAttribute('os-checkout-field')} restricted to: ${countryValue}`);
+        
+        const autocomplete = new google.maps.places.Autocomplete(input, options);
+        
+        // Store the instance for later updates
+        const fieldKey = input.getAttribute('os-checkout-field');
+        this.#autocompleteInstances[fieldKey] = autocomplete;
   
         autocomplete.addListener('place_changed', () => {
           const place = autocomplete.getPlace();
