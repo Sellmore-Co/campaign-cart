@@ -1023,7 +1023,7 @@ var TwentyNineNext = (() => {
   _updateStateSelect = new WeakSet();
   updateStateSelect_fn = async function(stateSelect, countryCode, isPriority = false) {
     if (!countryCode)
-      return stateSelect.innerHTML = '<option value="">Select State/Province</option>';
+      return stateSelect.innerHTML = '<option value="">Select State</option>';
     const states = __privateGet(this, _states)[countryCode] || await __privateMethod(this, _loadStates, loadStates_fn).call(this, countryCode);
     if (isPriority)
       await states;
@@ -1033,7 +1033,7 @@ var TwentyNineNext = (() => {
   _populateStateSelect = new WeakSet();
   populateStateSelect_fn = function(stateSelect, states) {
     const currentValue = stateSelect.value || stateSelect.getAttribute("data-pending-state") || "";
-    stateSelect.innerHTML = '<option value="">Select State/Province</option>' + states.map((s) => `<option value="${s.iso2}">${s.name}</option>`).join("");
+    stateSelect.innerHTML = '<option value="">Select State</option>' + states.map((s) => `<option value="${s.iso2}">${s.name}</option>`).join("");
     stateSelect.parentElement.style.display = states.length ? "" : "none";
     if (currentValue && Array.from(stateSelect.options).some((o) => o.value === currentValue))
       stateSelect.value = currentValue;
@@ -3994,7 +3994,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/AddressAutocomplete.js
-  var _logger8, _fieldsShown, _elements2, _enableAutocomplete, _init4, init_fn4, _hideLocationFields, hideLocationFields_fn, _showLocationFields, showLocationFields_fn, _isGoogleMapsAvailable, isGoogleMapsAvailable_fn, _initAutocompleteWithRetry, initAutocompleteWithRetry_fn, _initializeAutocomplete, initializeAutocomplete_fn, _setupAutocomplete, setupAutocomplete_fn, _setStateWithRetry, setStateWithRetry_fn, _setupBasicFieldListeners, setupBasicFieldListeners_fn, _setupAutofillDetection, setupAutofillDetection_fn;
+  var _logger8, _fieldsShown, _elements2, _enableAutocomplete, _autocompleteInstances, _init4, init_fn4, _hideLocationFields, hideLocationFields_fn, _showLocationFields, showLocationFields_fn, _isGoogleMapsAvailable, isGoogleMapsAvailable_fn, _initAutocompleteWithRetry, initAutocompleteWithRetry_fn, _initializeAutocomplete, initializeAutocomplete_fn, _setupAutocomplete, setupAutocomplete_fn, _setStateWithRetry, setStateWithRetry_fn, _setupBasicFieldListeners, setupBasicFieldListeners_fn, _setupAutofillDetection, setupAutofillDetection_fn;
   var AddressAutocomplete = class {
     constructor(logger, options = {}) {
       __privateAdd(this, _init4);
@@ -4011,6 +4011,7 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _fieldsShown, false);
       __privateAdd(this, _elements2, void 0);
       __privateAdd(this, _enableAutocomplete, void 0);
+      __privateAdd(this, _autocompleteInstances, {});
       __privateSet(this, _logger8, logger);
       __privateSet(this, _enableAutocomplete, options.enableGoogleMapsAutocomplete !== false);
       __privateSet(this, _elements2, {
@@ -4039,6 +4040,7 @@ var TwentyNineNext = (() => {
   _fieldsShown = new WeakMap();
   _elements2 = new WeakMap();
   _enableAutocomplete = new WeakMap();
+  _autocompleteInstances = new WeakMap();
   _init4 = new WeakSet();
   init_fn4 = async function() {
     __privateMethod(this, _setupAutofillDetection, setupAutofillDetection_fn).call(this);
@@ -4094,14 +4096,36 @@ var TwentyNineNext = (() => {
         __privateGet(this, _logger8).debug(`Autocomplete set up for ${fields.address.getAttribute("os-checkout-field")}`);
       }
     });
+    if (shipping.country) {
+      shipping.country.addEventListener("change", () => {
+        const autocomplete = __privateGet(this, _autocompleteInstances)["address1"];
+        if (autocomplete && shipping.country.value && shipping.country.value.length === 2) {
+          autocomplete.setComponentRestrictions({ country: shipping.country.value });
+        }
+      });
+    }
+    if (billing.country) {
+      billing.country.addEventListener("change", () => {
+        const autocomplete = __privateGet(this, _autocompleteInstances)["billing-address1"];
+        if (autocomplete && billing.country.value && billing.country.value.length === 2) {
+          autocomplete.setComponentRestrictions({ country: billing.country.value });
+        }
+      });
+    }
   };
   _setupAutocomplete = new WeakSet();
   setupAutocomplete_fn = function(input, fields) {
     try {
-      const autocomplete = new google.maps.places.Autocomplete(input, {
+      const countryValue = fields.country?.value || window.osConfig?.addressConfig?.defaultCountry || document.querySelector('meta[name="os-address-default-country"]')?.content || "US";
+      const options = {
         types: ["address"],
         fields: ["address_components", "formatted_address"]
-      });
+      };
+      options.componentRestrictions = { country: countryValue };
+      __privateGet(this, _logger8).debug(`Autocomplete for ${input.getAttribute("os-checkout-field")} restricted to: ${countryValue}`);
+      const autocomplete = new google.maps.places.Autocomplete(input, options);
+      const fieldKey = input.getAttribute("os-checkout-field");
+      __privateGet(this, _autocompleteInstances)[fieldKey] = autocomplete;
       autocomplete.addListener("place_changed", () => {
         const place = autocomplete.getPlace();
         if (!place.address_components)
@@ -12230,4 +12254,3 @@ var TwentyNineNext = (() => {
   }
   return __toCommonJS(src_exports);
 })();
-//# sourceMappingURL=29next.js.map

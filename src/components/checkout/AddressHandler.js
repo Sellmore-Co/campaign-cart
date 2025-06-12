@@ -65,7 +65,7 @@ export class AddressHandler {
   }
 
   async #updateStateSelect(stateSelect, countryCode, isPriority = false) {
-    if (!countryCode) return stateSelect.innerHTML = '<option value="">Select State/Province</option>';
+    if (!countryCode) return stateSelect.innerHTML = '<option value="">Select State</option>';
     const states = this.#states[countryCode] || (await this.#loadStates(countryCode));
     if (isPriority) await states;
     this.#populateStateSelect(stateSelect, states);
@@ -74,7 +74,7 @@ export class AddressHandler {
 
   #populateStateSelect(stateSelect, states) {
     const currentValue = stateSelect.value || stateSelect.getAttribute('data-pending-state') || '';
-    stateSelect.innerHTML = '<option value="">Select State/Province</option>' + 
+    stateSelect.innerHTML = '<option value="">Select State</option>' + 
       states.map(s => `<option value="${s.iso2}">${s.name}</option>`).join('');
     stateSelect.parentElement.style.display = states.length ? '' : 'none';
     if (currentValue && Array.from(stateSelect.options).some(o => o.value === currentValue)) stateSelect.value = currentValue;
