@@ -3389,12 +3389,32 @@ var TwentyNineNext = (() => {
   };
   _detectDeviceSupport = new WeakSet();
   detectDeviceSupport_fn = function() {
-    const isLargeScreen = window.innerWidth > 786;
-    __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Screen width > 786px: ${isLargeScreen}`);
-    __privateGet(this, _deviceSupport).applePay = isLargeScreen;
-    __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Apple Pay support (for QR code flow): ${__privateGet(this, _deviceSupport).applePay}`);
-    __privateGet(this, _deviceSupport).googlePay = isLargeScreen;
-    __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Google Pay support (for QR code flow): ${__privateGet(this, _deviceSupport).googlePay}`);
+    const isDesktop = window.innerWidth >= 1024;
+    if (window.ApplePaySession && window.ApplePaySession.canMakePayments) {
+      __privateGet(this, _deviceSupport).applePay = true;
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "Apple Pay is supported on this device");
+    } else if (isDesktop) {
+      __privateGet(this, _deviceSupport).applePay = true;
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "Apple Pay enabled on desktop (QR code flow)");
+    } else {
+      __privateGet(this, _deviceSupport).applePay = false;
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "Apple Pay is not supported on this device");
+    }
+    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const isEdgeChromium = /Edg/.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || /Mac/.test(navigator.userAgent) && "ontouchend" in document;
+    const isMacOS = /Mac/.test(navigator.userAgent) && !("ontouchend" in document);
+    if (isChrome || isAndroid || isEdgeChromium || isIOS || isMacOS || isDesktop) {
+      __privateGet(this, _deviceSupport).googlePay = true;
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "Google Pay is supported on this device");
+    } else {
+      __privateGet(this, _deviceSupport).googlePay = false;
+      __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", "Google Pay is not supported on this device");
+    }
+    __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `User Agent: ${navigator.userAgent}`);
+    __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Vendor: ${navigator.vendor}`);
+    __privateMethod(this, _safeLog2, safeLog_fn2).call(this, "debug", `Screen width: ${window.innerWidth}px (Desktop: ${isDesktop})`);
   };
   _hasActiveExpressButtons = new WeakSet();
   hasActiveExpressButtons_fn = function() {

@@ -1075,15 +1075,43 @@ export class PaymentHandler {
    * Detect which payment methods are supported by the device/browser
    */
   #detectDeviceSupport() {
-    const isLargeScreen = window.innerWidth > 786;
-    this.#safeLog('debug', `Screen width > 786px: ${isLargeScreen}`);
+    // Check if this is a desktop/laptop screen (typically > 1024px width)
+    const isDesktop = window.innerWidth >= 1024;
+    
+    // Check for Apple Pay support
+    // Apple Pay is available on Safari on iOS/macOS devices, or on any desktop
+    if (window.ApplePaySession && window.ApplePaySession.canMakePayments) {
+      this.#deviceSupport.applePay = true;
+      this.#safeLog('debug', 'Apple Pay is supported on this device');
+    } else if (isDesktop) {
+      // Show Apple Pay on desktop even without native support (for QR code flow)
+      this.#deviceSupport.applePay = true;
+      this.#safeLog('debug', 'Apple Pay enabled on desktop (QR code flow)');
+    } else {
+      this.#deviceSupport.applePay = false;
+      this.#safeLog('debug', 'Apple Pay is not supported on this device');
+    }
 
-    // For QR code flow, show express buttons on large screens regardless of browser support.
-    this.#deviceSupport.applePay = isLargeScreen;
-    this.#safeLog('debug', `Apple Pay support (for QR code flow): ${this.#deviceSupport.applePay}`);
-
-    this.#deviceSupport.googlePay = isLargeScreen;
-    this.#safeLog('debug', `Google Pay support (for QR code flow): ${this.#deviceSupport.googlePay}`);
+    // Check for Google Pay support
+    // Google Pay is available on Chrome, Android devices, iOS devices, or any desktop
+    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const isEdgeChromium = /Edg/.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Mac/.test(navigator.userAgent) && 'ontouchend' in document);
+    const isMacOS = /Mac/.test(navigator.userAgent) && !('ontouchend' in document);
+    
+    if (isChrome || isAndroid || isEdgeChromium || isIOS || isMacOS || isDesktop) {
+      this.#deviceSupport.googlePay = true;
+      this.#safeLog('debug', 'Google Pay is supported on this device');
+    } else {
+      this.#deviceSupport.googlePay = false;
+      this.#safeLog('debug', 'Google Pay is not supported on this device');
+    }
+    
+    // Log detected environment for debugging
+    this.#safeLog('debug', `User Agent: ${navigator.userAgent}`);
+    this.#safeLog('debug', `Vendor: ${navigator.vendor}`);
+    this.#safeLog('debug', `Screen width: ${window.innerWidth}px (Desktop: ${isDesktop})`);
   }
 
   /**
