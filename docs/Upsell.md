@@ -53,6 +53,40 @@ Add buttons or links with the following data attributes:
 - `data-os-quantity="1"` - The quantity to add (optional, defaults to 1)
 - `data-os-next-url="/receipt"` - Where to redirect after processing (optional, uses meta tag if not specified)
 
+#### Accept Button with Multiple Packages (Bundle Offers)
+
+You can also create bundle offers that add multiple packages with a single button click:
+
+```html
+<a href="#" 
+   data-os-upsell="accept" 
+   data-os-package-ids="11,12" 
+   data-os-quantities="1,2" 
+   data-os-next-url="/receipt">
+  YES! Add Both Products - Save 20%
+</a>
+```
+
+- `data-os-package-ids="11,12"` - Comma-separated list of package IDs to add (required)
+- `data-os-quantities="1,2"` - Comma-separated list of quantities for each package (optional, defaults to 1 for each)
+- `data-os-next-url="/receipt"` - Where to redirect after processing (optional, uses meta tag if not specified)
+
+**Important Notes for Multiple Packages:**
+- The number of IDs in `data-os-package-ids` must match the number of quantities in `data-os-quantities`
+- If `data-os-quantities` is not provided, each package will default to quantity 1
+- All packages are added in a single API call, ensuring they're processed together
+- The single package format (`data-os-package-id`) is still supported for backward compatibility
+
+Example with 3 products and default quantities:
+```html
+<a href="#" 
+   data-os-upsell="accept" 
+   data-os-package-ids="10,11,12" 
+   data-os-next-url="/receipt">
+  Get The Complete Bundle (3 Items)
+</a>
+```
+
 #### Decline Button (Skip Upsell)
 
 ```html
@@ -194,14 +228,25 @@ The `os_accepted_upsell` event includes the following data:
   event: 'os_accepted_upsell',
   order_id: '12345',          // Order number
   ref_id: 'abc123def456',     // Order reference ID
-  product_id: '789',          // Upsell product ID
-  product_name: 'Product X',  // Upsell product name
-  price: 29.99,               // Upsell price
-  quantity: 1,                // Quantity purchased
+  product_id: '789',          // Upsell product ID (or first product ID for bundles)
+  product_name: 'Product X',  // Upsell product name (or first product name for bundles)
+  price: 29.99,               // Upsell price (or total bundle price)
+  quantity: 1,                // Quantity purchased (or total items for bundles)
   total: 29.99,               // Total amount
-  currency: 'USD'             // Currency
+  currency: 'USD',            // Currency
+  products: [                 // Array of all products (for bundle upsells)
+    {
+      product_id: '789',
+      product_name: 'Product X',
+      price: 29.99,
+      quantity: 1
+    }
+    // Additional products for bundle offers
+  ]
 }
 ```
+
+**Note:** For bundle upsells (multiple packages), the event includes a `products` array containing details of all items in the bundle.
 
 ### Using the Event in Google Tag Manager
 
@@ -234,7 +279,10 @@ The UpsellManager handles the upsell functionality and is automatically initiali
 
 #### Methods
 
-- `acceptUpsell(packageId, quantity, nextUrl)` - Adds an upsell to the order
+- `acceptUpsell(packageIds, quantities, nextUrl)` - Adds one or more upsells to the order
+  - `packageIds` - Array of package IDs to add
+  - `quantities` - Array of quantities for each package
+  - `nextUrl` - URL to redirect to after processing
 - `declineUpsell(nextUrl)` - Declines the upsell and redirects
 
 ### ApiClient

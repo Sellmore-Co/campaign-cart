@@ -86,16 +86,38 @@ export class UpsellManager {
       button.addEventListener('click', event => {
         event.preventDefault();
         
-        const packageId = button.getAttribute('data-os-package-id');
-        const quantity = parseInt(button.getAttribute('data-os-quantity') || '1', 10);
-        const nextUrl = button.getAttribute('data-os-next-url');
+        // Check for multiple packages first (new format)
+        const packageIds = button.getAttribute('data-os-package-ids');
+        const quantities = button.getAttribute('data-os-quantities');
         
-        if (!packageId) {
-          this.#logger.error('No package ID specified for upsell accept button');
-          return;
+        if (packageIds) {
+          // Handle multiple packages
+          const packageIdArray = packageIds.split(',').map(id => id.trim());
+          const quantityArray = quantities ? 
+            quantities.split(',').map(q => parseInt(q.trim(), 10)) : 
+            packageIdArray.map(() => 1);
+          
+          // Ensure we have matching arrays
+          if (packageIdArray.length !== quantityArray.length) {
+            this.#logger.error('Mismatch between package IDs and quantities count');
+            return;
+          }
+          
+          const nextUrl = button.getAttribute('data-os-next-url');
+          this.acceptUpsell(packageIdArray, quantityArray, nextUrl);
+        } else {
+          // Handle single package (backward compatibility)
+          const packageId = button.getAttribute('data-os-package-id');
+          const quantity = parseInt(button.getAttribute('data-os-quantity') || '1', 10);
+          const nextUrl = button.getAttribute('data-os-next-url');
+          
+          if (!packageId) {
+            this.#logger.error('No package ID specified for upsell accept button');
+            return;
+          }
+          
+          this.acceptUpsell([packageId], [quantity], nextUrl);
         }
-        
-        this.acceptUpsell(packageId, quantity, nextUrl);
       });
     });
     
@@ -116,17 +138,28 @@ export class UpsellManager {
   
   /**
    * Accept an upsell offer by adding the product to the order
-   * @param {string|number} packageId - The package ID to add to the order
-   * @param {number} quantity - The quantity to add (default: 1)
+   * @param {Array<string|number>} packageIds - Array of package IDs to add to the order
+   * @param {Array<number>} quantities - Array of quantities for each package
    * @param {string} nextUrl - The URL to redirect to after adding the upsell
    */
-  async acceptUpsell(packageId, quantity = 1, nextUrl) {
+  async acceptUpsell(packageIds, quantities, nextUrl) {
     if (!this.#orderRef) {
       this.#logger.error('Cannot accept upsell: No order reference ID found');
       return;
     }
     
-    this.#logger.info(`Accepting upsell: Package ${packageId}, Quantity ${quantity}`);
+    // Ensure we have arrays
+    if (!Array.isArray(packageIds) || !Array.isArray(quantities)) {
+      this.#logger.error('packageIds and quantities must be arrays');
+      return;
+    }
+    
+    if (packageIds.length === 0 || packageIds.length !== quantities.length) {
+      this.#logger.error('Invalid packageIds or quantities arrays');
+      return;
+    }
+    
+    this.#logger.info(`Accepting upsell: Packages ${packageIds.join(', ')}, Quantities ${quantities.join(', ')}`);
     
     // Disable all upsell buttons to prevent multiple clicks
     this.#disableUpsellButtons();
@@ -135,13 +168,13 @@ export class UpsellManager {
       // Show loading state
       document.body.classList.add('os-loading');
       
-      // Create the upsell data
+      // Create the upsell data with multiple line items
       const upsellData = {
-        lines: [{
+        lines: packageIds.map((packageId, index) => ({
           package_id: Number(packageId),
-          quantity: Number(quantity),
+          quantity: Number(quantities[index]),
           is_upsell: true
-        }]
+        }))
       };
       
       // Call the API to add the upsell
@@ -149,7 +182,7 @@ export class UpsellManager {
       this.#logger.info('Upsell successfully added to order', response);
       
       // Store upsell information in sessionStorage for tracking on the next page
-      this.#storeUpsellPurchaseData(response, packageId, quantity);
+      this.#storeUpsellPurchaseData(response, packageIds, quantities);
       
       // Save accepted upsell info for back navigation prevention
       //const processedNextUrl = createNextUrlWithDebug(nextUrl);
@@ -172,10 +205,10 @@ export class UpsellManager {
   /**
    * Store upsell data in sessionStorage to track as a purchase event on next page load
    * @param {Object} response - API response from createOrderUpsell
-   * @param {string|number} packageId - The package ID added to the order
-   * @param {number} quantity - The quantity added
+   * @param {Array<string|number>} packageIds - Array of package IDs added to the order
+   * @param {Array<number>} quantities - Array of quantities added
    */
-  #storeUpsellPurchaseData(response, packageId, quantity) {
+  #storeUpsellPurchaseData(response, packageIds, quantities) {
     try {
       // Get the campaign data to find the package details
       const campaignData = this.#app.getCampaignData();
@@ -184,14 +217,38 @@ export class UpsellManager {
         return;
       }
       
-      // Find the package that was added as an upsell
-      const packageData = campaignData.packages.find(pkg => 
-        pkg.ref_id.toString() === packageId.toString() || 
-        pkg.external_id?.toString() === packageId.toString()
-      );
+      // Build line items for each package
+      const lines = [];
+      let total = 0;
       
-      if (!packageData) {
-        this.#logger.warn(`Package data not found for upsell tracking: ${packageId}`);
+      packageIds.forEach((packageId, index) => {
+        // Find the package data
+        const packageData = campaignData.packages.find(pkg => 
+          pkg.ref_id.toString() === packageId.toString() || 
+          pkg.external_id?.toString() === packageId.toString()
+        );
+        
+        if (packageData) {
+          const quantity = quantities[index];
+          const price = parseFloat(packageData.price);
+          const lineTotal = price * quantity;
+          
+          total += lineTotal;
+          
+          lines.push({
+            product_id: packageData.external_id || packageData.ref_id,
+            product_title: packageData.name,
+            price: price,
+            quantity: quantity,
+            is_upsell: true
+          });
+        } else {
+          this.#logger.warn(`Package data not found for upsell tracking: ${packageId}`);
+        }
+      });
+      
+      if (lines.length === 0) {
+        this.#logger.warn('No valid packages found for upsell tracking');
         return;
       }
       
@@ -199,15 +256,9 @@ export class UpsellManager {
       const upsellPurchaseData = {
         number: response.number || response.ref_id,
         ref_id: response.ref_id,
-        total: parseFloat(packageData.price) * quantity,
+        total: total,
         currency: campaignData.currency || 'USD',
-        lines: [{
-          product_id: packageData.external_id || packageData.ref_id,
-          product_title: packageData.name,
-          price: parseFloat(packageData.price),
-          quantity: quantity,
-          is_upsell: true
-        }]
+        lines: lines
       };
       
       // Store data in sessionStorage with a flag indicating it's an upsell purchase
