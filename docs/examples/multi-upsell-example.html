@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiple Package Upsell Example - Campaign Cart</title>
+    
+    <!-- Include Campaign Cart -->
+    <script src="/src/index.js" type="module"></script>
+    <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+    <h1>Multiple Package Upsell Example</h1>
+    
+    <div class="upsell-container">
+        <h2>Special Offer!</h2>
+        <p>Add both packages to your order with one click!</p>
+        
+        <!-- Example 1: Multiple packages with specified quantities -->
+        <button 
+            class="os-button os-button-primary"
+            data-os-upsell="accept"
+            data-os-package-ids="11,12"
+            data-os-quantities="1,2"
+            data-os-next-url="/upsell-thank-you.html"
+        >
+            Add Both Products - Save 20%
+        </button>
+        
+        <!-- Example 2: Multiple packages with default quantity of 1 each -->
+        <button 
+            class="os-button os-button-secondary"
+            data-os-upsell="accept"
+            data-os-package-ids="13,14,15"
+            data-os-next-url="/upsell-thank-you.html"
+        >
+            Add Bundle (3 Items)
+        </button>
+        
+        <!-- Example 3: Single package (backward compatibility) -->
+        <button 
+            class="os-button os-button-secondary"
+            data-os-upsell="accept"
+            data-os-package-id="16"
+            data-os-quantity="1"
+            data-os-next-url="/upsell-thank-you.html"
+        >
+            Add Single Product
+        </button>
+        
+        <!-- Decline button -->
+        <button 
+            class="os-button os-button-text"
+            data-os-upsell="decline"
+            data-os-next-url="/thank-you.html"
+        >
+            No thanks, continue to thank you page
+        </button>
+    </div>
+    
+    <!-- Error container -->
+    <div data-os-error-container style="display: none; color: red; margin-top: 20px;"></div>
+    
+    <script>
+        // Example of how to initialize Campaign Cart for upsell pages
+        document.addEventListener('DOMContentLoaded', () => {
+            // Campaign Cart will auto-initialize based on the page type
+            // For upsell pages, ensure you have ?ref_id=ORDER_REF_ID in the URL
+            // or the order reference stored in sessionStorage
+        });
+    </script>
+</body>
+</html> 
