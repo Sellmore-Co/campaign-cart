@@ -67,13 +67,29 @@ export class FormValidator {
         const field = document.getElementById(`spreedly-${result.fieldType}`);
         if (field) {
           field.classList.toggle('spreedly-valid', result.valid);
-          field.classList.toggle('error', !result.valid);
-        }
-        if (result.valid) {
-          this.clearErrorForField(field);
-        } else {
-          const errorMessage = this.#getSpreedlyFieldErrorMessage(result.fieldType);
-          this.#handleSpreedlyError({ attribute: result.fieldType, message: errorMessage });
+          
+          // Check if this is a delayed validation (from timeout)
+          if (field._pendingValidation) {
+            field._pendingValidation = false;
+            
+            // Only show error if field is invalid and has content
+            if (!result.valid && result.inputData && result.inputData.length > 0) {
+              field.classList.add('error');
+              const errorMessage = this.#getSpreedlyFieldErrorMessage(result.fieldType);
+              this.#showError(field, errorMessage);
+            } else {
+              field.classList.remove('error');
+              this.clearErrorForField(field);
+            }
+          } else {
+            // This is immediate validation (not delayed) - only show errors on blur or submit
+            if (!result.valid) {
+              field.classList.remove('spreedly-valid');
+            } else {
+              field.classList.remove('error');
+              this.clearErrorForField(field);
+            }
+          }
         }
       },
       'errors': (errors) => {
@@ -82,18 +98,68 @@ export class FormValidator {
         errors.forEach(error => this.#handleSpreedlyError(error));
       },
       'fieldEvent': (name, event, activeElement, inputData) => {
-        // Real-time feedback like Spreedly's example
+        // Improved UX validation: Show positive feedback immediately, 
+        // but delay negative feedback to avoid frustrating users with premature errors
         const field = document.getElementById(`spreedly-${name}`);
-        if (event === 'input' && field) {
-          const isValid = name === 'number' ? inputData.validNumber : inputData.validCvv;
-          field.classList.toggle('spreedly-valid', isValid);
-          field.classList.toggle('error', !isValid);
+        if (!field) return;
+        
+        const isValid = name === 'number' ? inputData.validNumber : inputData.validCvv;
+        
+        if (event === 'input') {
+          // Clear any existing validation timeout for this field
+          if (field._validationTimeout) {
+            clearTimeout(field._validationTimeout);
+          }
+          
+          // Show positive feedback immediately
           if (isValid) {
+            field.classList.add('spreedly-valid');
+            field.classList.remove('error');
             this.clearErrorForField(field);
           } else {
-            const errorMessage = this.#getSpreedlyFieldErrorMessage(name);
-            this.#showError(field, errorMessage);
+            // For negative feedback, wait a bit to see if they're still typing
+            field.classList.remove('spreedly-valid');
+            
+            // Only show error after user stops typing for 1 second
+            field._validationTimeout = setTimeout(() => {
+              // Get fresh validation status by triggering Spreedly validation
+              if (typeof Spreedly !== 'undefined' && typeof Spreedly.validate === 'function') {
+                // Store current field for validation callback
+                field._pendingValidation = true;
+                
+                // This will trigger the 'validation' event with fresh data
+                Spreedly.validate();
+              }
+            }, 1000);
           }
+                 } else if (event === 'blur') {
+           // Always validate on blur (when user leaves the field)
+           if (field._validationTimeout) {
+             clearTimeout(field._validationTimeout);
+           }
+           
+           if (isValid) {
+             field.classList.add('spreedly-valid');
+             field.classList.remove('error');
+             this.clearErrorForField(field);
+           } else {
+             // Show error on blur if field has content (user has typed something)
+             // Check if there's any content in the field
+             const hasContent = inputData && (inputData.length > 0 || 
+                                              (inputData.number && inputData.number.length > 0) ||
+                                              (inputData.cardNumber && inputData.cardNumber.length > 0) ||
+                                              (inputData.cvv && inputData.cvv.length > 0));
+             if (hasContent) {
+               field.classList.remove('spreedly-valid');
+               field.classList.add('error');
+               const errorMessage = this.#getSpreedlyFieldErrorMessage(name);
+               this.#showError(field, errorMessage);
+             }
+           }
+        } else if (event === 'focus') {
+          // Clear errors when user focuses on field to start fresh
+          field.classList.remove('error');
+          this.clearErrorForField(field);
         }
       }
     };
