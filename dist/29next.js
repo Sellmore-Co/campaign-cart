@@ -1345,13 +1345,24 @@ var TwentyNineNext = (() => {
         const field = document.getElementById(`spreedly-${result.fieldType}`);
         if (field) {
           field.classList.toggle("spreedly-valid", result.valid);
-          field.classList.toggle("error", !result.valid);
-        }
-        if (result.valid) {
-          this.clearErrorForField(field);
-        } else {
-          const errorMessage = __privateMethod(this, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn).call(this, result.fieldType);
-          __privateMethod(this, _handleSpreedlyError, handleSpreedlyError_fn).call(this, { attribute: result.fieldType, message: errorMessage });
+          if (field._pendingValidation) {
+            field._pendingValidation = false;
+            if (!result.valid && result.inputData && result.inputData.length > 0) {
+              field.classList.add("error");
+              const errorMessage = __privateMethod(this, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn).call(this, result.fieldType);
+              __privateMethod(this, _showError, showError_fn).call(this, field, errorMessage);
+            } else {
+              field.classList.remove("error");
+              this.clearErrorForField(field);
+            }
+          } else {
+            if (!result.valid) {
+              field.classList.remove("spreedly-valid");
+            } else {
+              field.classList.remove("error");
+              this.clearErrorForField(field);
+            }
+          }
         }
       },
       "errors": (errors) => {
@@ -1361,16 +1372,46 @@ var TwentyNineNext = (() => {
       },
       "fieldEvent": (name, event, activeElement, inputData) => {
         const field = document.getElementById(`spreedly-${name}`);
-        if (event === "input" && field) {
-          const isValid = name === "number" ? inputData.validNumber : inputData.validCvv;
-          field.classList.toggle("spreedly-valid", isValid);
-          field.classList.toggle("error", !isValid);
+        if (!field)
+          return;
+        const isValid = name === "number" ? inputData.validNumber : inputData.validCvv;
+        if (event === "input") {
+          if (field._validationTimeout) {
+            clearTimeout(field._validationTimeout);
+          }
           if (isValid) {
+            field.classList.add("spreedly-valid");
+            field.classList.remove("error");
             this.clearErrorForField(field);
           } else {
-            const errorMessage = __privateMethod(this, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn).call(this, name);
-            __privateMethod(this, _showError, showError_fn).call(this, field, errorMessage);
+            field.classList.remove("spreedly-valid");
+            field._validationTimeout = setTimeout(() => {
+              if (typeof Spreedly !== "undefined" && typeof Spreedly.validate === "function") {
+                field._pendingValidation = true;
+                Spreedly.validate();
+              }
+            }, 1e3);
           }
+        } else if (event === "blur") {
+          if (field._validationTimeout) {
+            clearTimeout(field._validationTimeout);
+          }
+          if (isValid) {
+            field.classList.add("spreedly-valid");
+            field.classList.remove("error");
+            this.clearErrorForField(field);
+          } else {
+            const hasContent = inputData && (inputData.length > 0 || inputData.number && inputData.number.length > 0 || inputData.cardNumber && inputData.cardNumber.length > 0 || inputData.cvv && inputData.cvv.length > 0);
+            if (hasContent) {
+              field.classList.remove("spreedly-valid");
+              field.classList.add("error");
+              const errorMessage = __privateMethod(this, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn).call(this, name);
+              __privateMethod(this, _showError, showError_fn).call(this, field, errorMessage);
+            }
+          }
+        } else if (event === "focus") {
+          field.classList.remove("error");
+          this.clearErrorForField(field);
         }
       }
     };
