@@ -13,7 +13,7 @@
   
   // Configuration
   const DEV_HOST = 'http://localhost:3000';
-  const PROD_HOST = 'https://campaign-cart-v2.pages.dev';
+  const PROD_HOST = 'https://cdn.jsdelivr.net/gh/sellmore-co/campaign-cart@typescript/dist/';
   const DEV_ENTRY_PATH = '/src/index.ts';
   const PROD_ENTRY_PATH = '/index.es.js';
   const sdkUrl = isDebug ? DEV_HOST + DEV_ENTRY_PATH : PROD_HOST + PROD_ENTRY_PATH;
