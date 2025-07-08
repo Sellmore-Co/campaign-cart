@@ -1,0 +1,118 @@
+/**
+ * Debug Overlay - Sidebar Styles
+ * Navigation and panel tabs
+ */
+
+/* Sidebar */
+.debug-sidebar {
+  width: 240px;
+  background: linear-gradient(180deg, #222 0%, #1a1a1a 100%);
+  border-right: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+}
+
+.debug-panel-tabs {
+  flex: 1;
+  padding: 16px 0;
+}
+
+.debug-panel-tab {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  font-size: 14px;
+}
+
+.debug-panel-tab:hover {
+  background: rgba(60, 125, 255, 0.1);
+  color: #ffffff;
+}
+
+.debug-panel-tab.active {
+  background: rgba(60, 125, 255, 0.15);
+  color: #3C7DFF;
+  border-right: 3px solid #3C7DFF;
+}
+
+.debug-panel-tab.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #3C7DFF;
+}
+
+.tab-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.tab-label {
+  font-weight: 500;
+  flex: 1;
+}
+
+.tab-badge {
+  background: #3C7DFF;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+}
+
+/* Sidebar Footer */
+.debug-sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #888;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.sidebar-btn:hover {
+  background: rgba(60, 125, 255, 0.1);
+  border-color: #3C7DFF;
+  color: #3C7DFF;
+}
+
+/* Responsive sidebar */
+@media (max-width: 768px) {
+  .debug-sidebar {
+    width: 200px;
+  }
+}
+
+@media (max-width: 640px) {
+  .debug-sidebar {
+    width: 180px;
+  }
+}

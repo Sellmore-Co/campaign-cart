@@ -1,0 +1,90 @@
+{
+  "name": "@29next/campaign-cart",
+  "version": "0.2.0",
+  "description": "Modern TypeScript SDK for 29Next Campaign Cart integration with progressive enhancement via data attributes",
+  "type": "module",
+  "main": "dist/index.umd.js",
+  "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.es.js",
+      "require": "./dist/index.umd.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./styles": "./dist/campaign-cart.css"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "dev:serve": "vite serve dev.html",
+    "dev:watch": "vite build --watch --mode development",
+    "build": "tsc && vite build && cp public/loader.js dist/",
+    "build:cf": "vite build && vite build -c vite.config.legacy.ts && npm run build:config && cp public/loader.js dist/",
+    "build:config": "node scripts/build-config.js",
+    "build:dev": "vite build --mode development --watch",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:e2e": "playwright test",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write src/**/*.ts",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@floating-ui/dom": "^1.5.3",
+    "@sentry/browser": "^7.99.0",
+    "country-state-city": "^3.2.1",
+    "lit": "^3.1.0",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@testing-library/dom": "^9.3.3",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "@vitest/ui": "^1.0.0",
+    "eslint": "^8.54.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "glob": "^11.0.3",
+    "happy-dom": "^12.10.3",
+    "prettier": "^3.1.0",
+    "rimraf": "^5.0.5",
+    "sass": "^1.69.5",
+    "terser": "^5.24.0",
+    "typescript": "^5.3.2",
+    "vite": "^5.0.0",
+    "vite-plugin-dts": "^3.6.4",
+    "vitest": "^1.0.0"
+  },
+  "keywords": [
+    "ecommerce",
+    "cart",
+    "checkout",
+    "29next",
+    "typescript",
+    "web-components",
+    "progressive-enhancement"
+  ],
+  "author": "29Next",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/29next/campaign-cart-v2.git"
+  },
+  "bugs": {
+    "url": "https://github.com/29next/campaign-cart-v2/issues"
+  },
+  "homepage": "https://github.com/29next/campaign-cart-v2#readme"
+}
