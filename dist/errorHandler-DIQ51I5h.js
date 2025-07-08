@@ -1,4 +1,4 @@
-import { L as Logger, s as sentryManager, E as EventBus } from "./analytics-CbggJMJ_.js";
+import { L as Logger, s as sentryManager, E as EventBus } from "./analytics-BZUvO6mp.js";
 class GlobalErrorHandler {
   constructor() {
     this.logger = new Logger("ErrorHandler");

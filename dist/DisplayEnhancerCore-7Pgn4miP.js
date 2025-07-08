@@ -1,5 +1,5 @@
-import { B as BaseEnhancer } from "./BaseEnhancer-Bek_tq0G.js";
-import { A as AttributeParser } from "./analytics-CbggJMJ_.js";
+import { B as BaseEnhancer } from "./BaseEnhancer-Bbss3g8X.js";
+import { A as AttributeParser } from "./analytics-BZUvO6mp.js";
 const _DisplayFormatter = class _DisplayFormatter {
   static formatValue(value, format = "auto") {
     if (value === null || value === void 0) {

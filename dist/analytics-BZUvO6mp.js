@@ -2146,7 +2146,7 @@ class NextCommerce {
   async trackViewItemList(packageIds, _listId, listName) {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics } = await import("./index-5EShfBve.js");
+        const { nextAnalytics } = await import("./index-BbZQGbsn.js");
         nextAnalytics.trackViewItemList(packageIds, listName);
       } catch (error) {
         this.logger.debug("Analytics tracking failed (non-critical):", error);
@@ -2156,7 +2156,7 @@ class NextCommerce {
   async trackViewItem(packageId) {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics } = await import("./index-5EShfBve.js");
+        const { nextAnalytics } = await import("./index-BbZQGbsn.js");
         nextAnalytics.trackViewItem(packageId);
       } catch (error) {
         this.logger.debug("Analytics tracking failed (non-critical):", error);
@@ -2166,7 +2166,7 @@ class NextCommerce {
   async trackAddToCart(packageId, quantity) {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics } = await import("./index-5EShfBve.js");
+        const { nextAnalytics } = await import("./index-BbZQGbsn.js");
         const item = {
           id: String(packageId),
           packageId,
@@ -2181,7 +2181,7 @@ class NextCommerce {
   async trackRemoveFromCart(packageId, quantity) {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics, EcommerceEvents } = await import("./index-5EShfBve.js");
+        const { nextAnalytics, EcommerceEvents } = await import("./index-BbZQGbsn.js");
         nextAnalytics.track(EcommerceEvents.createRemoveFromCartEvent({ packageId, quantity: quantity || 1 }));
       } catch (error) {
         this.logger.debug("Analytics tracking failed (non-critical):", error);
@@ -2191,7 +2191,7 @@ class NextCommerce {
   async trackBeginCheckout() {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics } = await import("./index-5EShfBve.js");
+        const { nextAnalytics } = await import("./index-BbZQGbsn.js");
         nextAnalytics.trackBeginCheckout();
       } catch (error) {
         this.logger.debug("Analytics tracking failed (non-critical):", error);
@@ -2201,7 +2201,7 @@ class NextCommerce {
   async trackPurchase(orderData) {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics } = await import("./index-5EShfBve.js");
+        const { nextAnalytics } = await import("./index-BbZQGbsn.js");
         nextAnalytics.trackPurchase(orderData);
       } catch (error) {
         this.logger.debug("Analytics tracking failed (non-critical):", error);
@@ -2211,7 +2211,7 @@ class NextCommerce {
   async trackCustomEvent(eventName, data) {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics } = await import("./index-5EShfBve.js");
+        const { nextAnalytics } = await import("./index-BbZQGbsn.js");
         nextAnalytics.track({ event: eventName, ...data });
       } catch (error) {
         this.logger.debug("Analytics tracking failed (non-critical):", error);
@@ -2222,7 +2222,7 @@ class NextCommerce {
   async trackSignUp(email) {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics } = await import("./index-5EShfBve.js");
+        const { nextAnalytics } = await import("./index-BbZQGbsn.js");
         nextAnalytics.trackSignUp(email);
       } catch (error) {
         this.logger.debug("Analytics tracking failed (non-critical):", error);
@@ -2232,7 +2232,7 @@ class NextCommerce {
   async trackLogin(email) {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics } = await import("./index-5EShfBve.js");
+        const { nextAnalytics } = await import("./index-BbZQGbsn.js");
         nextAnalytics.trackLogin(email);
       } catch (error) {
         this.logger.debug("Analytics tracking failed (non-critical):", error);
@@ -2243,7 +2243,7 @@ class NextCommerce {
   async setDebugMode(enabled) {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics } = await import("./index-5EShfBve.js");
+        const { nextAnalytics } = await import("./index-BbZQGbsn.js");
         nextAnalytics.setDebugMode(enabled);
       } catch (error) {
         this.logger.debug("Analytics debug mode failed (non-critical):", error);
@@ -2253,7 +2253,7 @@ class NextCommerce {
   async invalidateAnalyticsContext() {
     queueMicrotask(async () => {
       try {
-        const { nextAnalytics } = await import("./index-5EShfBve.js");
+        const { nextAnalytics } = await import("./index-BbZQGbsn.js");
         nextAnalytics.invalidateContext();
       } catch (error) {
         this.logger.debug("Analytics context invalidation failed (non-critical):", error);
@@ -2318,7 +2318,7 @@ class NextCommerce {
   async exitIntent(options) {
     try {
       if (!this.exitIntentEnhancer) {
-        const { ExitIntentEnhancer } = await import("./SimpleExitIntentEnhancer-DDOLvsQb.js");
+        const { ExitIntentEnhancer } = await import("./SimpleExitIntentEnhancer-BCFUhuIT.js");
         this.exitIntentEnhancer = new ExitIntentEnhancer();
         await this.exitIntentEnhancer.initialize();
       }
@@ -2337,7 +2337,7 @@ class NextCommerce {
   async fomo(config) {
     try {
       if (!this.fomoEnhancer) {
-        const { FomoPopupEnhancer } = await import("./FomoPopupEnhancer-CqMhRMWw.js");
+        const { FomoPopupEnhancer } = await import("./FomoPopupEnhancer-DV9-cUbs.js");
         this.fomoEnhancer = new FomoPopupEnhancer();
         await this.fomoEnhancer.initialize();
       }
@@ -3599,23 +3599,23 @@ class AttributeScanner {
           });
           if (parsed.object === "cart") {
             this.logger.debug("Using CartDisplayEnhancer");
-            const { CartDisplayEnhancer } = await import("./CartDisplayEnhancer-DnM22uig.js");
+            const { CartDisplayEnhancer } = await import("./CartDisplayEnhancer-CKR2DyMO.js");
             return new CartDisplayEnhancer(element);
           } else if (parsed.object === "selection") {
             this.logger.debug("Using SelectionDisplayEnhancer");
-            const { SelectionDisplayEnhancer } = await import("./SelectionDisplayEnhancer-BJkgxmuP.js");
+            const { SelectionDisplayEnhancer } = await import("./SelectionDisplayEnhancer-TJusDDPn.js");
             return new SelectionDisplayEnhancer(element);
           } else if (parsed.object === "package" || parsed.object === "campaign") {
             this.logger.debug("Using ProductDisplayEnhancer");
-            const { ProductDisplayEnhancer } = await import("./ProductDisplayEnhancer-BGX8gVC4.js");
+            const { ProductDisplayEnhancer } = await import("./ProductDisplayEnhancer-B2HZLDYR.js");
             return new ProductDisplayEnhancer(element);
           } else if (parsed.object === "order") {
             this.logger.debug("Using OrderDisplayEnhancer");
-            const { OrderDisplayEnhancer } = await import("./OrderDisplayEnhancer-BpF-UBsE.js");
+            const { OrderDisplayEnhancer } = await import("./OrderDisplayEnhancer-DeiYGlTG.js");
             return new OrderDisplayEnhancer(element);
           } else if (parsed.object === "shipping") {
             this.logger.debug("Using ShippingDisplayEnhancer");
-            const { ShippingDisplayEnhancer } = await import("./ShippingDisplayEnhancer-CTmr2o7E.js");
+            const { ShippingDisplayEnhancer } = await import("./ShippingDisplayEnhancer-BTxUnYKo.js");
             return new ShippingDisplayEnhancer(element);
           } else {
             let currentElement = element.parentElement;
@@ -3628,68 +3628,68 @@ class AttributeScanner {
             }
             if (hasPackageContext) {
               this.logger.debug(`Using ProductDisplayEnhancer (fallback with package context)`);
-              const { ProductDisplayEnhancer } = await import("./ProductDisplayEnhancer-BGX8gVC4.js");
+              const { ProductDisplayEnhancer } = await import("./ProductDisplayEnhancer-B2HZLDYR.js");
               return new ProductDisplayEnhancer(element);
             } else {
               this.logger.debug(`Using CartDisplayEnhancer (fallback without package context)`);
-              const { CartDisplayEnhancer } = await import("./CartDisplayEnhancer-DnM22uig.js");
+              const { CartDisplayEnhancer } = await import("./CartDisplayEnhancer-CKR2DyMO.js");
               return new CartDisplayEnhancer(element);
             }
           }
         case "toggle":
-          const { CartToggleEnhancer } = await import("./CartToggleEnhancer-CJbkhj8j.js");
+          const { CartToggleEnhancer } = await import("./CartToggleEnhancer-RRT-buc1.js");
           return new CartToggleEnhancer(element);
         case "action":
           const action = element.getAttribute("data-next-action");
           switch (action) {
             case "add-to-cart":
-              const { AddToCartEnhancer } = await import("./AddToCartEnhancer-Bbx59XMj.js");
+              const { AddToCartEnhancer } = await import("./AddToCartEnhancer-CQgTK6ZB.js");
               return new AddToCartEnhancer(element);
             case "accept-upsell":
-              const { AcceptUpsellEnhancer } = await import("./AcceptUpsellEnhancer-sSi5Wcza.js");
+              const { AcceptUpsellEnhancer } = await import("./AcceptUpsellEnhancer-B0W81HXZ.js");
               return new AcceptUpsellEnhancer(element);
             default:
               this.logger.warn(`Unknown action type: ${action}`);
               return null;
           }
         case "selector":
-          const { PackageSelectorEnhancer } = await import("./PackageSelectorEnhancer-B1aWhcWg.js");
+          const { PackageSelectorEnhancer } = await import("./PackageSelectorEnhancer-KNY9KleB.js");
           return new PackageSelectorEnhancer(element);
         case "timer":
-          const { TimerEnhancer } = await import("./TimerEnhancer-BE685YKO.js");
+          const { TimerEnhancer } = await import("./TimerEnhancer-D0M8uwQn.js");
           return new TimerEnhancer(element);
         case "conditional":
-          const { ConditionalDisplayEnhancer } = await import("./ConditionalDisplayEnhancer-BEU4FSSI.js");
+          const { ConditionalDisplayEnhancer } = await import("./ConditionalDisplayEnhancer-B-cVAzWv.js");
           return new ConditionalDisplayEnhancer(element);
         case "checkout":
-          const { CheckoutFormEnhancer } = await import("./CheckoutFormEnhancer-Yp090CWh.js");
+          const { CheckoutFormEnhancer } = await import("./CheckoutFormEnhancer-CECl2Ns8.js");
           return new CheckoutFormEnhancer(element);
         case "express-checkout":
           this.logger.debug("Skipping individual express checkout button - managed by container");
           return null;
         case "express-checkout-container":
-          const { ExpressCheckoutContainerEnhancer } = await import("./ExpressCheckoutContainerEnhancer-D4hj_ov0.js");
+          const { ExpressCheckoutContainerEnhancer } = await import("./ExpressCheckoutContainerEnhancer-eBNsxcME.js");
           return new ExpressCheckoutContainerEnhancer(element);
         case "cart-items":
-          const { CartItemListEnhancer } = await import("./CartItemListEnhancer-BkbW6-E5.js");
+          const { CartItemListEnhancer } = await import("./CartItemListEnhancer-B2IIASNb.js");
           return new CartItemListEnhancer(element);
         case "order-items":
-          const { OrderItemListEnhancer } = await import("./OrderItemListEnhancer-D_i8MPiF.js");
+          const { OrderItemListEnhancer } = await import("./OrderItemListEnhancer-0kelaRrE.js");
           return new OrderItemListEnhancer(element);
         case "quantity":
-          const { QuantityControlEnhancer } = await import("./QuantityControlEnhancer-xhL_lT2s.js");
+          const { QuantityControlEnhancer } = await import("./QuantityControlEnhancer-CCi-jvGM.js");
           return new QuantityControlEnhancer(element);
         case "remove-item":
-          const { RemoveItemEnhancer } = await import("./RemoveItemEnhancer-BSpuLAii.js");
+          const { RemoveItemEnhancer } = await import("./RemoveItemEnhancer-DuxLDmEf.js");
           return new RemoveItemEnhancer(element);
         case "upsell":
-          const { UpsellEnhancer } = await import("./UpsellEnhancer-B_dzWWAY.js");
+          const { UpsellEnhancer } = await import("./UpsellEnhancer-BBYGToDH.js");
           return new UpsellEnhancer(element);
         case "coupon":
-          const { CouponEnhancer } = await import("./CouponEnhancer-lzVxYJrx.js");
+          const { CouponEnhancer } = await import("./CouponEnhancer-DuvELwtx.js");
           return new CouponEnhancer(element);
         case "accordion":
-          const { AccordionEnhancer } = await import("./AccordionEnhancer-BJMRan04.js");
+          const { AccordionEnhancer } = await import("./AccordionEnhancer-C4xZBas5.js");
           return new AccordionEnhancer(element);
         default:
           this.logger.warn(`Unknown enhancer type: ${type}`);
@@ -7707,7 +7707,7 @@ const _SDKInitializer = class _SDKInitializer {
     setTimeout(async () => {
       try {
         this.logger.info("Initializing analyticsv v0.2.0 (lazy)...");
-        const { nextAnalytics } = await import("./index-5EShfBve.js");
+        const { nextAnalytics } = await import("./index-BbZQGbsn.js");
         await nextAnalytics.initialize();
         this.logger.debug("Analyticsv v0.2.0 initialized successfully (lazy)");
       } catch (error) {
@@ -7731,7 +7731,7 @@ const _SDKInitializer = class _SDKInitializer {
   }
   static initializeErrorHandler() {
     try {
-      import("./errorHandler-vieabZrb.js").then(({ errorHandler }) => {
+      import("./errorHandler-DIQ51I5h.js").then(({ errorHandler }) => {
         errorHandler.initialize();
         this.logger.debug("Error handler initialized");
       });
@@ -7883,23 +7883,23 @@ const _SDKInitializer = class _SDKInitializer {
         // Analytics utilities - lazy loaded to avoid blocking
         analytics: {
           getStatus: async () => {
-            const { nextAnalytics } = await import("./index-5EShfBve.js");
+            const { nextAnalytics } = await import("./index-BbZQGbsn.js");
             return nextAnalytics.getStatus();
           },
           getProviders: async () => {
-            const { nextAnalytics } = await import("./index-5EShfBve.js");
+            const { nextAnalytics } = await import("./index-BbZQGbsn.js");
             return nextAnalytics.getStatus().providers;
           },
           track: async (name, data) => {
-            const { nextAnalytics } = await import("./index-5EShfBve.js");
+            const { nextAnalytics } = await import("./index-BbZQGbsn.js");
             return nextAnalytics.track({ event: name, ...data });
           },
           setDebugMode: async (enabled) => {
-            const { nextAnalytics } = await import("./index-5EShfBve.js");
+            const { nextAnalytics } = await import("./index-BbZQGbsn.js");
             return nextAnalytics.setDebugMode(enabled);
           },
           invalidateContext: async () => {
-            const { nextAnalytics } = await import("./index-5EShfBve.js");
+            const { nextAnalytics } = await import("./index-BbZQGbsn.js");
             return nextAnalytics.invalidateContext();
           }
         },
@@ -8052,32 +8052,32 @@ if (typeof window !== "undefined") {
   window.addEventListener("next:ready", () => {
     if ("requestIdleCallback" in window) {
       requestIdleCallback(() => {
-        import("./CartDisplayEnhancer-DnM22uig.js");
-        import("./CartToggleEnhancer-CJbkhj8j.js");
-        import("./PackageSelectorEnhancer-B1aWhcWg.js");
-        import("./ProductDisplayEnhancer-BGX8gVC4.js");
-        import("./SelectionDisplayEnhancer-BJkgxmuP.js");
-        import("./TimerEnhancer-BE685YKO.js");
+        import("./CartDisplayEnhancer-CKR2DyMO.js");
+        import("./CartToggleEnhancer-RRT-buc1.js");
+        import("./PackageSelectorEnhancer-KNY9KleB.js");
+        import("./ProductDisplayEnhancer-B2HZLDYR.js");
+        import("./SelectionDisplayEnhancer-TJusDDPn.js");
+        import("./TimerEnhancer-D0M8uwQn.js");
       }, { timeout: 5e3 });
       requestIdleCallback(() => {
-        import("./CheckoutFormEnhancer-Yp090CWh.js");
-        import("./ExpressCheckoutContainerEnhancer-D4hj_ov0.js");
-        import("./OrderDisplayEnhancer-BpF-UBsE.js");
-        import("./UpsellEnhancer-B_dzWWAY.js");
+        import("./CheckoutFormEnhancer-CECl2Ns8.js");
+        import("./ExpressCheckoutContainerEnhancer-eBNsxcME.js");
+        import("./OrderDisplayEnhancer-DeiYGlTG.js");
+        import("./UpsellEnhancer-BBYGToDH.js");
         import("./AttributionCollector-C2WwjCQi.js");
-        import("./CartItemListEnhancer-BkbW6-E5.js");
-        import("./QuantityControlEnhancer-xhL_lT2s.js");
+        import("./CartItemListEnhancer-B2IIASNb.js");
+        import("./QuantityControlEnhancer-CCi-jvGM.js");
       }, { timeout: 5e3 });
       requestIdleCallback(() => {
-        import("./AccordionEnhancer-BJMRan04.js");
-        import("./CouponEnhancer-lzVxYJrx.js");
-        import("./SimpleExitIntentEnhancer-DDOLvsQb.js");
+        import("./AccordionEnhancer-C4xZBas5.js");
+        import("./CouponEnhancer-DuvELwtx.js");
+        import("./SimpleExitIntentEnhancer-BCFUhuIT.js");
         Promise.resolve().then(() => AddressService);
       }, { timeout: 5e3 });
     } else {
       setTimeout(() => {
-        import("./CartDisplayEnhancer-DnM22uig.js");
-        import("./ProductDisplayEnhancer-BGX8gVC4.js");
+        import("./CartDisplayEnhancer-CKR2DyMO.js");
+        import("./ProductDisplayEnhancer-B2HZLDYR.js");
         Promise.resolve().then(() => analytics);
       }, 1e3);
     }

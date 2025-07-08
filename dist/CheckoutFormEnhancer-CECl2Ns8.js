@@ -1,5 +1,5 @@
-import { B as BaseEnhancer } from "./BaseEnhancer-Bek_tq0G.js";
-import { L as Logger, e as createLogger, c as configStore, d as ApiClient, f as useCheckoutStore, u as useCartStore, g as useAttributionStore, s as sentryManager } from "./analytics-CbggJMJ_.js";
+import { B as BaseEnhancer } from "./BaseEnhancer-Bbss3g8X.js";
+import { L as Logger, e as createLogger, c as configStore, d as ApiClient, f as useCheckoutStore, u as useCartStore, g as useAttributionStore, s as sentryManager } from "./analytics-BZUvO6mp.js";
 class CountryService {
   constructor() {
     this.cachePrefix = "next_country_";
@@ -1422,6 +1422,677 @@ class CheckoutValidator {
     this.logger.debug("CheckoutValidator destroyed");
   }
 }
+class EventHandlerManager {
+  constructor() {
+    this.handlers = /* @__PURE__ */ new Map();
+    this.bindings = [];
+  }
+  /**
+   * Add an event handler with automatic cleanup tracking
+   */
+  addHandler(element, event, handler, options) {
+    if (!element) return;
+    if (!this.handlers.has(element)) {
+      this.handlers.set(element, /* @__PURE__ */ new Map());
+    }
+    const elementHandlers = this.handlers.get(element);
+    if (elementHandlers.has(event)) {
+      const existingHandler = elementHandlers.get(event);
+      element.removeEventListener(event, existingHandler);
+    }
+    element.addEventListener(event, handler, options);
+    elementHandlers.set(event, handler);
+    const binding = { element, event, handler };
+    if (options !== void 0) {
+      binding.options = options;
+    }
+    this.bindings.push(binding);
+  }
+  /**
+   * Add multiple handlers at once
+   */
+  addHandlers(bindings) {
+    bindings.forEach((binding) => {
+      this.addHandler(
+        binding.element,
+        binding.event,
+        binding.handler,
+        binding.options
+      );
+    });
+  }
+  /**
+   * Remove a specific handler
+   */
+  removeHandler(element, event) {
+    if (!element) return;
+    const elementHandlers = this.handlers.get(element);
+    if (!elementHandlers) return;
+    const handler = elementHandlers.get(event);
+    if (handler) {
+      element.removeEventListener(event, handler);
+      elementHandlers.delete(event);
+      this.bindings = this.bindings.filter(
+        (b) => !(b.element === element && b.event === event)
+      );
+    }
+    if (elementHandlers.size === 0) {
+      this.handlers.delete(element);
+    }
+  }
+  /**
+   * Remove all handlers for a specific element
+   */
+  removeElementHandlers(element) {
+    const elementHandlers = this.handlers.get(element);
+    if (!elementHandlers) return;
+    elementHandlers.forEach((handler, event) => {
+      element.removeEventListener(event, handler);
+    });
+    this.handlers.delete(element);
+    this.bindings = this.bindings.filter((b) => b.element !== element);
+  }
+  /**
+   * Remove all handlers
+   */
+  removeAllHandlers() {
+    this.handlers.forEach((elementHandlers, element) => {
+      elementHandlers.forEach((handler, event) => {
+        element.removeEventListener(event, handler);
+      });
+    });
+    this.handlers.clear();
+    this.bindings = [];
+  }
+  /**
+   * Add event delegation handler
+   */
+  addDelegatedHandler(container, selector, event, handler) {
+    const delegatedHandler = (e) => {
+      const target = e.target;
+      const matchedElement = target.closest(selector);
+      if (matchedElement && container.contains(matchedElement)) {
+        handler(e, matchedElement);
+      }
+    };
+    this.addHandler(container, event, delegatedHandler);
+  }
+  /**
+   * Add handler with debounce
+   */
+  addDebouncedHandler(element, event, handler, delay = 300) {
+    let timeoutId;
+    const debouncedHandler = (e) => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        handler(e);
+      }, delay);
+    };
+    this.addHandler(element, event, debouncedHandler);
+  }
+  /**
+   * Add handler with throttle
+   */
+  addThrottledHandler(element, event, handler, limit = 300) {
+    let inThrottle = false;
+    const throttledHandler = (e) => {
+      if (!inThrottle) {
+        handler(e);
+        inThrottle = true;
+        setTimeout(() => {
+          inThrottle = false;
+        }, limit);
+      }
+    };
+    this.addHandler(element, event, throttledHandler);
+  }
+  /**
+   * Add one-time handler that auto-removes
+   */
+  addOnceHandler(element, event, handler) {
+    const onceHandler = (e) => {
+      handler(e);
+      this.removeHandler(element, event);
+    };
+    this.addHandler(element, event, onceHandler);
+  }
+  /**
+   * Get all active bindings (for debugging)
+   */
+  getActiveBindings() {
+    return [...this.bindings];
+  }
+  /**
+   * Check if element has handler for event
+   */
+  hasHandler(element, event) {
+    const elementHandlers = this.handlers.get(element);
+    return elementHandlers ? elementHandlers.has(event) : false;
+  }
+}
+class UIService {
+  constructor(form, fields, logger, billingFields) {
+    this.floatingLabels = /* @__PURE__ */ new Map();
+    this.loadingStates = /* @__PURE__ */ new Map();
+    this.lastErrorsString = "";
+    this.form = form;
+    this.fields = fields;
+    this.logger = logger;
+    if (billingFields) {
+      this.billingFields = billingFields;
+    }
+    this.errorManager = new ErrorDisplayManager();
+    this.eventManager = new EventHandlerManager();
+  }
+  /**
+   * Initialize the UI service with all functionality
+   */
+  initialize() {
+    this.initializeFloatingLabels();
+    this.logger.debug("UIService initialized");
+  }
+  // ============================================================================
+  // LOADING STATE MANAGEMENT
+  // ============================================================================
+  /**
+   * Show loading state for a specific section
+   */
+  showLoading(section) {
+    this.loadingStates.set(section, true);
+    this.form.classList.add("next-processing");
+    const sectionElement = this.form.querySelector(`[data-section="${section}"]`);
+    if (sectionElement instanceof HTMLElement) {
+      sectionElement.classList.add("next-loading");
+    }
+    this.logger.debug(`Showing loading state for section: ${section}`);
+  }
+  /**
+   * Hide loading state for a specific section
+   */
+  hideLoading(section) {
+    this.loadingStates.set(section, false);
+    const hasActiveLoading = Array.from(this.loadingStates.values()).some((isLoading) => isLoading);
+    if (!hasActiveLoading) {
+      this.form.classList.remove("next-processing");
+    }
+    const sectionElement = this.form.querySelector(`[data-section="${section}"]`);
+    if (sectionElement instanceof HTMLElement) {
+      sectionElement.classList.remove("next-loading");
+    }
+    this.logger.debug(`Hiding loading state for section: ${section}`);
+  }
+  /**
+   * Update progress indicator
+   */
+  updateProgress(step) {
+    const progressBar = this.form.querySelector(".next-progress-bar");
+    if (progressBar instanceof HTMLElement) {
+      const progressFill = progressBar.querySelector(".next-progress-fill");
+      if (progressFill instanceof HTMLElement) {
+        const percentage = Math.min(100, Math.max(0, step * 25));
+        progressFill.style.width = `${percentage}%`;
+        progressFill.setAttribute("aria-valuenow", percentage.toString());
+      }
+    }
+    this.logger.debug(`Updated progress to step: ${step}`);
+  }
+  // ============================================================================
+  // ERROR MANAGEMENT
+  // ============================================================================
+  /**
+   * Display form validation errors
+   */
+  displayErrors(errors, scrollToField) {
+    this.errorManager.clearAllErrors(this.form);
+    const filteredErrors = {};
+    Object.entries(errors).forEach(([field, message]) => {
+      if (field === "cc-number" || field === "cvv") {
+        const spreedlyField = field === "cc-number" ? "spreedly-number" : "spreedly-cvv";
+        const spreedlyElement = document.getElementById(spreedlyField);
+        if (spreedlyElement && spreedlyElement.classList.contains("no-error")) {
+          return;
+        }
+      }
+      filteredErrors[field] = message;
+    });
+    Object.entries(filteredErrors).forEach(([fieldName, message]) => {
+      let fieldElement = this.fields.get(fieldName);
+      if (!fieldElement && fieldName.startsWith("billing-") && this.billingFields) {
+        fieldElement = this.billingFields.get(fieldName);
+      }
+      if (fieldElement) {
+        this.errorManager.showFieldError(fieldElement, message);
+      } else {
+        this.logger.warn(`Field element not found for error: ${fieldName}`);
+      }
+    });
+    if (scrollToField) {
+      this.focusFirstError(scrollToField);
+    }
+  }
+  /**
+   * Focus and scroll to the first error field
+   */
+  focusFirstError(fieldName) {
+    let fieldElement = this.fields.get(fieldName);
+    if (!fieldElement && fieldName.startsWith("billing-") && this.billingFields) {
+      fieldElement = this.billingFields.get(fieldName);
+    }
+    if (!fieldElement) {
+      this.logger.warn(`Field '${fieldName}' not found for scrolling`);
+      return;
+    }
+    const scrollTarget = fieldElement.closest(".frm-flds") || fieldElement;
+    const offset = 100;
+    const elementRect = scrollTarget.getBoundingClientRect();
+    const absoluteElementTop = elementRect.top + window.scrollY;
+    const scrollPosition = absoluteElementTop - offset;
+    window.scrollTo({
+      top: Math.max(0, scrollPosition),
+      behavior: "smooth"
+    });
+    if (fieldElement instanceof HTMLInputElement || fieldElement instanceof HTMLSelectElement || fieldElement instanceof HTMLTextAreaElement) {
+      setTimeout(() => {
+        try {
+          fieldElement.focus();
+          fieldElement.style.outline = "2px solid #ff6b6b";
+          fieldElement.style.outlineOffset = "2px";
+          setTimeout(() => {
+            fieldElement.style.outline = "";
+            fieldElement.style.outlineOffset = "";
+          }, 2e3);
+        } catch (error) {
+          this.logger.debug("Could not focus field after scroll:", error);
+        }
+      }, 300);
+    }
+    this.logger.debug(`Scrolled to field: ${fieldName}`);
+  }
+  /**
+   * Update field state with visual indicators
+   */
+  updateFieldState(fieldName, state) {
+    let fieldElement = this.fields.get(fieldName);
+    if (!fieldElement && fieldName.startsWith("billing-") && this.billingFields) {
+      fieldElement = this.billingFields.get(fieldName);
+    }
+    if (!fieldElement) {
+      this.logger.warn(`Field '${fieldName}' not found for state update`);
+      return;
+    }
+    fieldElement.classList.remove("next-error-field", "next-valid-field", "next-neutral-field");
+    switch (state) {
+      case "valid":
+        fieldElement.classList.add("next-valid-field");
+        break;
+      case "invalid":
+        fieldElement.classList.add("next-error-field");
+        break;
+      case "neutral":
+        fieldElement.classList.add("next-neutral-field");
+        break;
+    }
+    this.logger.debug(`Updated field ${fieldName} state to: ${state}`);
+  }
+  // ============================================================================
+  // CHECKOUT STATE MANAGEMENT
+  // ============================================================================
+  /**
+   * Handle checkout state updates
+   */
+  handleCheckoutUpdate(state, displayErrors) {
+    const currentErrorsString = JSON.stringify(state.errors || {});
+    if (currentErrorsString !== this.lastErrorsString) {
+      this.lastErrorsString = currentErrorsString;
+      if (state.errors && Object.keys(state.errors).length > 0) {
+        displayErrors(state.errors);
+      } else {
+        displayErrors({});
+      }
+    }
+    if (state.isProcessing) {
+      this.showLoading("checkout");
+    } else {
+      this.hideLoading("checkout");
+    }
+  }
+  /**
+   * Handle cart state updates
+   */
+  handleCartUpdate(cartState) {
+    if (cartState.isEmpty) {
+      this.logger.warn("Cart is empty, redirecting to cart page");
+    }
+  }
+  // ============================================================================
+  // PAYMENT FORM MANAGEMENT
+  // ============================================================================
+  /**
+   * Update payment form visibility based on selected payment method
+   */
+  updatePaymentFormVisibility(paymentMethod) {
+    this.logger.debug("Updating payment form visibility for method:", paymentMethod);
+    const paymentMethods = this.form.querySelectorAll("[data-next-payment-method]");
+    paymentMethods.forEach((paymentMethodElement) => {
+      if (paymentMethodElement instanceof HTMLElement) {
+        const radio = paymentMethodElement.querySelector('input[type="radio"]');
+        const paymentForm = paymentMethodElement.querySelector("[data-next-payment-form]");
+        if (!(radio instanceof HTMLInputElement) || !(paymentForm instanceof HTMLElement)) {
+          return;
+        }
+        if (radio && paymentForm) {
+          const isSelected = radio.value === paymentMethod;
+          this.logger.debug(`Payment method ${radio.value}: ${isSelected ? "selected" : "not selected"}`);
+          if (isSelected) {
+            paymentMethodElement.classList.add("next-selected");
+            paymentForm.setAttribute("data-next-payment-state", "expanded");
+            this.expandPaymentForm(paymentForm);
+            this.clearPaymentFormErrors(paymentForm);
+          } else {
+            paymentMethodElement.classList.remove("next-selected");
+            paymentForm.setAttribute("data-next-payment-state", "collapsed");
+            this.collapsePaymentForm(paymentForm);
+            this.clearPaymentFormErrors(paymentForm);
+          }
+        }
+      }
+    });
+  }
+  /**
+   * Smoothly expand a payment form with animation
+   */
+  expandPaymentForm(paymentForm) {
+    if (paymentForm.classList.contains("payment-method__form--expanded")) {
+      return;
+    }
+    paymentForm.classList.remove("payment-method__form--collapsed");
+    paymentForm.classList.add("payment-method__form--expanded");
+    const startHeight = paymentForm.offsetHeight;
+    const currentOverflow = paymentForm.style.overflow;
+    paymentForm.style.overflow = "hidden";
+    paymentForm.style.height = "auto";
+    const targetHeight = paymentForm.scrollHeight;
+    paymentForm.style.height = startHeight + "px";
+    paymentForm.offsetHeight;
+    paymentForm.style.height = targetHeight + "px";
+    setTimeout(() => {
+      paymentForm.style.height = "";
+      paymentForm.style.overflow = currentOverflow;
+    }, 300);
+    this.logger.debug("Expanded payment form");
+  }
+  /**
+   * Smoothly collapse a payment form with animation
+   */
+  collapsePaymentForm(paymentForm) {
+    if (paymentForm.classList.contains("payment-method__form--collapsed")) {
+      return;
+    }
+    const currentHeight = paymentForm.scrollHeight;
+    paymentForm.style.overflow = "hidden";
+    paymentForm.style.height = currentHeight + "px";
+    paymentForm.offsetHeight;
+    paymentForm.style.height = "0px";
+    setTimeout(() => {
+      paymentForm.classList.add("payment-method__form--collapsed");
+      paymentForm.classList.remove("payment-method__form--expanded");
+    }, 300);
+    this.logger.debug("Collapsed payment form");
+  }
+  /**
+   * Clear validation errors from a payment form when it's collapsed
+   */
+  clearPaymentFormErrors(paymentForm) {
+    this.errorManager.clearAllErrors(paymentForm);
+    const fields = paymentForm.querySelectorAll("input, select, textarea");
+    fields.forEach((field) => {
+      field.classList.add("no-error");
+    });
+    this.logger.debug("Cleared payment form errors");
+  }
+  // ============================================================================
+  // FLOATING LABEL MANAGEMENT
+  // ============================================================================
+  /**
+   * Initialize floating labels for all form fields in the container
+   */
+  initializeFloatingLabels() {
+    this.logger.debug("Initializing floating labels");
+    const formGroups = this.form.querySelectorAll(".form-group");
+    formGroups.forEach((formGroup) => {
+      const label = formGroup.querySelector(".label-checkout");
+      const input = formGroup.querySelector("input[data-next-checkout-field], input[os-checkout-field], select[data-next-checkout-field], select[os-checkout-field]");
+      if (label instanceof HTMLLabelElement && (input instanceof HTMLInputElement || input instanceof HTMLSelectElement)) {
+        this.setupFloatingLabel(input, label);
+      }
+    });
+    this.logger.debug(`Initialized ${this.floatingLabels.size} floating labels`);
+    this.startPeriodicCheck();
+  }
+  /**
+   * Set up floating label behavior for a specific field
+   */
+  setupFloatingLabel(field, label) {
+    if (!label) {
+      const formGroup = field.closest(".form-group");
+      if (formGroup) {
+        const labelElement = formGroup.querySelector(".label-checkout");
+        if (labelElement instanceof HTMLLabelElement) {
+          label = labelElement;
+        }
+      }
+    }
+    if (!label) {
+      this.logger.warn("No label found for floating label setup");
+      return;
+    }
+    this.floatingLabels.set(field, label);
+    this.setupLabelStyles(label);
+    this.setupFieldStyles(field);
+    this.updateLabelState(field, label);
+    this.eventManager.addHandler(field, "input", (e) => this.handleInput(e));
+    this.eventManager.addHandler(field, "focus", (e) => this.handleFocus(e));
+    this.eventManager.addHandler(field, "blur", (e) => this.handleBlur(e));
+    this.eventManager.addHandler(field, "change", (e) => this.handleInput(e));
+    this.eventManager.addHandler(field, "animationstart", (e) => this.handleAutofill(e));
+    this.logger.debug("Set up floating label for field:", field.getAttribute("data-next-checkout-field") || field.name);
+  }
+  /**
+   * Set up label positioning and transition styles
+   */
+  setupLabelStyles(label) {
+    if (!label.style.transition) {
+      label.style.transition = "all 0.15s ease-in-out";
+    }
+  }
+  /**
+   * Set up field styles to accommodate floating label
+   */
+  setupFieldStyles(field) {
+    const formInput = field.closest(".form-input");
+    if (formInput instanceof HTMLElement) {
+      formInput.style.position = "relative";
+    }
+  }
+  /**
+   * Handle input events - triggered when user types
+   */
+  handleInput(event) {
+    const field = event.target;
+    const label = this.floatingLabels.get(field);
+    if (label) {
+      this.updateLabelState(field, label);
+    }
+  }
+  /**
+   * Handle focus events - triggered when field gains focus
+   */
+  handleFocus(event) {
+    const field = event.target;
+    const label = this.floatingLabels.get(field);
+    if (label) {
+      if (this.hasValue(field)) {
+        this.floatLabelUp(label, field);
+      }
+    }
+  }
+  /**
+   * Handle blur events - triggered when field loses focus
+   */
+  handleBlur(event) {
+    const field = event.target;
+    const label = this.floatingLabels.get(field);
+    if (label) {
+      this.updateLabelState(field, label);
+    }
+  }
+  /**
+   * Handle autofill detection - Chrome triggers animation when autofilling
+   */
+  handleAutofill(event) {
+    const animationEvent = event;
+    if (animationEvent.animationName === "autofill") {
+      const field = event.target;
+      const label = this.floatingLabels.get(field);
+      if (label) {
+        setTimeout(() => {
+          this.updateLabelState(field, label);
+        }, 100);
+      }
+    }
+  }
+  /**
+   * Update label state based on field value
+   */
+  updateLabelState(field, label) {
+    if (this.hasValue(field)) {
+      this.floatLabelUp(label, field);
+    } else {
+      this.floatLabelDown(label, field);
+    }
+  }
+  /**
+   * Check if field has a value
+   */
+  hasValue(field) {
+    if (field instanceof HTMLSelectElement) {
+      return field.value !== "" && field.value !== field.querySelector("option")?.value;
+    }
+    return field.value.trim() !== "";
+  }
+  /**
+   * Float label up (when field has value)
+   */
+  floatLabelUp(label, field) {
+    if (label.classList.contains("has-value")) return;
+    label.classList.add("has-value");
+    field.style.paddingTop = "14px";
+    this.logger.debug("Added has-value class for field:", field.getAttribute("data-next-checkout-field") || field.name);
+  }
+  /**
+   * Float label down (when field is empty)
+   */
+  floatLabelDown(label, field) {
+    if (!label.classList.contains("has-value")) return;
+    label.classList.remove("has-value");
+    field.style.paddingTop = "";
+    this.logger.debug("Removed has-value class for field:", field.getAttribute("data-next-checkout-field") || field.name);
+  }
+  /**
+   * Start periodic check for autocomplete detection (fallback method)
+   */
+  startPeriodicCheck() {
+    this.periodicCheckInterval = window.setInterval(() => {
+      this.checkAllFieldsForChanges();
+    }, 500);
+  }
+  /**
+   * Check all fields for value changes (autocomplete detection)
+   */
+  checkAllFieldsForChanges() {
+    this.floatingLabels.forEach((label, field) => {
+      if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+        this.updateLabelState(field, label);
+      }
+    });
+  }
+  /**
+   * Update floating labels when form data is populated programmatically
+   */
+  updateLabelsForPopulatedData() {
+    this.floatingLabels.forEach((label, field) => {
+      if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+        this.updateLabelState(field, label);
+      }
+    });
+    this.logger.debug("Updated all floating labels for populated data");
+  }
+  // ============================================================================
+  // RESPONSIVE UI HANDLING
+  // ============================================================================
+  /**
+   * Handle responsive UI adjustments
+   */
+  handleResponsiveUI() {
+    const isMobile = window.innerWidth <= 768;
+    const isTablet = window.innerWidth <= 1024 && window.innerWidth > 768;
+    this.form.classList.toggle("next-mobile", isMobile);
+    this.form.classList.toggle("next-tablet", isTablet);
+    this.form.classList.toggle("next-desktop", !isMobile && !isTablet);
+    if (isMobile) {
+      this.floatingLabels.forEach((label, field) => {
+        const focusHandler = () => {
+          this.floatLabelUp(label, field);
+        };
+        field.addEventListener("focus", focusHandler);
+      });
+    }
+    this.logger.debug(`Handled responsive UI adjustments for ${isMobile ? "mobile" : isTablet ? "tablet" : "desktop"}`);
+  }
+  // ============================================================================
+  // ACCESSIBILITY FEATURES
+  // ============================================================================
+  /**
+   * Enhance accessibility features
+   */
+  enhanceAccessibility() {
+    this.fields.forEach((field, fieldName) => {
+      if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+        const errorElement = field.parentElement?.querySelector(".next-error-label");
+        if (errorElement) {
+          const errorId = `${fieldName}-error`;
+          errorElement.id = errorId;
+          field.setAttribute("aria-describedby", errorId);
+          field.setAttribute("aria-invalid", "true");
+        } else {
+          field.removeAttribute("aria-describedby");
+          field.setAttribute("aria-invalid", "false");
+        }
+        const isRequired = field.hasAttribute("required") || field.getAttribute("data-required") === "true";
+        if (isRequired) {
+          field.setAttribute("aria-required", "true");
+        }
+      }
+    });
+    this.logger.debug("Enhanced accessibility features");
+  }
+  // ============================================================================
+  // CLEANUP AND DESTRUCTION
+  // ============================================================================
+  /**
+   * Clean up event listeners and restore original state
+   */
+  destroy() {
+    if (this.periodicCheckInterval) {
+      clearInterval(this.periodicCheckInterval);
+      delete this.periodicCheckInterval;
+    }
+    this.eventManager.removeAllHandlers();
+    this.floatingLabels.clear();
+    this.loadingStates.clear();
+    this.logger.debug("UIService destroyed");
+  }
+}
 const FIELD_SELECTORS = ["[data-next-checkout-field]", "[os-checkout-field]"];
 const BILLING_CONTAINER_SELECTOR = '[os-checkout-element="different-billing-address"]';
 const SHIPPING_FORM_SELECTOR = '[os-checkout-component="shipping-form"]';
@@ -1494,6 +2165,13 @@ class CheckoutFormEnhancer extends BaseEnhancer {
     if (billingFormCloned) {
       this.scanBillingFields();
     }
+    this.ui = new UIService(
+      this.form,
+      this.fields,
+      this.logger,
+      this.billingFields
+    );
+    this.ui.initialize();
     if (config.spreedlyEnvironmentKey) {
       await this.initializeCreditCard(config.spreedlyEnvironmentKey, config.debug);
     }
@@ -2496,6 +3174,7 @@ class CheckoutFormEnhancer extends BaseEnhancer {
         field.value = checkoutStore.formData[name];
       }
     });
+    this.ui.updateLabelsForPopulatedData();
   }
   handleTestDataFilled(_event) {
     setTimeout(() => {
@@ -2505,6 +3184,7 @@ class CheckoutFormEnhancer extends BaseEnhancer {
           field.dispatchEvent(new Event("change", { bubbles: true }));
         }
       });
+      this.ui.updateLabelsForPopulatedData();
     }, 150);
   }
   async handleKonamiActivation(event) {

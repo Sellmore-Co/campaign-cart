@@ -1,4 +1,4 @@
-import { e as createLogger } from "./analytics-CbggJMJ_.js";
+import { e as createLogger } from "./analytics-BZUvO6mp.js";
 const _PackageContextResolver = class _PackageContextResolver {
   /**
    * Find package ID from parent DOM context

@@ -1,4 +1,4 @@
-import { B as BaseEnhancer } from "./BaseEnhancer-Bek_tq0G.js";
+import { B as BaseEnhancer } from "./BaseEnhancer-Bbss3g8X.js";
 class ExitIntentEnhancer extends BaseEnhancer {
   constructor() {
     super(document.body);

@@ -6,6 +6,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private countryService;
     private creditCardService?;
     private validator;
+    private ui;
     private fields;
     private billingFields;
     private paymentButtons;

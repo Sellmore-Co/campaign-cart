@@ -1,4 +1,4 @@
-import { e as createLogger, E as EventBus } from "./analytics-CbggJMJ_.js";
+import { e as createLogger, E as EventBus } from "./analytics-BZUvO6mp.js";
 class BaseEnhancer {
   constructor(element) {
     this.subscriptions = [];

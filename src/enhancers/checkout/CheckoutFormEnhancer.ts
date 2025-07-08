@@ -12,6 +12,7 @@ import type { CartState } from '@/types/global';
 import { sentryManager } from '@/utils/monitoring/SentryManager';
 import { CreditCardService, type CreditCardData } from './services/CreditCardService';
 import { CheckoutValidator } from './validation/CheckoutValidator';
+import { UIService } from './services/UIService';
 import { useAttributionStore } from '@/stores/attributionStore';
 import type { CreateOrder, Address, Payment, Attribution, PaymentMethod } from '@/types/api';
 
@@ -66,6 +67,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private countryService!: CountryService;
   private creditCardService?: CreditCardService;
   private validator!: CheckoutValidator;
+  private ui!: UIService;
   
   // Field collections
   private fields: Map<string, HTMLElement> = new Map();
@@ -123,6 +125,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (billingFormCloned) {
       this.scanBillingFields(); // Re-scan after cloning
     }
+    
+    // Initialize UI service
+    this.ui = new UIService(
+      this.form,
+      this.fields,
+      this.logger,
+      this.billingFields
+    );
+    this.ui.initialize();
     
     // Initialize credit card service
     if (config.spreedlyEnvironmentKey) {
@@ -1377,6 +1388,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         field.value = checkoutStore.formData[name];
       }
     });
+    
+    // Update floating labels for populated data
+    this.ui.updateLabelsForPopulatedData();
   }
 
   private handleTestDataFilled(_event: Event): void {
@@ -1388,6 +1402,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           field.dispatchEvent(new Event('change', { bubbles: true }));
         }
       });
+      
+      // Update UI for test data
+      this.ui.updateLabelsForPopulatedData();
     }, 150);
   }
 
