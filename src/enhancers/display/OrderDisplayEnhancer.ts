@@ -5,6 +5,7 @@
 
 import { BaseDisplayEnhancer, PropertyResolver, DisplayFormatter } from './DisplayEnhancerCore';
 import { AttributeParser } from '../base/AttributeParser';
+import { getPropertyMapping } from './DisplayEnhancerTypes';
 import { useOrderStore } from '@/stores/orderStore';
 import { useConfigStore } from '@/stores/configStore';
 import { ApiClient } from '@/api/client';
@@ -130,6 +131,29 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
       return '';
     }
     
+    // Check property mappings first
+    const mappedPath = getPropertyMapping('order', propertyStr);
+    if (mappedPath) {
+      // Handle calculated properties
+      if (mappedPath.startsWith('_calculated.')) {
+        return this.getCalculatedProperty(order, mappedPath.substring(12));
+      }
+      
+      // If we have a mapping, use PropertyResolver to get the value
+      // For order object, we need to check if it's a direct property or nested
+      if (mappedPath.startsWith('order.')) {
+        const value = PropertyResolver.getNestedProperty(order, mappedPath.substring(6));
+        if (value !== undefined) {
+          return value;
+        }
+      } else {
+        const value = PropertyResolver.getNestedProperty(orderState, mappedPath);
+        if (value !== undefined) {
+          return value;
+        }
+      }
+    }
+    
     // Handle nested properties
     const parts = propertyStr.split('.');
     
@@ -141,10 +165,8 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
       }
     }
     
-    // Handle complex order-specific properties
+    // Handle complex order-specific properties that need special handling
     switch (parts[0]) {
-      case 'number':
-        return order.number;
       case 'created_at':
       case 'createdAt':
         // Order API doesn't have created_at, use metadata timestamp if available
@@ -153,56 +175,14 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
         if (parts[1] === 'raw') return timestamp;
         // Convert milliseconds timestamp to date
         return DisplayFormatter.formatDate(new Date(timestamp));
-      case 'status':
-        return order.status || 'Completed';
-      case 'refId':
-        return order.ref_id;
-      case 'currency':
-        return order.currency;
-      case 'isTest':
-        return order.is_test;
+      
       case 'testBadge':
         return order.is_test ? '🧪 TEST ORDER' : '';
-      case 'statusUrl':
-        return order.order_status_url;
-      case 'supportsUpsells':
-        return order.supports_post_purchase_upsells;
-      case 'paymentMethod':
-        return order.payment_method || 'Credit Card';
         
       // User/Customer properties
       case 'user':
       case 'customer':
         return this.getOrderUserProperty(order, parts.slice(1).join('.') || '');
-        
-      // Financial totals
-      case 'total':
-        if (parts[1] === 'raw') return parseFloat(order.total_incl_tax || '0');
-        return DisplayFormatter.formatCurrency(parseFloat(order.total_incl_tax || '0'));
-      case 'subtotal':
-        if (parts[1] === 'raw') return parseFloat(order.total_excl_tax || '0');
-        return DisplayFormatter.formatCurrency(parseFloat(order.total_excl_tax || '0'));
-      case 'tax':
-        if (parts[1] === 'raw') return parseFloat(order.total_tax || '0');
-        return DisplayFormatter.formatCurrency(parseFloat(order.total_tax || '0'));
-      case 'shipping':
-        if (parts[1] === 'raw') return parseFloat(order.shipping_incl_tax || '0');
-        return DisplayFormatter.formatCurrency(parseFloat(order.shipping_incl_tax || '0'));
-      case 'shippingExclTax':
-        if (parts[1] === 'raw') return parseFloat(order.shipping_excl_tax || '0');
-        return DisplayFormatter.formatCurrency(parseFloat(order.shipping_excl_tax || '0'));
-      case 'shippingTax':
-        if (parts[1] === 'raw') return parseFloat(order.shipping_tax || '0');
-        return DisplayFormatter.formatCurrency(parseFloat(order.shipping_tax || '0'));
-      case 'discounts':
-        if (parts[1] === 'raw') return parseFloat(order.total_discounts || '0');
-        return DisplayFormatter.formatCurrency(parseFloat(order.total_discounts || '0'));
-        
-      // Shipping info
-      case 'shippingMethod':
-        return order.shipping_method || '';
-      case 'shippingCode':
-        return order.shipping_code || '';
         
       // Address properties
       case 'shippingAddress':
@@ -219,20 +199,6 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
       case 'attribution':
         return this.getOrderAttributionProperty(order.attribution, parts.slice(1).join('.') || '');
         
-      // Calculated fields
-      case 'hasItems':
-        return order.lines && order.lines.length > 0;
-      case 'isEmpty':
-        return !order.lines || order.lines.length === 0;
-      case 'hasShipping':
-        return parseFloat(order.shipping_incl_tax || '0') > 0;
-      case 'hasTax':
-        return parseFloat(order.total_tax || '0') > 0;
-      case 'hasDiscounts':
-        return parseFloat(order.total_discounts || '0') > 0;
-      case 'hasUpsells':
-        return order.lines?.some((line: OrderLine) => line.is_upsell) || false;
-        
       default:
         this.logger.warn(`Unknown order property: ${propertyStr}`);
         return '';
@@ -248,19 +214,19 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
       case 'name':
         return `${user.first_name || ''} ${user.last_name || ''}`.trim();
       case 'email':
-        return user.email || '';
+        return String(user.email || '');
       case 'firstName':
-        return user.first_name || '';
+        return String(user.first_name || '');
       case 'lastName':
-        return user.last_name || '';
+        return String(user.last_name || '');
       case 'phone':
-        return user.phone_number || '';
+        return String(user.phone_number || '');
       case 'acceptsMarketing':
         return user.accepts_marketing;
       case 'language':
-        return user.language || '';
+        return String(user.language || '');
       case 'ip':
-        return user.ip || '';
+        return String(user.ip || '');
       default:
         return '';
     }
@@ -276,20 +242,20 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
       case 'name':
         return `${address.first_name || ''} ${address.last_name || ''}`.trim();
       case 'line1':
-        return address.line1 || '';
+        return String(address.line1 || '');
       case 'line2':
-        return address.line2 || '';
+        return String(address.line2 || '');
       case 'city':
-        return address.line4 || '';
+        return String(address.line4 || '');
       case 'state':
-        return address.state || '';
+        return String(address.state || '');
       case 'zip':
       case 'postcode':
-        return address.postcode || '';
+        return String(address.postcode || '');
       case 'country':
-        return address.country || '';
+        return String(address.country || '');
       case 'phone':
-        return address.phone_number || '';
+        return String(address.phone_number || '');
       default:
         return '';
     }
@@ -409,7 +375,7 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
       address.state,
       address.postcode,
       address.country
-    ].filter(Boolean);
+    ].filter(Boolean).map(part => String(part));
     
     return parts.join(', ');
   }
@@ -421,5 +387,79 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
       'items', 'lines', 'attribution', 'created_at'
     ];
     return complexProperties.includes(property);
+  }
+
+  private getCalculatedProperty(order: Order, property: string): any {
+    switch (property) {
+      // Savings calculations
+      case 'savings':
+      case 'savingsAmount':
+        // Calculate savings from line items if available
+        if (order.lines && order.lines.length > 0) {
+          const originalTotal = order.lines.reduce((sum: number, line: OrderLine) => {
+            return sum + (parseFloat(line.price_incl_tax_excl_discounts || line.price_incl_tax || '0') * line.quantity);
+          }, 0);
+          const currentTotal = parseFloat(order.total_incl_tax || '0');
+          return Math.max(0, originalTotal - currentTotal);
+        }
+        // Fallback to discounts if no line item data
+        return parseFloat(order.total_discounts || '0');
+      
+      case 'savingsPercentage':
+        // Calculate savings percentage from line items if available
+        if (order.lines && order.lines.length > 0) {
+          const originalPrice = order.lines.reduce((sum: number, line: OrderLine) => {
+            return sum + (parseFloat(line.price_incl_tax_excl_discounts || line.price_incl_tax || '0') * line.quantity);
+          }, 0);
+          const currentPrice = parseFloat(order.total_incl_tax || '0');
+          if (originalPrice > 0 && originalPrice > currentPrice) {
+            return ((originalPrice - currentPrice) / originalPrice) * 100;
+          }
+        }
+        return 0;
+      
+      case 'hasSavings':
+        // Check if any discounts applied or line items have pre-discount prices
+        if (parseFloat(order.total_discounts || '0') > 0) {
+          return true;
+        }
+        if (order.lines && order.lines.length > 0) {
+          return order.lines.some((line: OrderLine) => {
+            const beforeDiscount = parseFloat(line.price_incl_tax_excl_discounts || '0');
+            const afterDiscount = parseFloat(line.price_incl_tax || '0');
+            return beforeDiscount > afterDiscount;
+          });
+        }
+        return false;
+      
+      // Boolean flags
+      case 'hasItems':
+        return order.lines && order.lines.length > 0;
+      case 'isEmpty':
+        return !order.lines || order.lines.length === 0;
+      case 'hasShipping':
+        return parseFloat(order.shipping_incl_tax || '0') > 0;
+      case 'hasTax':
+        return parseFloat(order.total_tax || '0') > 0;
+      case 'hasDiscounts':
+        return parseFloat(order.total_discounts || '0') > 0;
+      case 'hasUpsells':
+        return order.lines?.some((line: OrderLine) => line.is_upsell) || false;
+      
+      // Line items calculations
+      case 'lines.count':
+        return order.lines?.length || 0;
+      case 'lines.totalQuantity':
+        return order.lines?.reduce((sum: number, line: OrderLine) => sum + (line.quantity || 0), 0) || 0;
+      case 'lines.upsellCount':
+        return order.lines?.filter((line: OrderLine) => line.is_upsell).length || 0;
+      case 'lines.mainProduct':
+        return order.lines?.[0]?.product_title || '';
+      case 'lines.mainProductSku':
+        return order.lines?.[0]?.product_sku || '';
+      
+      default:
+        return undefined;
+    }
   }
 }

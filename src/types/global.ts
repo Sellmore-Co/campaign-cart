@@ -55,6 +55,7 @@ export interface EventMap {
   // Address Autocomplete Events
   'address:autocomplete-filled': { type: 'shipping' | 'billing'; components: Record<string, { long: string; short: string }> };
   'address:location-fields-shown': {};
+  'checkout:location-fields-shown': {};
   
   // Upsell Events
   'upsell:initialized': { packageId: number; element: HTMLElement };
@@ -140,6 +141,9 @@ export interface CartTotals {
   savingsPercentage: { value: number; formatted: string };
   compareTotal: { value: number; formatted: string };
   hasSavings: boolean;
+  totalSavings: { value: number; formatted: string };
+  totalSavingsPercentage: { value: number; formatted: string };
+  hasTotalSavings: boolean;
 }
 
 export interface EnrichedCartLine {

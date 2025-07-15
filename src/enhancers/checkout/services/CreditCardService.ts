@@ -306,6 +306,16 @@ export class CreditCardService {
     return this.isReady;
   }
 
+  /**
+   * Focus a specific Spreedly field
+   */
+  public focusField(field: 'number' | 'cvv'): void {
+    if (window.Spreedly && this.isReady) {
+      window.Spreedly.transferFocus(field);
+      this.logger.debug(`Focusing ${field} field`);
+    }
+  }
+
   // Private methods
 
   private initializeValidationState(): CreditCardValidationState {
@@ -384,11 +394,15 @@ export class CreditCardService {
       if (this.numberField) {
         this.numberField.id = 'spreedly-number';
         this.numberField.setAttribute('data-spreedly', 'number');
+        // Add transition for smooth focus effect
+        this.numberField.style.transition = 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out';
       }
       
       if (this.cvvField) {
         this.cvvField.id = 'spreedly-cvv';
         this.cvvField.setAttribute('data-spreedly', 'cvv');
+        // Add transition for smooth focus effect
+        this.cvvField.style.transition = 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out';
       }
       
       // Initialize Spreedly
@@ -400,10 +414,109 @@ export class CreditCardService {
       // Set up event listeners
       this.setupSpreedlyEventListeners();
       
+      // Set up click handlers for better UX
+      this.setupFieldClickHandlers();
+      
+      // Add focus styles
+      this.addFocusStyles();
+      
       this.logger.debug('Spreedly setup complete');
     } catch (error) {
       this.logger.error('Error setting up Spreedly:', error);
       throw error;
+    }
+  }
+
+  private addFocusStyles(): void {
+    // Add CSS for focus states if not already present
+    const styleId = 'spreedly-focus-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        /* Spreedly field focus states */
+        #spreedly-number.next-focused,
+        #spreedly-number.has-focus,
+        #spreedly-cvv.next-focused,
+        #spreedly-cvv.has-focus {
+          border-color: #80bdff !important;
+          outline: 0 !important;
+          box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+        }
+        
+        /* Bootstrap-style focus */
+        .form-control#spreedly-number.next-focused,
+        .form-control#spreedly-number.has-focus,
+        .form-control#spreedly-cvv.next-focused,
+        .form-control#spreedly-cvv.has-focus {
+          border-color: #80bdff !important;
+          box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+        }
+        
+        /* Parent container focus states */
+        .frm-flds.next-focused,
+        .form-group.next-focused,
+        .field-group.next-focused {
+          /* Add any parent-level focus styles here if needed */
+        }
+        
+        /* Ensure smooth transitions */
+        #spreedly-number,
+        #spreedly-cvv {
+          transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
+  private setupFieldClickHandlers(): void {
+    // Add click handler to credit card number field container
+    if (this.numberField) {
+      // Find the wrapper or use the field itself
+      const numberWrapper = this.numberField.closest('.frm-flds, .form-group, .form-field, .field-group') || this.numberField;
+      
+      numberWrapper.addEventListener('click', (event) => {
+        // Don't transfer focus if clicking on another input
+        const target = event.target as HTMLElement;
+        if (target.tagName !== 'INPUT' && target.tagName !== 'SELECT' && target.tagName !== 'TEXTAREA') {
+          if (window.Spreedly && this.isReady) {
+            window.Spreedly.transferFocus('number');
+            this.logger.debug('Transferring focus to credit card number field');
+          }
+        }
+      });
+      
+      // Also add to the field itself for direct clicks
+      this.numberField.addEventListener('click', () => {
+        if (window.Spreedly && this.isReady) {
+          window.Spreedly.transferFocus('number');
+        }
+      });
+    }
+    
+    // Add click handler to CVV field container
+    if (this.cvvField) {
+      // Find the wrapper or use the field itself
+      const cvvWrapper = this.cvvField.closest('.frm-flds, .form-group, .form-field, .field-group') || this.cvvField;
+      
+      cvvWrapper.addEventListener('click', (event) => {
+        // Don't transfer focus if clicking on another input
+        const target = event.target as HTMLElement;
+        if (target.tagName !== 'INPUT' && target.tagName !== 'SELECT' && target.tagName !== 'TEXTAREA') {
+          if (window.Spreedly && this.isReady) {
+            window.Spreedly.transferFocus('cvv');
+            this.logger.debug('Transferring focus to CVV field');
+          }
+        }
+      });
+      
+      // Also add to the field itself for direct clicks
+      this.cvvField.addEventListener('click', () => {
+        if (window.Spreedly && this.isReady) {
+          window.Spreedly.transferFocus('cvv');
+        }
+      });
     }
   }
 
@@ -486,6 +599,14 @@ export class CreditCardService {
   }
 
   private handleSpreedlyFieldEvent(name: string, type: string, inputProperties: any): void {
+    // Handle focus/blur events for visual feedback
+    if (type === 'focus') {
+      this.handleFieldFocus(name);
+    } else if (type === 'blur') {
+      this.handleFieldBlur(name);
+    }
+    
+    // Handle input events for validation
     if (type === 'input' && inputProperties) {
       if (name === 'number' && inputProperties.validNumber !== undefined) {
         this.validationState.number.isValid = inputProperties.validNumber;
@@ -494,6 +615,54 @@ export class CreditCardService {
         this.validationState.cvv.isValid = inputProperties.validCvv;
         this.validationState.cvv.hasError = !inputProperties.validCvv;
       }
+    }
+  }
+
+  private handleFieldFocus(fieldName: string): void {
+    const field = fieldName === 'number' ? this.numberField : 
+                  fieldName === 'cvv' ? this.cvvField : null;
+                  
+    if (field) {
+      // Add focus class to the field container
+      field.classList.add('next-focused', 'has-focus');
+      
+      // Find and focus the wrapper/container
+      const wrapper = field.closest('.frm-flds, .form-group, .form-field, .field-group');
+      if (wrapper) {
+        wrapper.classList.add('next-focused', 'has-focus');
+      }
+      
+      // Find and add focus to parent containers that might have borders
+      const parentContainer = field.closest('.credit-card-field, .form-input-wrapper');
+      if (parentContainer) {
+        parentContainer.classList.add('next-focused', 'has-focus');
+      }
+      
+      this.logger.debug(`Field focused: ${fieldName}`);
+    }
+  }
+
+  private handleFieldBlur(fieldName: string): void {
+    const field = fieldName === 'number' ? this.numberField : 
+                  fieldName === 'cvv' ? this.cvvField : null;
+                  
+    if (field) {
+      // Remove focus class from the field container
+      field.classList.remove('next-focused', 'has-focus');
+      
+      // Find and remove focus from the wrapper/container
+      const wrapper = field.closest('.frm-flds, .form-group, .form-field, .field-group');
+      if (wrapper) {
+        wrapper.classList.remove('next-focused', 'has-focus');
+      }
+      
+      // Find and remove focus from parent containers
+      const parentContainer = field.closest('.credit-card-field, .form-input-wrapper');
+      if (parentContainer) {
+        parentContainer.classList.remove('next-focused', 'has-focus');
+      }
+      
+      this.logger.debug(`Field blurred: ${fieldName}`);
     }
   }
 

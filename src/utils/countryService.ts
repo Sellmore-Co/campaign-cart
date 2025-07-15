@@ -84,7 +84,7 @@ export class CountryService {
     const cached = this.getFromCache('location_data');
     
     if (cached) {
-      return this.applyCountryFiltering(cached);
+      return await this.applyCountryFiltering(cached);
     }
 
     try {
@@ -102,10 +102,10 @@ export class CountryService {
         countriesCount: data.countries?.length
       });
 
-      return this.applyCountryFiltering(data);
+      return await this.applyCountryFiltering(data);
     } catch (error) {
       this.logger.error('Failed to fetch location data:', error);
-      return this.applyCountryFiltering(this.getFallbackLocationData());
+      return await this.applyCountryFiltering(this.getFallbackLocationData());
     }
   }
 
@@ -329,7 +329,7 @@ export class CountryService {
     };
   }
 
-  private applyCountryFiltering(data: LocationData): LocationData {
+  private async applyCountryFiltering(data: LocationData): Promise<LocationData> {
     let filteredCountries = [...data.countries];
     
     // Apply custom countries list if provided
@@ -351,19 +351,30 @@ export class CountryService {
     
     // Apply default country if specified and country is available
     let detectedCountryCode = data.detectedCountryCode;
+    let detectedCountryConfig = data.detectedCountryConfig;
+    
     if (this.config.defaultCountry) {
       const defaultCountryExists = filteredCountries.some(country => 
         country.code === this.config.defaultCountry
       );
       if (defaultCountryExists) {
         detectedCountryCode = this.config.defaultCountry;
+        // Fetch the correct country config for the default country
+        try {
+          const defaultCountryData = await this.getCountryStates(this.config.defaultCountry);
+          detectedCountryConfig = defaultCountryData.countryConfig;
+        } catch (error) {
+          this.logger.warn(`Failed to fetch config for default country ${this.config.defaultCountry}, using fallback:`, error);
+          detectedCountryConfig = this.getDefaultCountryConfig(this.config.defaultCountry);
+        }
       }
     }
     
     return {
       ...data,
       countries: filteredCountries,
-      detectedCountryCode
+      detectedCountryCode,
+      detectedCountryConfig
     };
   }
 

@@ -5,7 +5,9 @@
 
 import { BaseEnhancer } from '../base/BaseEnhancer';
 import { AttributeParser } from '../base/AttributeParser';
-import type { FormatType } from './DisplayEnhancerTypes';
+import { FormatType, getPropertyConfig, type DisplayValue } from './DisplayEnhancerTypes';
+import { DisplayValueValidator } from '@/utils/validation/DisplayValueValidator';
+import { DisplayErrorBoundary } from './DisplayErrorBoundary';
 
 // =====================
 // DISPLAY FORMATTER
@@ -31,41 +33,52 @@ export class DisplayFormatter {
   });
 
   static formatValue(value: any, format: FormatType = 'auto'): string {
-    if (value === null || value === undefined) {
-      return '';
-    }
+    return DisplayErrorBoundary.wrap(() => {
+      if (value === null || value === undefined) {
+        return '';
+      }
 
-    switch (format) {
-      case 'currency':
-        return this.formatCurrency(value);
-      
-      case 'number':
-        return this.formatNumber(value);
-      
-      case 'boolean':
-        return this.formatBoolean(value);
-      
-      case 'date':
-        return this.formatDate(value);
-      
-      case 'percentage':
-        return this.formatPercentage(value);
-      
-      case 'auto':
-      default:
-        return this.formatAuto(value);
-    }
+      switch (format) {
+        case 'currency':
+          return this.formatCurrency(value);
+        
+        case 'number':
+          return this.formatNumber(value);
+        
+        case 'boolean':
+          return this.formatBoolean(value);
+        
+        case 'date':
+          return this.formatDate(value);
+        
+        case 'percentage':
+          return this.formatPercentage(value);
+        
+        case 'text':
+          return String(value);
+        
+        case 'auto':
+        default:
+          return this.formatAuto(value);
+      }
+    }, '', {
+      operation: 'formatValue',
+      value: String(value),
+      format: String(format)
+    });
   }
 
   static formatCurrency(value: any): string {
-    const numValue = this.toNumber(value);
-    if (isNaN(numValue)) return String(value);
+    // Check if already formatted
+    if (typeof value === 'string' && value.includes('$')) {
+      return value; // Already formatted, return as-is
+    }
+    const numValue = DisplayValueValidator.validateCurrency(value);
     return this.currencyFormatter.format(numValue);
   }
 
   static formatNumber(value: any): string {
-    const numValue = this.toNumber(value);
-    if (isNaN(numValue)) return String(value);
+    const numValue = DisplayValueValidator.validateNumber(value);
     return this.numberFormatter.format(numValue);
   }
 
@@ -94,8 +107,7 @@ export class DisplayFormatter {
   }
 
   static formatPercentage(value: any): string {
-    const numValue = this.toNumber(value);
-    if (isNaN(numValue)) return String(value);
+    const numValue = DisplayValueValidator.validatePercentage(value);
     return `${Math.round(numValue)}%`;
   }
 
@@ -150,15 +162,6 @@ export class DisplayFormatter {
     return String(value);
   }
 
-  private static toNumber(value: any): number {
-    if (typeof value === 'number') return value;
-    if (typeof value === 'string') {
-      // Remove currency symbols and spaces
-      const cleaned = value.replace(/[$,\s]/g, '');
-      return parseFloat(cleaned);
-    }
-    return parseFloat(value);
-  }
 }
 
 // =====================
@@ -237,6 +240,7 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
   protected divideBy?: number;
   protected multiplyBy?: number;
   protected lastValue?: any;
+  private debugMode = process.env.NODE_ENV === 'development';
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -263,8 +267,9 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
     this.property = parsed.property;
 
     // Parse formatting options - use explicit format or smart default
-    const explicitFormat = this.getAttribute('data-next-format') as FormatType;
-    this.formatType = explicitFormat || this.getDefaultFormatType(this.property || '');
+    const explicitFormat = (this.getAttribute('data-next-format') || this.getAttribute('data-format')) as FormatType;
+    const detectedFormat = this.getDefaultFormatType(this.property || '');
+    this.formatType = explicitFormat || detectedFormat;
     
     this.hideIfZero = this.getAttribute('data-hide-if-zero') === 'true';
     this.hideIfFalse = this.getAttribute('data-hide-if-false') === 'true';
@@ -281,6 +286,27 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
    * This enables smart formatting for common property patterns
    */
   protected getDefaultFormatType(property: string): FormatType {
+    // 1. Check if we have explicit format in property config
+    if (this.displayPath) {
+      const parts = this.displayPath.split('.');
+      if (parts.length >= 2) {
+        const [objectType, ...propParts] = parts;
+        let propName = propParts.join('.');
+        
+        // For selection properties, strip the selector ID to get the base property
+        // e.g., "selection.drone-packages.hasSelection" -> "hasSelection"
+        if (objectType === 'selection' && propParts.length >= 2) {
+          propName = propParts.slice(1).join('.');
+        }
+        
+        const config = getPropertyConfig(objectType as any, propName);
+        if (config?.format) {
+          return config.format;
+        }
+      }
+    }
+    
+    // 2. Fall back to name-based detection (existing logic)
     // Currency-related properties
     const currencyProperties = [
       'price',
@@ -314,17 +340,18 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
       return 'auto';
     }
     
-    // Check for currency properties
-    if (currencyProperties.some(term => propertyLower.includes(term))) {
-      return 'currency';
-    }
-    
-    // Check for percentage properties
+    // Check for percentage properties FIRST (before currency check)
+    // This ensures savingsPercentage is detected as percentage, not currency
     if (propertyLower.includes('percentage') || 
         propertyLower.includes('percent') ||
         propertyLower.endsWith('pct') ||
         propertyLower.endsWith('rate')) {
       return 'percentage';
+    }
+    
+    // Check for currency properties
+    if (currencyProperties.some(term => propertyLower.includes(term))) {
+      return 'currency';
     }
     
     // Check for boolean properties
@@ -362,6 +389,44 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
 
   protected abstract setupStoreSubscriptions(): void;
   protected abstract getPropertyValue(): any;
+  
+  protected getPropertyValueWithValidation(): any {
+    return DisplayErrorBoundary.wrap(() => {
+      const rawValue = this.getPropertyValue();
+      
+      // Get property config to check for validators and fallbacks
+      if (this.displayPath) {
+        const parsed = AttributeParser.parseDisplayPath(this.displayPath);
+        const config = getPropertyConfig(parsed.object as any, this.property || parsed.property);
+        
+        if (config) {
+          // Apply validator if present
+          let value = rawValue;
+          if (config.validator && value !== undefined && value !== null) {
+            try {
+              value = config.validator(value);
+            } catch (error) {
+              this.logger.warn(`Validator failed for ${this.displayPath}:`, error);
+              value = config.fallback;
+            }
+          }
+          
+          // Use fallback if value is null/undefined
+          if ((value === null || value === undefined) && config.fallback !== undefined) {
+            value = config.fallback;
+          }
+          
+          return value;
+        }
+      }
+      
+      return rawValue;
+    }, undefined, {
+      operation: 'getPropertyValueWithValidation',
+      property: this.property || 'unknown',
+      path: this.displayPath || 'unknown'
+    });
+  }
 
   protected async performInitialUpdate(): Promise<void> {
     await this.updateDisplay();
@@ -375,27 +440,80 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
     }
     
     try {
-      let value = this.getPropertyValue();
+      let value = this.getPropertyValueWithValidation();
+      
+      // Check if value is pre-formatted
+      if (value && typeof value === 'object' && '_preformatted' in value) {
+        // This is a pre-formatted value from cart store, skip formatting
+        const preformattedValue = value.value || '';
+        this.updateElementContent(preformattedValue);
+        this.showElement();
+        
+        // Add debug information if in dev mode
+        if (this.debugMode) {
+          this.element.setAttribute('data-format-debug', JSON.stringify({
+            path: this.displayPath,
+            property: this.property,
+            format: 'preformatted',
+            rawValue: value,
+            formattedValue: preformattedValue
+          }));
+        }
+        return;
+      }
+      
+      // Check if value is a structured DisplayValue object
+      let rawValue: any;
+      let structuredFormat: FormatType | undefined;
+      if (value && typeof value === 'object' && 'value' in value && 'format' in value) {
+        const displayValue = value as DisplayValue;
+        rawValue = displayValue.value;
+        structuredFormat = displayValue.format as FormatType;
+        // Apply metadata if present
+        if (displayValue.metadata) {
+          // Future: apply metadata to formatter
+        }
+      } else {
+        rawValue = value;
+      }
       
       // Apply mathematical transformations
-      if (typeof value === 'number' || (typeof value === 'string' && !isNaN(Number(value)))) {
-        const numValue = Number(value);
-        if (this.divideBy) value = numValue / this.divideBy;
-        if (this.multiplyBy) value = numValue * this.multiplyBy;
+      if (typeof rawValue === 'number' || (typeof rawValue === 'string' && !isNaN(Number(rawValue)))) {
+        const numValue = Number(rawValue);
+        if (this.divideBy) rawValue = numValue / this.divideBy;
+        if (this.multiplyBy) rawValue = numValue * this.multiplyBy;
       }
 
       // Skip update if value hasn't changed (performance optimization)
-      if (value === this.lastValue) return;
-      this.lastValue = value;
+      if (rawValue === this.lastValue) return;
+      this.lastValue = rawValue;
 
       // Handle conditional hiding
-      if (this.shouldHideElement(value)) {
+      if (this.shouldHideElement(rawValue)) {
         this.hideElement();
         return;
       }
 
       // Format and display value
-      const formattedValue = DisplayFormatter.formatValue(value, this.formatType);
+      // Use structured format if provided, otherwise fall back to detection
+      let effectiveFormatType = structuredFormat || this.formatType;
+      if (!structuredFormat && this.property && this.property.toLowerCase().includes('percentage') && this.formatType === 'auto') {
+        effectiveFormatType = 'percentage';
+      }
+      
+      const formattedValue = DisplayFormatter.formatValue(rawValue, effectiveFormatType);
+      
+      // Add debug information to element in development mode
+      if (this.debugMode) {
+        this.element.setAttribute('data-format-debug', JSON.stringify({
+          path: this.displayPath,
+          property: this.property,
+          format: effectiveFormatType,
+          rawValue: value,
+          formattedValue: formattedValue
+        }));
+      }
+      
       this.updateElementContent(formattedValue);
       this.showElement();
 

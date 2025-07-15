@@ -177,6 +177,11 @@ export class AttributeParser {
       types.push('accordion');
     }
 
+    // Check for tooltip enhancer
+    if (element.hasAttribute('data-next-tooltip')) {
+      types.push('tooltip');
+    }
+
     // Remove duplicates (just in case)
     return [...new Set(types)];
   }

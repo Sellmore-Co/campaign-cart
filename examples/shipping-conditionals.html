@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipping Conditionals Example</title>
+    
+    <!-- SDK Configuration -->
+    <meta name="next-api-key" content="kLGpgEfCX3iUZG16hpI5zrCH9qxcOdahDY1im6ud">
+    <meta name="next-campaign-id" content="1">
+    
+    <style>
+        .container { max-width: 800px; margin: 50px auto; padding: 20px; }
+        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; }
+        .shipping-info { padding: 10px; background: #f0f0f0; margin: 10px 0; }
+        .hidden { display: none; }
+        .package-card { 
+            border: 1px solid #ccc; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 8px;
+        }
+        .price-info { font-size: 18px; font-weight: bold; }
+        .shipping-badge { 
+            display: inline-block; 
+            padding: 5px 10px; 
+            border-radius: 4px; 
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        .free-shipping { background: #4CAF50; color: white; }
+        .paid-shipping { background: #2196F3; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Shipping Conditionals Example</h1>
+        
+        <!-- Cart-level shipping display -->
+        <div class="section">
+            <h2>Cart Shipping Status</h2>
+            
+            <p>
+                <strong>Shipping Cost:</strong> 
+                <span data-next-display="cart.shipping">$0.00</span>
+            </p>
+            
+            <p data-next-show="cart.shipping.raw === 0">
+                🚚 <strong>Free Shipping on your entire order!</strong>
+            </p>
+            
+            <p data-next-show="cart.shipping.raw > 0">
+                📦 Shipping charges apply to your order
+            </p>
+        </div>
+        
+        <!-- Package selector with shipping context -->
+        <div class="section">
+            <h2>Package Options with Shipping Context</h2>
+            
+            <div data-next-selector-id="shipping-packages" data-next-selection-mode="swap">
+                
+                <!-- Package with free shipping (shipping ID 1) -->
+                <div data-next-shipping-id="1" 
+                     data-next-selector-card="" 
+                     data-next-package-id="4" 
+                     data-next-quantity="1"
+                     class="package-card">
+                    
+                    <h3 data-next-display="package.name">Package Name</h3>
+                    
+                    <div class="price-info">
+                        <span data-next-display="package.price_total">$0.00</span>
+                        
+                        <!-- Shipping badge based on context -->
+                        <span data-next-show="shipping.isFree" class="shipping-badge free-shipping">
+                            FREE SHIPPING
+                        </span>
+                        <span data-next-hide="shipping.isFree" class="shipping-badge paid-shipping">
+                            + <span data-next-display="shipping.cost">$0.00</span> shipping
+                        </span>
+                    </div>
+                    
+                    <!-- Detailed shipping info -->
+                    <div data-next-show="shipping.isFree" class="shipping-info">
+                        ✅ This package includes FREE standard shipping!
+                    </div>
+                </div>
+                
+                <!-- Package with paid shipping (shipping ID 2) -->
+                <div data-next-shipping-id="2" 
+                     data-next-selector-card="" 
+                     data-next-package-id="3" 
+                     data-next-quantity="1"
+                     class="package-card">
+                    
+                    <h3 data-next-display="package.name">Package Name</h3>
+                    
+                    <div class="price-info">
+                        <span data-next-display="package.price_total">$0.00</span>
+                        
+                        <!-- Shipping badge based on context -->
+                        <span data-next-show="shipping.isFree" class="shipping-badge free-shipping">
+                            FREE SHIPPING
+                        </span>
+                        <span data-next-hide="shipping.isFree" class="shipping-badge paid-shipping">
+                            + <span data-next-display="shipping.cost">$0.00</span> shipping
+                        </span>
+                    </div>
+                    
+                    <!-- Detailed shipping info -->
+                    <div data-next-hide="shipping.isFree" class="shipping-info">
+                        📦 Express shipping: <span data-next-display="shipping.cost">$0.00</span>
+                        <br>Method: <span data-next-display="shipping.code">Express</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Advanced shipping conditionals -->
+        <div class="section">
+            <h2>Advanced Shipping Examples</h2>
+            
+            <!-- Example within shipping context -->
+            <div data-next-shipping-id="1">
+                <h3>Standard Shipping Context</h3>
+                
+                <div data-next-show="shipping.isFree">
+                    🎉 You selected our FREE standard shipping option!
+                </div>
+                
+                <div data-next-show="shipping.cost > 0">
+                    Shipping cost: <span data-next-display="shipping.cost">$0.00</span>
+                </div>
+                
+                <p>
+                    Shipping method: <span data-next-display="shipping.code">Standard</span>
+                    (ID: <span data-next-display="shipping.id">1</span>)
+                </p>
+            </div>
+            
+            <div data-next-shipping-id="2" style="margin-top: 20px;">
+                <h3>Express Shipping Context</h3>
+                
+                <div data-next-show="shipping.isFree">
+                    🎉 You selected our FREE express shipping option!
+                </div>
+                
+                <div data-next-show="shipping.cost > 0">
+                    Express shipping fee: <span data-next-display="shipping.cost">$0.00</span>
+                </div>
+                
+                <p>
+                    Shipping method: <span data-next-display="shipping.code">Express</span>
+                    (ID: <span data-next-display="shipping.id">2</span>)
+                </p>
+            </div>
+        </div>
+        
+        <!-- Debug information -->
+        <div class="section">
+            <h2>Debug Information</h2>
+            <button onclick="debugShipping()">Show Shipping Methods</button>
+            <div id="debug-output"></div>
+        </div>
+    </div>
+    
+    <!-- SDK Script -->
+    <script src="../dist/campaign-cart-next.js"></script>
+    
+    <script>
+        function debugShipping() {
+            if (window.next) {
+                const methods = next.getShippingMethods();
+                const selected = next.getSelectedShippingMethod();
+                
+                let html = '<h3>Available Shipping Methods:</h3>';
+                html += '<pre>' + JSON.stringify(methods, null, 2) + '</pre>';
+                html += '<h3>Currently Selected:</h3>';
+                html += '<pre>' + JSON.stringify(selected, null, 2) + '</pre>';
+                
+                document.getElementById('debug-output').innerHTML = html;
+                
+                // Also log to console
+                console.log('Shipping methods:', methods);
+                console.log('Selected method:', selected);
+            }
+        }
+        
+        // Auto-show debug info on load
+        window.nextReady = window.nextReady || [];
+        window.nextReady.push(function() {
+            console.log('SDK Ready - Shipping conditionals example');
+            setTimeout(debugShipping, 1000);
+        });
+    </script>
+</body>
+</html>

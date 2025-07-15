@@ -38,6 +38,7 @@ export class CheckoutValidator {
   private phoneInputManager?: any;
   private errorManager: ErrorDisplayManager;
   private creditCardService?: CreditCardService;
+  private phoneValidator?: (phoneNumber: string, type?: 'shipping' | 'billing') => boolean;
   
   // Validation rules for form fields
   private rules: Map<string, ValidationRule[]> = new Map();
@@ -62,6 +63,13 @@ export class CheckoutValidator {
    */
   public setCreditCardService(creditCardService: CreditCardService): void {
     this.creditCardService = creditCardService;
+  }
+
+  /**
+   * Set custom phone validator function
+   */
+  public setPhoneValidator(validator: (phoneNumber: string, type?: 'shipping' | 'billing') => boolean): void {
+    this.phoneValidator = validator;
   }
 
   // ============================================================================
@@ -184,7 +192,9 @@ export class CheckoutValidator {
     if (formData.phone) {
       let phoneIsValid = false;
       
-      if (this.phoneInputManager) {
+      if (this.phoneValidator) {
+        phoneIsValid = this.phoneValidator(formData.phone, 'shipping');
+      } else if (this.phoneInputManager) {
         phoneIsValid = this.phoneInputManager.validatePhoneNumber(true);
         const formattedPhone = this.phoneInputManager.getFormattedPhoneNumber(true);
         if (formattedPhone) {
@@ -406,6 +416,22 @@ export class CheckoutValidator {
         }
       }
     });
+    
+    // Validate billing phone
+    if (billingAddress?.phone) {
+      let phoneIsValid = false;
+      
+      if (this.phoneValidator) {
+        phoneIsValid = this.phoneValidator(billingAddress.phone, 'billing');
+      } else {
+        phoneIsValid = this.isValidPhone(billingAddress.phone);
+      }
+      
+      if (!phoneIsValid) {
+        errors.phone = 'Please enter a valid billing phone number';
+        isValid = false;
+      }
+    }
     
     // Validate billing postal code
     if (billingAddress?.postal && billingAddress?.country) {

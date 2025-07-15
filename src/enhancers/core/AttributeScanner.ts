@@ -78,6 +78,7 @@ export class AttributeScanner {
         '[data-next-coupon="input"]',
         '[data-next-coupon=""]',
         '[data-next-accordion]',
+        '[data-next-tooltip]',
         '[data-next-express-checkout="container"]'
       ].join(', ');
       
@@ -359,6 +360,10 @@ export class AttributeScanner {
         case 'accordion':
           const { AccordionEnhancer } = await import('@/enhancers/ui/AccordionEnhancer');
           return new AccordionEnhancer(element);
+
+        case 'tooltip':
+          const { TooltipEnhancer } = await import('@/enhancers/ui/TooltipEnhancer');
+          return new TooltipEnhancer(element);
           
         default:
           this.logger.warn(`Unknown enhancer type: ${type}`);

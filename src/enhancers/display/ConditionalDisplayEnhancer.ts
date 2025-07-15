@@ -9,6 +9,7 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
 import { AttributeParser } from '../base/AttributeParser';
 import { PropertyResolver } from './DisplayEnhancerCore';
+import { getPropertyConfig } from './DisplayEnhancerTypes';
 import { PackageContextResolver } from '@/utils/dom/PackageContextResolver';
 import { PriceCalculator } from '@/utils/calculations/PriceCalculator';
 import { useCartStore } from '@/stores/cartStore';
@@ -683,7 +684,30 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
         case 'hasSavings':
           return cartState.totals.hasSavings;
         default:
-          // Try nested property access using PropertyResolver
+          // Check for mapped properties first
+          const config = getPropertyConfig('cart', property);
+          if (config) {
+            const { path, validator } = config;
+            
+            // Handle negation
+            if (path.startsWith('!')) {
+              const actualPath = path.substring(1);
+              const value = PropertyResolver.getNestedProperty(cartState, actualPath);
+              return !value;
+            }
+            
+            // Get the value using the mapped path
+            let value = PropertyResolver.getNestedProperty(cartState, path);
+            
+            // Apply validator if present
+            if (validator && value !== undefined) {
+              value = validator(value);
+            }
+            
+            return value;
+          }
+          
+          // Fallback to direct property access for unmapped properties
           return PropertyResolver.getNestedProperty(cartState, property);
       }
     }

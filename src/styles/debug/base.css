@@ -23,19 +23,19 @@
 }
 
 .enhanced-debug-overlay.expanded {
-  height: 60vh;
-  min-height: 500px;
-  max-height: calc(100vh - 100px);
+  height: 40vh;
+  min-height: 450px;
+  max-height: calc(100vh - 120px);
 }
 
 /* Adjust body when debug overlay is expanded */
 body:has(.enhanced-debug-overlay.expanded) {
-  padding-bottom: 60vh;
+  padding-bottom: 40vh;
 }
 
 /* Fallback for browsers that don't support :has() */
 .debug-body-expanded {
-  padding-bottom: 60vh !important;
+  padding-bottom: 40vh !important;
   box-sizing: border-box;
 }
 
@@ -162,6 +162,16 @@ html.debug-body-expanded {
   background: rgba(60, 125, 255, 0.2);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(60, 125, 255, 0.3);
+}
+
+.debug-control-btn.active {
+  background: rgba(60, 125, 255, 0.3);
+  color: #87b4ff;
+  box-shadow: inset 0 0 0 1px rgba(60, 125, 255, 0.5);
+}
+
+.debug-control-btn.active:hover {
+  background: rgba(60, 125, 255, 0.4);
 }
 
 .debug-expand-btn {

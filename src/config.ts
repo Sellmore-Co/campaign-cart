@@ -57,6 +57,13 @@ const config = {
             pixelId: "286865669194576"
           }
         },
+        rudderstack: {
+          enabled: true,
+          settings: {
+            // RudderStack configuration is handled by the RudderStack SDK itself
+            // This just enables the adapter
+          }
+        },
         custom: {
           enabled: false,
           settings: {

@@ -57,6 +57,9 @@ const initialState: CartState = {
     savingsPercentage: { value: 0, formatted: '0%' },
     compareTotal: { value: 0, formatted: '$0.00' },
     hasSavings: false,
+    totalSavings: { value: 0, formatted: '$0.00' },
+    totalSavingsPercentage: { value: 0, formatted: '0%' },
+    hasTotalSavings: false,
   },
 };
 
@@ -275,6 +278,11 @@ const cartStoreInstance = create<CartState & CartActions>()(
         
         const total = subtotal + shipping + tax - totalDiscounts;
         
+        // Calculate total savings (retail savings + discount coupons)
+        const totalSavings = savings + totalDiscounts;
+        const totalSavingsPercentage = compareTotal > 0 ? (totalSavings / compareTotal) * 100 : 0;
+        const hasTotalSavings = totalSavings > 0;
+        
         const totals: CartTotals = {
           subtotal: { value: subtotal, formatted: formatCurrency(subtotal) },
           shipping: { value: shipping, formatted: formatCurrency(shipping) },
@@ -287,6 +295,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
           savingsPercentage: { value: savingsPercentage, formatted: `${Math.round(savingsPercentage)}%` },
           compareTotal: { value: compareTotal, formatted: formatCurrency(compareTotal) },
           hasSavings,
+          totalSavings: { value: totalSavings, formatted: formatCurrency(totalSavings) },
+          totalSavingsPercentage: { value: totalSavingsPercentage, formatted: `${Math.round(totalSavingsPercentage)}%` },
+          hasTotalSavings,
         };
         
         set({
@@ -323,6 +334,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
               savingsPercentage: { value: 0, formatted: '0%' },
               compareTotal: { value: 0, formatted: '$0.00' },
               hasSavings: false,
+              totalSavings: { value: 0, formatted: '$0.00' },
+              totalSavingsPercentage: { value: 0, formatted: '0%' },
+              hasTotalSavings: false,
             }
           });
         }
@@ -668,6 +682,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
         appliedCoupons: state.appliedCoupons,
         subtotal: state.subtotal,
         shipping: state.shipping,
+        shippingMethod: state.shippingMethod, // Include shipping method to persist selection
         tax: state.tax,
         total: state.total,
         totalQuantity: state.totalQuantity,

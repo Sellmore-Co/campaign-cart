@@ -35,7 +35,9 @@ export class PriceCalculator {
   static calculateSavingsPercentage(retailPrice: number, currentPrice: number): number {
     const savings = this.calculateSavings(retailPrice, currentPrice);
     if (retailPrice <= 0 || savings <= 0) return 0;
-    return (savings / retailPrice) * 100;
+    // Return rounded percentage to avoid decimal confusion with currency formatting
+    const percentage = (savings / retailPrice) * 100;
+    return Math.round(percentage);
   }
 
   /**

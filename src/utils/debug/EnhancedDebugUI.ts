@@ -48,10 +48,6 @@ export class EnhancedDebugUI {
             <span class="stat-value" data-debug-stat="enhanced-elements">0</span>
             <span class="stat-label">Enhanced</span>
           </div>
-          <div class="stat-item">
-            <span class="stat-value" data-debug-stat="api-requests">0</span>
-            <span class="stat-label">Requests</span>
-          </div>
         </div>
 
         <div class="debug-controls">
@@ -65,14 +61,14 @@ export class EnhancedDebugUI {
               <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>
           </button>
-          <button class="debug-control-btn" data-action="highlight-elements" title="Highlight Enhanced Elements">
+          <button class="debug-control-btn" data-action="toggle-xray" title="Toggle X-Ray View">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              <path d="M5 3C3.89 3 3 3.9 3 5V19C3 20.11 3.89 21 5 21H19C20.11 21 21 20.11 21 19V5C21 3.9 20.11 3 19 3H5M5 5H19V19H5V5M7 7V9H9V7H7M11 7V9H13V7H11M15 7V9H17V7H15M7 11V13H9V11H7M11 11V13H13V11H11M15 11V13H17V11H15M7 15V17H9V15H7M11 15V17H13V15H11M15 15V17H17V15H15Z"/>
             </svg>
           </button>
           <button class="debug-control-btn" data-action="export-data" title="Export Debug Data">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+              <path d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z"/>
             </svg>
           </button>
           <button class="debug-expand-btn" data-action="toggle-expand" title="${isExpanded ? 'Collapse' : 'Expand'}">
@@ -100,20 +96,6 @@ export class EnhancedDebugUI {
       <div class="debug-expanded-content">
         <div class="debug-sidebar">
           ${this.createPanelTabs(panels, activePanelId)}
-          <div class="debug-sidebar-footer">
-            <button class="sidebar-btn" data-action="reset-all">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19,8L15,12H18A6,6 0 0,1 12,18C11,18 10.03,17.75 9.2,17.3L7.74,18.76C8.97,19.54 10.43,20 12,20A8,8 0 0,0 20,12H23L19,8M5,12A8,8 0 0,1 12,4C13,4 13.97,4.25 14.8,4.7L16.26,3.24C15.03,2.46 13.57,2 12,2A10,10 0 0,0 2,12H5L1,16L5,20V12Z"/>
-              </svg>
-              Reset All
-            </button>
-            <button class="sidebar-btn" data-action="settings">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
-              </svg>
-              Settings
-            </button>
-          </div>
         </div>
         
         <div class="debug-main-content">

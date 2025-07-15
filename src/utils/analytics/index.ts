@@ -1,5 +1,5 @@
 /**
- * Next Analyticsv v0.2.0 - Clean, Elevar-inspired analytics system
+ * Next Analytics v2 - Clean, Elevar-inspired analytics system
  * 
  * This is the main entry point for the analytics system.
  * It provides a simple API for tracking events following industry best practices.
@@ -8,6 +8,8 @@
 import { dataLayer } from './DataLayerManager';
 import { GTMAdapter } from './providers/GTMAdapter';
 import { FacebookAdapter } from './providers/FacebookAdapter';
+import { RudderStackAdapter } from './providers/RudderStackAdapter';
+import { NextCampaignAdapter } from './providers/NextCampaignAdapter';
 import { CustomAdapter } from './providers/CustomAdapter';
 import { ListAttributionTracker } from './tracking/ListAttributionTracker';
 import { ViewItemListTracker } from './tracking/ViewItemListTracker';
@@ -103,6 +105,15 @@ export class NextAnalytics {
    * Initialize analytics providers
    */
   private async initializeProviders(config: any): Promise<void> {
+    // NextCampaign Adapter (29Next's own analytics)
+    if (config.providers?.nextCampaign?.enabled) {
+      const nextCampaignAdapter = new NextCampaignAdapter();
+      await nextCampaignAdapter.initialize();
+      this.providers.set('nextCampaign', nextCampaignAdapter);
+      dataLayer.addProvider(nextCampaignAdapter);
+      logger.info('NextCampaign adapter initialized');
+    }
+
     // GTM Adapter
     if (config.providers?.gtm?.enabled) {
       const gtmAdapter = new GTMAdapter();
@@ -117,6 +128,14 @@ export class NextAnalytics {
       this.providers.set('facebook', fbAdapter);
       dataLayer.addProvider(fbAdapter);
       logger.info('Facebook Pixel adapter initialized');
+    }
+
+    // RudderStack Adapter
+    if (config.providers?.rudderstack?.enabled) {
+      const rudderAdapter = new RudderStackAdapter();
+      this.providers.set('rudderstack', rudderAdapter);
+      dataLayer.addProvider(rudderAdapter);
+      logger.info('RudderStack adapter initialized');
     }
 
     // Custom Adapter

@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Attributes Showcase - Campaign Cart SDK v2</title>
+    
+    <!-- Load Campaign Cart SDK -->
+    <script src="https://campaign-cart-v2.pages.dev/config.js"></script>
+    <script src="https://campaign-cart-v2.pages.dev/loader.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .section h2 {
+            color: #333;
+            border-bottom: 2px solid #007acc;
+            padding-bottom: 10px;
+        }
+        .example-box {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #007acc;
+            border-radius: 4px;
+        }
+        .attribute-group {
+            margin-bottom: 20px;
+        }
+        .attribute-group h4 {
+            margin-bottom: 10px;
+            color: #555;
+        }
+        .code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .demo-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+            background: white;
+        }
+        .hidden { display: none; }
+        .next-hidden { display: none; }
+        .next-visible { display: block; }
+        .display-hidden { display: none; }
+        .display-visible { display: inline; }
+        .next-condition-met { border-left: 4px solid green; }
+        .next-condition-not-met { border-left: 4px solid red; }
+        .os-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .os-card:hover {
+            border-color: #007acc;
+            box-shadow: 0 2px 8px rgba(0,122,204,0.2);
+        }
+        .os-card.next-selected {
+            border-color: #007acc;
+            background: #f0f8ff;
+        }
+        .os-card__content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .os-card__pricing {
+            text-align: right;
+            margin-left: auto;
+        }
+        .os-card__price.os--compare {
+            text-decoration: line-through;
+            color: #999;
+            font-size: 0.9em;
+        }
+        .os-card__price.os--current {
+            font-weight: bold;
+            color: #007acc;
+            font-size: 1.1em;
+        }
+        .os-card__total-compare {
+            text-decoration: line-through;
+            color: #999;
+            font-size: 0.9em;
+        }
+        .os-card__total-current {
+            font-weight: bold;
+            color: #007acc;
+            font-size: 1.2em;
+        }
+        .radio-style-1 {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ddd;
+            border-radius: 50%;
+            position: relative;
+        }
+        .next-selected .radio-style-1 {
+            border-color: #007acc;
+        }
+        .next-selected .radio-style-1 .radio-inner {
+            width: 10px;
+            height: 10px;
+            background: #007acc;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .cart-summary {
+            background: #f0f8ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .savings-badge {
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Complete Attributes Showcase - Campaign Cart SDK v2</h1>
+    <p>This page demonstrates ALL available attributes for cart, package, order, and selection display modes, including calculated fields.</p>
+
+    <!-- ========================================= -->
+    <!-- PACKAGE ATTRIBUTES SECTION -->
+    <!-- ========================================= -->
+    <div class="section">
+        <h2>📦 Package Attributes</h2>
+        <p>Display package/product data with context awareness. These work within package context (e.g., inside selector cards).</p>
+
+        <!-- Package Selector Example -->
+        <div data-next-selector-id="drone-packages" data-next-cart-selector="" data-next-selection-mode="swap" class="os-option">
+            <h3>Package Selector with All Attributes</h3>
+            
+            <!-- Package Option 1 -->
+            <div data-next-selector-card="" data-next-package-id="4" data-next-quantity="1" data-next-selected="true" data-next-shipping-id="1" class="os-card next-selector-card">
+                <div class="os-card__content">
+                    <div class="radio-style-1">
+                        <div class="radio-inner"></div>
+                    </div>
+                    <div>
+                        <img data-next-display="package.image" style="width: 60px; height: 60px;" alt="Product image">
+                    </div>
+                    <div style="flex: 1;">
+                        <h4 data-next-display="package.name">3x Drone Package</h4>
+                        <div data-next-show="package.hasSavings" class="savings-badge">
+                            SAVE <span data-next-display="package.savingsPercentage">60%</span>
+                        </div>
+                        <p>Quantity: <span data-next-display="package.qty">3</span> units</p>
+                        <!-- NEW: Shipping info -->
+                        <p data-next-show="shipping.isFree" style="color: green; font-size: 0.9em;">✓ FREE Standard Shipping</p>
+                        <p data-next-hide="shipping.isFree" style="color: #666; font-size: 0.9em;">+ <span data-next-display="shipping.cost">$0.00</span> shipping</p>
+                    </div>
+                    <div class="os-card__pricing">
+                        <div data-next-show="package.hasRetailPrice" data-next-display="package.price_retail" class="os-card__price os--compare">$39.99</div>
+                        <div class="os-card__price os--current">
+                            <span data-next-display="package.price">$15.99</span>/ea
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <div>Total:</div>
+                            <div data-next-show="package.hasRetailPrice" data-next-display="package.price_retail_total" class="os-card__total-compare">$119.97</div>
+                            <div data-next-display="package.price_total" class="os-card__total-current">$47.97</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Package Option 2 -->
+            <div data-next-selector-card="" data-next-package-id="3" data-next-quantity="1" data-next-shipping-id="2" class="os-card next-selector-card">
+                <div class="os-card__content">
+                    <div class="radio-style-1">
+                        <div class="radio-inner"></div>
+                    </div>
+                    <div>
+                        <img data-next-display="package.image" style="width: 60px; height: 60px;" alt="Product image">
+                    </div>
+                    <div style="flex: 1;">
+                        <h4 data-next-display="package.name">2x Drone Package</h4>
+                        <div data-next-show="package.hasSavings" class="savings-badge">
+                            SAVE <span data-next-display="package.savingsPercentage">55%</span>
+                        </div>
+                        <p>Quantity: <span data-next-display="package.qty">2</span> units</p>
+                        <!-- NEW: Shipping info -->
+                        <p data-next-show="shipping.isFree" style="color: green; font-size: 0.9em;">✓ FREE Express Shipping</p>
+                        <p data-next-hide="shipping.isFree" style="color: #666; font-size: 0.9em;">+ <span data-next-display="shipping.cost">$12.99</span> express shipping</p>
+                    </div>
+                    <div class="os-card__pricing">
+                        <div data-next-show="package.hasRetailPrice" data-next-display="package.price_retail" class="os-card__price os--compare">$39.99</div>
+                        <div class="os-card__price os--current">
+                            <span data-next-display="package.price">$17.99</span>/ea
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <div>Total:</div>
+                            <div data-next-show="package.hasRetailPrice" data-next-display="package.price_retail_total" class="os-card__total-compare">$79.98</div>
+                            <div data-next-display="package.price_total" class="os-card__total-current">$35.98</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>📋 Basic Package Properties</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="package.name"</span> - Package name</p>
+                <p><span class="code">data-next-display="package.image"</span> - Package image URL</p>
+                <p><span class="code">data-next-display="package.qty"</span> - Number of units in package</p>
+                <p><span class="code">data-next-display="package.external_id"</span> - External/SKU ID</p>
+                <p><span class="code">data-next-display="package.ref_id"</span> - Internal reference ID</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>💰 Pricing Properties</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="package.price"</span> - Per-unit price (formatted)</p>
+                <p><span class="code">data-next-display="package.price_total"</span> - Total package price (formatted)</p>
+                <p><span class="code">data-next-display="package.price_retail"</span> - Per-unit retail price (formatted)</p>
+                <p><span class="code">data-next-display="package.price_retail_total"</span> - Total retail price (formatted)</p>
+                <p><span class="code">data-next-display="package.unitPrice"</span> - Same as package.price (alias)</p>
+                <p><span class="code">data-next-display="package.packageTotal"</span> - Same as package.price_total (alias)</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🎯 Calculated Fields</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="package.savingsAmount"</span> - Total savings amount (formatted)</p>
+                <p><span class="code">data-next-display="package.savingsPercentage"</span> - Savings percentage (formatted)</p>
+                <p><span class="code">data-next-display="package.unitSavings"</span> - Per-unit savings amount</p>
+                <p><span class="code">data-next-display="package.unitSavingsPercentage"</span> - Per-unit savings percentage</p>
+                <p><span class="code">data-next-display="package.unitRetailPrice"</span> - Per-unit retail price</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>✅ Boolean Properties (for conditionals)</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-show="package.hasSavings"</span> - Show if package has savings</p>
+                <p><span class="code">data-next-show="package.hasRetailPrice"</span> - Show if retail price exists</p>
+                <p><span class="code">data-next-show="package.isBundle"</span> - Show if qty > 1</p>
+                <p><span class="code">data-next-show="package.isRecurring"</span> - Show if subscription</p>
+                <p><span class="code">data-next-show="package.isOneTime"</span> - Show if one-time purchase</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🔢 Raw Values (unformatted)</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="package.price.raw"</span> - Raw price value</p>
+                <p><span class="code">data-next-display="package.savingsAmount.raw"</span> - Raw savings amount</p>
+                <p><span class="code">data-next-display="package.savingsPercentage.raw"</span> - Raw savings percentage</p>
+                <p><span class="code">data-next-display="package.unitPrice.raw"</span> - Raw unit price</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- SELECTION ATTRIBUTES SECTION -->
+    <!-- ========================================= -->
+    <div class="section">
+        <h2>🎯 Selection Attributes</h2>
+        <p>Display data based on currently selected package in a selector. Updates when selection changes.</p>
+
+        <div class="demo-card">
+            <h3>Selection-Based Display (Updates with Selection Above)</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h4>Basic Selection Info:</h4>
+                    <p>Selected Package: <span data-next-display="selection.drone-packages.name">None</span></p>
+                    <p>Package ID: <span data-next-display="selection.drone-packages.packageId">None</span></p>
+                    <p>Quantity: <span data-next-display="selection.drone-packages.quantity">0</span></p>
+                    <p>Has Selection: <span data-next-display="selection.drone-packages.hasSelection">false</span></p>
+                </div>
+                <div>
+                    <h4>Selection Pricing:</h4>
+                    <p>Unit Price: <span data-next-display="selection.drone-packages.price">$0.00</span></p>
+                    <p>Total: <span data-next-display="selection.drone-packages.total">$0.00</span></p>
+                    <p>Compare Total: <span data-next-display="selection.drone-packages.compareTotal">$0.00</span></p>
+                    <p>Savings: <span data-next-display="selection.drone-packages.savingsAmount">$0.00</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>📋 Basic Selection Properties</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="selection.{selectorId}.name"</span> - Selected package name</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.packageId"</span> - Selected package ID</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.quantity"</span> - Selected quantity</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.hasSelection"</span> - Whether something is selected</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>💰 Selection Pricing</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="selection.{selectorId}.price"</span> - Unit price of selection</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.total"</span> - Total price of selection</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.compareTotal"</span> - Compare/retail total</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.unitPrice"</span> - Price per unit</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🎯 Selection Calculated Fields</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="selection.{selectorId}.savingsAmount"</span> - Total savings</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.savingsPercentage"</span> - Savings percentage</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.hasSavings"</span> - Has savings boolean</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.isBundle"</span> - Is multi-pack</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.totalUnits"</span> - Total units selected</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>📊 Advanced Selection Calculations</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="selection.{selectorId}.monthlyPrice"</span> - Monthly cost calculation</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.yearlyPrice"</span> - Yearly cost calculation</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.pricePerDay"</span> - Daily cost calculation</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.savingsPerUnit"</span> - Savings per unit</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🧮 Mathematical Expressions</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="selection.{selectorId}.total*0.1"</span> - 10% of total</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.price+5"</span> - Price plus $5</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.total-10"</span> - Total minus $10</p>
+                <p><span class="code">data-next-display="selection.{selectorId}.total/2"</span> - Half of total</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- CART ATTRIBUTES SECTION -->
+    <!-- ========================================= -->
+    <div class="section">
+        <h2>🛒 Cart Attributes</h2>
+        <p>Display cart totals, quantities, and calculated values. Updates automatically when cart changes.</p>
+
+        <div class="cart-summary">
+            <h3>Cart Summary (Live Updates)</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                <div>
+                    <h4>Cart Status:</h4>
+                    <p>Is Empty: <span data-next-display="cart.isEmpty">true</span></p>
+                    <p>Has Items: <span data-next-display="cart.hasItems">false</span></p>
+                    <p>Item Count: <span data-next-display="cart.itemCount">0</span></p>
+                    <p>Total Quantity: <span data-next-display="cart.quantity">0</span></p>
+                </div>
+                <div>
+                    <h4>Cart Totals:</h4>
+                    <p>Subtotal: <span data-next-display="cart.subtotal">$0.00</span></p>
+                    <p>Total: <span data-next-display="cart.total">$0.00</span></p>
+                    <p>Shipping: <span data-next-display="cart.shipping">$0.00</span></p>
+                    <p>Tax: <span data-next-display="cart.tax">$0.00</span></p>
+                    <p>Discounts: <span data-next-display="cart.discounts">$0.00</span></p>
+                </div>
+                <div>
+                    <h4>Cart Savings:</h4>
+                    <p>Has Savings: <span data-next-display="cart.hasSavings">false</span></p>
+                    <p>Savings Amount: <span data-next-display="cart.savingsAmount">$0.00</span></p>
+                    <p>Savings %: <span data-next-display="cart.savingsPercentage">0%</span></p>
+                    <p>Compare Total: <span data-next-display="cart.compareTotal">$0.00</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>📊 Cart Status Properties</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="cart.isEmpty"</span> - Whether cart is empty</p>
+                <p><span class="code">data-next-display="cart.hasItems"</span> - Whether cart has items</p>
+                <p><span class="code">data-next-display="cart.itemCount"</span> - Number of different items</p>
+                <p><span class="code">data-next-display="cart.quantity"</span> - Total quantity of all items</p>
+                <p><span class="code">data-next-display="cart.count"</span> - Same as quantity (alias)</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>💰 Cart Financial Totals</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="cart.subtotal"</span> - Cart subtotal (formatted)</p>
+                <p><span class="code">data-next-display="cart.total"</span> - Cart total (formatted)</p>
+                <p><span class="code">data-next-display="cart.shipping"</span> - Shipping cost (formatted)</p>
+                <p><span class="code">data-next-display="cart.tax"</span> - Tax amount (formatted)</p>
+                <p><span class="code">data-next-display="cart.discounts"</span> - Discount amount (formatted)</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🎯 Cart Savings & Compare</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="cart.hasSavings"</span> - Whether cart has savings</p>
+                <p><span class="code">data-next-display="cart.savingsAmount"</span> - Total savings (formatted)</p>
+                <p><span class="code">data-next-display="cart.savingsPercentage"</span> - Savings percentage (formatted)</p>
+                <p><span class="code">data-next-display="cart.compareTotal"</span> - Compare-at total (formatted)</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🔢 Raw Cart Values</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="cart.total.raw"</span> - Raw total value</p>
+                <p><span class="code">data-next-display="cart.subtotal.raw"</span> - Raw subtotal value</p>
+                <p><span class="code">data-next-display="cart.shipping.raw"</span> - Raw shipping value</p>
+                <p><span class="code">data-next-display="cart.tax.raw"</span> - Raw tax value</p>
+                <p><span class="code">data-next-display="cart.discounts.raw"</span> - Raw discounts value</p>
+                <p><span class="code">data-next-display="cart.savingsAmount.raw"</span> - Raw savings amount</p>
+                <p><span class="code">data-next-display="cart.savingsPercentage.raw"</span> - Raw savings percentage</p>
+                <p><span class="code">data-next-display="cart.compareTotal.raw"</span> - Raw compare total</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- ORDER ATTRIBUTES SECTION -->
+    <!-- ========================================= -->
+    <div class="section">
+        <h2>📋 Order Attributes</h2>
+        <p>Display order confirmation data. Requires order ID in URL (?ref_id=ORDER_ID) or manual loading.</p>
+
+        <div class="demo-card">
+            <h3>Order Information (Requires Order Data)</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h4>Basic Order Info:</h4>
+                    <p>Order Number: <span data-next-display="order.number">Loading...</span></p>
+                    <p>Order ID: <span data-next-display="order.refId">Loading...</span></p>
+                    <p>Status: <span data-next-display="order.status">Loading...</span></p>
+                    <p>Created: <span data-next-display="order.createdAt">Loading...</span></p>
+                    <p data-next-show="order.isTest" class="savings-badge">🧪 TEST ORDER</p>
+                </div>
+                <div>
+                    <h4>Order Totals:</h4>
+                    <p>Total (incl. tax): <span data-next-display="order.total">Loading...</span></p>
+                    <p>Subtotal (excl. tax): <span data-next-display="order.subtotal">Loading...</span></p>
+                    <p>Tax: <span data-next-display="order.tax">Loading...</span></p>
+                    <p>Shipping (incl. tax): <span data-next-display="order.shipping">Loading...</span></p>
+                    <p>Shipping (excl. tax): <span data-next-display="order.shippingExclTax">Loading...</span></p>
+                    <p>Shipping Tax: <span data-next-display="order.shippingTax">Loading...</span></p>
+                </div>
+            </div>
+            <div>
+                <h4>Customer Info:</h4>
+                <p>Name: <span data-next-display="order.customer.name">Loading...</span></p>
+                <p>Email: <span data-next-display="order.customer.email">Loading...</span></p>
+                <p>Phone: <span data-next-display="order.customer.phone">Loading...</span></p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>📋 Basic Order Properties</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="order.number"</span> - Order number</p>
+                <p><span class="code">data-next-display="order.refId"</span> - Order reference ID</p>
+                <p><span class="code">data-next-display="order.status"</span> - Order status</p>
+                <p><span class="code">data-next-display="order.createdAt"</span> - Order date from metadata timestamp (formatted)</p>
+                <p><span class="code">data-next-display="order.currency"</span> - Order currency</p>
+                <p><span class="code">data-next-display="order.paymentMethod"</span> - Payment method used</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>💰 Order Financial Data</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="order.total"</span> - Order total including tax (formatted)</p>
+                <p><span class="code">data-next-display="order.subtotal"</span> - Order subtotal excluding tax (formatted)</p>
+                <p><span class="code">data-next-display="order.tax"</span> - Tax amount (formatted)</p>
+                <p><span class="code">data-next-display="order.shipping"</span> - Shipping cost including tax (formatted)</p>
+                <p><span class="code">data-next-display="order.shippingExclTax"</span> - Shipping cost excluding tax (formatted)</p>
+                <p><span class="code">data-next-display="order.shippingTax"</span> - Shipping tax amount (formatted)</p>
+                <p><span class="code">data-next-display="order.discounts"</span> - Discount amount (formatted)</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🔢 Raw Order Financial Values</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="order.total.raw"</span> - Raw total including tax</p>
+                <p><span class="code">data-next-display="order.subtotal.raw"</span> - Raw subtotal excluding tax</p>
+                <p><span class="code">data-next-display="order.tax.raw"</span> - Raw tax amount</p>
+                <p><span class="code">data-next-display="order.shipping.raw"</span> - Raw shipping including tax</p>
+                <p><span class="code">data-next-display="order.shippingExclTax.raw"</span> - Raw shipping excluding tax</p>
+                <p><span class="code">data-next-display="order.shippingTax.raw"</span> - Raw shipping tax</p>
+                <p><span class="code">data-next-display="order.discounts.raw"</span> - Raw discount amount</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>👤 Customer Information</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="order.customer.name"</span> - Full customer name</p>
+                <p><span class="code">data-next-display="order.customer.firstName"</span> - First name only</p>
+                <p><span class="code">data-next-display="order.customer.lastName"</span> - Last name only</p>
+                <p><span class="code">data-next-display="order.customer.email"</span> - Customer email</p>
+                <p><span class="code">data-next-display="order.customer.phone"</span> - Customer phone</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🏠 Address Information</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="order.shippingAddress.full"</span> - Full shipping address</p>
+                <p><span class="code">data-next-display="order.shippingAddress.line1"</span> - Address line 1</p>
+                <p><span class="code">data-next-display="order.shippingAddress.city"</span> - City</p>
+                <p><span class="code">data-next-display="order.shippingAddress.state"</span> - State/Province</p>
+                <p><span class="code">data-next-display="order.shippingAddress.country"</span> - Country</p>
+                <p><span class="code">data-next-display="order.billingAddress.full"</span> - Full billing address</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>📦 Order Items</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="order.items.count"</span> - Number of line items</p>
+                <p><span class="code">data-next-display="order.items.totalQuantity"</span> - Total quantity ordered</p>
+                <p><span class="code">data-next-display="order.items.mainProduct"</span> - First product title</p>
+                <p><span class="code">data-next-display="order.items[0].title"</span> - First item title</p>
+                <p><span class="code">data-next-display="order.items[0].quantity"</span> - First item quantity</p>
+                <p><span class="code">data-next-display="order.items[0].price"</span> - First item price including tax</p>
+                <p><span class="code">data-next-display="order.items[0].priceExclTax"</span> - First item price excluding tax</p>
+                <p><span class="code">data-next-display="order.items[0].total"</span> - First item total including tax</p>
+                <p><span class="code">data-next-display="order.items[0].totalExclTax"</span> - First item total excluding tax</p>
+                <p><span class="code">data-next-display="order.items[0].priceExclTaxExclDiscounts"</span> - Price excluding tax and discounts</p>
+                <p><span class="code">data-next-display="order.items[0].priceInclTaxExclDiscounts"</span> - Price including tax, excluding discounts</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>✅ Order Boolean Properties</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-show="order.isTest"</span> - Show if test order</p>
+                <p><span class="code">data-next-show="order.hasItems"</span> - Show if order has items</p>
+                <p><span class="code">data-next-show="order.hasShipping"</span> - Show if shipping charged</p>
+                <p><span class="code">data-next-show="order.hasTax"</span> - Show if tax charged</p>
+                <p><span class="code">data-next-show="order.hasUpsells"</span> - Show if order has upsells</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- SHIPPING ATTRIBUTES SECTION -->
+    <!-- ========================================= -->
+    <div class="section">
+        <h2>🚚 Shipping Attributes</h2>
+        <p>Display shipping information based on data-next-shipping-id context. These attributes work within elements that have a shipping context.</p>
+
+        <div class="demo-card">
+            <h3>Shipping Context Examples</h3>
+            
+            <!-- Standard Shipping Context -->
+            <div data-next-shipping-id="1" style="padding: 15px; border: 1px solid #ddd; margin: 10px 0;">
+                <h4>Standard Shipping (ID: 1)</h4>
+                <p>Method: <span data-next-display="shipping.code">Standard</span></p>
+                <p>Cost: <span data-next-display="shipping.cost">$0.00</span></p>
+                <p>Raw Cost: <span data-next-display="shipping.cost.raw">0</span></p>
+                <div data-next-show="shipping.isFree" style="color: green;">
+                    ✓ This shipping method is FREE!
+                </div>
+                <div data-next-hide="shipping.isFree" style="color: red;">
+                    This shipping method has a cost.
+                </div>
+            </div>
+            
+            <!-- Express Shipping Context -->
+            <div data-next-shipping-id="2" style="padding: 15px; border: 1px solid #ddd; margin: 10px 0;">
+                <h4>Express Shipping (ID: 2)</h4>
+                <p>Method: <span data-next-display="shipping.code">Express</span></p>
+                <p>Cost: <span data-next-display="shipping.cost">$12.99</span></p>
+                <p>Raw Cost: <span data-next-display="shipping.cost.raw">12.99</span></p>
+                <div data-next-show="shipping.isFree" style="color: green;">
+                    ✓ This shipping method is FREE!
+                </div>
+                <div data-next-hide="shipping.isFree" style="color: red;">
+                    📦 Express shipping fee applies
+                </div>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🚚 Shipping Display Properties</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-display="shipping.cost"</span> - Shipping cost (formatted)</p>
+                <p><span class="code">data-next-display="shipping.price"</span> - Alias for cost</p>
+                <p><span class="code">data-next-display="shipping.cost.raw"</span> - Raw shipping cost value</p>
+                <p><span class="code">data-next-display="shipping.code"</span> - Shipping method code/name</p>
+                <p><span class="code">data-next-display="shipping.name"</span> - Alias for code</p>
+                <p><span class="code">data-next-display="shipping.id"</span> - Shipping method ID</p>
+                <p><span class="code">data-next-display="shipping.refId"</span> - Alias for id</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>✅ Shipping Conditionals</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-show="shipping.isFree"</span> - Show when shipping is free</p>
+                <p><span class="code">data-next-hide="shipping.isFree"</span> - Hide when shipping is free</p>
+                <p><span class="code">data-next-show="shipping.cost > 10"</span> - Show when shipping over $10</p>
+                <p><span class="code">data-next-show="shipping.cost === 0"</span> - Show when no shipping cost</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🔧 Setting Shipping Context</h4>
+            <div class="example-box">
+                <p>To use shipping attributes, you need to be within an element that has <span class="code">data-next-shipping-id</span>:</p>
+                <pre><code>&lt;div data-next-shipping-id="1"&gt;
+  &lt;span data-next-show="shipping.isFree"&gt;FREE SHIPPING!&lt;/span&gt;
+  &lt;span data-next-hide="shipping.isFree"&gt;
+    Shipping: &lt;span data-next-display="shipping.cost"&gt;$0.00&lt;/span&gt;
+  &lt;/span&gt;
+&lt;/div&gt;</code></pre>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>💡 Cart vs Shipping Context</h4>
+            <div class="example-box">
+                <p><strong>Cart-level shipping:</strong> Use <span class="code">cart.shipping</span> for the total cart shipping cost</p>
+                <p><strong>Context shipping:</strong> Use <span class="code">shipping.*</span> within a <span class="code">data-next-shipping-id</span> context</p>
+                <p>Example:</p>
+                <pre><code>&lt;!-- Cart total shipping --&gt;
+&lt;p&gt;Cart shipping: &lt;span data-next-display="cart.shipping"&gt;$0.00&lt;/span&gt;&lt;/p&gt;
+&lt;p data-next-show="cart.shipping.raw === 0"&gt;Free shipping on your order!&lt;/p&gt;
+
+&lt;!-- Package-specific shipping --&gt;
+&lt;div data-next-shipping-id="2"&gt;
+  &lt;p&gt;This package ships via: &lt;span data-next-display="shipping.code"&gt;Express&lt;/span&gt;&lt;/p&gt;
+  &lt;p data-next-show="shipping.cost > 0"&gt;
+    Shipping fee: &lt;span data-next-display="shipping.cost"&gt;$12.99&lt;/span&gt;
+  &lt;/p&gt;
+&lt;/div&gt;</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- CONDITIONAL DISPLAY SECTION -->
+    <!-- ========================================= -->
+    <div class="section">
+        <h2>🎭 Conditional Display Attributes</h2>
+        <p>Show/hide elements based on conditions. Works with cart, package, selection, and order data.</p>
+
+        <div class="demo-card">
+            <h3>Conditional Examples</h3>
+            
+            <!-- Cart Conditionals -->
+            <div data-next-show="cart.hasItems" class="example-box">
+                <h4>✅ Cart has items (this appears when cart is not empty)</h4>
+                <p>Current cart total: <span data-next-display="cart.total">$0.00</span></p>
+            </div>
+
+            <div data-next-hide="cart.hasItems" class="example-box">
+                <h4>❌ Cart is empty (this appears when cart is empty)</h4>
+                <p>Add some items to your cart to see conditional content!</p>
+            </div>
+
+            <!-- Package Conditionals (within selector context) -->
+            <div data-next-show="package.hasSavings" class="example-box">
+                <h4>💰 Package has savings (visible when in package context with savings)</h4>
+                <p>You save: <span data-next-display="package.savingsAmount">$0.00</span></p>
+            </div>
+
+            <!-- Selection Conditionals -->
+            <div data-next-show="selection.drone-packages.hasSelection" class="example-box">
+                <h4>🎯 Something is selected (appears when drone-packages selector has selection)</h4>
+                <p>Selected: <span data-next-display="selection.drone-packages.name">None</span></p>
+            </div>
+
+            <!-- Comparison Conditionals -->
+            <div data-next-show="cart.total > 50" class="example-box">
+                <h4>🚚 Free shipping available (cart total &gt; $50)</h4>
+                <p>Congratulations! You qualify for free shipping.</p>
+            </div>
+
+            <div data-next-show="selection.drone-packages.quantity >= 2" class="example-box">
+                <h4>📦 Bulk pricing active (selection quantity &gt;= 2)</h4>
+                <p>You're getting bulk pricing on your selection!</p>
+            </div>
+
+            <!-- Order Conditionals -->
+            <div data-next-show="order.isTest" class="example-box">
+                <h4>🧪 Test Order Badge (appears for test orders)</h4>
+                <p>This is a test order - no real charges were made.</p>
+            </div>
+
+            <div data-next-show="order.hasShipping" class="example-box">
+                <h4>🚚 Shipping Charged (appears when shipping > $0)</h4>
+                <p>Shipping cost: <span data-next-display="order.shipping">$0.00</span></p>
+            </div>
+
+            <div data-next-show="order.hasTax" class="example-box">
+                <h4>💸 Tax Applied (appears when tax > $0)</h4>
+                <p>Tax amount: <span data-next-display="order.tax">$0.00</span></p>
+            </div>
+
+            <div data-next-show="order.hasDiscounts" class="example-box">
+                <h4>💰 Discounts Applied (appears when discounts > $0)</h4>
+                <p>Total savings: <span data-next-display="order.discounts">$0.00</span></p>
+            </div>
+
+            <div data-next-show="order.hasUpsells" class="example-box">
+                <h4>⬆️ Order Contains Upsells (appears when order has upsell items)</h4>
+                <p>This order includes additional upsell products!</p>
+            </div>
+
+            <!-- Order Comparison Conditionals -->
+            <div data-next-show="order.total > 100" class="example-box">
+                <h4>🎉 High Value Order (order total &gt; $100)</h4>
+                <p>Thank you for your large order!</p>
+            </div>
+
+            <div data-next-show="order.items.totalQuantity >= 3" class="example-box">
+                <h4>📦 Bulk Order (3+ items ordered)</h4>
+                <p>Total items: <span data-next-display="order.items.totalQuantity">0</span></p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>👁️ Show/Hide Attributes</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-show="cart.hasItems"</span> - Show when cart has items</p>
+                <p><span class="code">data-next-hide="cart.isEmpty"</span> - Hide when cart is empty</p>
+                <p><span class="code">data-next-show="package.hasSavings"</span> - Show when package has savings</p>
+                <p><span class="code">data-next-show="selection.{id}.hasSelection"</span> - Show when selector has selection</p>
+                <p><span class="code">data-next-show="order.isTest"</span> - Show for test orders</p>
+                <p><span class="code">data-next-show="order.hasItems"</span> - Show when order has items</p>
+                <p><span class="code">data-next-show="order.hasShipping"</span> - Show when shipping charged</p>
+                <p><span class="code">data-next-show="order.hasTax"</span> - Show when tax charged</p>
+                <p><span class="code">data-next-show="order.hasDiscounts"</span> - Show when discounts applied</p>
+                <p><span class="code">data-next-show="order.hasUpsells"</span> - Show when order has upsells</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🔢 Comparison Conditions</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-show="cart.total &gt; 50"</span> - Show when cart total over $50</p>
+                <p><span class="code">data-next-show="cart.quantity &gt;= 3"</span> - Show when 3+ items in cart</p>
+                <p><span class="code">data-next-show="package.qty == 1"</span> - Show for single-unit packages</p>
+                <p><span class="code">data-next-hide="selection.{id}.total &lt; 20"</span> - Hide when selection under $20</p>
+                <p><span class="code">data-next-show="order.total &gt; 100"</span> - Show when order total over $100</p>
+                <p><span class="code">data-next-show="order.items.totalQuantity &gt;= 3"</span> - Show when 3+ items ordered</p>
+                <p><span class="code">data-next-show="order.tax &gt; 0"</span> - Show when tax is charged</p>
+                <p><span class="code">data-next-hide="order.shipping &lt; 5"</span> - Hide when shipping under $5</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🎯 Advanced Conditionals</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-show="cart.savingsPercentage &gt; 30"</span> - Show when savings over 30%</p>
+                <p><span class="code">data-next-show="package.isRecurring"</span> - Show for subscription products</p>
+                <p><span class="code">data-next-show="selection.{id}.isBundle"</span> - Show for multi-pack selections</p>
+                <p><span class="code">data-next-hide="order.hasUpsells"</span> - Hide when order has upsells</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- FORMATTING OPTIONS SECTION -->
+    <!-- ========================================= -->
+    <div class="section">
+        <h2>🎨 Formatting Options</h2>
+        <p>Control how values are displayed with formatting attributes.</p>
+
+        <div class="demo-card">
+            <h3>Formatting Examples</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h4>Currency Formatting:</h4>
+                    <p>Auto: <span data-next-display="cart.total">$0.00</span></p>
+                    <p>Explicit: <span data-next-display="cart.total" data-format="currency">$0.00</span></p>
+                    <p>Raw value: <span data-next-display="cart.total.raw" data-format="number">0</span></p>
+                </div>
+                <div>
+                    <h4>Number Formatting:</h4>
+                    <p>Quantity: <span data-next-display="cart.quantity" data-format="number">0</span></p>
+                    <p>Percentage: <span data-next-display="cart.savingsPercentage.raw" data-format="percentage">0%</span></p>
+                    <p>Boolean: <span data-next-display="cart.hasItems" data-format="boolean">No</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🎨 Format Types</h4>
+            <div class="example-box">
+                <p><span class="code">data-format="currency"</span> - Format as currency ($12.34)</p>
+                <p><span class="code">data-format="number"</span> - Format as number (1,234.56)</p>
+                <p><span class="code">data-format="percentage"</span> - Format as percentage (50%)</p>
+                <p><span class="code">data-format="boolean"</span> - Format as Yes/No</p>
+                <p><span class="code">data-format="date"</span> - Format as date</p>
+                <p><span class="code">data-format="auto"</span> - Auto-detect format (default)</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🎯 Conditional Hiding</h4>
+            <div class="example-box">
+                <p><span class="code">data-hide-if-zero="true"</span> - Hide element if value is 0</p>
+                <p><span class="code">data-hide-if-false="true"</span> - Hide element if value is false</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🧮 Mathematical Transformations</h4>
+            <div class="example-box">
+                <p><span class="code">data-multiply-by="2"</span> - Multiply value by 2</p>
+                <p><span class="code">data-divide-by="100"</span> - Divide value by 100</p>
+                <p>Example: <span data-next-display="cart.total.raw" data-divide-by="100" data-format="number">0</span> (total ÷ 100)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- QUICK ACTIONS SECTION -->
+    <!-- ========================================= -->
+    <div class="section">
+        <h2>⚡ Interactive Elements</h2>
+        <p>Add interactive functionality with action attributes.</p>
+
+        <div class="demo-card">
+            <h3>Cart Actions</h3>
+            <div style="text-align: center; gap: 10px; display: flex; flex-wrap: wrap; justify-content: center;">
+                <button data-next-add-to-cart data-package-id="4" data-quantity="1" 
+                        style="background: #007acc; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                    Add 3x Drone to Cart
+                </button>
+                <button data-next-add-to-cart data-package-id="3" data-quantity="1"
+                        style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                    Add 2x Drone to Cart
+                </button>
+                <button data-next-cart-toggle
+                        style="background: #ffc107; color: black; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                    Toggle Cart
+                </button>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🛒 Cart Action Attributes</h4>
+            <div class="example-box">
+                <p><span class="code">data-next-add-to-cart data-package-id="123"</span> - Add to cart button</p>
+                <p><span class="code">data-next-cart-toggle</span> - Toggle cart visibility</p>
+                <p><span class="code">data-next-quantity="increase" data-package-id="123"</span> - Increase quantity</p>
+                <p><span class="code">data-next-quantity="decrease" data-package-id="123"</span> - Decrease quantity</p>
+                <p><span class="code">data-next-remove-item data-package-id="123"</span> - Remove item button</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- NOTES SECTION -->
+    <!-- ========================================= -->
+    <div class="section">
+        <h2>📝 Implementation Notes</h2>
+        
+        <div class="attribute-group">
+            <h4>🎯 Context Awareness</h4>
+            <div class="example-box">
+                <p><strong>Package Context:</strong> Elements inside <span class="code">[data-next-package-id]</span> automatically get package context</p>
+                <p><strong>Selection Context:</strong> Use <span class="code">data-next-selector-id</span> or embed ID in path: <span class="code">selection.{selectorId}.property</span></p>
+                <p><strong>Shipping Context:</strong> Elements inside <span class="code">[data-next-shipping-id]</span> can access shipping properties</p>
+                <p><strong>Global Context:</strong> Cart and order properties work anywhere on the page</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>⚡ Performance Features</h4>
+            <div class="example-box">
+                <p><strong>Auto-Updates:</strong> All displays update automatically when underlying data changes</p>
+                <p><strong>Smart Caching:</strong> Values are cached and only updated when they actually change</p>
+                <p><strong>Hidden Element Skip:</strong> Hidden elements skip updates for better performance</p>
+            </div>
+        </div>
+
+        <div class="attribute-group">
+            <h4>🔧 Developer Tips</h4>
+            <div class="example-box">
+                <p><strong>Debug Mode:</strong> Add <span class="code">?debug=true</span> to URL for detailed logging</p>
+                <p><strong>Raw Values:</strong> Use <span class="code">.raw</span> suffix for unformatted numeric values</p>
+                <p><strong>Fallbacks:</strong> Missing values display as empty strings or "N/A" on errors</p>
+                <p><strong>CSS Classes:</strong> Elements get <span class="code">.display-visible</span> and <span class="code">.display-hidden</span> classes</p>
+            </div>
+        </div>
+    </div>
+
+    <footer style="text-align: center; margin-top: 40px; padding: 20px; background: #f5f5f5; border-radius: 8px;">
+        <p><strong>🚀 Campaign Cart SDK v2</strong> - Complete Attributes Showcase</p>
+        <p>This example demonstrates all available display attributes, conditional logic, and formatting options.</p>
+        <p>Mix and match these attributes to create powerful, dynamic e-commerce experiences!</p>
+    </footer>
+
+    <script>
+        // Add some basic interactivity for demo purposes
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Complete Attributes Showcase loaded!');
+            console.log('💡 Add ?debug=true to URL for detailed SDK logging');
+            
+            // Log when SDK is ready
+            window.addEventListener('next:ready', function() {
+                console.log('✅ Campaign Cart SDK v2 is ready!');
+            });
+        });
+    </script>
+</body>
+</html>

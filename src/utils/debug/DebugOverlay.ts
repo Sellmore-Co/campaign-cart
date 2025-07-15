@@ -10,10 +10,9 @@ import { DebugEventManager } from './DebugEventManager';
 import { EnhancedDebugUI } from './EnhancedDebugUI';
 import { useCartStore } from '../../stores/cartStore';
 import { useConfigStore } from '../../stores/configStore';
+import { XrayManager } from './XrayStyles';
 import {
   CartPanel,
-  EnhancerPanel,
-  APIPanel,
   EventsPanel,
   EventTimelinePanel,
   ConfigPanel,
@@ -35,6 +34,9 @@ export class DebugOverlay {
   
   private eventManager: DebugEventManager;
   private panels: DebugPanel[] = [];
+  
+  // Storage keys
+  private static readonly EXPANDED_STORAGE_KEY = 'debug-overlay-expanded';
 
   public static getInstance(): DebugOverlay {
     if (!DebugOverlay.instance) {
@@ -47,13 +49,17 @@ export class DebugOverlay {
     this.eventManager = new DebugEventManager();
     this.initializePanels();
     this.setupEventListeners();
+    
+    // Restore expanded state from localStorage
+    const savedExpandedState = localStorage.getItem(DebugOverlay.EXPANDED_STORAGE_KEY);
+    if (savedExpandedState === 'true') {
+      this.isExpanded = true;
+    }
   }
 
   private initializePanels(): void {
     this.panels = [
       new CartPanel(),
-      new EnhancerPanel(),
-      new APIPanel(),
       new ConfigPanel(),
       new EnhancedCampaignPanel(),
       new CheckoutPanel(),
@@ -90,6 +96,18 @@ export class DebugOverlay {
     this.visible = true;
     await this.createOverlay();
     this.startAutoUpdate();
+    
+    // Initialize XrayManager with saved state
+    XrayManager.initialize();
+    
+    // Update X-ray button state if active
+    if (XrayManager.isXrayActive()) {
+      const xrayButton = this.container?.querySelector('[data-action="toggle-xray"]');
+      if (xrayButton) {
+        xrayButton.classList.add('active');
+        xrayButton.setAttribute('title', 'Disable X-Ray View');
+      }
+    }
     
     // Auto-restore mini cart if it was previously visible
     const savedMiniCartState = localStorage.getItem('debug-mini-cart-visible');
@@ -163,6 +181,9 @@ export class DebugOverlay {
     );
     
     this.addEventListeners();
+    
+    // Restore button states
+    this.updateButtonStates();
   }
 
   private updateContent(): void {
@@ -207,6 +228,8 @@ export class DebugOverlay {
       switch (action) {
         case 'toggle-expand':
           this.isExpanded = !this.isExpanded;
+          // Save expanded state to localStorage
+          localStorage.setItem(DebugOverlay.EXPANDED_STORAGE_KEY, this.isExpanded.toString());
           this.updateBodyHeight();
           this.updateOverlay();
           break;
@@ -216,14 +239,14 @@ export class DebugOverlay {
         case 'clear-cart':
           this.clearCart();
           break;
-        case 'highlight-elements':
-          this.highlightAllElements();
-          break;
         case 'export-data':
           this.exportAllData();
           break;
         case 'toggle-mini-cart':
           this.toggleMiniCart();
+          break;
+        case 'toggle-xray':
+          this.toggleXray();
           break;
       }
       return;
@@ -323,13 +346,6 @@ export class DebugOverlay {
     this.updateContent();
   }
 
-  private highlightAllElements(): void {
-    document.querySelectorAll('[data-next-]').forEach((element, index) => {
-      element.classList.add('debug-highlight');
-      element.setAttribute('data-debug-label', `Element ${index + 1}`);
-    });
-  }
-
   private exportAllData(): void {
     const debugData = {
       timestamp: new Date().toISOString(),
@@ -383,6 +399,18 @@ export class DebugOverlay {
       // Update content if showing
       if (miniCart.classList.contains('show')) {
         this.updateMiniCart();
+      }
+    }
+    
+    // Update cart button state
+    const cartButton = this.container?.querySelector('[data-action="toggle-mini-cart"]');
+    if (cartButton && miniCart) {
+      if (miniCart.classList.contains('show')) {
+        cartButton.classList.add('active');
+        cartButton.setAttribute('title', 'Hide Mini Cart');
+      } else {
+        cartButton.classList.remove('active');
+        cartButton.setAttribute('title', 'Toggle Mini Cart');
       }
     }
   }
@@ -442,6 +470,46 @@ export class DebugOverlay {
   }
 
 
+  private toggleXray(): void {
+    const isActive = XrayManager.toggle();
+    
+    // Update button state
+    const xrayButton = this.container?.querySelector('[data-action="toggle-xray"]');
+    if (xrayButton) {
+      if (isActive) {
+        xrayButton.classList.add('active');
+        xrayButton.setAttribute('title', 'Disable X-Ray View');
+      } else {
+        xrayButton.classList.remove('active');
+        xrayButton.setAttribute('title', 'Toggle X-Ray View');
+      }
+    }
+    
+    // Log event
+    this.eventManager.logEvent('debug:xray-toggled', { active: isActive }, 'Debug');
+  }
+
+  private updateButtonStates(): void {
+    // Update X-ray button state
+    if (XrayManager.isXrayActive()) {
+      const xrayButton = this.container?.querySelector('[data-action="toggle-xray"]');
+      if (xrayButton) {
+        xrayButton.classList.add('active');
+        xrayButton.setAttribute('title', 'Disable X-Ray View');
+      }
+    }
+    
+    // Update mini cart button state
+    const miniCart = document.getElementById('debug-mini-cart-display');
+    if (miniCart && miniCart.classList.contains('show')) {
+      const cartButton = this.container?.querySelector('[data-action="toggle-mini-cart"]');
+      if (cartButton) {
+        cartButton.classList.add('active');
+        cartButton.setAttribute('title', 'Hide Mini Cart');
+      }
+    }
+  }
+
   public updateQuickStats(): void {
     if (!this.container) return;
 
@@ -451,12 +519,10 @@ export class DebugOverlay {
     const cartItemsEl = this.container.querySelector('[data-debug-stat="cart-items"]');
     const cartTotalEl = this.container.querySelector('[data-debug-stat="cart-total"]');
     const enhancedElementsEl = this.container.querySelector('[data-debug-stat="enhanced-elements"]');
-    const apiRequestsEl = this.container.querySelector('[data-debug-stat="api-requests"]');
     
     if (cartItemsEl) cartItemsEl.textContent = cartState.totalQuantity.toString();
     if (cartTotalEl) cartTotalEl.textContent = cartState.totals.total.formatted;
     if (enhancedElementsEl) enhancedElementsEl.textContent = document.querySelectorAll('[data-next-]').length.toString();
-    if (apiRequestsEl) apiRequestsEl.textContent = this.eventManager.getEvents().filter(e => e.source === 'API').length.toString();
   }
 }
 

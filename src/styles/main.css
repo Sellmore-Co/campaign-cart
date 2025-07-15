@@ -14,7 +14,14 @@
 10. SKELETON LOADING
 11. UTILITIES
 12. DEMO STYLES
+13. COMPONENT IMPORTS
 */
+
+/* ===========================
+   13. COMPONENT IMPORTS
+=========================== */
+
+/* Tooltip styles are injected dynamically by TooltipEnhancer */
 
 /* ===========================
    1. KEYFRAMES & ANIMATIONS

@@ -3,18 +3,18 @@
  * Displays values based on the currently selected package in a selector
  */
 
-import { BaseDisplayEnhancer, PropertyResolver, DisplayFormatter } from './DisplayEnhancerCore';
-// import { getPropertyMapping } from './DisplayEnhancerTypes'; - removed unused import
-// import { AttributeParser } from '../base/AttributeParser'; - removed unused import
+import { BaseDisplayEnhancer, PropertyResolver } from './DisplayEnhancerCore';
 import { PriceCalculator } from '@/utils/calculations/PriceCalculator';
 import { useCampaignStore } from '@/stores/campaignStore';
-import type { Package, SelectorItem } from '@/types/global';
+import { useCartStore } from '@/stores/cartStore';
+import type { Package, SelectorItem, CartState } from '@/types/global';
 
 export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
   private selectorId?: string;
   private selectedItem: SelectorItem | null = null;
   private packageData?: Package;
   private campaignState?: any;
+  private cartState?: CartState;
   private selectionChangeHandler: ((event: any) => void) | null = null;
 
   override async initialize(): Promise<void> {
@@ -138,6 +138,12 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
     this.subscribe(useCampaignStore, this.handleCampaignUpdate.bind(this));
     this.campaignState = useCampaignStore.getState();
     
+    // Subscribe to cart store only if needed for discount properties
+    if (this.needsCartData()) {
+      this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
+      this.cartState = useCartStore.getState();
+    }
+    
     // Create bound handler for proper cleanup
     this.selectionChangeHandler = this.handleSelectionChange.bind(this);
     
@@ -146,9 +152,29 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
     this.eventBus.on('selector:item-selected', this.selectionChangeHandler);
   }
 
+  private needsCartData(): boolean {
+    // Check if the property requires cart data for discount calculations
+    const discountProperties = [
+      'discountedPrice',
+      'finalPrice',
+      'discountAmount',
+      'appliedDiscountAmount',
+      'hasDiscount',
+      'appliedDiscounts',
+      'discountPercentage'
+    ];
+    
+    return this.property ? discountProperties.includes(this.property) : false;
+  }
+
   private handleCampaignUpdate(campaignState: any): void {
     this.campaignState = campaignState;
     this.loadPackageData();
+    this.updateDisplay();
+  }
+
+  private handleCartUpdate(cartState: CartState): void {
+    this.cartState = cartState;
     this.updateDisplay();
   }
 
@@ -239,20 +265,25 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
       case 'totalQuantity':
         return this.getSelectionTotalUnits();
       
-      case 'monthlyPrice':
-        return this.getSelectionMonthlyPrice();
-      
-      case 'yearlyPrice':
-        return this.getSelectionYearlyPrice();
-      
-      case 'pricePerDay':
-        return this.getSelectionPricePerDay();
-      
-      case 'savingsPerUnit':
-        return this.getSelectionSavingsPerUnit();
-      
       case 'discountAmount':
         return this.getSelectionDiscountAmount();
+      
+      // Cart discount properties
+      case 'discountedPrice':
+      case 'finalPrice':
+        return this.calculateSelectionDiscountedPrice();
+      
+      case 'appliedDiscountAmount':
+        return this.calculateSelectionDiscountAmount();
+      
+      case 'hasDiscount':
+        return this.getSelectionHasDiscount();
+      
+      case 'discountPercentage':
+        return this.getSelectionDiscountPercentage();
+      
+      case 'appliedDiscounts':
+        return this.getSelectionAppliedDiscounts();
       
       case 'isMultiPack':
       case 'isBundle':
@@ -347,38 +378,6 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
     return this.packageData?.qty || 1;
   }
 
-  private getSelectionMonthlyPrice(): number {
-    // For subscription products, return the monthly price
-    // Otherwise return total divided by a standard period
-    if (this.packageData?.is_recurring && this.packageData?.interval === 'month') {
-      return this.getSelectionTotal();
-    }
-    // For one-time purchases, you might want to show monthly cost over a period
-    // e.g., cost spread over 12 months
-    return this.getSelectionTotal() / 12;
-  }
-
-  private getSelectionYearlyPrice(): number {
-    if (this.packageData?.is_recurring) {
-      if (this.packageData.interval === 'month') {
-        return this.getSelectionTotal() * 12;
-      }
-    }
-    // For one-time purchases, just return the total
-    return this.getSelectionTotal();
-  }
-
-  private getSelectionPricePerDay(): number {
-    // Calculate daily cost (yearly price / 365)
-    return this.getSelectionYearlyPrice() / 365;
-  }
-
-  private getSelectionSavingsPerUnit(): number {
-    const totalSavings = this.getSelectionSavingsAmount();
-    const units = this.getSelectionTotalUnits();
-    return units > 0 ? totalSavings / units : 0;
-  }
-
   private getSelectionDiscountAmount(): number {
     // Same as savings but might be used for different display contexts
     return this.getSelectionSavingsAmount();
@@ -386,6 +385,111 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
 
   private getSelectionIsBundle(): boolean {
     return this.getSelectionTotalUnits() > 1;
+  }
+
+  // Discount calculation methods
+  private calculateSelectionDiscountAmount(): number {
+    if (!this.selectedItem || !this.packageData || !this.cartState?.appliedCoupons?.length) {
+      return 0;
+    }
+
+    let totalDiscount = 0;
+    const basePrice = this.getSelectionPrice();
+    const quantity = this.selectedItem.quantity;
+
+    // Check each applied coupon to see if it applies to this package
+    for (const coupon of this.cartState.appliedCoupons) {
+      // Package-specific discount
+      if (coupon.definition.packageIds && coupon.definition.packageIds.includes(this.selectedItem.packageId)) {
+        if (coupon.definition.type === 'percentage') {
+          totalDiscount += (basePrice * quantity * coupon.definition.value) / 100;
+        } else if (coupon.definition.type === 'fixed') {
+          totalDiscount += coupon.definition.value * quantity;
+        }
+      }
+      // Order-level discount
+      else if (!coupon.definition.packageIds || coupon.definition.packageIds.length === 0) {
+        if (coupon.definition.type === 'percentage') {
+          totalDiscount += (basePrice * quantity * coupon.definition.value) / 100;
+        } else if (coupon.definition.type === 'fixed') {
+          // For fixed order-level discounts, distribute proportionally
+          const packageTotal = basePrice * quantity;
+          const cartSubtotal = this.cartState.totals.subtotal.value;
+          if (cartSubtotal > 0) {
+            const proportion = packageTotal / cartSubtotal;
+            totalDiscount += coupon.definition.value * proportion;
+          }
+        }
+      }
+    }
+
+    return totalDiscount;
+  }
+
+  private calculateSelectionDiscountedPrice(): number {
+    const unitPrice = this.getSelectionPrice();
+    const discountAmount = this.calculateSelectionDiscountAmount();
+    const quantity = this.selectedItem?.quantity || 1;
+    
+    // Calculate the unit price after discounts
+    const discountPerUnit = quantity > 0 ? discountAmount / quantity : 0;
+    return Math.max(0, unitPrice - discountPerUnit);
+  }
+
+  private getSelectionHasDiscount(): boolean {
+    return this.calculateSelectionDiscountAmount() > 0;
+  }
+
+  private getSelectionDiscountPercentage(): number {
+    const total = this.getSelectionTotal();
+    const discount = this.calculateSelectionDiscountAmount();
+    
+    if (total <= 0) return 0;
+    return (discount / total) * 100;
+  }
+
+  private getSelectionAppliedDiscounts(): Array<{code: string; amount: number}> {
+    if (!this.selectedItem || !this.packageData || !this.cartState?.appliedCoupons?.length) {
+      return [];
+    }
+
+    const discounts: Array<{code: string; amount: number}> = [];
+    
+    for (const coupon of this.cartState.appliedCoupons) {
+      let discountAmount = 0;
+      
+      // Package-specific discount
+      if (coupon.definition.packageIds && coupon.definition.packageIds.includes(this.selectedItem.packageId)) {
+        if (coupon.definition.type === 'percentage') {
+          discountAmount = (this.getSelectionTotal() * coupon.definition.value) / 100;
+        } else if (coupon.definition.type === 'fixed') {
+          discountAmount = coupon.definition.value * this.selectedItem.quantity;
+        }
+      }
+      // Order-level discount
+      else if (!coupon.definition.packageIds || coupon.definition.packageIds.length === 0) {
+        if (coupon.definition.type === 'percentage') {
+          discountAmount = (this.getSelectionTotal() * coupon.definition.value) / 100;
+        } else if (coupon.definition.type === 'fixed') {
+          // Proportional distribution
+          const packageTotal = this.getSelectionTotal();
+          const cartSubtotal = this.cartState.totals.subtotal.value;
+          if (cartSubtotal > 0) {
+            const proportion = packageTotal / cartSubtotal;
+            discountAmount = coupon.definition.value * proportion;
+          }
+        }
+      }
+      
+      if (discountAmount > 0) {
+        discounts.push({
+          code: coupon.code,
+          amount: discountAmount
+        });
+      }
+    }
+    
+    return discounts;
   }
 
   // Parse custom calculated fields with mathematical expressions
@@ -458,61 +562,16 @@ export class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
     await this.updateDisplay();
   }
 
-  // Override formatting to handle special cases
+  // Override to handle empty selection
   protected override async updateDisplay(): Promise<void> {
-    try {
-      let value = this.getPropertyValue();
-      
-      // Handle empty selection
-      if (this.selectedItem === null && this.property !== 'hasSelection') {
-        this.hideElement();
-        return;
-      }
-      
-      // Apply mathematical transformations
-      if (typeof value === 'number' || (typeof value === 'string' && !isNaN(Number(value)))) {
-        const numValue = Number(value);
-        if (this.divideBy) value = numValue / this.divideBy;
-        if (this.multiplyBy) value = numValue * this.multiplyBy;
-      }
-      
-      // Handle conditional hiding
-      if (this.shouldHideElement(value)) {
-        this.hideElement();
-        return;
-      }
-      
-      // Format based on property type
-      let formattedValue: string;
-      
-      // Force number formatting for quantity-related properties
-      if (this.property === 'totalUnits' || 
-          this.property === 'totalQuantity' || 
-          this.property === 'quantity') {
-        formattedValue = DisplayFormatter.formatValue(value, 'number');
-      } else if (this.property?.includes('price') || 
-          this.property?.includes('total') || 
-          this.property === 'savings' ||
-          this.property === 'monthlyPrice' ||
-          this.property === 'yearlyPrice' ||
-          this.property === 'pricePerDay' ||
-          this.property === 'unitPrice' ||
-          this.property === 'savingsPerUnit' ||
-          this.property === 'discountAmount') {
-        formattedValue = DisplayFormatter.formatCurrency(value);
-      } else if (this.property === 'savingsPercentage') {
-        formattedValue = `${Math.round(value)}%`;
-      } else {
-        formattedValue = DisplayFormatter.formatValue(value, this.formatType);
-      }
-      
-      this.updateElementContent(formattedValue);
-      this.showElement();
-      
-    } catch (error) {
-      this.handleError(error, 'updateDisplay');
-      this.updateElementContent('--');
+    // Handle empty selection
+    if (this.selectedItem === null && this.property !== 'hasSelection') {
+      this.hideElement();
+      return;
     }
+    
+    // Use the base class implementation which uses the clean pipeline
+    await super.updateDisplay();
   }
 
   public override destroy(): void {

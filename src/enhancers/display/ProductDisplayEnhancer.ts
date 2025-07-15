@@ -7,9 +7,10 @@ import { BaseDisplayEnhancer, PropertyResolver, DisplayFormatter } from './Displ
 import { getPropertyMapping } from './DisplayEnhancerTypes';
 import { AttributeParser } from '../base/AttributeParser';
 import { PackageContextResolver } from '@/utils/dom/PackageContextResolver';
+import { DisplayContextProvider } from './DisplayContextProvider';
 import { PriceCalculator } from '@/utils/calculations/PriceCalculator';
 import { useCampaignStore } from '@/stores/campaignStore';
-// import { useCartStore } from '@/stores/cartStore'; - removed unused import
+import { useCartStore } from '@/stores/cartStore';
 import type { Package } from '@/types/global';
 
 export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
@@ -27,12 +28,15 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     
     this.setupStoreSubscriptions();
     await this.performInitialUpdate();
-    this.logger.debug(`ProductDisplayEnhancer initialized with package ${this.packageId}, path: ${this.displayPath}`);
+    this.logger.debug(`ProductDisplayEnhancer initialized with package ${this.packageId}, path: ${this.displayPath}, format: ${this.formatType}`);
   }
 
   protected setupStoreSubscriptions(): void {
     // Subscribe to campaign store updates
     this.subscribe(useCampaignStore, this.handleCampaignUpdate.bind(this));
+    
+    // Also subscribe to cart store for discount changes
+    this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     
     // Get initial state
     this.campaignState = useCampaignStore.getState();
@@ -47,10 +51,21 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     this.updateDisplay();
   }
 
+  private handleCartUpdate(): void {
+    // Update display when cart changes (discount codes might affect package price)
+    this.updateDisplay();
+  }
+
   // PRESERVE: Package context detection
   private detectPackageContext(): void {
-    // Try to inherit package ID from parent context first
-    this.contextPackageId = PackageContextResolver.findPackageId(this.element);
+    // Try new context provider first
+    const context = DisplayContextProvider.resolve(this.element);
+    if (context?.packageId) {
+      this.contextPackageId = context.packageId;
+    } else {
+      // Fallback to legacy context resolver
+      this.contextPackageId = PackageContextResolver.findPackageId(this.element);
+    }
     
     // Parse the display path to extract package ID if it's a package-specific path
     const parsed = AttributeParser.parseDisplayPath(this.displayPath!);
@@ -149,13 +164,30 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     if (!this.packageData) return undefined;
 
     // Use PriceCalculator for all price metrics
-    const metrics = PriceCalculator.calculatePackageMetrics({
+    const calculatorInput = {
       price: parseFloat(this.packageData.price || '0'),
       retailPrice: parseFloat(this.packageData.price_retail || '0'),
       quantity: this.packageData.qty || 1,
       priceTotal: parseFloat(this.packageData.price_total || '0'),
       retailPriceTotal: parseFloat(this.packageData.price_retail_total || '0')
-    });
+    };
+    
+    const metrics = PriceCalculator.calculatePackageMetrics(calculatorInput);
+    
+    // Debug logging for savings calculation
+    if (property === 'savingsAmount' || property === 'hasSavings') {
+      this.logger.warn('[SAVINGS DEBUG] Package savings calculation:', {
+        packageId: this.packageData.ref_id,
+        packageName: this.packageData.name,
+        input: calculatorInput,
+        output: {
+          totalSavings: metrics.totalSavings,
+          hasSavings: metrics.hasSavings,
+          totalPrice: metrics.totalPrice,
+          totalRetailPrice: metrics.totalRetailPrice
+        }
+      });
+    }
 
     // Check for mapped properties first
     const mappedPath = getPropertyMapping('package', property);
@@ -163,37 +195,35 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
       const calculatedProp = mappedPath.replace('_calculated.', '');
       switch (calculatedProp) {
         case 'savingsAmount':
-          return DisplayFormatter.formatCurrency(metrics.totalSavings);
+          return metrics.totalSavings;
         case 'savingsPercentage':
-          return `${Math.round(metrics.totalSavingsPercentage)}%`;
+          return metrics.totalSavingsPercentage;
         case 'hasSavings':
           return metrics.hasSavings;
         case 'isBundle':
           return (this.packageData.qty || 1) > 1;
+        case 'discountedPrice':
+          return this.calculateDiscountedPrice();
+        case 'discountedPriceTotal':
+          return this.calculateDiscountedPriceTotal();
+        case 'discountAmount':
+          return this.calculatePackageDiscountAmount();
+        case 'hasDiscount':
+          return this.calculatePackageDiscountAmount() > 0;
+        case 'finalPrice':
+          return this.calculateFinalPrice();
+        case 'finalPriceTotal':
+          return this.calculateFinalPriceTotal();
       }
     }
 
     switch (property) {
       // Standardized camelCase properties
       case 'savingsAmount':
-        return DisplayFormatter.formatCurrency(metrics.totalSavings);
+        return metrics.totalSavings;
       
       case 'savingsPercentage':
-        this.logger.debug(`Calculating savingsPercentage for package ${this.packageData.ref_id}:`, {
-          totalSavingsPercentage: metrics.totalSavingsPercentage,
-          totalSavings: metrics.totalSavings,
-          unitPrice: metrics.unitPrice,
-          unitRetailPrice: metrics.unitRetailPrice,
-          packageData: {
-            ref_id: this.packageData.ref_id,
-            name: this.packageData.name,
-            price: this.packageData.price,
-            price_retail: this.packageData.price_retail,
-            price_total: this.packageData.price_total,
-            price_retail_total: this.packageData.price_retail_total
-          }
-        });
-        return `${Math.round(metrics.totalSavingsPercentage)}%`;
+        return metrics.totalSavingsPercentage;
       
       case 'unitPrice':
         return DisplayFormatter.formatCurrency(metrics.unitPrice);
@@ -205,7 +235,11 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
         return DisplayFormatter.formatCurrency(metrics.unitSavings);
       
       case 'unitSavingsPercentage':
-        return `${Math.round(metrics.unitSavingsPercentage)}%`;
+        this.logger.warn('[PERCENTAGE DEBUG] ProductDisplayEnhancer returning unitSavingsPercentage:', {
+          unitSavingsPercentage: metrics.unitSavingsPercentage,
+          unitSavingsPercentageType: typeof metrics.unitSavingsPercentage
+        });
+        return metrics.unitSavingsPercentage;
       
       // Boolean helpers
       case 'hasSavings':
@@ -233,9 +267,103 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
       case 'unitRetailPrice.raw':
         return metrics.unitRetailPrice;
       
+      // Discount-adjusted prices
+      case 'discountedPrice':
+        return this.calculateDiscountedPrice();
+      
+      case 'discountedPriceTotal':
+        return this.calculateDiscountedPriceTotal();
+      
+      case 'discountAmount':
+        return this.calculatePackageDiscountAmount();
+      
+      case 'hasDiscount':
+        return this.calculatePackageDiscountAmount() > 0;
+      
+      case 'finalPrice':
+        return this.calculateFinalPrice();
+      
+      case 'finalPriceTotal':
+        return this.calculateFinalPriceTotal();
+      
       default:
         return undefined;
     }
+  }
+
+  private calculatePackageDiscountAmount(): number {
+    if (!this.packageData) return 0;
+    
+    const cartStore = useCartStore.getState();
+    const appliedCoupons = cartStore.appliedCoupons || [];
+    
+    let totalDiscount = 0;
+    
+    // Check each applied coupon to see if it applies to this package
+    for (const appliedCoupon of appliedCoupons) {
+      const coupon = appliedCoupon.definition;
+      
+      // Skip if coupon doesn't apply to this package
+      if (coupon.scope === 'package' && coupon.packageIds) {
+        if (!coupon.packageIds.includes(this.packageData.ref_id)) {
+          continue;
+        }
+      } else if (coupon.scope === 'package') {
+        // Package-scoped coupon without specific IDs - skip
+        continue;
+      }
+      
+      // Calculate discount for this package
+      const packageTotal = parseFloat(this.packageData.price_total || '0') || 
+                          (parseFloat(this.packageData.price || '0') * (this.packageData.qty || 1));
+      
+      if (coupon.type === 'percentage') {
+        const discount = packageTotal * (coupon.value / 100);
+        totalDiscount += coupon.maxDiscount ? Math.min(discount, coupon.maxDiscount) : discount;
+      } else if (coupon.type === 'fixed' && coupon.scope === 'order') {
+        // For order-level fixed discounts, distribute proportionally
+        const cartSubtotal = cartStore.subtotal;
+        if (cartSubtotal > 0) {
+          const packageProportion = packageTotal / cartSubtotal;
+          totalDiscount += coupon.value * packageProportion;
+        }
+      }
+    }
+    
+    // Ensure discount doesn't exceed package price
+    return Math.min(totalDiscount, parseFloat(this.packageData.price_total || '0'));
+  }
+
+  private calculateDiscountedPrice(): number {
+    if (!this.packageData) return 0;
+    
+    const unitPrice = parseFloat(this.packageData.price || '0');
+    const quantity = this.packageData.qty || 1;
+    const discountAmount = this.calculatePackageDiscountAmount();
+    
+    // Distribute discount across units
+    const discountPerUnit = quantity > 0 ? discountAmount / quantity : 0;
+    return Math.max(0, unitPrice - discountPerUnit);
+  }
+
+  private calculateDiscountedPriceTotal(): number {
+    if (!this.packageData) return 0;
+    
+    const packageTotal = parseFloat(this.packageData.price_total || '0') || 
+                        (parseFloat(this.packageData.price || '0') * (this.packageData.qty || 1));
+    const discountAmount = this.calculatePackageDiscountAmount();
+    
+    return Math.max(0, packageTotal - discountAmount);
+  }
+
+  private calculateFinalPrice(): number {
+    // Final price is the discounted unit price (same as discountedPrice)
+    return this.calculateDiscountedPrice();
+  }
+
+  private calculateFinalPriceTotal(): number {
+    // Final total is the discounted package total (same as discountedPriceTotal)
+    return this.calculateDiscountedPriceTotal();
   }
 
 

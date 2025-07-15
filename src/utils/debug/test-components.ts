@@ -5,8 +5,6 @@
 
 import {
   CartPanel,
-  EnhancerPanel,
-  APIPanel,
   EventsPanel,
   ConfigPanel,
   CheckoutPanel,
@@ -20,8 +18,6 @@ export function testDebugComponents(): boolean {
 
     // Test that all panels can be instantiated
     const cartPanel = new CartPanel();
-    const enhancerPanel = new EnhancerPanel();
-    const apiPanel = new APIPanel();
     const eventsPanel = new EventsPanel([]);
     const configPanel = new ConfigPanel();
     const checkoutPanel = new CheckoutPanel();
@@ -31,8 +27,6 @@ export function testDebugComponents(): boolean {
     // Test that all panels have required properties
     const panels = [
       cartPanel,
-      enhancerPanel,
-      apiPanel,
       eventsPanel,
       configPanel,
       checkoutPanel,

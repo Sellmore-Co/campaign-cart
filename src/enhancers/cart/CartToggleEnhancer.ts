@@ -28,6 +28,13 @@
  *         data-next-package-sync="2,4,9">
  *   Add Protection for All Items
  * </button>
+ * 
+ * @example Auto-add on page load:
+ * <button data-next-toggle 
+ *         data-next-package-id="123"
+ *         data-next-selected="true">
+ *   Pre-selected Item
+ * </button>
  */
 
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
@@ -81,6 +88,9 @@ export class CartToggleEnhancer extends BaseEnhancer {
     
     // 7. Initial state update
     this.updateState(useCartStore.getState());
+    
+    // 8. Check for auto-add on page load
+    await this.checkAutoAdd();
     
     this.logger.debug('Toggle initialized:', {
       packageId: this.packageId,
@@ -192,6 +202,35 @@ export class CartToggleEnhancer extends BaseEnhancer {
       this.stateContainer?.hasAttribute('data-next-bump') === true ||
       this.element.closest('[data-next-upsell-section]') !== null ||
       this.element.closest('[data-next-bump-section]') !== null;
+  }
+
+  private async checkAutoAdd(): Promise<void> {
+    // Check if element should be auto-selected on page load
+    const isSelected = this.getAttribute('data-next-selected') === 'true' ||
+                      this.stateContainer?.getAttribute('data-next-selected') === 'true';
+    
+    if (isSelected && this.packageId) {
+      const cartState = useCartStore.getState();
+      const isInCart = this.isInCart(cartState);
+      
+      if (!isInCart) {
+        this.logger.debug('Auto-adding item on page load:', {
+          packageId: this.packageId,
+          quantity: this.quantity
+        });
+        
+        try {
+          // Update quantity from sync if needed
+          if (this.isSyncMode) {
+            this.updateSyncedQuantity(cartState);
+          }
+          
+          await this.addToCart();
+        } catch (error) {
+          this.logger.error('Failed to auto-add item:', error);
+        }
+      }
+    }
   }
 
   private setupEventListeners(): void {

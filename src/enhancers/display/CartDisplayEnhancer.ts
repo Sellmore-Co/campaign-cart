@@ -4,7 +4,7 @@
  */
 
 import { BaseDisplayEnhancer, PropertyResolver } from './DisplayEnhancerCore';
-import { getPropertyMapping } from './DisplayEnhancerTypes';
+import { getPropertyConfig } from './DisplayEnhancerTypes';
 import { AttributeParser } from '../base/AttributeParser';
 import { PackageContextResolver } from '@/utils/dom/PackageContextResolver';
 import { useCartStore } from '@/stores/cartStore';
@@ -34,30 +34,28 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
   protected getPropertyValue(): any {
     if (!this.cartState || !this.property) return undefined;
 
-    // Get the mapped property path from our standardized mappings
-    const mappedPath = getPropertyMapping('cart', this.property);
+    // Get property configuration - single source of truth
+    const config = getPropertyConfig('cart', this.property);
     
-    if (mappedPath) {
+    if (config) {
+      const { path, preformatted } = config;
+      
       // Handle negation for hasItems (!isEmpty)
-      if (mappedPath.startsWith('!')) {
-        const actualPath = mappedPath.substring(1);
+      if (path.startsWith('!')) {
+        const actualPath = path.substring(1);
         const value = PropertyResolver.getNestedProperty(this.cartState, actualPath);
         return !value;
       }
       
-      // Use PropertyResolver for all property access
-      return PropertyResolver.getNestedProperty(this.cartState, mappedPath);
-    }
-
-    // Handle raw value access (.raw suffix)
-    if (this.property.endsWith('.raw')) {
-      const baseProperty = this.property.replace('.raw', '');
-      const mappedPath = getPropertyMapping('cart', baseProperty);
-      if (mappedPath) {
-        // Replace .formatted with .value for raw access
-        const rawPath = mappedPath.replace('.formatted', '.value');
-        return PropertyResolver.getNestedProperty(this.cartState, rawPath);
+      // Get the value
+      const value = PropertyResolver.getNestedProperty(this.cartState, path);
+      
+      // If pre-formatted, wrap to prevent double formatting
+      if (preformatted) {
+        return { _preformatted: true, value };
       }
+      
+      return value;
     }
 
     // Fallback to direct property access for unmapped properties
