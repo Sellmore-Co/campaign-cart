@@ -1,3 +1,6 @@
+import { CountryConfig } from './shared/CountryConfig.js';
+import { FormFieldUtils } from './shared/FormFieldUtils.js';
+
 export class AddressHandler {
   #form;
   #logger;
@@ -51,6 +54,11 @@ export class AddressHandler {
       this.#countries.map(c => `<option value="${c.iso2}">${c.name}</option>`).join('');
     countrySelect.value = this.#addressConfig.defaultCountry;
     if (stateSelect && countrySelect.value) await this.#updateStateSelect(stateSelect, countrySelect.value);
+    
+    // Update field labels based on initial country
+    const type = countrySelect === this.#elements.shippingCountry ? 'shipping' : 'billing';
+    this.#updateFieldLabelsForCountry(countrySelect.value, type);
+    
     this.#logger.debug(`Country select initialized with default ${this.#addressConfig.defaultCountry}`);
   }
 
@@ -60,8 +68,44 @@ export class AddressHandler {
       [this.#elements.billingCountry, this.#elements.billingState]
     ];
     pairs.forEach(([country, state]) => {
-      country?.addEventListener('change', () => state && this.#updateStateSelect(state, country.value));
+      country?.addEventListener('change', () => {
+        if (state) {
+          this.#updateStateSelect(state, country.value);
+        }
+        // Update placeholders and labels based on country
+        this.#updateFieldLabelsForCountry(country.value, country === this.#elements.shippingCountry ? 'shipping' : 'billing');
+      });
     });
+  }
+
+  #updateFieldLabelsForCountry(countryCode, type = 'shipping') {
+    const isBilling = type === 'billing';
+    
+    // Find fields using shared utility
+    const postalField = FormFieldUtils.findPostalField(isBilling);
+    const stateField = FormFieldUtils.findStateField(isBilling);
+    
+    // Get country configuration from shared module
+    const config = CountryConfig.getCountryConfig(countryCode);
+    
+    // Update postal field
+    if (postalField) {
+      FormFieldUtils.updateFieldAttributes(postalField, {
+        label: config.postalLabel,
+        pattern: config.postalPattern,
+        maxLength: config.postalMaxLength
+      });
+    }
+    
+    // Update state/province field
+    if (stateField) {
+      const defaultOption = stateField.querySelector('option[value=""]');
+      if (defaultOption) {
+        defaultOption.textContent = config.stateLabel;
+      }
+    }
+    
+    this.#logger.debug(`Updated field labels for ${type} address to ${countryCode} format`);
   }
 
   async #updateStateSelect(stateSelect, countryCode, isPriority = false) {

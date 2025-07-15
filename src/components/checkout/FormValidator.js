@@ -1,6 +1,9 @@
 /**
  * FormValidator - Handles form validation for checkout
  */
+import { CountryConfig } from './shared/CountryConfig.js';
+import { FormFieldUtils } from './shared/FormFieldUtils.js';
+
 export class FormValidator {
   #logger;
   #form;
@@ -306,7 +309,12 @@ export class FormValidator {
   }
 
   #getReadableFieldLabel(field, fallbackLabel) {
-    const fieldName = field.getAttribute('os-checkout-field') || field.name;
+    const fieldName = field.getAttribute('os-checkout-field') || field.name || field.id;
+    
+    // For postal/zip fields, get country-specific label
+    if (fieldName && (fieldName.includes('postal') || fieldName === 'shipping_postal_code' || fieldName === 'billing_postal_code')) {
+      return this.#getPostalFieldLabel(fieldName);
+    }
     
     // Map of field names to user-friendly labels
     const labelMap = {
@@ -318,7 +326,6 @@ export class FormValidator {
       'address2': 'Apartment or Suite',
       'city': 'City',
       'province': 'State/Province',
-      'postal': 'ZIP/Postal Code',
       'country': 'Country',
       'cc-number': 'Credit Card Number',
       'cvv': 'Security Code',
@@ -333,13 +340,22 @@ export class FormValidator {
       'billing-address2': 'Billing Apartment or Suite',
       'billing-city': 'Billing City',
       'billing-province': 'Billing State/Province',
-      'billing-postal': 'Billing ZIP/Postal Code',
       'billing-country': 'Billing Country',
       'billing-phone': 'Billing Phone Number'
     };
     
     // Return the mapped label if available, otherwise use the fallback label
     return labelMap[fieldName] || fallbackLabel || fieldName;
+  }
+
+  #getPostalFieldLabel(fieldName) {
+    // Get the country to determine the proper label
+    const isBilling = fieldName.includes('billing');
+    const countryField = FormFieldUtils.findCountryField(isBilling);
+    const country = countryField?.value || 'US';
+    
+    // Use shared configuration for country-specific labels
+    return FormFieldUtils.getFieldLabel('postal', country, isBilling);
   }
 
   #getFieldValidation(field, value, label) {
@@ -394,35 +410,50 @@ export class FormValidator {
   }
 
   /**
-   * Validate a US ZIP code (5 digits or ZIP+4 format)
-   * @param {string} value - ZIP code to validate
+   * Validate a ZIP/postal code based on the selected country
+   * @param {string} value - ZIP/postal code to validate
    * @param {string} fieldName - Name of the field for error message
    * @returns {Object} Validation result with isValid and errorMessage
    */
   #validateZipCode(value, fieldName = 'Zip') {
-    // US ZIP code pattern: 5 digits or 5 digits + hyphen + 4 digits
-    const zipPattern = /(^\d{5}$)|(^\d{5}-\d{4}$)/;
-    const isValid = zipPattern.test(value);
+    // Get the country from the appropriate field based on the field name
+    const isBilling = fieldName.includes('billing');
+    const countryField = FormFieldUtils.findCountryField(isBilling);
+    const country = countryField?.value || 'US';
+    
+    // Get postal pattern from shared configuration
+    const patternString = CountryConfig.getPostalPattern(country);
+    const pattern = new RegExp(patternString, 'i');
+    const isValid = pattern.test(value);
+    
+    // Get country-specific label for error message
+    const fieldLabel = FormFieldUtils.getFieldLabel('postal', country);
+    
+    // Create country-specific error messages
+    const errorMessages = {
+      'US': `Not a valid US ${fieldLabel} (e.g., 12345 or 12345-6789)`,
+      'GB': `Not a valid UK ${fieldLabel} (e.g., SW1A 1AA)`,
+      'CA': `Not a valid Canadian ${fieldLabel} (e.g., K1A 0B1)`,
+      'AU': `Not a valid Australian ${fieldLabel} (e.g., 2000)`,
+      'NZ': `Not a valid NZ ${fieldLabel} (e.g., 6011)`,
+      'DE': `Not a valid German ${fieldLabel} (e.g., 10115)`,
+      'FR': `Not a valid French ${fieldLabel} (e.g., 75001)`,
+      'NL': `Not a valid Dutch ${fieldLabel} (e.g., 1234 AB)`,
+      'BR': `Not a valid Brazilian ${fieldLabel} (e.g., 12345-678)`,
+      'JP': `Not a valid Japanese ${fieldLabel} (e.g., 123-4567)`,
+      'IN': `Not a valid Indian ${fieldLabel} (e.g., 123456)`
+    };
+    
+    const errorMessage = errorMessages[country] || `Please enter a valid ${fieldLabel}`;
     
     return {
       isValid,
-      errorMessage: isValid ? '' : `Field must be a valid US Zip code.`
+      errorMessage: isValid ? '' : errorMessage
     };
   }
 
   #showError(input, message) {
-    if (!input) return;
-    
-    input.classList.add('error');
-    const wrapper = input.closest('.frm-flds') || input.closest('.form-group') || input.parentElement;
-    const errorElement = this.#getOrCreateErrorElement(wrapper);
-    
-    errorElement.textContent = message;
-    Object.assign(errorElement.style, {
-      color: 'red',
-      fontSize: '0.875rem',
-      marginTop: '0.25rem'
-    });
+    FormFieldUtils.showFieldError(input, message);
 
     if (!input.hasErrorListener) {
       input.hasErrorListener = true;
@@ -445,19 +476,14 @@ export class FormValidator {
   }
 
   clearErrorForField(field) {
-    if (!field) return;
-    
-    field.classList.remove('error');
-    const wrapper = field.closest('.frm-flds') || field.closest('.form-group') || field.parentElement;
-    wrapper?.querySelector('.pb-input-error')?.remove();
+    FormFieldUtils.clearFieldError(field);
 
     const fieldName = field.getAttribute('os-checkout-field');
     if (['cc-number', 'cvv'].includes(fieldName)) {
       const spreedlyId = `spreedly-${fieldName === 'cc-number' ? 'number' : 'cvv'}`;
       const spreedlyContainer = document.getElementById(spreedlyId);
       if (spreedlyContainer) {
-        spreedlyContainer.classList.remove('error');
-        spreedlyContainer.closest('.frm-flds')?.querySelector('.pb-input-error')?.remove();
+        FormFieldUtils.clearFieldError(spreedlyContainer);
       }
     }
   }
@@ -610,25 +636,20 @@ export class FormValidator {
    * Set up auto-formatting for ZIP code fields
    */
   #setupZipCodeFormatting() {
-    // Find all ZIP/postal code fields
-    const zipFields = [
-      ...document.querySelectorAll('[os-checkout-field="postal"]'),
-      ...document.querySelectorAll('[os-checkout-field="billing-postal"]'),
-      ...document.querySelectorAll('[os-checkout-field="zip"]')
-    ];
+    // Find all ZIP/postal code fields using shared utility
+    const shippingPostal = FormFieldUtils.findPostalField(false);
+    const billingPostal = FormFieldUtils.findPostalField(true);
+    
+    const zipFields = [shippingPostal, billingPostal].filter(Boolean);
     
     zipFields.forEach(field => {
-      if (field) {
-        field.addEventListener('input', (e) => this.#formatZipCode(e));
-        this.#logger.debug(`ZIP code formatting setup for: ${field.getAttribute('os-checkout-field') || field.name || 'unknown'}`);
-      }
+      field.addEventListener('input', (e) => this.#formatZipCode(e));
+      this.#logger.debug(`ZIP code formatting setup for: ${field.getAttribute('os-checkout-field') || field.name || 'unknown'}`);
     });
   }
   
   /**
-   * Format ZIP code as user types: 
-   * - Allow only numbers and hyphen
-   * - Automatically add hyphen after 5 digits if the user is entering more
+   * Format ZIP/postal code as user types based on country
    * @param {Event} event - Input event
    */
   #formatZipCode(event) {
@@ -636,31 +657,13 @@ export class FormValidator {
     const cursorPos = input.selectionStart;
     const oldValue = input.value;
     
-    // Remove non-digits and non-hyphens
-    let cleaned = oldValue.replace(/[^\d-]/g, '');
-    
-    // Only allow one hyphen after the 5th digit
-    if (cleaned.length > 5) {
-      const firstPart = cleaned.slice(0, 5);
-      
-      if (cleaned.charAt(5) !== '-') {
-        // Insert hyphen after 5 digits
-        const secondPart = cleaned.slice(5).replace(/-/g, '');
-        cleaned = `${firstPart}-${secondPart}`;
-      } else {
-        // Keep existing hyphen and remove any others
-        const secondPart = cleaned.slice(6).replace(/-/g, '');
-        cleaned = `${firstPart}-${secondPart}`;
-      }
-    }
-    
-    // Limit to ZIP+4 format (12345-6789)
-    if (cleaned.includes('-')) {
-      const [first, second] = cleaned.split('-');
-      cleaned = `${first.slice(0, 5)}-${second.slice(0, 4)}`;
-    } else {
-      cleaned = cleaned.slice(0, 5);
-    }
+    // Get the country from the appropriate field using shared utility
+    const fieldName = input.getAttribute('os-checkout-field') || input.name || input.id || '';
+    const isBilling = fieldName.includes('billing');
+    const countryField = FormFieldUtils.findCountryField(isBilling);
+    const country = countryField?.value || 'US';
+    // Use shared formatting function
+    const cleaned = CountryConfig.formatPostalCode(oldValue, country);
     
     // Only update if changed to avoid cursor jumping
     if (cleaned !== oldValue) {

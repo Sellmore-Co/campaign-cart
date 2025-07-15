@@ -45,7 +45,6 @@ export class PhoneInputHandler {
       const iti = window.intlTelInput(input, {
         utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js',
         separateDialCode: true,
-        onlyCountries: ['us'],
         initialCountry: 'us',
         allowDropdown: false,
         dropdownContainer: document.body,
@@ -54,7 +53,8 @@ export class PhoneInputHandler {
         autoPlaceholder: 'aggressive',
         customContainer: 'iti-tel-input',
         autoFormat: true,
-        nationalMode: true
+        nationalMode: true,
+        preferredCountries: ['us', 'ca', 'gb', 'au']
       });
 
       input.iti = iti;
@@ -62,44 +62,17 @@ export class PhoneInputHandler {
 
       this.#setupPhoneInputSync(input, iti);
       this.#setupPhoneValidation(input, iti);
+      this.#setupCountryChangeListener(input, iti);
 
       // Add input event listener for formatting and validation
       input.addEventListener('input', () => {
         const number = input.value.trim();
         
-        // Format the number as user types
-        if (number) {
-          // Remove all non-numeric characters
-          const numericValue = number.replace(/\D/g, '');
-          
-          // Format according to US pattern (XXX) XXX-XXXX
-          let formattedNumber = '';
-          if (numericValue.length > 0) {
-            if (numericValue.length <= 3) {
-              formattedNumber = `(${numericValue}`;
-            } else if (numericValue.length <= 6) {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3)}`;
-            } else {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
-            }
-          }
-          
-          // Only update if the format is different to avoid cursor jumping
-          if (input.value !== formattedNumber) {
-            // Store cursor position
-            const cursorPos = input.selectionStart;
-            const oldLength = input.value.length;
-            
-            // Update value
-            input.value = formattedNumber;
-            
-            // Calculate new cursor position
-            if (cursorPos !== null) {
-              const newLength = formattedNumber.length;
-              const cursorOffset = newLength - oldLength;
-              input.setSelectionRange(cursorPos + cursorOffset, cursorPos + cursorOffset);
-            }
-          }
+        // Let intl-tel-input handle the formatting
+        // We'll just ensure the number is properly formatted on blur
+        if (number && iti.isValidNumber()) {
+          // The number is valid, clear any errors
+          this.#clearError(input);
         }
 
         const isValid = iti.isValidNumber();
@@ -147,7 +120,9 @@ export class PhoneInputHandler {
           });
 
           if (!isValid) {
-            this.#showError(input, 'Please enter a valid US phone number (e.g. 555-555-5555)');
+            const selectedCountry = iti.getSelectedCountryData();
+            const countryName = selectedCountry.name || 'phone';
+            this.#showError(input, `Please enter a valid ${countryName} phone number`);
           } else {
             this.#clearError(input);
           }
@@ -244,12 +219,35 @@ export class PhoneInputHandler {
       return;
     }
 
-    // Set country select to US if it exists
-    if (countrySelect.value !== 'US') {
-      countrySelect.value = 'US';
-      countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
-      this.#logger.debug('Country select updated to US');
+    // Set phone country based on the selected country
+    const currentCountry = countrySelect.value;
+    if (currentCountry && (currentCountry === 'US' || currentCountry === 'CA')) {
+      iti.setCountry(currentCountry.toLowerCase());
+      this.#logger.debug(`Phone input country set to ${currentCountry}`);
     }
+  }
+
+  #setupCountryChangeListener(input, iti) {
+    const fieldAttr = input.getAttribute('os-checkout-field');
+    if (!fieldAttr) return;
+
+    const countrySelect = document.querySelector(
+      fieldAttr === 'phone' ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
+    );
+
+    if (!countrySelect) return;
+
+    // Listen for country changes
+    countrySelect.addEventListener('change', () => {
+      const newCountry = countrySelect.value;
+      if (newCountry) {
+        iti.setCountry(newCountry.toLowerCase());
+        this.#logger.debug(`Phone input country changed to ${newCountry}`);
+        
+        // Clear any validation errors when country changes
+        this.#clearError(input);
+      }
+    });
   }
 
   #setupPhoneValidation(input, iti) {

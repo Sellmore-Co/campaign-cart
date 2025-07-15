@@ -935,14 +935,638 @@ var TwentyNineNext = (() => {
     }
   };
 
+  // src/components/checkout/shared/CountryConfig.js
+  var CountryConfig = {
+    // Postal code validation patterns - matching your exact format
+    postalPatterns: {
+      "US": "(^\\d{5}$)|(^\\d{5}-\\d{4}$)",
+      "GB": "^[A-Z]{1,2}\\d[A-Z\\d]? ?\\d[A-Z]{2}$",
+      "CA": "^[A-Z]\\d[A-Z] ?\\d[A-Z]\\d$",
+      "AU": "^\\d{4}$",
+      "NZ": "^\\d{4}$",
+      "DE": "^\\d{5}$",
+      "FR": "^\\d{5}$",
+      "IT": "^\\d{5}$",
+      "ES": "^\\d{5}$",
+      "SE": "^\\d{3} ?\\d{2}$",
+      "NL": "^\\d{4} ?[A-Z]{2}$",
+      "CH": "^\\d{4}$",
+      "BE": "^\\d{4}$",
+      "AT": "^\\d{4}$",
+      "DK": "^\\d{4}$",
+      "FI": "^\\d{5}$",
+      "NO": "^\\d{4}$",
+      "PT": "^\\d{4}-\\d{3}$",
+      "IE": "^[A-Za-z]\\d[\\dA-Za-z]? ?\\d[A-Za-z]{2}$",
+      "PL": "^\\d{2}-\\d{3}$",
+      "CZ": "^\\d{3} ?\\d{2}$",
+      "SK": "^\\d{3} ?\\d{2}$",
+      "HU": "^\\d{4}$",
+      "RO": "^\\d{6}$",
+      "BG": "^\\d{4}$",
+      "GR": "^\\d{5}$",
+      "EE": "^\\d{5}$",
+      "LT": "^LT-\\d{5}$",
+      "LU": "^\\d{4}$",
+      "SI": "^\\d{4}$",
+      "HR": "^\\d{5}$",
+      "ZA": "^\\d{4}$",
+      "IS": "^\\d{3}$",
+      "TR": "^\\d{5}$",
+      "GI": "^GX11 1AA$",
+      "IM": "^IM\\d{1,2} ?\\d[ABD-HJLN-UW-Z]{2}$",
+      "JE": "^JE\\d{1,2} ?\\d[ABD-HJLN-UW-Z]{2}$",
+      "LI": "^949[0-8]$",
+      "MD": "^\\d{4}$",
+      "MC": "^980\\d{2}$",
+      "RS": "^\\d{5}$",
+      "CS": "^\\d{5}$",
+      "MT": "^[A-Z]{3}\\d{4}$",
+      "BR": "^\\d{5}-?\\d{3}$",
+      "JP": "^\\d{3}-?\\d{4}$",
+      "IN": "^\\d{6}$",
+      "MX": "^\\d{5}$",
+      "AR": "^([A-Z]\\d{4}[A-Z]{3}|\\d{4})$",
+      "SG": "^\\d{6}$",
+      "HK": "^\\d{0}$",
+      // Hong Kong doesn't use postal codes
+      "MY": "^\\d{5}$",
+      "TH": "^\\d{5}$",
+      "ID": "^\\d{5}$",
+      "PH": "^\\d{4}$",
+      "VN": "^\\d{6}$",
+      "KR": "^\\d{5}$",
+      "CN": "^\\d{6}$",
+      "TW": "^\\d{3}(\\d{2})?$",
+      "RU": "^\\d{6}$",
+      "UA": "^\\d{5}$",
+      "IL": "^\\d{5}(\\d{2})?$",
+      "EG": "^\\d{5}$",
+      "NG": "^\\d{6}$",
+      "KE": "^\\d{5}$"
+    },
+    // Country-specific field labels
+    fieldLabels: {
+      "US": {
+        postal: "ZIP Code",
+        state: "State"
+      },
+      "CA": {
+        postal: "Postal Code",
+        state: "Province"
+      },
+      "GB": {
+        postal: "Postcode",
+        state: "County"
+      },
+      "AU": {
+        postal: "Postcode",
+        state: "State/Territory"
+      },
+      "NZ": {
+        postal: "Postcode",
+        state: "Region"
+      },
+      "DE": {
+        postal: "Postal Code",
+        state: "State"
+      },
+      "FR": {
+        postal: "Postal Code",
+        state: "Region"
+      },
+      "NL": {
+        postal: "Postcode",
+        state: "Province"
+      },
+      "BR": {
+        postal: "CEP",
+        state: "State"
+      },
+      "JP": {
+        postal: "Postal Code",
+        state: "Prefecture"
+      },
+      "IN": {
+        postal: "PIN Code",
+        state: "State"
+      },
+      "IT": {
+        postal: "Postal Code",
+        state: "Province"
+      },
+      "ES": {
+        postal: "Postal Code",
+        state: "Province"
+      },
+      "MX": {
+        postal: "Postal Code",
+        state: "State"
+      },
+      "AR": {
+        postal: "Postal Code",
+        state: "Province"
+      }
+    },
+    // Country-specific field configurations with min/max length
+    countrySettings: {
+      "US": { postalMinLength: "5", postalMaxLength: "11", postalFormat: "NNNNN-NNNN" },
+      "GB": { postalMinLength: "5", postalMaxLength: "8", postalFormat: "AANN NAA" },
+      "CA": { postalMinLength: "6", postalMaxLength: "7", postalFormat: "ANA NAN" },
+      "AU": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "NZ": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "DE": { postalMinLength: "5", postalMaxLength: "5", postalFormat: "NNNNN" },
+      "FR": { postalMinLength: "5", postalMaxLength: "5", postalFormat: "NNNNN" },
+      "IT": { postalMinLength: "5", postalMaxLength: "5", postalFormat: "NNNNN" },
+      "ES": { postalMinLength: "5", postalMaxLength: "5", postalFormat: "NNNNN" },
+      "SE": { postalMinLength: "5", postalMaxLength: "6", postalFormat: "NNN NN" },
+      "NL": { postalMinLength: "6", postalMaxLength: "7", postalFormat: "NNNN AA" },
+      "CH": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "BE": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "AT": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "DK": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "FI": { postalMinLength: "5", postalMaxLength: "5", postalFormat: "NNNNN" },
+      "NO": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "PT": { postalMinLength: "8", postalMaxLength: "8", postalFormat: "NNNN-NNN" },
+      "IE": { postalMinLength: "7", postalMaxLength: "10", postalFormat: "ANN NNAA" },
+      "PL": { postalMinLength: "6", postalMaxLength: "6", postalFormat: "NN-NNN" },
+      "CZ": { postalMinLength: "5", postalMaxLength: "6", postalFormat: "NNN NN" },
+      "SK": { postalMinLength: "5", postalMaxLength: "6", postalFormat: "NNN NN" },
+      "HU": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "RO": { postalMinLength: "6", postalMaxLength: "6", postalFormat: "NNNNNN" },
+      "BG": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "GR": { postalMinLength: "5", postalMaxLength: "5", postalFormat: "NNNNN" },
+      "EE": { postalMinLength: "5", postalMaxLength: "5", postalFormat: "NNNNN" },
+      "LT": { postalMinLength: "8", postalMaxLength: "8", postalFormat: "LT-NNNNN" },
+      "LU": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "SI": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "HR": { postalMinLength: "5", postalMaxLength: "5", postalFormat: "NNNNN" },
+      "ZA": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "IS": { postalMinLength: "3", postalMaxLength: "3", postalFormat: "NNN" },
+      "TR": { postalMinLength: "5", postalMaxLength: "5", postalFormat: "NNNNN" },
+      "GI": { postalMinLength: "8", postalMaxLength: "8", postalFormat: "GX11 1AA" },
+      "IM": { postalMinLength: "5", postalMaxLength: "7", postalFormat: "IMN NAA" },
+      "JE": { postalMinLength: "5", postalMaxLength: "7", postalFormat: "JEN NAA" },
+      "LI": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "949N" },
+      "MD": { postalMinLength: "4", postalMaxLength: "4", postalFormat: "NNNN" },
+      "MC": { postalMinLength: "5", postalMaxLength: "5", postalFormat: "980NN" },
+      "RS": { postalMinLength: "5", postalMaxLength: "5", postalFormat: "NNNNN" },
+      "CS": { postalMinLength: "5", postalMaxLength: "5", postalFormat: "NNNNN" },
+      "MT": { postalMinLength: "7", postalMaxLength: "7", postalFormat: "AAANNNN" },
+      "BR": { postalMinLength: "8", postalMaxLength: "9", postalFormat: "NNNNN-NNN" },
+      "JP": { postalMinLength: "7", postalMaxLength: "8", postalFormat: "NNN-NNNN" },
+      "IN": { postalMinLength: "6", postalMaxLength: "6", postalFormat: "NNNNNN" }
+    },
+    /**
+     * Get postal pattern for a country
+     * @param {string} countryCode - Two-letter country code
+     * @returns {string} Regex pattern for postal code validation
+     */
+    getPostalPattern(countryCode) {
+      return this.postalPatterns[countryCode?.toUpperCase()] || "^.+$";
+    },
+    /**
+     * Get field labels for a country
+     * @param {string} countryCode - Two-letter country code
+     * @returns {Object} Object with postal and state labels
+     */
+    getFieldLabels(countryCode) {
+      const defaults = {
+        postal: "Postal Code",
+        state: "State/Province"
+      };
+      return this.fieldLabels[countryCode?.toUpperCase()] || defaults;
+    },
+    /**
+     * Get country settings including min/max length and format
+     * @param {string} countryCode - Two-letter country code
+     * @returns {Object} Country-specific settings
+     */
+    getCountrySettings(countryCode) {
+      const defaults = {
+        postalMinLength: "3",
+        postalMaxLength: "20",
+        postalFormat: ""
+      };
+      return {
+        ...defaults,
+        ...this.countrySettings[countryCode?.toUpperCase()]
+      };
+    },
+    /**
+     * Get complete country configuration
+     * @param {string} countryCode - Two-letter country code
+     * @returns {Object} Complete configuration for the country
+     */
+    getCountryConfig(countryCode) {
+      const labels = this.getFieldLabels(countryCode);
+      const settings = this.getCountrySettings(countryCode);
+      return {
+        postalLabel: labels.postal + "*",
+        stateLabel: "Select " + labels.state,
+        postalPattern: this.getPostalPattern(countryCode),
+        postalMaxLength: settings.postalMaxLength,
+        postalFormat: settings.postalFormat
+      };
+    },
+    /**
+     * Format postal code based on country rules
+     * @param {string} value - The postal code value to format
+     * @param {string} countryCode - Two-letter country code
+     * @returns {string} Formatted postal code
+     */
+    formatPostalCode(value, countryCode) {
+      let cleaned = value;
+      switch (countryCode?.toUpperCase()) {
+        case "CA":
+          cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+          if (cleaned.length > 3) {
+            cleaned = cleaned.slice(0, 3) + " " + cleaned.slice(3, 6);
+          }
+          break;
+        case "GB":
+          cleaned = value.toUpperCase();
+          break;
+        case "NL":
+          cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+          if (cleaned.length > 4) {
+            cleaned = cleaned.slice(0, 4) + " " + cleaned.slice(4, 6);
+          }
+          break;
+        case "JP":
+          cleaned = value.replace(/[^\d-]/g, "");
+          if (cleaned.length > 3 && cleaned.charAt(3) !== "-") {
+            cleaned = cleaned.slice(0, 3) + "-" + cleaned.slice(3, 7);
+          }
+          break;
+        case "BR":
+          cleaned = value.replace(/[^\d-]/g, "");
+          if (cleaned.length > 5 && cleaned.charAt(5) !== "-") {
+            cleaned = cleaned.slice(0, 5) + "-" + cleaned.slice(5, 8);
+          }
+          break;
+        case "PL":
+          cleaned = value.replace(/[^\d-]/g, "");
+          if (cleaned.length > 2 && cleaned.charAt(2) !== "-") {
+            cleaned = cleaned.slice(0, 2) + "-" + cleaned.slice(2, 5);
+          }
+          break;
+        case "PT":
+          cleaned = value.replace(/[^\d-]/g, "");
+          if (cleaned.length > 4 && cleaned.charAt(4) !== "-") {
+            cleaned = cleaned.slice(0, 4) + "-" + cleaned.slice(4, 7);
+          }
+          break;
+        case "CZ":
+        case "SK":
+          cleaned = value.replace(/[^\d\s]/g, "");
+          if (cleaned.length > 3 && cleaned.charAt(3) !== " ") {
+            cleaned = cleaned.slice(0, 3) + " " + cleaned.slice(3, 5);
+          }
+          break;
+        case "LT":
+          cleaned = value.toUpperCase().replace(/[^LT\d-]/g, "");
+          if (!cleaned.startsWith("LT-")) {
+            cleaned = "LT-" + cleaned.replace(/[^0-9]/g, "");
+          }
+          cleaned = cleaned.slice(0, 8);
+          break;
+        case "IE":
+          cleaned = value.toUpperCase();
+          break;
+        case "MT":
+          cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+          break;
+        case "SE":
+        case "NO":
+        case "DK":
+        case "FI":
+          cleaned = value.replace(/[^\d\s]/g, "");
+          if (cleaned.length > 3 && cleaned.charAt(3) !== " ") {
+            cleaned = cleaned.slice(0, 3) + " " + cleaned.slice(3, 5);
+          }
+          break;
+        case "US":
+          cleaned = value.replace(/[^\d-]/g, "");
+          if (cleaned.length > 5) {
+            const firstPart = cleaned.slice(0, 5);
+            if (cleaned.charAt(5) !== "-") {
+              const secondPart = cleaned.slice(5).replace(/-/g, "");
+              cleaned = `${firstPart}-${secondPart}`;
+            } else {
+              const secondPart = cleaned.slice(6).replace(/-/g, "");
+              cleaned = `${firstPart}-${secondPart}`;
+            }
+          }
+          if (cleaned.includes("-")) {
+            const [first, second] = cleaned.split("-");
+            cleaned = `${first.slice(0, 5)}-${second.slice(0, 4)}`;
+          } else {
+            cleaned = cleaned.slice(0, 5);
+          }
+          break;
+        default:
+          cleaned = value.trim();
+          break;
+      }
+      return cleaned;
+    },
+    /**
+     * Get validation configuration in JustValidate format
+     * @param {string} countryCode - Two-letter country code
+     * @returns {Object} Validation configuration with regex, min, max, and msg
+     */
+    getValidationConfig(countryCode) {
+      const code = countryCode?.toUpperCase();
+      const pattern = this.postalPatterns[code];
+      const settings = this.getCountrySettings(code);
+      const labels = this.getFieldLabels(code);
+      if (!pattern) {
+        return {
+          regex: /^.+$/,
+          min: 3,
+          max: 20,
+          msg: "Please enter a valid postal code"
+        };
+      }
+      const errorMessages = {
+        "US": `Not a valid US ZIP Code (e.g., 12345 or 12345-6789)`,
+        "GB": `Not a valid UK postcode (e.g., SW1A 1AA)`,
+        "CA": `Not a valid Canadian postcode (e.g., K1A 0B1)`,
+        "AU": `Not a valid Australian postcode (e.g., 2000)`,
+        "NZ": `Not a valid NZ postcode (e.g., 6011)`,
+        "DE": `Not a valid German postcode (e.g., 10115)`,
+        "FR": `Not a valid French postcode (e.g., 75001)`,
+        "IT": `Not a valid Italian postcode (e.g., 00100)`,
+        "ES": `Not a valid Spanish postcode (e.g., 28013)`,
+        "SE": `Not a valid Swedish postcode (e.g., 123 45)`,
+        "NL": `Not a valid Dutch postcode (e.g., 1234 AB)`,
+        "CH": `Not a valid Swiss postcode (e.g., 8001)`,
+        "BE": `Not a valid Belgian postcode (e.g., 1000)`,
+        "AT": `Not a valid Austrian postcode (e.g., 1010)`,
+        "DK": `Not a valid Danish postcode (e.g., 2100)`,
+        "FI": `Not a valid Finnish postcode (e.g., 00100)`,
+        "NO": `Not a valid Norwegian postcode (e.g., 0150)`,
+        "PT": `Not a valid Portuguese postcode (e.g., 1000-001)`,
+        "IE": `Not a valid Irish Eircode (e.g., D02 X285)`,
+        "PL": `Not a valid Polish postcode (e.g., 00-001)`,
+        "CZ": `Not a valid Czech postcode (e.g., 123 45)`,
+        "SK": `Not a valid Slovak postcode (e.g., 123 45)`,
+        "HU": `Not a valid Hungarian postcode (e.g., 1051)`,
+        "RO": `Not a valid Romanian postcode (e.g., 010011)`,
+        "BG": `Not a valid Bulgarian postcode (e.g., 1000)`,
+        "GR": `Not a valid Greek postcode (e.g., 10558)`,
+        "EE": `Not a valid Estonian postcode (e.g., 10111)`,
+        "LT": `Not a valid Lithuanian postcode (e.g., LT-01100)`,
+        "LU": `Not a valid Luxembourg postcode (e.g., 1009)`,
+        "SI": `Not a valid Slovenian postcode (e.g., 1000)`,
+        "HR": `Not a valid Croatian postcode (e.g., 10000)`,
+        "ZA": `Not a valid South African postcode (e.g., 8000)`,
+        "IS": `Not a valid Icelandic postcode (e.g., 101)`,
+        "TR": `Not a valid Turkish postcode (e.g., 34000)`,
+        "GI": `Gibraltar postcode is GX11 1AA`,
+        "IM": `Not a valid Isle of Man postcode (e.g., IM2 1AA)`,
+        "JE": `Not a valid Jersey postcode (e.g., JE2 3ZZ)`,
+        "LI": `Not a valid Liechtenstein postcode (e.g., 9490)`,
+        "MD": `Not a valid Moldovan postcode (e.g., 2001)`,
+        "MC": `Not a valid Monaco postcode (e.g., 98000)`,
+        "RS": `Not a valid Serbian postcode (e.g., 11000)`,
+        "CS": `Not a valid postcode (Serbia and Montenegro)`,
+        "MT": `Not a valid Maltese postcode (e.g., VLT1111)`
+      };
+      return {
+        regex: new RegExp(pattern, "i"),
+        min: parseInt(settings.postalMinLength),
+        max: parseInt(settings.postalMaxLength),
+        msg: errorMessages[code] || `Please enter a valid ${labels.postal}`
+      };
+    }
+  };
+
+  // src/components/checkout/shared/FormFieldUtils.js
+  var FormFieldUtils = class {
+    /**
+     * Find a form field using multiple selector strategies
+     * @param {string} fieldName - The field name (e.g., 'postal', 'billing-postal')
+     * @param {Object} options - Options for field selection
+     * @param {string} options.prefix - Prefix for the field (e.g., 'billing-')
+     * @param {boolean} options.isBilling - Whether this is a billing field
+     * @returns {HTMLElement|null} The found element or null
+     */
+    static findField(fieldName, options = {}) {
+      const { prefix = "", isBilling = false } = options;
+      const fullFieldName = prefix ? `${prefix}${fieldName}` : fieldName;
+      const idPrefix = isBilling ? "billing_" : "shipping_";
+      const idFieldName = fieldName.replace("-", "_");
+      const selectors = [
+        `[os-checkout-field="${fullFieldName}"]`,
+        `[data-os-field="${fullFieldName}"]`,
+        `#${idPrefix}${idFieldName}`,
+        `[name="${idPrefix}${idFieldName}"]`,
+        `[id="${idFieldName}"]`,
+        `[name="${idFieldName}"]`
+      ];
+      for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element)
+          return element;
+      }
+      return null;
+    }
+    /**
+     * Find country field with fallback selectors
+     * @param {boolean} isBilling - Whether to find billing country
+     * @returns {HTMLElement|null} The country select element
+     */
+    static findCountryField(isBilling = false) {
+      const fieldName = isBilling ? "billing-country" : "country";
+      return this.findField("country", {
+        prefix: isBilling ? "billing-" : "",
+        isBilling
+      });
+    }
+    /**
+     * Find postal/zip code field with fallback selectors
+     * @param {boolean} isBilling - Whether to find billing postal code
+     * @returns {HTMLElement|null} The postal code input element
+     */
+    static findPostalField(isBilling = false) {
+      const fieldName = isBilling ? "billing-postal" : "postal";
+      const element = this.findField("postal", {
+        prefix: isBilling ? "billing-" : "",
+        isBilling
+      });
+      if (!element) {
+        const idPrefix = isBilling ? "billing_" : "shipping_";
+        return document.querySelector(`#${idPrefix}postal_code`) || document.querySelector(`[name="${idPrefix}postal_code"]`) || document.querySelector(`#postal_code`) || document.querySelector(`[name="postal_code"]`);
+      }
+      return element;
+    }
+    /**
+     * Find state/province field with fallback selectors
+     * @param {boolean} isBilling - Whether to find billing state
+     * @returns {HTMLElement|null} The state/province select element
+     */
+    static findStateField(isBilling = false) {
+      const element = this.findField("province", {
+        prefix: isBilling ? "billing-" : "",
+        isBilling
+      });
+      if (element) {
+        const selectWrapper = element.closest(".select-form-wrapper");
+        if (selectWrapper) {
+          const select = selectWrapper.querySelector("select");
+          if (select)
+            return select;
+        }
+      }
+      return element;
+    }
+    /**
+     * Get all address fields for a given type
+     * @param {string} type - 'shipping' or 'billing'
+     * @returns {Object} Object with all address fields
+     */
+    static getAddressFields(type = "shipping") {
+      const isBilling = type === "billing";
+      const prefix = isBilling ? "billing-" : "";
+      const fieldNames = [
+        "fname",
+        "lname",
+        "address1",
+        "address2",
+        "city",
+        "province",
+        "postal",
+        "country",
+        "phone"
+      ];
+      const fields = {};
+      fieldNames.forEach((name) => {
+        const field = this.findField(name, { prefix, isBilling });
+        if (field) {
+          fields[name] = field;
+        }
+      });
+      return fields;
+    }
+    /**
+     * Get field label based on field name and country
+     * @param {string} fieldName - The field name (e.g., 'postal', 'province')
+     * @param {string} countryCode - Two-letter country code
+     * @param {boolean} isBilling - Whether this is a billing field
+     * @returns {string} The appropriate label for the field
+     */
+    static getFieldLabel(fieldName, countryCode, isBilling = false) {
+      const prefix = isBilling ? "Billing " : "";
+      if (fieldName === "postal") {
+        const postalLabels = {
+          "US": "ZIP Code",
+          "CA": "Postal Code",
+          "GB": "Postcode",
+          "AU": "Postcode",
+          "NZ": "Postcode",
+          "BR": "CEP",
+          "IN": "PIN Code",
+          "default": "Postal Code"
+        };
+        const label = postalLabels[countryCode] || postalLabels.default;
+        return prefix + label;
+      }
+      if (fieldName === "province" || fieldName === "state") {
+        const stateLabels = {
+          "US": "State",
+          "CA": "Province",
+          "GB": "County",
+          "AU": "State/Territory",
+          "NZ": "Region",
+          "JP": "Prefecture",
+          "default": "State/Province"
+        };
+        const label = stateLabels[countryCode] || stateLabels.default;
+        return prefix + label;
+      }
+      const defaultLabels = {
+        "fname": "First Name",
+        "lname": "Last Name",
+        "address1": "Address",
+        "address2": "Address 2",
+        "city": "City",
+        "country": "Country",
+        "phone": "Phone"
+      };
+      return prefix + (defaultLabels[fieldName] || fieldName);
+    }
+    /**
+     * Update field placeholder and attributes based on country
+     * @param {HTMLElement} field - The field element
+     * @param {Object} config - Configuration object with label, pattern, maxLength
+     */
+    static updateFieldAttributes(field, config) {
+      if (!field || !config)
+        return;
+      if (config.label !== void 0) {
+        field.placeholder = config.label;
+      }
+      if (config.pattern !== void 0) {
+        field.setAttribute("pattern", config.pattern);
+      }
+      if (config.maxLength !== void 0) {
+        field.setAttribute("maxlength", config.maxLength);
+      }
+      if (config.format !== void 0) {
+        field.setAttribute("data-format", config.format);
+      }
+    }
+    /**
+     * Clear error styling and messages for a field
+     * @param {HTMLElement} field - The field element
+     */
+    static clearFieldError(field) {
+      if (!field)
+        return;
+      field.classList.remove("error");
+      const wrapper = field.closest(".frm-flds") || field.closest(".form-group") || field.parentElement;
+      if (wrapper) {
+        const errorElement = wrapper.querySelector(".pb-input-error");
+        if (errorElement) {
+          errorElement.remove();
+        }
+      }
+    }
+    /**
+     * Show error message for a field
+     * @param {HTMLElement} field - The field element
+     * @param {string} message - The error message
+     */
+    static showFieldError(field, message) {
+      if (!field || !message)
+        return;
+      field.classList.add("error");
+      const wrapper = field.closest(".frm-flds") || field.closest(".form-group") || field.parentElement;
+      if (wrapper) {
+        const existingError = wrapper.querySelector(".pb-input-error");
+        if (existingError) {
+          existingError.remove();
+        }
+        const errorElement = document.createElement("div");
+        errorElement.className = "pb-input-error";
+        errorElement.textContent = message;
+        errorElement.style.cssText = "color: red; font-size: 0.875rem; margin-top: 0.25rem;";
+        wrapper.appendChild(errorElement);
+      }
+    }
+  };
+
   // src/components/checkout/AddressHandler.js
-  var _form, _logger2, _addressConfig, _countries, _states, _elements, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStates, loadCountriesAndStates_fn, _loadStates, loadStates_fn, _detectUserCountry, detectUserCountry_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn;
+  var _form, _logger2, _addressConfig, _countries, _states, _elements, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateFieldLabelsForCountry, updateFieldLabelsForCountry_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStates, loadCountriesAndStates_fn, _loadStates, loadStates_fn, _detectUserCountry, detectUserCountry_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn;
   var AddressHandler = class {
     constructor(form, logger) {
       __privateAdd(this, _init);
       __privateAdd(this, _getAddressConfig);
       __privateAdd(this, _initCountrySelect);
       __privateAdd(this, _setupCountryChangeListeners);
+      __privateAdd(this, _updateFieldLabelsForCountry);
       __privateAdd(this, _updateStateSelect);
       __privateAdd(this, _populateStateSelect);
       __privateAdd(this, _loadCachedData);
@@ -1008,6 +1632,8 @@ var TwentyNineNext = (() => {
     countrySelect.value = __privateGet(this, _addressConfig).defaultCountry;
     if (stateSelect && countrySelect.value)
       await __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, stateSelect, countrySelect.value);
+    const type = countrySelect === __privateGet(this, _elements).shippingCountry ? "shipping" : "billing";
+    __privateMethod(this, _updateFieldLabelsForCountry, updateFieldLabelsForCountry_fn).call(this, countrySelect.value, type);
     __privateGet(this, _logger2).debug(`Country select initialized with default ${__privateGet(this, _addressConfig).defaultCountry}`);
   };
   _setupCountryChangeListeners = new WeakSet();
@@ -1017,8 +1643,34 @@ var TwentyNineNext = (() => {
       [__privateGet(this, _elements).billingCountry, __privateGet(this, _elements).billingState]
     ];
     pairs.forEach(([country, state]) => {
-      country?.addEventListener("change", () => state && __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, state, country.value));
+      country?.addEventListener("change", () => {
+        if (state) {
+          __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, state, country.value);
+        }
+        __privateMethod(this, _updateFieldLabelsForCountry, updateFieldLabelsForCountry_fn).call(this, country.value, country === __privateGet(this, _elements).shippingCountry ? "shipping" : "billing");
+      });
     });
+  };
+  _updateFieldLabelsForCountry = new WeakSet();
+  updateFieldLabelsForCountry_fn = function(countryCode, type = "shipping") {
+    const isBilling = type === "billing";
+    const postalField = FormFieldUtils.findPostalField(isBilling);
+    const stateField = FormFieldUtils.findStateField(isBilling);
+    const config = CountryConfig.getCountryConfig(countryCode);
+    if (postalField) {
+      FormFieldUtils.updateFieldAttributes(postalField, {
+        label: config.postalLabel,
+        pattern: config.postalPattern,
+        maxLength: config.postalMaxLength
+      });
+    }
+    if (stateField) {
+      const defaultOption = stateField.querySelector('option[value=""]');
+      if (defaultOption) {
+        defaultOption.textContent = config.stateLabel;
+      }
+    }
+    __privateGet(this, _logger2).debug(`Updated field labels for ${type} address to ${countryCode} format`);
   };
   _updateStateSelect = new WeakSet();
   updateStateSelect_fn = async function(stateSelect, countryCode, isPriority = false) {
@@ -1126,7 +1778,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/FormValidator.js
-  var _logger3, _form2, _validationErrors, _debugMode, _spreedlyEnabled, _spreedlyFieldsValid, _spreedlyReady, _getFormElement, getFormElement_fn, _safeLog, safeLog_fn, _setupListeners, setupListeners_fn, _setupSpreedlyListeners, setupSpreedlyListeners_fn, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn, _handleSpreedlyError, handleSpreedlyError_fn, _handleSubmit, handleSubmit_fn, _logValidationStart, logValidationStart_fn, _validateFields, validateFields_fn, _shouldSkipField, shouldSkipField_fn, _validateCreditCardExpiryFields, validateCreditCardExpiryFields_fn, _getExpiryFields, getExpiryFields_fn, _validateExpiryField, validateExpiryField_fn, _clearSpreedlyErrors, clearSpreedlyErrors_fn, _validateField, validateField_fn, _getReadableFieldLabel, getReadableFieldLabel_fn, _getFieldValidation, getFieldValidation_fn, _validateCity, validateCity_fn, _validateZipCode, validateZipCode_fn, _showError, showError_fn, _getOrCreateErrorElement, getOrCreateErrorElement_fn, _scrollToError, scrollToError_fn, _isValidEmail, isValidEmail_fn, _validatePhoneFields, validatePhoneFields_fn, _setupZipCodeFormatting, setupZipCodeFormatting_fn, _formatZipCode, formatZipCode_fn;
+  var _logger3, _form2, _validationErrors, _debugMode, _spreedlyEnabled, _spreedlyFieldsValid, _spreedlyReady, _getFormElement, getFormElement_fn, _safeLog, safeLog_fn, _setupListeners, setupListeners_fn, _setupSpreedlyListeners, setupSpreedlyListeners_fn, _getSpreedlyFieldErrorMessage, getSpreedlyFieldErrorMessage_fn, _handleSpreedlyError, handleSpreedlyError_fn, _handleSubmit, handleSubmit_fn, _logValidationStart, logValidationStart_fn, _validateFields, validateFields_fn, _shouldSkipField, shouldSkipField_fn, _validateCreditCardExpiryFields, validateCreditCardExpiryFields_fn, _getExpiryFields, getExpiryFields_fn, _validateExpiryField, validateExpiryField_fn, _clearSpreedlyErrors, clearSpreedlyErrors_fn, _validateField, validateField_fn, _getReadableFieldLabel, getReadableFieldLabel_fn, _getPostalFieldLabel, getPostalFieldLabel_fn, _getFieldValidation, getFieldValidation_fn, _validateCity, validateCity_fn, _validateZipCode, validateZipCode_fn, _showError, showError_fn, _getOrCreateErrorElement, getOrCreateErrorElement_fn, _scrollToError, scrollToError_fn, _isValidEmail, isValidEmail_fn, _validatePhoneFields, validatePhoneFields_fn, _setupZipCodeFormatting, setupZipCodeFormatting_fn, _formatZipCode, formatZipCode_fn;
   var FormValidator = class {
     constructor(options = {}) {
       __privateAdd(this, _getFormElement);
@@ -1145,11 +1797,12 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _clearSpreedlyErrors);
       __privateAdd(this, _validateField);
       __privateAdd(this, _getReadableFieldLabel);
+      __privateAdd(this, _getPostalFieldLabel);
       __privateAdd(this, _getFieldValidation);
       __privateAdd(this, _validateCity);
       /**
-       * Validate a US ZIP code (5 digits or ZIP+4 format)
-       * @param {string} value - ZIP code to validate
+       * Validate a ZIP/postal code based on the selected country
+       * @param {string} value - ZIP/postal code to validate
        * @param {string} fieldName - Name of the field for error message
        * @returns {Object} Validation result with isValid and errorMessage
        */
@@ -1164,9 +1817,7 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _setupZipCodeFormatting);
       /**
-       * Format ZIP code as user types: 
-       * - Allow only numbers and hyphen
-       * - Automatically add hyphen after 5 digits if the user is entering more
+       * Format ZIP/postal code as user types based on country
        * @param {Event} event - Input event
        */
       __privateAdd(this, _formatZipCode);
@@ -1207,18 +1858,13 @@ var TwentyNineNext = (() => {
       return isValid;
     }
     clearErrorForField(field) {
-      if (!field)
-        return;
-      field.classList.remove("error");
-      const wrapper = field.closest(".frm-flds") || field.closest(".form-group") || field.parentElement;
-      wrapper?.querySelector(".pb-input-error")?.remove();
+      FormFieldUtils.clearFieldError(field);
       const fieldName = field.getAttribute("os-checkout-field");
       if (["cc-number", "cvv"].includes(fieldName)) {
         const spreedlyId = `spreedly-${fieldName === "cc-number" ? "number" : "cvv"}`;
         const spreedlyContainer = document.getElementById(spreedlyId);
         if (spreedlyContainer) {
-          spreedlyContainer.classList.remove("error");
-          spreedlyContainer.closest(".frm-flds")?.querySelector(".pb-input-error")?.remove();
+          FormFieldUtils.clearFieldError(spreedlyContainer);
         }
       }
     }
@@ -1518,7 +2164,10 @@ var TwentyNineNext = (() => {
   };
   _getReadableFieldLabel = new WeakSet();
   getReadableFieldLabel_fn = function(field, fallbackLabel) {
-    const fieldName = field.getAttribute("os-checkout-field") || field.name;
+    const fieldName = field.getAttribute("os-checkout-field") || field.name || field.id;
+    if (fieldName && (fieldName.includes("postal") || fieldName === "shipping_postal_code" || fieldName === "billing_postal_code")) {
+      return __privateMethod(this, _getPostalFieldLabel, getPostalFieldLabel_fn).call(this, fieldName);
+    }
     const labelMap = {
       "fname": "First Name",
       "lname": "Last Name",
@@ -1528,7 +2177,6 @@ var TwentyNineNext = (() => {
       "address2": "Apartment or Suite",
       "city": "City",
       "province": "State/Province",
-      "postal": "ZIP/Postal Code",
       "country": "Country",
       "cc-number": "Credit Card Number",
       "cvv": "Security Code",
@@ -1543,11 +2191,17 @@ var TwentyNineNext = (() => {
       "billing-address2": "Billing Apartment or Suite",
       "billing-city": "Billing City",
       "billing-province": "Billing State/Province",
-      "billing-postal": "Billing ZIP/Postal Code",
       "billing-country": "Billing Country",
       "billing-phone": "Billing Phone Number"
     };
     return labelMap[fieldName] || fallbackLabel || fieldName;
+  };
+  _getPostalFieldLabel = new WeakSet();
+  getPostalFieldLabel_fn = function(fieldName) {
+    const isBilling = fieldName.includes("billing");
+    const countryField = FormFieldUtils.findCountryField(isBilling);
+    const country = countryField?.value || "US";
+    return FormFieldUtils.getFieldLabel("postal", country, isBilling);
   };
   _getFieldValidation = new WeakSet();
   getFieldValidation_fn = function(field, value, label) {
@@ -1593,26 +2247,35 @@ var TwentyNineNext = (() => {
   };
   _validateZipCode = new WeakSet();
   validateZipCode_fn = function(value, fieldName = "Zip") {
-    const zipPattern = /(^\d{5}$)|(^\d{5}-\d{4}$)/;
-    const isValid = zipPattern.test(value);
+    const isBilling = fieldName.includes("billing");
+    const countryField = FormFieldUtils.findCountryField(isBilling);
+    const country = countryField?.value || "US";
+    const patternString = CountryConfig.getPostalPattern(country);
+    const pattern = new RegExp(patternString, "i");
+    const isValid = pattern.test(value);
+    const fieldLabel = FormFieldUtils.getFieldLabel("postal", country);
+    const errorMessages = {
+      "US": `Not a valid US ${fieldLabel} (e.g., 12345 or 12345-6789)`,
+      "GB": `Not a valid UK ${fieldLabel} (e.g., SW1A 1AA)`,
+      "CA": `Not a valid Canadian ${fieldLabel} (e.g., K1A 0B1)`,
+      "AU": `Not a valid Australian ${fieldLabel} (e.g., 2000)`,
+      "NZ": `Not a valid NZ ${fieldLabel} (e.g., 6011)`,
+      "DE": `Not a valid German ${fieldLabel} (e.g., 10115)`,
+      "FR": `Not a valid French ${fieldLabel} (e.g., 75001)`,
+      "NL": `Not a valid Dutch ${fieldLabel} (e.g., 1234 AB)`,
+      "BR": `Not a valid Brazilian ${fieldLabel} (e.g., 12345-678)`,
+      "JP": `Not a valid Japanese ${fieldLabel} (e.g., 123-4567)`,
+      "IN": `Not a valid Indian ${fieldLabel} (e.g., 123456)`
+    };
+    const errorMessage = errorMessages[country] || `Please enter a valid ${fieldLabel}`;
     return {
       isValid,
-      errorMessage: isValid ? "" : `Field must be a valid US Zip code.`
+      errorMessage: isValid ? "" : errorMessage
     };
   };
   _showError = new WeakSet();
   showError_fn = function(input, message) {
-    if (!input)
-      return;
-    input.classList.add("error");
-    const wrapper = input.closest(".frm-flds") || input.closest(".form-group") || input.parentElement;
-    const errorElement = __privateMethod(this, _getOrCreateErrorElement, getOrCreateErrorElement_fn).call(this, wrapper);
-    errorElement.textContent = message;
-    Object.assign(errorElement.style, {
-      color: "red",
-      fontSize: "0.875rem",
-      marginTop: "0.25rem"
-    });
+    FormFieldUtils.showFieldError(input, message);
     if (!input.hasErrorListener) {
       input.hasErrorListener = true;
       ["input", "change"].forEach((event) => input.addEventListener(event, () => this.clearErrorForField(input)));
@@ -1677,16 +2340,12 @@ var TwentyNineNext = (() => {
   };
   _setupZipCodeFormatting = new WeakSet();
   setupZipCodeFormatting_fn = function() {
-    const zipFields = [
-      ...document.querySelectorAll('[os-checkout-field="postal"]'),
-      ...document.querySelectorAll('[os-checkout-field="billing-postal"]'),
-      ...document.querySelectorAll('[os-checkout-field="zip"]')
-    ];
+    const shippingPostal = FormFieldUtils.findPostalField(false);
+    const billingPostal = FormFieldUtils.findPostalField(true);
+    const zipFields = [shippingPostal, billingPostal].filter(Boolean);
     zipFields.forEach((field) => {
-      if (field) {
-        field.addEventListener("input", (e) => __privateMethod(this, _formatZipCode, formatZipCode_fn).call(this, e));
-        __privateGet(this, _logger3).debug(`ZIP code formatting setup for: ${field.getAttribute("os-checkout-field") || field.name || "unknown"}`);
-      }
+      field.addEventListener("input", (e) => __privateMethod(this, _formatZipCode, formatZipCode_fn).call(this, e));
+      __privateGet(this, _logger3).debug(`ZIP code formatting setup for: ${field.getAttribute("os-checkout-field") || field.name || "unknown"}`);
     });
   };
   _formatZipCode = new WeakSet();
@@ -1694,23 +2353,11 @@ var TwentyNineNext = (() => {
     const input = event.target;
     const cursorPos = input.selectionStart;
     const oldValue = input.value;
-    let cleaned = oldValue.replace(/[^\d-]/g, "");
-    if (cleaned.length > 5) {
-      const firstPart = cleaned.slice(0, 5);
-      if (cleaned.charAt(5) !== "-") {
-        const secondPart = cleaned.slice(5).replace(/-/g, "");
-        cleaned = `${firstPart}-${secondPart}`;
-      } else {
-        const secondPart = cleaned.slice(6).replace(/-/g, "");
-        cleaned = `${firstPart}-${secondPart}`;
-      }
-    }
-    if (cleaned.includes("-")) {
-      const [first, second] = cleaned.split("-");
-      cleaned = `${first.slice(0, 5)}-${second.slice(0, 4)}`;
-    } else {
-      cleaned = cleaned.slice(0, 5);
-    }
+    const fieldName = input.getAttribute("os-checkout-field") || input.name || input.id || "";
+    const isBilling = fieldName.includes("billing");
+    const countryField = FormFieldUtils.findCountryField(isBilling);
+    const country = countryField?.value || "US";
+    const cleaned = CountryConfig.formatPostalCode(oldValue, country);
     if (cleaned !== oldValue) {
       input.value = cleaned;
       const posAdjust = cleaned.length - oldValue.length;
@@ -3653,24 +4300,23 @@ var TwentyNineNext = (() => {
       __privateMethod(this, _init2, init_fn2).call(this);
     }
     /**
-     * Copy shipping address values to billing address fields
+     * @deprecated - No longer copying shipping to billing automatically
+     * Clear billing address fields instead
      */
-    copyShippingToBilling() {
+    clearBillingFields() {
       try {
-        Object.entries(__privateGet(this, _shippingFields)).forEach(([shippingField, shippingElement]) => {
-          const billingFieldName = __privateGet(this, _fieldMap)[shippingField];
-          const billingElement = __privateGet(this, _billingFields)[billingFieldName];
-          if (billingElement && shippingElement) {
-            billingElement.value = shippingElement.value;
+        Object.values(__privateGet(this, _billingFields)).forEach((billingElement) => {
+          if (billingElement) {
+            billingElement.value = "";
             billingElement.dispatchEvent(new Event("change", { bubbles: true }));
           }
         });
-        if (__privateGet(this, _billingFields)["billing-address1"] && __privateGet(this, _billingFields)["billing-address1"].value && __privateGet(this, _billingFields)["billing-address1"].value.length > 0) {
-          __privateMethod(this, _showBillingLocationComponent, showBillingLocationComponent_fn).call(this);
+        if (__privateGet(this, _billingLocationComponent)) {
+          __privateGet(this, _billingLocationComponent).classList.add("cc-hidden");
         }
-        __privateMethod(this, _logDebug, logDebug_fn).call(this, "Copied shipping address to billing address");
+        __privateMethod(this, _logDebug, logDebug_fn).call(this, "Cleared billing address fields");
       } catch (error) {
-        __privateMethod(this, _logError, logError_fn).call(this, "Error copying shipping to billing:", error);
+        __privateMethod(this, _logError, logError_fn).call(this, "Error clearing billing fields:", error);
       }
     }
     /**
@@ -3795,13 +4441,14 @@ var TwentyNineNext = (() => {
   _cacheFieldElements = new WeakSet();
   cacheFieldElements_fn = function() {
     Object.keys(__privateGet(this, _fieldMap)).forEach((shippingField) => {
-      const element = document.querySelector(`[os-checkout-field="${shippingField}"]`);
+      const element = FormFieldUtils.findField(shippingField, { isBilling: false });
       if (element) {
         __privateGet(this, _shippingFields)[shippingField] = element;
       }
     });
     Object.values(__privateGet(this, _fieldMap)).forEach((billingField) => {
-      const element = document.querySelector(`[os-checkout-field="${billingField}"]`);
+      const fieldName = billingField.replace("billing-", "");
+      const element = FormFieldUtils.findField(fieldName, { isBilling: true, prefix: "billing-" });
       if (element) {
         __privateGet(this, _billingFields)[billingField] = element;
       }
@@ -3814,9 +4461,6 @@ var TwentyNineNext = (() => {
       if (!__privateGet(this, _isTransitioning)) {
         __privateSet(this, _lastState, e.target.checked);
         __privateMethod(this, _toggleBillingForm, toggleBillingForm_fn).call(this, e.target.checked, true);
-        if (e.target.checked) {
-          this.copyShippingToBilling();
-        }
         __privateMethod(this, _logDebug, logDebug_fn).call(this, `Billing address changed: ${e.target.checked ? "Same as shipping" : "Different from shipping"}`);
       }
     });
@@ -3831,18 +4475,6 @@ var TwentyNineNext = (() => {
         __privateMethod(this, _showBillingLocationComponent, showBillingLocationComponent_fn).call(this);
         __privateMethod(this, _logDebug, logDebug_fn).call(this, "Location fields shown by AddressAutocomplete, showing billing location component as well");
       }
-    });
-    Object.entries(__privateGet(this, _shippingFields)).forEach(([fieldName, element]) => {
-      element.addEventListener("change", () => {
-        if (__privateGet(this, _sameAsShippingCheckbox).checked) {
-          const billingFieldName = __privateGet(this, _fieldMap)[fieldName];
-          const billingElement = __privateGet(this, _billingFields)[billingFieldName];
-          if (billingElement) {
-            billingElement.value = element.value;
-            billingElement.dispatchEvent(new Event("change", { bubbles: true }));
-          }
-        }
-      });
     });
     if (__privateGet(this, _billingAddress1Field) && __privateGet(this, _billingLocationComponent)) {
       __privateGet(this, _billingAddress1Field).addEventListener("input", () => {
@@ -4264,7 +4896,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/PhoneInputHandler.js
-  var _logger9, _intlTelInputAvailable, _loadIntlTelInput, loadIntlTelInput_fn, _initPhoneInputs, initPhoneInputs_fn, _initializePhoneInput, initializePhoneInput_fn, _showError2, showError_fn2, _clearError, clearError_fn, _getNumberTypeName, getNumberTypeName_fn, _setupPhoneInputSync, setupPhoneInputSync_fn, _setupPhoneValidation, setupPhoneValidation_fn;
+  var _logger9, _intlTelInputAvailable, _loadIntlTelInput, loadIntlTelInput_fn, _initPhoneInputs, initPhoneInputs_fn, _initializePhoneInput, initializePhoneInput_fn, _showError2, showError_fn2, _clearError, clearError_fn, _getNumberTypeName, getNumberTypeName_fn, _setupPhoneInputSync, setupPhoneInputSync_fn, _setupCountryChangeListener, setupCountryChangeListener_fn, _setupPhoneValidation, setupPhoneValidation_fn;
   var PhoneInputHandler = class {
     constructor(logger) {
       __privateAdd(this, _loadIntlTelInput);
@@ -4275,6 +4907,7 @@ var TwentyNineNext = (() => {
       // Helper method to convert number type to readable name
       __privateAdd(this, _getNumberTypeName);
       __privateAdd(this, _setupPhoneInputSync);
+      __privateAdd(this, _setupCountryChangeListener);
       __privateAdd(this, _setupPhoneValidation);
       __privateAdd(this, _logger9, void 0);
       __privateAdd(this, _intlTelInputAvailable, !!window.intlTelInput);
@@ -4320,7 +4953,6 @@ var TwentyNineNext = (() => {
       const iti = window.intlTelInput(input, {
         utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js",
         separateDialCode: true,
-        onlyCountries: ["us"],
         initialCountry: "us",
         allowDropdown: false,
         dropdownContainer: document.body,
@@ -4329,36 +4961,18 @@ var TwentyNineNext = (() => {
         autoPlaceholder: "aggressive",
         customContainer: "iti-tel-input",
         autoFormat: true,
-        nationalMode: true
+        nationalMode: true,
+        preferredCountries: ["us", "ca", "gb", "au"]
       });
       input.iti = iti;
       __privateGet(this, _logger9).debug(`Phone input ${index} (${input.getAttribute("os-checkout-field") ?? "unknown"}) initialized`);
       __privateMethod(this, _setupPhoneInputSync, setupPhoneInputSync_fn).call(this, input, iti);
       __privateMethod(this, _setupPhoneValidation, setupPhoneValidation_fn).call(this, input, iti);
+      __privateMethod(this, _setupCountryChangeListener, setupCountryChangeListener_fn).call(this, input, iti);
       input.addEventListener("input", () => {
         const number = input.value.trim();
-        if (number) {
-          const numericValue = number.replace(/\D/g, "");
-          let formattedNumber = "";
-          if (numericValue.length > 0) {
-            if (numericValue.length <= 3) {
-              formattedNumber = `(${numericValue}`;
-            } else if (numericValue.length <= 6) {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3)}`;
-            } else {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
-            }
-          }
-          if (input.value !== formattedNumber) {
-            const cursorPos = input.selectionStart;
-            const oldLength = input.value.length;
-            input.value = formattedNumber;
-            if (cursorPos !== null) {
-              const newLength = formattedNumber.length;
-              const cursorOffset = newLength - oldLength;
-              input.setSelectionRange(cursorPos + cursorOffset, cursorPos + cursorOffset);
-            }
-          }
+        if (number && iti.isValidNumber()) {
+          __privateMethod(this, _clearError, clearError_fn).call(this, input);
         }
         const isValid = iti.isValidNumber();
         const numberType = iti.getNumberType();
@@ -4395,7 +5009,9 @@ var TwentyNineNext = (() => {
             formattedNumber: iti.getNumber()
           });
           if (!isValid) {
-            __privateMethod(this, _showError2, showError_fn2).call(this, input, "Please enter a valid US phone number (e.g. 555-555-5555)");
+            const selectedCountry = iti.getSelectedCountryData();
+            const countryName = selectedCountry.name || "phone";
+            __privateMethod(this, _showError2, showError_fn2).call(this, input, `Please enter a valid ${countryName} phone number`);
           } else {
             __privateMethod(this, _clearError, clearError_fn).call(this, input);
           }
@@ -4475,11 +5091,30 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger9).warn(`Country select not found for ${fieldAttr}`);
       return;
     }
-    if (countrySelect.value !== "US") {
-      countrySelect.value = "US";
-      countrySelect.dispatchEvent(new Event("change", { bubbles: true }));
-      __privateGet(this, _logger9).debug("Country select updated to US");
+    const currentCountry = countrySelect.value;
+    if (currentCountry && (currentCountry === "US" || currentCountry === "CA")) {
+      iti.setCountry(currentCountry.toLowerCase());
+      __privateGet(this, _logger9).debug(`Phone input country set to ${currentCountry}`);
     }
+  };
+  _setupCountryChangeListener = new WeakSet();
+  setupCountryChangeListener_fn = function(input, iti) {
+    const fieldAttr = input.getAttribute("os-checkout-field");
+    if (!fieldAttr)
+      return;
+    const countrySelect = document.querySelector(
+      fieldAttr === "phone" ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
+    );
+    if (!countrySelect)
+      return;
+    countrySelect.addEventListener("change", () => {
+      const newCountry = countrySelect.value;
+      if (newCountry) {
+        iti.setCountry(newCountry.toLowerCase());
+        __privateGet(this, _logger9).debug(`Phone input country changed to ${newCountry}`);
+        __privateMethod(this, _clearError, clearError_fn).call(this, input);
+      }
+    });
   };
   _setupPhoneValidation = new WeakSet();
   setupPhoneValidation_fn = function(input, iti) {
@@ -4926,25 +5561,9 @@ var TwentyNineNext = (() => {
     if (!postalCode || !country) {
       return true;
     }
-    switch (country.toUpperCase()) {
-      case "US":
-        return /^\d{5}(-\d{4})?$/.test(postalCode);
-      case "CA":
-        return /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(postalCode);
-      case "GB":
-      case "UK":
-        return /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i.test(postalCode);
-      case "AU":
-        return /^\d{4}$/.test(postalCode);
-      case "NZ":
-        return /^\d{4}$/.test(postalCode);
-      case "DE":
-        return /^\d{5}$/.test(postalCode);
-      case "FR":
-        return /^\d{5}$/.test(postalCode);
-      default:
-        return postalCode.trim().length > 0;
-    }
+    const patternString = CountryConfig.getPostalPattern(country);
+    const pattern = new RegExp(patternString, "i");
+    return pattern.test(postalCode);
   };
   _getPhoneNumber = new WeakSet();
   getPhoneNumber_fn = function() {
