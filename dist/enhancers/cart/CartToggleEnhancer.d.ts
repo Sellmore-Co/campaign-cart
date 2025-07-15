@@ -14,6 +14,7 @@ export declare class CartToggleEnhancer extends BaseEnhancer {
     private checkSyncMode;
     private setQuantity;
     private detectUpsellContext;
+    private checkAutoAdd;
     private setupEventListeners;
     private handleClick;
     private addToCart;

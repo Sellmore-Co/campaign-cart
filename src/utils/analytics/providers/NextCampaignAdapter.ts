@@ -30,7 +30,7 @@ export class NextCampaignAdapter extends ProviderAdapter {
   /**
    * Initialize the adapter with configuration
    */
-  override async initialize(config?: any): Promise<void> {
+  async initialize(config?: any): Promise<void> {
     this.logger.info('NextCampaign adapter initializing...');
     
     // Get API key from config store or adapter config

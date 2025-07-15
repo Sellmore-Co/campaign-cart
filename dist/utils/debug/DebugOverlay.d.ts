@@ -12,6 +12,7 @@ export declare class DebugOverlay {
     private logger;
     private eventManager;
     private panels;
+    private static readonly EXPANDED_STORAGE_KEY;
     static getInstance(): DebugOverlay;
     private constructor();
     private initializePanels;
@@ -34,10 +35,11 @@ export declare class DebugOverlay {
     setActivePanel(panelId: string): void;
     logEvent(type: string, data: any, source?: string): void;
     private clearCart;
-    private highlightAllElements;
     private exportAllData;
     private toggleMiniCart;
     private updateMiniCart;
+    private toggleXray;
+    private updateButtonStates;
     updateQuickStats(): void;
 }
 export declare const debugOverlay: DebugOverlay;

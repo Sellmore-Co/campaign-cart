@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tsc)",
+      "Bash(vite build)",
+      "Bash(cp:*)"
+    ],
+    "deny": []
+  }
+}

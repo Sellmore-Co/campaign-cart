@@ -39,6 +39,8 @@ export declare class UpsellEnhancer extends BaseEnhancer {
     private hideUpsellOffer;
     private showSuccess;
     private showError;
+    private checkIfUpsellAlreadyAccepted;
+    private showDuplicateUpsellDialog;
     update(): void;
     protected cleanupEventListeners(): void;
     destroy(): void;

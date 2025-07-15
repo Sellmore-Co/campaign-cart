@@ -1,8 +1,30 @@
 /**
  * Display Enhancer Types and Constants
  * Consolidated type definitions and constants for all display enhancers
+ *
+ * DISPLAY FORMATTING PIPELINE:
+ *
+ * 1. Property Mapping (PROPERTY_MAPPINGS):
+ *    - Maps display properties to data paths
+ *    - Indicates if values are pre-formatted with { preformatted: true }
+ *    - Example: cart.total -> { path: 'totals.total.formatted', preformatted: true }
+ *
+ * 2. Format Detection (PROPERTY_FORMAT_REGISTRY + getDefaultFormatType):
+ *    - Explicit format registry for properties that need formatting
+ *    - Fallback to name-based detection for unmapped properties
+ *    - Only applies to raw values, not pre-formatted ones
+ *
+ * 3. Value Formatting (DisplayFormatter):
+ *    - Pre-formatted values bypass formatting entirely
+ *    - Raw values are formatted based on detected format type
+ *    - Validation is applied during formatting
+ *
+ * BEST PRACTICES:
+ * - Cart/Order data: Use pre-formatted values from store (e.g., cart.total)
+ * - Package data: Use raw values that need formatting (e.g., package.price)
+ * - For calculations: Use .raw suffix to get numeric values (e.g., cart.total.raw)
  */
-export type FormatType = 'currency' | 'number' | 'boolean' | 'date' | 'percentage' | 'auto';
+export type FormatType = 'currency' | 'number' | 'boolean' | 'date' | 'percentage' | 'text' | 'auto';
 export interface DisplayProperty {
     path: string;
     property: string;
@@ -11,6 +33,16 @@ export interface DisplayProperty {
     hideIfFalse?: boolean;
     divideBy?: number;
     multiplyBy?: number;
+}
+export interface DisplayValue<T = any> {
+    value: T;
+    format: FormatType;
+    metadata?: {
+        decimals?: number;
+        prefix?: string;
+        suffix?: string;
+        locale?: string;
+    };
 }
 export interface DisplayState {
     isVisible: boolean;
@@ -48,97 +80,23 @@ export declare const CSS_CLASSES: {
     readonly DISPLAY_ERROR: "display-error";
     readonly DISPLAY_LOADING: "display-loading";
 };
-export declare const PROPERTY_MAPPINGS: {
-    cart: {
-        isEmpty: string;
-        hasItems: string;
-        hasSavings: string;
-        quantity: string;
-        itemCount: string;
-        count: string;
-        subtotal: string;
-        total: string;
-        shipping: string;
-        tax: string;
-        discounts: string;
-        savingsAmount: string;
-        savingsPercentage: string;
-        compareTotal: string;
-        'subtotal.raw': string;
-        'total.raw': string;
-        'shipping.raw': string;
-        'tax.raw': string;
-        'discounts.raw': string;
-        'savingsAmount.raw': string;
-        'savingsPercentage.raw': string;
-        'compareTotal.raw': string;
-    };
-    package: {
-        ref_id: string;
-        external_id: string;
-        qty: string;
-        price: string;
-        price_total: string;
-        price_retail: string;
-        price_retail_total: string;
-        price_recurring: string;
-        is_recurring: string;
-        interval: string;
-        interval_count: string;
-        unitPrice: string;
-        unitRetailPrice: string;
-        packageTotal: string;
-        comparePrice: string;
-        compareTotal: string;
-        savingsAmount: string;
-        savingsPercentage: string;
-        hasSavings: string;
-        isRecurring: string;
-        isBundle: string;
-        unitsInPackage: string;
-    };
-    selection: {
-        packageId: string;
-        quantity: string;
-        name: string;
-        total: string;
-        compareTotal: string;
-        savingsAmount: string;
-        savingsPercentage: string;
-        unitPrice: string;
-        _expression: boolean;
-    };
-    shipping: {
-        isFree: string;
-        cost: string;
-        price: string;
-        name: string;
-        code: string;
-        method: string;
-        id: string;
-        refId: string;
-    };
-    order: {
-        ref_id: string;
-        created_at: string;
-        total_incl_tax: string;
-        order_status_url: string;
-        is_test: string;
-        supports_upsells: string;
-        payment_method: string;
-        refId: string;
-        createdAt: string;
-        total: string;
-        statusUrl: string;
-        isTest: string;
-        supportsUpsells: string;
-        paymentMethod: string;
-        'total.formatted': string;
-        'createdAt.formatted': string;
-    };
-};
+export interface PropertyConfig {
+    path: string;
+    format?: FormatType;
+    preformatted?: boolean;
+    validator?: (value: any) => any;
+    fallback?: any;
+    debugInfo?: boolean;
+}
+type PropertyMap = Record<string, string | PropertyConfig | boolean>;
+export declare const PROPERTY_MAPPINGS: Record<string, PropertyMap>;
 /**
- * Get property mapping for a given object type and property name
+ * Get property configuration for a given object type and property name
+ * This is the single source of truth for property mappings
+ */
+export declare function getPropertyConfig(objectType: keyof typeof PROPERTY_MAPPINGS, propertyName: string): PropertyConfig | null;
+/**
+ * Get property mapping path (for backward compatibility)
  */
 export declare function getPropertyMapping(objectType: keyof typeof PROPERTY_MAPPINGS, propertyName: string): string | undefined;
 /**
@@ -157,4 +115,5 @@ export declare function getBasePropertyName(propertyName: string): string;
  * Check if expression evaluation is enabled for an object type
  */
 export declare function supportsExpressions(objectType: keyof typeof PROPERTY_MAPPINGS): boolean;
+export {};
 //# sourceMappingURL=DisplayEnhancerTypes.d.ts.map

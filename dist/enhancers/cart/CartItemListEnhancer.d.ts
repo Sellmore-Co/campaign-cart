@@ -3,6 +3,7 @@ import { BaseEnhancer } from '../base/BaseEnhancer';
 export declare class CartItemListEnhancer extends BaseEnhancer {
     private template?;
     private emptyTemplate?;
+    private titleMap?;
     initialize(): Promise<void>;
     update(data?: any): void;
     private handleCartUpdate;

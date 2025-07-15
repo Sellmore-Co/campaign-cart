@@ -18,5 +18,6 @@ export declare class OrderDisplayEnhancer extends BaseDisplayEnhancer {
     private getOrderAttributionProperty;
     private formatAddress;
     private isComplexOrderProperty;
+    private getCalculatedProperty;
 }
 //# sourceMappingURL=OrderDisplayEnhancer.d.ts.map

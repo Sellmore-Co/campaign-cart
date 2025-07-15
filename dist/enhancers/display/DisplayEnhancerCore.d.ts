@@ -12,7 +12,6 @@ export declare class DisplayFormatter {
     static formatDate(value: any): string;
     static formatPercentage(value: any): string;
     static formatAuto(value: any): string;
-    private static toNumber;
 }
 export declare class PropertyResolver {
     /**
@@ -37,6 +36,7 @@ export declare abstract class BaseDisplayEnhancer extends BaseEnhancer {
     protected divideBy?: number;
     protected multiplyBy?: number;
     protected lastValue?: any;
+    private debugMode;
     initialize(): Promise<void>;
     /**
      * Parses display-related attributes from the element
@@ -51,6 +51,7 @@ export declare abstract class BaseDisplayEnhancer extends BaseEnhancer {
     protected getDefaultFormatType(property: string): FormatType;
     protected abstract setupStoreSubscriptions(): void;
     protected abstract getPropertyValue(): any;
+    protected getPropertyValueWithValidation(): any;
     protected performInitialUpdate(): Promise<void>;
     protected updateDisplay(): Promise<void>;
     protected shouldHideElement(value: any): boolean;

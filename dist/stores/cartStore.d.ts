@@ -41,6 +41,7 @@ export declare const cartStore: import('zustand').UseBoundStore<Omit<Omit<import
             appliedCoupons: AppliedCoupon[];
             subtotal: number;
             shipping: number;
+            shippingMethod: import('../types/global').ShippingMethod | undefined;
             tax: number;
             total: number;
             totalQuantity: number;
@@ -58,6 +59,7 @@ export declare const cartStore: import('zustand').UseBoundStore<Omit<Omit<import
             appliedCoupons: AppliedCoupon[];
             subtotal: number;
             shipping: number;
+            shippingMethod: import('../types/global').ShippingMethod | undefined;
             tax: number;
             total: number;
             totalQuantity: number;
@@ -82,6 +84,7 @@ export declare const useCartStore: import('zustand').UseBoundStore<Omit<Omit<imp
             appliedCoupons: AppliedCoupon[];
             subtotal: number;
             shipping: number;
+            shippingMethod: import('../types/global').ShippingMethod | undefined;
             tax: number;
             total: number;
             totalQuantity: number;
@@ -99,6 +102,7 @@ export declare const useCartStore: import('zustand').UseBoundStore<Omit<Omit<imp
             appliedCoupons: AppliedCoupon[];
             subtotal: number;
             shipping: number;
+            shippingMethod: import('../types/global').ShippingMethod | undefined;
             tax: number;
             total: number;
             totalQuantity: number;

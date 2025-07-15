@@ -8,6 +8,7 @@ export declare class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     initialize(): Promise<void>;
     protected setupStoreSubscriptions(): void;
     private handleCampaignUpdate;
+    private handleCartUpdate;
     private detectPackageContext;
     private loadPackageData;
     protected getPropertyValue(): any;
@@ -16,6 +17,11 @@ export declare class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     protected showElement(): void;
     update(data?: any): void;
     private getCalculatedProperty;
+    private calculatePackageDiscountAmount;
+    private calculateDiscountedPrice;
+    private calculateDiscountedPriceTotal;
+    private calculateFinalPrice;
+    private calculateFinalPriceTotal;
     private getPackageValue;
     private getCampaignProperty;
     getPackageProperty(property: string): any;

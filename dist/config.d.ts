@@ -52,6 +52,10 @@ declare const config: {
                     pixelId: string;
                 };
             };
+            rudderstack: {
+                enabled: boolean;
+                settings: {};
+            };
             custom: {
                 enabled: boolean;
                 settings: {

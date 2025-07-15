@@ -27,6 +27,7 @@ export declare class CheckoutValidator {
     private phoneInputManager?;
     private errorManager;
     private creditCardService?;
+    private phoneValidator?;
     private rules;
     private errors;
     constructor(logger: Logger, countryService: any, phoneInputManager?: any);
@@ -34,6 +35,10 @@ export declare class CheckoutValidator {
      * Set credit card service for payment validation
      */
     setCreditCardService(creditCardService: CreditCardService): void;
+    /**
+     * Set custom phone validator function
+     */
+    setPhoneValidator(validator: (phoneNumber: string, type?: 'shipping' | 'billing') => boolean): void;
     private initializeValidationRules;
     /**
      * Validate a single field based on its rules

@@ -86,13 +86,21 @@ export declare class CreditCardService {
      * Check if service is ready
      */
     get ready(): boolean;
+    /**
+     * Focus a specific Spreedly field
+     */
+    focusField(field: 'number' | 'cvv'): void;
     private initializeValidationState;
     private findCreditCardFields;
     private loadSpreedlyScript;
     private setupSpreedly;
+    private addFocusStyles;
+    private setupFieldClickHandlers;
     private setupSpreedlyEventListeners;
     private applySpreedlyConfig;
     private handleSpreedlyFieldEvent;
+    private handleFieldFocus;
+    private handleFieldBlur;
     private showSpreedlyErrors;
     private setCreditCardFieldValid;
     private setCreditCardFieldError;

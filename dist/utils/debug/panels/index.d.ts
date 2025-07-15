@@ -3,8 +3,6 @@
  * Centralized exports for all debug panel components
  */
 export { CartPanel } from './CartPanel';
-export { EnhancerPanel } from './EnhancerPanel';
-export { APIPanel } from './APIPanel';
 export { EventsPanel } from './EventsPanel';
 export { EventTimelinePanel } from './EventTimelinePanel';
 export { ConfigPanel } from './ConfigPanel';

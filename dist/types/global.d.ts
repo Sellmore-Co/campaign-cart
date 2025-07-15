@@ -147,6 +147,7 @@ export interface EventMap {
         }>;
     };
     'address:location-fields-shown': {};
+    'checkout:location-fields-shown': {};
     'upsell:initialized': {
         packageId: number;
         element: HTMLElement;
@@ -281,6 +282,15 @@ export interface CartTotals {
         formatted: string;
     };
     hasSavings: boolean;
+    totalSavings: {
+        value: number;
+        formatted: string;
+    };
+    totalSavingsPercentage: {
+        value: number;
+        formatted: string;
+    };
+    hasTotalSavings: boolean;
 }
 export interface EnrichedCartLine {
     id: number;
