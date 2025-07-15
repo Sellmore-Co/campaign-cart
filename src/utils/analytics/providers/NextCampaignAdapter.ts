@@ -1,6 +1,7 @@
 import { ProviderAdapter } from './ProviderAdapter';
 import { DataLayerEvent } from '../types';
 import { createLogger } from '@/utils/logger';
+import { useConfigStore } from '@/stores/configStore';
 
 declare global {
   interface Window {
@@ -29,20 +30,26 @@ export class NextCampaignAdapter extends ProviderAdapter {
   /**
    * Initialize the adapter with configuration
    */
-  async initialize(config?: any): Promise<void> {
+  override async initialize(config?: any): Promise<void> {
+    this.logger.info('NextCampaign adapter initializing...');
+    
     // Get API key from config store or adapter config
     if (config?.apiKey) {
       this.apiKey = config.apiKey;
+      this.logger.info('API key provided via config parameter');
     } else {
-      // Get from window.nextConfig or config store
-      const configStore = (window as any).nextDebug?.stores?.config?.getState();
-      this.apiKey = configStore?.apiKey || (window as any).nextConfig?.apiKey || '';
+      // Get from the proper config store
+      const configStore = useConfigStore.getState();
+      this.apiKey = configStore.apiKey || '';
+      this.logger.info(`API key from config store: ${this.apiKey ? 'found' : 'not found'}`);
     }
 
     if (!this.apiKey) {
       this.logger.warn('No API key available for NextCampaign initialization');
       return;
     }
+
+    this.logger.info(`NextCampaign API key found: ${this.apiKey.substring(0, 8)}...${this.apiKey.substring(this.apiKey.length - 4)}`);
 
     // Load the NextCampaign SDK script
     await this.loadScript();
@@ -101,7 +108,7 @@ export class NextCampaignAdapter extends ProviderAdapter {
     try {
       await this.loadPromise;
       this.scriptLoaded = true;
-      this.logger.info('NextCampaign SDK loaded successfully');
+      this.logger.info('NextCampaign SDK loaded and initialized successfully ✅');
     } catch (error) {
       this.logger.error('Failed to load NextCampaign SDK:', error);
       throw error;
@@ -149,6 +156,42 @@ export class NextCampaignAdapter extends ProviderAdapter {
     if (window.nextCampaign && this.apiKey) {
       window.nextCampaign.config({ apiKey: this.apiKey });
       this.logger.debug('NextCampaign configured with API key');
+      
+      // Fire initial page view event to match standalone script behavior
+      this.fireInitialPageView();
+    }
+  }
+
+  /**
+   * Fire initial page view event on load
+   */
+  private fireInitialPageView(): void {
+    // Wait for window load to match standalone script behavior
+    if (document.readyState === 'complete') {
+      // Already loaded, fire immediately
+      this.sendPageView();
+    } else {
+      // Wait for window load event
+      window.addEventListener('load', () => {
+        this.sendPageView();
+      });
+    }
+  }
+
+  /**
+   * Send page view event to NextCampaign
+   */
+  private sendPageView(): void {
+    try {
+      if (window.nextCampaign) {
+        window.nextCampaign.event('page_view', {
+          title: document.title,
+          url: window.location.href
+        });
+        this.logger.info('Initial page_view event sent to NextCampaign');
+      }
+    } catch (error) {
+      this.logger.error('Error sending initial page view to NextCampaign:', error);
     }
   }
 

@@ -14,6 +14,7 @@ import type { CartState, CartItem } from '@/types/global';
 export class CartItemListEnhancer extends BaseEnhancer {
   private template?: string;
   private emptyTemplate?: string;
+  private titleMap?: Record<string, string>;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -28,6 +29,16 @@ export class CartItemListEnhancer extends BaseEnhancer {
     
     this.emptyTemplate = this.getAttribute('data-empty-template') || 
       '<div class="cart-empty">Your cart is empty</div>';
+
+    // Load title mapping from data attribute
+    const titleMapAttr = this.getAttribute('data-title-map');
+    if (titleMapAttr) {
+      try {
+        this.titleMap = JSON.parse(titleMapAttr);
+      } catch (error) {
+        this.logger.warn('Invalid title map JSON:', error);
+      }
+    }
 
     // Subscribe to cart changes
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
@@ -222,12 +233,27 @@ export class CartItemListEnhancer extends BaseEnhancer {
         `Every ${packageData.interval_count} ${packageData.interval}s` : 
         `Per ${packageData.interval}`) : 'One time';
 
+    // Check for custom title mapping (instance level takes priority, then global config)
+    const globalTitleMap = (window as any).nextConfig?.productTitleMap || {};
+    const titleMap = this.titleMap || globalTitleMap;
+    let customTitle = titleMap[item.packageId] || titleMap[String(item.packageId)];
+    
+    // Apply transform function if available
+    const titleTransform = (window as any).nextConfig?.productTitleTransform;
+    if (!customTitle && typeof titleTransform === 'function') {
+      try {
+        customTitle = titleTransform(item.packageId, packageData.name);
+      } catch (error) {
+        this.logger.warn('Error in productTitleTransform:', error);
+      }
+    }
+    
     return {
       // Basic item data
       id: item.id,
       packageId: item.packageId,
-      title: item.title || packageData.name,
-      name: packageData.name,
+      title: customTitle || item.title || packageData.name,
+      name: customTitle || packageData.name,
       quantity: item.quantity,
       
       // Pricing - will be formatted by TemplateRenderer
