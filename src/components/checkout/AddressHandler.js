@@ -51,6 +51,11 @@ export class AddressHandler {
       this.#countries.map(c => `<option value="${c.iso2}">${c.name}</option>`).join('');
     countrySelect.value = this.#addressConfig.defaultCountry;
     if (stateSelect && countrySelect.value) await this.#updateStateSelect(stateSelect, countrySelect.value);
+    
+    // Update field labels based on initial country
+    const type = countrySelect === this.#elements.shippingCountry ? 'shipping' : 'billing';
+    this.#updateFieldLabelsForCountry(countrySelect.value, type);
+    
     this.#logger.debug(`Country select initialized with default ${this.#addressConfig.defaultCountry}`);
   }
 
@@ -60,8 +65,59 @@ export class AddressHandler {
       [this.#elements.billingCountry, this.#elements.billingState]
     ];
     pairs.forEach(([country, state]) => {
-      country?.addEventListener('change', () => state && this.#updateStateSelect(state, country.value));
+      country?.addEventListener('change', () => {
+        if (state) {
+          this.#updateStateSelect(state, country.value);
+        }
+        // Update placeholders and labels based on country
+        this.#updateFieldLabelsForCountry(country.value, country === this.#elements.shippingCountry ? 'shipping' : 'billing');
+      });
     });
+  }
+
+  #updateFieldLabelsForCountry(countryCode, type = 'shipping') {
+    // Determine field prefix
+    const prefix = type === 'billing' ? 'billing-' : '';
+    
+    // Find the postal code and state fields
+    const postalField = document.querySelector(`[os-checkout-field="${prefix}postal"]`);
+    const stateField = document.querySelector(`[os-checkout-field="${prefix}province"]`);
+    const stateSelect = stateField?.closest('.select-form-wrapper')?.querySelector('select') || stateField;
+    
+    if (countryCode === 'CA') {
+      // Update for Canada
+      if (postalField) {
+        postalField.placeholder = 'Postal Code*';
+        // Update the pattern for Canadian postal codes
+        postalField.setAttribute('pattern', '^[A-Za-z]\\d[A-Za-z][ -]?\\d[A-Za-z]\\d$');
+        postalField.setAttribute('maxlength', '7');
+      }
+      
+      if (stateSelect) {
+        // Update the default option text
+        const defaultOption = stateSelect.querySelector('option[value=""]');
+        if (defaultOption) {
+          defaultOption.textContent = 'Select Province';
+        }
+      }
+    } else {
+      // Default to US format
+      if (postalField) {
+        postalField.placeholder = 'ZIP Code*';
+        postalField.setAttribute('pattern', '(^\\d{5}$)|(^\\d{5}-\\d{4}$)');
+        postalField.setAttribute('maxlength', '10');
+      }
+      
+      if (stateSelect) {
+        // Update the default option text
+        const defaultOption = stateSelect.querySelector('option[value=""]');
+        if (defaultOption) {
+          defaultOption.textContent = 'Select State';
+        }
+      }
+    }
+    
+    this.#logger.debug(`Updated field labels for ${type} address to ${countryCode} format`);
   }
 
   async #updateStateSelect(stateSelect, countryCode, isPriority = false) {

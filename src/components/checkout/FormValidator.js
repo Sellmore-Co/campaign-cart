@@ -394,19 +394,44 @@ export class FormValidator {
   }
 
   /**
-   * Validate a US ZIP code (5 digits or ZIP+4 format)
-   * @param {string} value - ZIP code to validate
+   * Validate a ZIP/postal code based on the selected country
+   * @param {string} value - ZIP/postal code to validate
    * @param {string} fieldName - Name of the field for error message
    * @returns {Object} Validation result with isValid and errorMessage
    */
   #validateZipCode(value, fieldName = 'Zip') {
-    // US ZIP code pattern: 5 digits or 5 digits + hyphen + 4 digits
-    const zipPattern = /(^\d{5}$)|(^\d{5}-\d{4}$)/;
-    const isValid = zipPattern.test(value);
+    // Get the country from the appropriate field based on the field name
+    let countryField;
+    if (fieldName.includes('billing')) {
+      countryField = document.querySelector('[os-checkout-field="billing-country"]');
+    } else {
+      countryField = document.querySelector('[os-checkout-field="country"]');
+    }
+    
+    const country = countryField?.value || 'US';
+    
+    let pattern;
+    let errorMessage;
+    
+    switch (country) {
+      case 'CA':
+        // Canadian postal code pattern: A1A 1A1 (with or without space)
+        pattern = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
+        errorMessage = 'Please enter a valid Canadian postal code (e.g. K1A 0B1)';
+        break;
+      case 'US':
+      default:
+        // US ZIP code pattern: 5 digits or ZIP+4 format
+        pattern = /(^\d{5}$)|(^\d{5}-\d{4}$)/;
+        errorMessage = 'Field must be a valid US Zip code.';
+        break;
+    }
+    
+    const isValid = pattern.test(value);
     
     return {
       isValid,
-      errorMessage: isValid ? '' : `Field must be a valid US Zip code.`
+      errorMessage: isValid ? '' : errorMessage
     };
   }
 
@@ -626,9 +651,7 @@ export class FormValidator {
   }
   
   /**
-   * Format ZIP code as user types: 
-   * - Allow only numbers and hyphen
-   * - Automatically add hyphen after 5 digits if the user is entering more
+   * Format ZIP/postal code as user types based on country
    * @param {Event} event - Input event
    */
   #formatZipCode(event) {
@@ -636,30 +659,56 @@ export class FormValidator {
     const cursorPos = input.selectionStart;
     const oldValue = input.value;
     
-    // Remove non-digits and non-hyphens
-    let cleaned = oldValue.replace(/[^\d-]/g, '');
-    
-    // Only allow one hyphen after the 5th digit
-    if (cleaned.length > 5) {
-      const firstPart = cleaned.slice(0, 5);
-      
-      if (cleaned.charAt(5) !== '-') {
-        // Insert hyphen after 5 digits
-        const secondPart = cleaned.slice(5).replace(/-/g, '');
-        cleaned = `${firstPart}-${secondPart}`;
-      } else {
-        // Keep existing hyphen and remove any others
-        const secondPart = cleaned.slice(6).replace(/-/g, '');
-        cleaned = `${firstPart}-${secondPart}`;
-      }
+    // Get the country from the appropriate field
+    const fieldName = input.getAttribute('os-checkout-field') || '';
+    let countryField;
+    if (fieldName.includes('billing')) {
+      countryField = document.querySelector('[os-checkout-field="billing-country"]');
+    } else {
+      countryField = document.querySelector('[os-checkout-field="country"]');
     }
     
-    // Limit to ZIP+4 format (12345-6789)
-    if (cleaned.includes('-')) {
-      const [first, second] = cleaned.split('-');
-      cleaned = `${first.slice(0, 5)}-${second.slice(0, 4)}`;
+    const country = countryField?.value || 'US';
+    let cleaned = oldValue;
+    
+    if (country === 'CA') {
+      // Format Canadian postal code: A1A 1A1
+      // Remove all non-alphanumeric characters and spaces
+      cleaned = oldValue.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      
+      // Apply Canadian postal code format
+      if (cleaned.length > 3) {
+        cleaned = cleaned.slice(0, 3) + ' ' + cleaned.slice(3, 6);
+      } else {
+        cleaned = cleaned.slice(0, 6);
+      }
     } else {
-      cleaned = cleaned.slice(0, 5);
+      // US ZIP code formatting
+      // Remove non-digits and non-hyphens
+      cleaned = oldValue.replace(/[^\d-]/g, '');
+      
+      // Only allow one hyphen after the 5th digit
+      if (cleaned.length > 5) {
+        const firstPart = cleaned.slice(0, 5);
+        
+        if (cleaned.charAt(5) !== '-') {
+          // Insert hyphen after 5 digits
+          const secondPart = cleaned.slice(5).replace(/-/g, '');
+          cleaned = `${firstPart}-${secondPart}`;
+        } else {
+          // Keep existing hyphen and remove any others
+          const secondPart = cleaned.slice(6).replace(/-/g, '');
+          cleaned = `${firstPart}-${secondPart}`;
+        }
+      }
+      
+      // Limit to ZIP+4 format (12345-6789)
+      if (cleaned.includes('-')) {
+        const [first, second] = cleaned.split('-');
+        cleaned = `${first.slice(0, 5)}-${second.slice(0, 4)}`;
+      } else {
+        cleaned = cleaned.slice(0, 5);
+      }
     }
     
     // Only update if changed to avoid cursor jumping

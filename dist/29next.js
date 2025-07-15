@@ -936,13 +936,14 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/AddressHandler.js
-  var _form, _logger2, _addressConfig, _countries, _states, _elements, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStates, loadCountriesAndStates_fn, _loadStates, loadStates_fn, _detectUserCountry, detectUserCountry_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn;
+  var _form, _logger2, _addressConfig, _countries, _states, _elements, _init, init_fn, _getAddressConfig, getAddressConfig_fn, _initCountrySelect, initCountrySelect_fn, _setupCountryChangeListeners, setupCountryChangeListeners_fn, _updateFieldLabelsForCountry, updateFieldLabelsForCountry_fn, _updateStateSelect, updateStateSelect_fn, _populateStateSelect, populateStateSelect_fn, _loadCachedData, loadCachedData_fn, _saveCache, saveCache_fn, _loadCountriesAndStates, loadCountriesAndStates_fn, _loadStates, loadStates_fn, _detectUserCountry, detectUserCountry_fn, _setupAutocompleteDetection, setupAutocompleteDetection_fn, _preloadCommonStates, preloadCommonStates_fn;
   var AddressHandler = class {
     constructor(form, logger) {
       __privateAdd(this, _init);
       __privateAdd(this, _getAddressConfig);
       __privateAdd(this, _initCountrySelect);
       __privateAdd(this, _setupCountryChangeListeners);
+      __privateAdd(this, _updateFieldLabelsForCountry);
       __privateAdd(this, _updateStateSelect);
       __privateAdd(this, _populateStateSelect);
       __privateAdd(this, _loadCachedData);
@@ -1008,6 +1009,8 @@ var TwentyNineNext = (() => {
     countrySelect.value = __privateGet(this, _addressConfig).defaultCountry;
     if (stateSelect && countrySelect.value)
       await __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, stateSelect, countrySelect.value);
+    const type = countrySelect === __privateGet(this, _elements).shippingCountry ? "shipping" : "billing";
+    __privateMethod(this, _updateFieldLabelsForCountry, updateFieldLabelsForCountry_fn).call(this, countrySelect.value, type);
     __privateGet(this, _logger2).debug(`Country select initialized with default ${__privateGet(this, _addressConfig).defaultCountry}`);
   };
   _setupCountryChangeListeners = new WeakSet();
@@ -1017,8 +1020,46 @@ var TwentyNineNext = (() => {
       [__privateGet(this, _elements).billingCountry, __privateGet(this, _elements).billingState]
     ];
     pairs.forEach(([country, state]) => {
-      country?.addEventListener("change", () => state && __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, state, country.value));
+      country?.addEventListener("change", () => {
+        if (state) {
+          __privateMethod(this, _updateStateSelect, updateStateSelect_fn).call(this, state, country.value);
+        }
+        __privateMethod(this, _updateFieldLabelsForCountry, updateFieldLabelsForCountry_fn).call(this, country.value, country === __privateGet(this, _elements).shippingCountry ? "shipping" : "billing");
+      });
     });
+  };
+  _updateFieldLabelsForCountry = new WeakSet();
+  updateFieldLabelsForCountry_fn = function(countryCode, type = "shipping") {
+    const prefix = type === "billing" ? "billing-" : "";
+    const postalField = document.querySelector(`[os-checkout-field="${prefix}postal"]`);
+    const stateField = document.querySelector(`[os-checkout-field="${prefix}province"]`);
+    const stateSelect = stateField?.closest(".select-form-wrapper")?.querySelector("select") || stateField;
+    if (countryCode === "CA") {
+      if (postalField) {
+        postalField.placeholder = "Postal Code*";
+        postalField.setAttribute("pattern", "^[A-Za-z]\\d[A-Za-z][ -]?\\d[A-Za-z]\\d$");
+        postalField.setAttribute("maxlength", "7");
+      }
+      if (stateSelect) {
+        const defaultOption = stateSelect.querySelector('option[value=""]');
+        if (defaultOption) {
+          defaultOption.textContent = "Select Province";
+        }
+      }
+    } else {
+      if (postalField) {
+        postalField.placeholder = "ZIP Code*";
+        postalField.setAttribute("pattern", "(^\\d{5}$)|(^\\d{5}-\\d{4}$)");
+        postalField.setAttribute("maxlength", "10");
+      }
+      if (stateSelect) {
+        const defaultOption = stateSelect.querySelector('option[value=""]');
+        if (defaultOption) {
+          defaultOption.textContent = "Select State";
+        }
+      }
+    }
+    __privateGet(this, _logger2).debug(`Updated field labels for ${type} address to ${countryCode} format`);
   };
   _updateStateSelect = new WeakSet();
   updateStateSelect_fn = async function(stateSelect, countryCode, isPriority = false) {
@@ -1148,8 +1189,8 @@ var TwentyNineNext = (() => {
       __privateAdd(this, _getFieldValidation);
       __privateAdd(this, _validateCity);
       /**
-       * Validate a US ZIP code (5 digits or ZIP+4 format)
-       * @param {string} value - ZIP code to validate
+       * Validate a ZIP/postal code based on the selected country
+       * @param {string} value - ZIP/postal code to validate
        * @param {string} fieldName - Name of the field for error message
        * @returns {Object} Validation result with isValid and errorMessage
        */
@@ -1164,9 +1205,7 @@ var TwentyNineNext = (() => {
        */
       __privateAdd(this, _setupZipCodeFormatting);
       /**
-       * Format ZIP code as user types: 
-       * - Allow only numbers and hyphen
-       * - Automatically add hyphen after 5 digits if the user is entering more
+       * Format ZIP/postal code as user types based on country
        * @param {Event} event - Input event
        */
       __privateAdd(this, _formatZipCode);
@@ -1593,11 +1632,30 @@ var TwentyNineNext = (() => {
   };
   _validateZipCode = new WeakSet();
   validateZipCode_fn = function(value, fieldName = "Zip") {
-    const zipPattern = /(^\d{5}$)|(^\d{5}-\d{4}$)/;
-    const isValid = zipPattern.test(value);
+    let countryField;
+    if (fieldName.includes("billing")) {
+      countryField = document.querySelector('[os-checkout-field="billing-country"]');
+    } else {
+      countryField = document.querySelector('[os-checkout-field="country"]');
+    }
+    const country = countryField?.value || "US";
+    let pattern;
+    let errorMessage;
+    switch (country) {
+      case "CA":
+        pattern = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
+        errorMessage = "Please enter a valid Canadian postal code (e.g. K1A 0B1)";
+        break;
+      case "US":
+      default:
+        pattern = /(^\d{5}$)|(^\d{5}-\d{4}$)/;
+        errorMessage = "Field must be a valid US Zip code.";
+        break;
+    }
+    const isValid = pattern.test(value);
     return {
       isValid,
-      errorMessage: isValid ? "" : `Field must be a valid US Zip code.`
+      errorMessage: isValid ? "" : errorMessage
     };
   };
   _showError = new WeakSet();
@@ -1694,22 +1752,40 @@ var TwentyNineNext = (() => {
     const input = event.target;
     const cursorPos = input.selectionStart;
     const oldValue = input.value;
-    let cleaned = oldValue.replace(/[^\d-]/g, "");
-    if (cleaned.length > 5) {
-      const firstPart = cleaned.slice(0, 5);
-      if (cleaned.charAt(5) !== "-") {
-        const secondPart = cleaned.slice(5).replace(/-/g, "");
-        cleaned = `${firstPart}-${secondPart}`;
-      } else {
-        const secondPart = cleaned.slice(6).replace(/-/g, "");
-        cleaned = `${firstPart}-${secondPart}`;
-      }
-    }
-    if (cleaned.includes("-")) {
-      const [first, second] = cleaned.split("-");
-      cleaned = `${first.slice(0, 5)}-${second.slice(0, 4)}`;
+    const fieldName = input.getAttribute("os-checkout-field") || "";
+    let countryField;
+    if (fieldName.includes("billing")) {
+      countryField = document.querySelector('[os-checkout-field="billing-country"]');
     } else {
-      cleaned = cleaned.slice(0, 5);
+      countryField = document.querySelector('[os-checkout-field="country"]');
+    }
+    const country = countryField?.value || "US";
+    let cleaned = oldValue;
+    if (country === "CA") {
+      cleaned = oldValue.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (cleaned.length > 3) {
+        cleaned = cleaned.slice(0, 3) + " " + cleaned.slice(3, 6);
+      } else {
+        cleaned = cleaned.slice(0, 6);
+      }
+    } else {
+      cleaned = oldValue.replace(/[^\d-]/g, "");
+      if (cleaned.length > 5) {
+        const firstPart = cleaned.slice(0, 5);
+        if (cleaned.charAt(5) !== "-") {
+          const secondPart = cleaned.slice(5).replace(/-/g, "");
+          cleaned = `${firstPart}-${secondPart}`;
+        } else {
+          const secondPart = cleaned.slice(6).replace(/-/g, "");
+          cleaned = `${firstPart}-${secondPart}`;
+        }
+      }
+      if (cleaned.includes("-")) {
+        const [first, second] = cleaned.split("-");
+        cleaned = `${first.slice(0, 5)}-${second.slice(0, 4)}`;
+      } else {
+        cleaned = cleaned.slice(0, 5);
+      }
     }
     if (cleaned !== oldValue) {
       input.value = cleaned;
@@ -4264,7 +4340,7 @@ var TwentyNineNext = (() => {
   };
 
   // src/components/checkout/PhoneInputHandler.js
-  var _logger9, _intlTelInputAvailable, _loadIntlTelInput, loadIntlTelInput_fn, _initPhoneInputs, initPhoneInputs_fn, _initializePhoneInput, initializePhoneInput_fn, _showError2, showError_fn2, _clearError, clearError_fn, _getNumberTypeName, getNumberTypeName_fn, _setupPhoneInputSync, setupPhoneInputSync_fn, _setupPhoneValidation, setupPhoneValidation_fn;
+  var _logger9, _intlTelInputAvailable, _loadIntlTelInput, loadIntlTelInput_fn, _initPhoneInputs, initPhoneInputs_fn, _initializePhoneInput, initializePhoneInput_fn, _showError2, showError_fn2, _clearError, clearError_fn, _getNumberTypeName, getNumberTypeName_fn, _setupPhoneInputSync, setupPhoneInputSync_fn, _setupCountryChangeListener, setupCountryChangeListener_fn, _setupPhoneValidation, setupPhoneValidation_fn;
   var PhoneInputHandler = class {
     constructor(logger) {
       __privateAdd(this, _loadIntlTelInput);
@@ -4275,6 +4351,7 @@ var TwentyNineNext = (() => {
       // Helper method to convert number type to readable name
       __privateAdd(this, _getNumberTypeName);
       __privateAdd(this, _setupPhoneInputSync);
+      __privateAdd(this, _setupCountryChangeListener);
       __privateAdd(this, _setupPhoneValidation);
       __privateAdd(this, _logger9, void 0);
       __privateAdd(this, _intlTelInputAvailable, !!window.intlTelInput);
@@ -4320,7 +4397,7 @@ var TwentyNineNext = (() => {
       const iti = window.intlTelInput(input, {
         utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js",
         separateDialCode: true,
-        onlyCountries: ["us"],
+        onlyCountries: ["us", "ca"],
         initialCountry: "us",
         allowDropdown: false,
         dropdownContainer: document.body,
@@ -4335,18 +4412,33 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger9).debug(`Phone input ${index} (${input.getAttribute("os-checkout-field") ?? "unknown"}) initialized`);
       __privateMethod(this, _setupPhoneInputSync, setupPhoneInputSync_fn).call(this, input, iti);
       __privateMethod(this, _setupPhoneValidation, setupPhoneValidation_fn).call(this, input, iti);
+      __privateMethod(this, _setupCountryChangeListener, setupCountryChangeListener_fn).call(this, input, iti);
       input.addEventListener("input", () => {
         const number = input.value.trim();
         if (number) {
+          const selectedCountry = iti.getSelectedCountryData();
+          const countryCode = selectedCountry.iso2?.toUpperCase();
           const numericValue = number.replace(/\D/g, "");
           let formattedNumber = "";
-          if (numericValue.length > 0) {
-            if (numericValue.length <= 3) {
-              formattedNumber = `(${numericValue}`;
-            } else if (numericValue.length <= 6) {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3)}`;
-            } else {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
+          if (countryCode === "CA") {
+            if (numericValue.length > 0) {
+              if (numericValue.length <= 3) {
+                formattedNumber = numericValue;
+              } else if (numericValue.length <= 6) {
+                formattedNumber = `${numericValue.slice(0, 3)}-${numericValue.slice(3)}`;
+              } else {
+                formattedNumber = `${numericValue.slice(0, 3)}-${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
+              }
+            }
+          } else {
+            if (numericValue.length > 0) {
+              if (numericValue.length <= 3) {
+                formattedNumber = `(${numericValue}`;
+              } else if (numericValue.length <= 6) {
+                formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3)}`;
+              } else {
+                formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
+              }
             }
           }
           if (input.value !== formattedNumber) {
@@ -4395,7 +4487,10 @@ var TwentyNineNext = (() => {
             formattedNumber: iti.getNumber()
           });
           if (!isValid) {
-            __privateMethod(this, _showError2, showError_fn2).call(this, input, "Please enter a valid US phone number (e.g. 555-555-5555)");
+            const selectedCountry = iti.getSelectedCountryData();
+            const countryCode = selectedCountry.iso2?.toUpperCase();
+            const errorMessage = countryCode === "CA" ? "Please enter a valid Canadian phone number (e.g. 416-555-5555)" : "Please enter a valid US phone number (e.g. 555-555-5555)";
+            __privateMethod(this, _showError2, showError_fn2).call(this, input, errorMessage);
           } else {
             __privateMethod(this, _clearError, clearError_fn).call(this, input);
           }
@@ -4475,11 +4570,34 @@ var TwentyNineNext = (() => {
       __privateGet(this, _logger9).warn(`Country select not found for ${fieldAttr}`);
       return;
     }
-    if (countrySelect.value !== "US") {
-      countrySelect.value = "US";
-      countrySelect.dispatchEvent(new Event("change", { bubbles: true }));
-      __privateGet(this, _logger9).debug("Country select updated to US");
+    const currentCountry = countrySelect.value;
+    if (currentCountry && (currentCountry === "US" || currentCountry === "CA")) {
+      iti.setCountry(currentCountry.toLowerCase());
+      __privateGet(this, _logger9).debug(`Phone input country set to ${currentCountry}`);
     }
+  };
+  _setupCountryChangeListener = new WeakSet();
+  setupCountryChangeListener_fn = function(input, iti) {
+    const fieldAttr = input.getAttribute("os-checkout-field");
+    if (!fieldAttr)
+      return;
+    const countrySelect = document.querySelector(
+      fieldAttr === "phone" ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
+    );
+    if (!countrySelect)
+      return;
+    countrySelect.addEventListener("change", () => {
+      const newCountry = countrySelect.value;
+      if (newCountry && (newCountry === "US" || newCountry === "CA")) {
+        iti.setCountry(newCountry.toLowerCase());
+        __privateGet(this, _logger9).debug(`Phone input country changed to ${newCountry}`);
+        if (input.value) {
+          const numericValue = input.value.replace(/\D/g, "");
+          input.value = numericValue;
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      }
+    });
   };
   _setupPhoneValidation = new WeakSet();
   setupPhoneValidation_fn = function(input, iti) {

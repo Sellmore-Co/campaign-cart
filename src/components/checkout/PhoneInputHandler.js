@@ -45,7 +45,7 @@ export class PhoneInputHandler {
       const iti = window.intlTelInput(input, {
         utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js',
         separateDialCode: true,
-        onlyCountries: ['us'],
+        onlyCountries: ['us', 'ca'],
         initialCountry: 'us',
         allowDropdown: false,
         dropdownContainer: document.body,
@@ -62,25 +62,43 @@ export class PhoneInputHandler {
 
       this.#setupPhoneInputSync(input, iti);
       this.#setupPhoneValidation(input, iti);
+      this.#setupCountryChangeListener(input, iti);
 
       // Add input event listener for formatting and validation
       input.addEventListener('input', () => {
         const number = input.value.trim();
         
-        // Format the number as user types
+        // Format the number as user types based on selected country
         if (number) {
+          const selectedCountry = iti.getSelectedCountryData();
+          const countryCode = selectedCountry.iso2?.toUpperCase();
+          
           // Remove all non-numeric characters
           const numericValue = number.replace(/\D/g, '');
           
-          // Format according to US pattern (XXX) XXX-XXXX
           let formattedNumber = '';
-          if (numericValue.length > 0) {
-            if (numericValue.length <= 3) {
-              formattedNumber = `(${numericValue}`;
-            } else if (numericValue.length <= 6) {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3)}`;
-            } else {
-              formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
+          
+          if (countryCode === 'CA') {
+            // Format according to Canadian pattern XXX-XXX-XXXX
+            if (numericValue.length > 0) {
+              if (numericValue.length <= 3) {
+                formattedNumber = numericValue;
+              } else if (numericValue.length <= 6) {
+                formattedNumber = `${numericValue.slice(0, 3)}-${numericValue.slice(3)}`;
+              } else {
+                formattedNumber = `${numericValue.slice(0, 3)}-${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
+              }
+            }
+          } else {
+            // Default to US format (XXX) XXX-XXXX
+            if (numericValue.length > 0) {
+              if (numericValue.length <= 3) {
+                formattedNumber = `(${numericValue}`;
+              } else if (numericValue.length <= 6) {
+                formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3)}`;
+              } else {
+                formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
+              }
             }
           }
           
@@ -147,7 +165,12 @@ export class PhoneInputHandler {
           });
 
           if (!isValid) {
-            this.#showError(input, 'Please enter a valid US phone number (e.g. 555-555-5555)');
+            const selectedCountry = iti.getSelectedCountryData();
+            const countryCode = selectedCountry.iso2?.toUpperCase();
+            const errorMessage = countryCode === 'CA' ? 
+              'Please enter a valid Canadian phone number (e.g. 416-555-5555)' : 
+              'Please enter a valid US phone number (e.g. 555-555-5555)';
+            this.#showError(input, errorMessage);
           } else {
             this.#clearError(input);
           }
@@ -244,12 +267,39 @@ export class PhoneInputHandler {
       return;
     }
 
-    // Set country select to US if it exists
-    if (countrySelect.value !== 'US') {
-      countrySelect.value = 'US';
-      countrySelect.dispatchEvent(new Event('change', { bubbles: true }));
-      this.#logger.debug('Country select updated to US');
+    // Set phone country based on the selected country
+    const currentCountry = countrySelect.value;
+    if (currentCountry && (currentCountry === 'US' || currentCountry === 'CA')) {
+      iti.setCountry(currentCountry.toLowerCase());
+      this.#logger.debug(`Phone input country set to ${currentCountry}`);
     }
+  }
+
+  #setupCountryChangeListener(input, iti) {
+    const fieldAttr = input.getAttribute('os-checkout-field');
+    if (!fieldAttr) return;
+
+    const countrySelect = document.querySelector(
+      fieldAttr === 'phone' ? '[os-checkout-field="country"]' : '[os-checkout-field="billing-country"]'
+    );
+
+    if (!countrySelect) return;
+
+    // Listen for country changes
+    countrySelect.addEventListener('change', () => {
+      const newCountry = countrySelect.value;
+      if (newCountry && (newCountry === 'US' || newCountry === 'CA')) {
+        iti.setCountry(newCountry.toLowerCase());
+        this.#logger.debug(`Phone input country changed to ${newCountry}`);
+        
+        // Clear the input to force reformatting
+        if (input.value) {
+          const numericValue = input.value.replace(/\D/g, '');
+          input.value = numericValue;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      }
+    });
   }
 
   #setupPhoneValidation(input, iti) {
