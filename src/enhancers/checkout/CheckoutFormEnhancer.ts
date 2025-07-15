@@ -1651,8 +1651,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     
     if (redirectUrl) {
       const finalUrl = this.preserveQueryParams(redirectUrl);
+      // Keep the loading state active during redirect
+      // The browser will handle clearing it when the page unloads
       window.location.href = finalUrl;
     } else {
+      // Only clear loading state if redirect fails
+      const checkoutStore = useCheckoutStore.getState();
+      checkoutStore.setProcessing(false);
       this.emit('order:redirect-missing', { order });
     }
   }
@@ -1826,7 +1831,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           
           this.handleError(error, 'handleFormSubmit');
           checkoutStore.setError('general', 'Failed to process order. Please try again.');
-        } finally {
+          // Only set processing to false on error
           checkoutStore.setProcessing(false);
         }
       }
@@ -1845,6 +1850,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.emit('order:completed', order);
       this.handleOrderRedirect(order);
     } catch (error) {
+      // Make sure to clear processing state on error
+      const checkoutStore = useCheckoutStore.getState();
+      checkoutStore.setProcessing(false);
       throw error;
     }
   }

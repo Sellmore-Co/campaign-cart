@@ -3,7 +3,8 @@
     "allow": [
       "Bash(tsc)",
       "Bash(vite build)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": []
   }
