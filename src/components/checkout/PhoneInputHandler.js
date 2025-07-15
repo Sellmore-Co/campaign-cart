@@ -45,7 +45,6 @@ export class PhoneInputHandler {
       const iti = window.intlTelInput(input, {
         utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js',
         separateDialCode: true,
-        onlyCountries: ['us', 'ca'],
         initialCountry: 'us',
         allowDropdown: false,
         dropdownContainer: document.body,
@@ -54,7 +53,8 @@ export class PhoneInputHandler {
         autoPlaceholder: 'aggressive',
         customContainer: 'iti-tel-input',
         autoFormat: true,
-        nationalMode: true
+        nationalMode: true,
+        preferredCountries: ['us', 'ca', 'gb', 'au']
       });
 
       input.iti = iti;
@@ -68,56 +68,11 @@ export class PhoneInputHandler {
       input.addEventListener('input', () => {
         const number = input.value.trim();
         
-        // Format the number as user types based on selected country
-        if (number) {
-          const selectedCountry = iti.getSelectedCountryData();
-          const countryCode = selectedCountry.iso2?.toUpperCase();
-          
-          // Remove all non-numeric characters
-          const numericValue = number.replace(/\D/g, '');
-          
-          let formattedNumber = '';
-          
-          if (countryCode === 'CA') {
-            // Format according to Canadian pattern XXX-XXX-XXXX
-            if (numericValue.length > 0) {
-              if (numericValue.length <= 3) {
-                formattedNumber = numericValue;
-              } else if (numericValue.length <= 6) {
-                formattedNumber = `${numericValue.slice(0, 3)}-${numericValue.slice(3)}`;
-              } else {
-                formattedNumber = `${numericValue.slice(0, 3)}-${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
-              }
-            }
-          } else {
-            // Default to US format (XXX) XXX-XXXX
-            if (numericValue.length > 0) {
-              if (numericValue.length <= 3) {
-                formattedNumber = `(${numericValue}`;
-              } else if (numericValue.length <= 6) {
-                formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3)}`;
-              } else {
-                formattedNumber = `(${numericValue.slice(0, 3)}) ${numericValue.slice(3, 6)}-${numericValue.slice(6, 10)}`;
-              }
-            }
-          }
-          
-          // Only update if the format is different to avoid cursor jumping
-          if (input.value !== formattedNumber) {
-            // Store cursor position
-            const cursorPos = input.selectionStart;
-            const oldLength = input.value.length;
-            
-            // Update value
-            input.value = formattedNumber;
-            
-            // Calculate new cursor position
-            if (cursorPos !== null) {
-              const newLength = formattedNumber.length;
-              const cursorOffset = newLength - oldLength;
-              input.setSelectionRange(cursorPos + cursorOffset, cursorPos + cursorOffset);
-            }
-          }
+        // Let intl-tel-input handle the formatting
+        // We'll just ensure the number is properly formatted on blur
+        if (number && iti.isValidNumber()) {
+          // The number is valid, clear any errors
+          this.#clearError(input);
         }
 
         const isValid = iti.isValidNumber();
@@ -166,11 +121,8 @@ export class PhoneInputHandler {
 
           if (!isValid) {
             const selectedCountry = iti.getSelectedCountryData();
-            const countryCode = selectedCountry.iso2?.toUpperCase();
-            const errorMessage = countryCode === 'CA' ? 
-              'Please enter a valid Canadian phone number (e.g. 416-555-5555)' : 
-              'Please enter a valid US phone number (e.g. 555-555-5555)';
-            this.#showError(input, errorMessage);
+            const countryName = selectedCountry.name || 'phone';
+            this.#showError(input, `Please enter a valid ${countryName} phone number`);
           } else {
             this.#clearError(input);
           }
@@ -288,16 +240,12 @@ export class PhoneInputHandler {
     // Listen for country changes
     countrySelect.addEventListener('change', () => {
       const newCountry = countrySelect.value;
-      if (newCountry && (newCountry === 'US' || newCountry === 'CA')) {
+      if (newCountry) {
         iti.setCountry(newCountry.toLowerCase());
         this.#logger.debug(`Phone input country changed to ${newCountry}`);
         
-        // Clear the input to force reformatting
-        if (input.value) {
-          const numericValue = input.value.replace(/\D/g, '');
-          input.value = numericValue;
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-        }
+        // Clear any validation errors when country changes
+        this.#clearError(input);
       }
     });
   }

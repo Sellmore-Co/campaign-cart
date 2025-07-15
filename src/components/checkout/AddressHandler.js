@@ -1,3 +1,6 @@
+import { CountryConfig } from './shared/CountryConfig.js';
+import { FormFieldUtils } from './shared/FormFieldUtils.js';
+
 export class AddressHandler {
   #form;
   #logger;
@@ -76,44 +79,29 @@ export class AddressHandler {
   }
 
   #updateFieldLabelsForCountry(countryCode, type = 'shipping') {
-    // Determine field prefix
-    const prefix = type === 'billing' ? 'billing-' : '';
+    const isBilling = type === 'billing';
     
-    // Find the postal code and state fields
-    const postalField = document.querySelector(`[os-checkout-field="${prefix}postal"]`);
-    const stateField = document.querySelector(`[os-checkout-field="${prefix}province"]`);
-    const stateSelect = stateField?.closest('.select-form-wrapper')?.querySelector('select') || stateField;
+    // Find fields using shared utility
+    const postalField = FormFieldUtils.findPostalField(isBilling);
+    const stateField = FormFieldUtils.findStateField(isBilling);
     
-    if (countryCode === 'CA') {
-      // Update for Canada
-      if (postalField) {
-        postalField.placeholder = 'Postal Code*';
-        // Update the pattern for Canadian postal codes
-        postalField.setAttribute('pattern', '^[A-Za-z]\\d[A-Za-z][ -]?\\d[A-Za-z]\\d$');
-        postalField.setAttribute('maxlength', '7');
-      }
-      
-      if (stateSelect) {
-        // Update the default option text
-        const defaultOption = stateSelect.querySelector('option[value=""]');
-        if (defaultOption) {
-          defaultOption.textContent = 'Select Province';
-        }
-      }
-    } else {
-      // Default to US format
-      if (postalField) {
-        postalField.placeholder = 'ZIP Code*';
-        postalField.setAttribute('pattern', '(^\\d{5}$)|(^\\d{5}-\\d{4}$)');
-        postalField.setAttribute('maxlength', '10');
-      }
-      
-      if (stateSelect) {
-        // Update the default option text
-        const defaultOption = stateSelect.querySelector('option[value=""]');
-        if (defaultOption) {
-          defaultOption.textContent = 'Select State';
-        }
+    // Get country configuration from shared module
+    const config = CountryConfig.getCountryConfig(countryCode);
+    
+    // Update postal field
+    if (postalField) {
+      FormFieldUtils.updateFieldAttributes(postalField, {
+        label: config.postalLabel,
+        pattern: config.postalPattern,
+        maxLength: config.postalMaxLength
+      });
+    }
+    
+    // Update state/province field
+    if (stateField) {
+      const defaultOption = stateField.querySelector('option[value=""]');
+      if (defaultOption) {
+        defaultOption.textContent = config.stateLabel;
       }
     }
     

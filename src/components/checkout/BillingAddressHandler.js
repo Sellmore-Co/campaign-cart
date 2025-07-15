@@ -8,6 +8,8 @@
  * - Showing/hiding the billing location fields when address is entered
  */
 
+import { FormFieldUtils } from './shared/FormFieldUtils.js';
+
 export class BillingAddressHandler {
   #app;
   #logger;
@@ -170,17 +172,18 @@ export class BillingAddressHandler {
   }
 
   #cacheFieldElements() {
-    // Cache shipping fields
+    // Cache shipping fields using shared utility
     Object.keys(this.#fieldMap).forEach(shippingField => {
-      const element = document.querySelector(`[os-checkout-field="${shippingField}"]`);
+      const element = FormFieldUtils.findField(shippingField, { isBilling: false });
       if (element) {
         this.#shippingFields[shippingField] = element;
       }
     });
     
-    // Cache billing fields
+    // Cache billing fields using shared utility
     Object.values(this.#fieldMap).forEach(billingField => {
-      const element = document.querySelector(`[os-checkout-field="${billingField}"]`);
+      const fieldName = billingField.replace('billing-', '');
+      const element = FormFieldUtils.findField(fieldName, { isBilling: true, prefix: 'billing-' });
       if (element) {
         this.#billingFields[billingField] = element;
       }
@@ -196,10 +199,7 @@ export class BillingAddressHandler {
         this.#lastState = e.target.checked;
         this.#toggleBillingForm(e.target.checked, true);
         
-        // If checked, copy shipping values to billing
-        if (e.target.checked) {
-          this.copyShippingToBilling();
-        }
+        // Don't copy shipping values - leave billing fields blank
         
         this.#logDebug(`Billing address changed: ${e.target.checked ? 'Same as shipping' : 'Different from shipping'}`);
       }
@@ -221,22 +221,7 @@ export class BillingAddressHandler {
       }
     });
     
-    // Listen for changes to shipping fields to update billing if "same as shipping" is checked
-    Object.entries(this.#shippingFields).forEach(([fieldName, element]) => {
-      element.addEventListener('change', () => {
-        if (this.#sameAsShippingCheckbox.checked) {
-          const billingFieldName = this.#fieldMap[fieldName];
-          const billingElement = this.#billingFields[billingFieldName];
-          
-          if (billingElement) {
-            billingElement.value = element.value;
-            
-            // Trigger change event on the billing field
-            billingElement.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        }
-      });
-    });
+    // Removed automatic copying of shipping fields to billing fields
     
     // Set up input handler for billing address1 field
     if (this.#billingAddress1Field && this.#billingLocationComponent) {
@@ -370,32 +355,27 @@ export class BillingAddressHandler {
   }
 
   /**
-   * Copy shipping address values to billing address fields
+   * @deprecated - No longer copying shipping to billing automatically
+   * Clear billing address fields instead
    */
-  copyShippingToBilling() {
+  clearBillingFields() {
     try {
-      Object.entries(this.#shippingFields).forEach(([shippingField, shippingElement]) => {
-        const billingFieldName = this.#fieldMap[shippingField];
-        const billingElement = this.#billingFields[billingFieldName];
-        
-        if (billingElement && shippingElement) {
-          billingElement.value = shippingElement.value;
-          
+      Object.values(this.#billingFields).forEach(billingElement => {
+        if (billingElement) {
+          billingElement.value = '';
           // Trigger change event on the billing field
           billingElement.dispatchEvent(new Event('change', { bubbles: true }));
         }
       });
       
-      // If address1 is copied and has value, show location component
-      if (this.#billingFields['billing-address1'] && 
-          this.#billingFields['billing-address1'].value && 
-          this.#billingFields['billing-address1'].value.length > 0) {
-        this.#showBillingLocationComponent();
+      // Hide location component when clearing
+      if (this.#billingLocationComponent) {
+        this.#billingLocationComponent.classList.add('cc-hidden');
       }
       
-      this.#logDebug('Copied shipping address to billing address');
+      this.#logDebug('Cleared billing address fields');
     } catch (error) {
-      this.#logError('Error copying shipping to billing:', error);
+      this.#logError('Error clearing billing fields:', error);
     }
   }
 

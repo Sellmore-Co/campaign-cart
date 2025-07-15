@@ -8,6 +8,8 @@
  * 3. Enabling cart recovery emails
  */
 
+import { CountryConfig } from './shared/CountryConfig.js';
+
 export class ProspectCartHandler {
   #app;
   #logger;
@@ -502,44 +504,11 @@ export class ProspectCartHandler {
       return true;
     }
     
-    // Validate based on country
-    switch (country.toUpperCase()) {
-      case 'US':
-        // US postal codes should be 5 digits or 5+4 digits
-        return /^\d{5}(-\d{4})?$/.test(postalCode);
-        
-      case 'CA':
-        // Canadian postal codes: A1A 1A1
-        return /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(postalCode);
-        
-      case 'GB':
-      case 'UK':
-        // UK postal codes are complex but generally follow this pattern
-        return /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i.test(postalCode);
-        
-      case 'AU':
-        // Australian postal codes are 4 digits
-        return /^\d{4}$/.test(postalCode);
-        
-      case 'NZ':
-        // New Zealand postal codes are 4 digits
-        return /^\d{4}$/.test(postalCode);
-        
-      case 'DE':
-        // German postal codes are 5 digits
-        return /^\d{5}$/.test(postalCode);
-        
-      case 'FR':
-        // French postal codes are 5 digits
-        return /^\d{5}$/.test(postalCode);
-        
-      // Add more countries as needed
-        
-      default:
-        // For other countries, accept any non-empty string
-        // The API will validate if needed
-        return postalCode.trim().length > 0;
-    }
+    // Get postal pattern from shared configuration
+    const patternString = CountryConfig.getPostalPattern(country);
+    const pattern = new RegExp(patternString, 'i');
+    
+    return pattern.test(postalCode);
   }
   
   /**
