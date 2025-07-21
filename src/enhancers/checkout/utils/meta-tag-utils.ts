@@ -16,7 +16,8 @@ export function setOrCreateMetaTag(name: string, content: string): void {
 
 export function getNextPageUrlFromMeta(refId?: string): string | null {
   // Check for both new and legacy meta tag names
-  const metaTag = document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
+  const metaTag = document.querySelector('meta[name="next-success-url"]') as HTMLMetaElement ||
+                 document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
                  document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement;
   
   if (!metaTag?.content) {

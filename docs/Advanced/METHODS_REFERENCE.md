@@ -1,6 +1,6 @@
-# Campaign Cart SDKv v0.2.0 - Complete Methods Reference
+# Campaign Cart SDK v0.2.0 - Complete Methods Reference
 
-A comprehensive list of all available methods, utilities, and functions in the Campaign Cart SDKv v0.2.0.
+A comprehensive list of all available methods, utilities, and functions in the Campaign Cart SDK v0.2.0.
 
 ## Table of Contents
 
@@ -86,6 +86,15 @@ These methods are available via the global `window.next` object after SDK initia
 | `getShippingMethods` | `() => Array<{ref_id: number; code: string; price: string}>` | Gets available shipping methods |
 | `getSelectedShippingMethod` | `() => {id: number; name: string; price: number; code: string} \| null` | Gets currently selected shipping method |
 | `setShippingMethod` | `(methodId) => Promise<void>` | Sets shipping method by ID |
+
+### Upsells
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `addUpsell` | `(options) => Promise<{order, addedLines, totalValue}>` | Adds upsell(s) to completed order |
+| `canAddUpsells` | `() => boolean` | Checks if upsells can be added to current order |
+| `getCompletedUpsells` | `() => string[]` | Gets list of completed upsell package IDs |
+| `isUpsellAlreadyAdded` | `(packageId) => boolean` | Checks if specific upsell was already added |
 
 ### Utilities
 
@@ -487,4 +496,4 @@ next.trackCustomEvent('user_engagement', { action: 'video_play' });
 
 **Total Methods Available: 200+**
 
-This comprehensive reference covers all available methods in the Campaign Cart SDKv v0.2.0, from basic cart operations to advanced debugging utilities.
+This comprehensive reference covers all available methods in the Campaign Cart SDK v0.2.0, from basic cart operations to advanced debugging utilities.

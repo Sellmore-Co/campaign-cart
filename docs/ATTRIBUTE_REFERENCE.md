@@ -65,8 +65,17 @@ This document lists all available HTML attributes and display properties in the 
 <div data-next-display="package.12.price">$65.00</div>
 <div data-next-display="package.12.unitPrice">$65.00</div>
 <div data-next-display="package.12.price_retail">$149.00</div>
+<div data-next-display="package.12.price_total">$195.00</div>
+<div data-next-display="package.12.price_retail_total">$447.00</div>
 <div data-next-display="package.12.compareTotal">$149.00</div>
 <div data-next-display="package.12.packageTotal">$195.00</div>
+
+<!-- Discount-Adjusted Prices -->
+<div data-next-display="package.12.discountedPrice">$55.00</div>
+<div data-next-display="package.12.discountedPriceTotal">$165.00</div>
+<div data-next-display="package.12.finalPrice">$55.00</div>
+<div data-next-display="package.12.finalPriceTotal">$165.00</div>
+<div data-next-display="package.12.discountAmount">$30.00</div>
 
 <!-- Calculated values -->
 <div data-next-display="package.12.savingsAmount">$84.00</div>
@@ -78,9 +87,18 @@ This document lists all available HTML attributes and display properties in the 
 
 <!-- Booleans -->
 <div data-next-display="package.12.hasSavings">Yes</div>
+<div data-next-display="package.12.hasDiscount">Yes</div>
 <div data-next-display="package.12.isBundle">Yes</div>
 <div data-next-display="package.12.isRecurring">No</div>
 ```
+
+#### Package Context Options
+
+Package properties can be accessed in three ways:
+
+1. **Specific Package ID**: `package.123.price`
+2. **Package Context**: Inside element with `data-next-package-id="123"`
+3. **Selection Context**: `selection.main-selector.price`
 
 ### Campaign Properties
 
@@ -104,12 +122,20 @@ This document lists all available HTML attributes and display properties in the 
 ### Selection Properties (for package selectors)
 
 ```html
+<!-- Basic selection properties -->
 <div data-next-display="selection.packageId">12</div>
 <div data-next-display="selection.quantity">2</div>
 <div data-next-display="selection.name">Selected Product</div>
 <div data-next-display="selection.total">$130.00</div>
 <div data-next-display="selection.savingsAmount">$168.00</div>
 <div data-next-display="selection.unitPrice">$65.00</div>
+
+<!-- Selection with discount properties -->
+<div data-next-display="selection.main-selector.finalPrice">$24.99</div>
+<div data-next-display="selection.main-selector.finalPriceTotal">$74.97</div>
+<div data-next-display="selection.main-selector.discountAmount">$15.00</div>
+<div data-next-display="selection.main-selector.hasDiscount">Yes</div>
+<div data-next-display="selection.main-selector.appliedDiscountAmount">$5.00</div>
 ```
 
 ### Shipping Properties
@@ -338,6 +364,53 @@ This document lists all available HTML attributes and display properties in the 
 4. **Package Context**: Package IDs can be inherited from parent elements
 5. **Conditional Logic**: Use `data-next-show-if` and `data-next-hide-if` for visibility
 6. **Event System**: All actions emit events you can listen to with `window.next.on()`
+7. **Discount Calculations**: 
+   - Discount properties update in real-time based on cart state
+   - `finalPrice` and `discountedPrice` are synonyms
+   - Package-specific discounts take precedence over order-level discounts
+   - Fixed-amount order discounts are distributed proportionally
+
+## Package Discount Display Examples
+
+### Product Card with Discount
+```html
+<div class="product-card" data-next-package-id="123">
+  <h3 data-next-display="package.name">Product Name</h3>
+  
+  <!-- Price display with discount -->
+  <div class="pricing">
+    <!-- Original price (struck through if discounted) -->
+    <span class="original-price" data-next-show="package.hasDiscount">
+      <s data-next-display="package.price_total">$89.97</s>
+    </span>
+    
+    <!-- Final price after discounts -->
+    <span class="final-price" data-next-display="package.finalPriceTotal">$74.97</span>
+    
+    <!-- Discount badge -->
+    <span class="discount-badge" data-next-show="package.hasDiscount">
+      Save <span data-next-display="package.discountAmount">$15.00</span>!
+    </span>
+  </div>
+</div>
+```
+
+### Dynamic Pricing Display
+```html
+<div class="product-pricing" data-next-package-id="789">
+  <!-- No discounts -->
+  <div data-next-hide="package.hasDiscount">
+    <span class="price" data-next-display="package.price_total">$89.97</span>
+  </div>
+  
+  <!-- Has discounts -->
+  <div data-next-show="package.hasDiscount">
+    <span class="was-price">Was: <s data-next-display="package.price_total">$89.97</s></span>
+    <span class="now-price">Now: <span data-next-display="package.finalPriceTotal">$74.97</span></span>
+    <span class="savings">You Save: <span data-next-display="package.discountAmount">$15.00</span></span>
+  </div>
+</div>
+```
 
 ## Quick Reference
 

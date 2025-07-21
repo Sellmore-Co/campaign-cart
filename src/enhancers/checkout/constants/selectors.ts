@@ -42,7 +42,7 @@ export const SHIPPING_METHOD_SELECTOR = 'input[name="shipping_method"]';
 export const BILLING_TOGGLE_SELECTOR = 'input[name="use_shipping_address"]';
 
 export const META_TAG_SELECTORS = {
-  SUCCESS_URL: ['meta[name="next-success-url"]', 'meta[name="os-next-page"]'],
+  SUCCESS_URL: ['meta[name="next-success-url"]', 'meta[name="next-next-url"]', 'meta[name="os-next-page"]'],
   FAILURE_URL: ['meta[name="next-failure-url"]', 'meta[name="os-failure-url"]'],
-  NEXT_PAGE: ['meta[name="next-next-url"]', 'meta[name="os-next-page"]']
+  NEXT_PAGE: ['meta[name="next-success-url"]', 'meta[name="next-next-url"]', 'meta[name="os-next-page"]']
 } as const;

@@ -52,6 +52,10 @@ export class UpsellEnhancer extends BaseEnhancer {
   private options: Map<number, HTMLElement> = new Map();
   private selectedPackageId?: number;
   private currentPagePath?: string;
+  
+  // Quantity management per selector
+  private quantityBySelectorId: Map<string, number> = new Map();
+  private currentQuantitySelectorId?: string;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -158,6 +162,11 @@ export class UpsellEnhancer extends BaseEnhancer {
   }
   
   private initializeSelectorMode(): void {
+    // Initialize quantity for this selector if not already done
+    if (this.selectorId && !this.quantityBySelectorId.has(this.selectorId)) {
+      this.quantityBySelectorId.set(this.selectorId, this.quantity);
+    }
+    
     // Find all option elements
     const optionElements = this.element.querySelectorAll('[data-next-upsell-option]');
     
@@ -261,16 +270,33 @@ export class UpsellEnhancer extends BaseEnhancer {
     const increaseBtn = this.element.querySelector('[data-next-upsell-quantity="increase"]');
     const decreaseBtn = this.element.querySelector('[data-next-upsell-quantity="decrease"]');
     
+    // Check if quantity controls should be tied to a specific selector
+    const quantitySelectorId = increaseBtn?.getAttribute('data-next-quantity-selector-id') || 
+                              decreaseBtn?.getAttribute('data-next-quantity-selector-id') ||
+                              this.selectorId;
+    
     if (increaseBtn) {
       increaseBtn.addEventListener('click', () => {
-        this.quantity = Math.min(10, this.quantity + 1);
+        if (quantitySelectorId) {
+          const currentQty = this.quantityBySelectorId.get(quantitySelectorId) || 1;
+          this.quantityBySelectorId.set(quantitySelectorId, Math.min(10, currentQty + 1));
+          this.currentQuantitySelectorId = quantitySelectorId;
+        } else {
+          this.quantity = Math.min(10, this.quantity + 1);
+        }
         this.updateQuantityDisplay();
       });
     }
     
     if (decreaseBtn) {
       decreaseBtn.addEventListener('click', () => {
-        this.quantity = Math.max(1, this.quantity - 1);
+        if (quantitySelectorId) {
+          const currentQty = this.quantityBySelectorId.get(quantitySelectorId) || 1;
+          this.quantityBySelectorId.set(quantitySelectorId, Math.max(1, currentQty - 1));
+          this.currentQuantitySelectorId = quantitySelectorId;
+        } else {
+          this.quantity = Math.max(1, this.quantity - 1);
+        }
         this.updateQuantityDisplay();
       });
     }
@@ -297,7 +323,16 @@ export class UpsellEnhancer extends BaseEnhancer {
   private updateQuantityDisplay(): void {
     const display = this.element.querySelector('[data-next-upsell-quantity="display"]');
     if (display) {
-      display.textContent = this.quantity.toString();
+      // Get the selector ID for this display
+      const displaySelectorId = display.getAttribute('data-next-quantity-selector-id') || 
+                               this.currentQuantitySelectorId || 
+                               this.selectorId;
+      
+      if (displaySelectorId && this.quantityBySelectorId.has(displaySelectorId)) {
+        display.textContent = this.quantityBySelectorId.get(displaySelectorId)!.toString();
+      } else {
+        display.textContent = this.quantity.toString();
+      }
     }
   }
   
@@ -417,11 +452,17 @@ export class UpsellEnhancer extends BaseEnhancer {
       this.setProcessingState(true);
       this.emit('upsell:adding', { packageId: packageToAdd });
       
+      // Get the appropriate quantity
+      let quantityToUse = this.quantity;
+      if (this.selectorId && this.quantityBySelectorId.has(this.selectorId)) {
+        quantityToUse = this.quantityBySelectorId.get(this.selectorId)!;
+      }
+      
       // Build upsell data
       const upsellData: AddUpsellLine = {
         lines: [{
           package_id: packageToAdd,
-          quantity: this.quantity
+          quantity: quantityToUse
         }]
       };
       
@@ -455,7 +496,7 @@ export class UpsellEnhancer extends BaseEnhancer {
         
         this.emit('upsell:added', { 
           packageId: packageToAdd,
-          quantity: this.quantity,
+          quantity: quantityToUse,
           order: updatedOrder,
           value: upsellValue
         });

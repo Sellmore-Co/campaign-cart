@@ -116,7 +116,10 @@ export class PaymentService {
       
       this.creditCardService.setOnError((errors) => {
         this.logger.error('Credit card errors:', errors);
-        this.emitCallback('payment:error', { errors });
+        this.emitCallback('payment:error', { 
+          errors,
+          message: errors && errors.length > 0 ? errors.map((err: any) => err.message || err).join('. ') : 'Payment validation failed'
+        });
       });
       
       this.creditCardService.setOnToken((token, pmData) => {

@@ -135,8 +135,26 @@ export class ApiClient {
             const errorMessage = `API Error: ${response.status} ${response.statusText}`;
             span?.setAttribute('error', true);
             span?.setAttribute('error.message', errorMessage);
-            this.logger.error(errorMessage);
-            throw new Error(errorMessage);
+            
+            // Try to parse error response body
+            let errorData: any = {};
+            try {
+              const text = await response.text();
+              if (text) {
+                errorData = JSON.parse(text);
+              }
+            } catch (parseError) {
+              this.logger.warn('Failed to parse error response body');
+            }
+            
+            this.logger.error(errorMessage, errorData);
+            
+            // Create enhanced error with response data
+            const error = new Error(errorMessage) as any;
+            error.status = response.status;
+            error.statusText = response.statusText;
+            error.responseData = errorData;
+            throw error;
           }
 
           const data = await response.json();

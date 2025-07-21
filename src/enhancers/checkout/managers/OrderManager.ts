@@ -112,9 +112,39 @@ export class OrderManager {
       
       return order;
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('🔴 [OrderManager] Error creating order:', error);
       this.logger.error('Failed to create order:', error);
+      
+      // Check for payment-specific errors in the response
+      if (error.status === 400 && error.responseData) {
+        const responseData = error.responseData;
+        
+        // Check for payment errors
+        if (responseData.payment_details || responseData.payment_response_code) {
+          console.log('🔴 [OrderManager] Payment error detected:', {
+            payment_details: responseData.payment_details,
+            payment_response_code: responseData.payment_response_code
+          });
+          
+          // Emit payment error event with details
+          this.emitCallback('payment:error', {
+            message: responseData.payment_details || 'Payment failed',
+            code: responseData.payment_response_code,
+            details: responseData
+          });
+          
+          // Create a user-friendly error message
+          let errorMessage = 'Payment failed: ';
+          if (responseData.payment_details) {
+            errorMessage += responseData.payment_details;
+          } else {
+            errorMessage += 'Please check your payment information and try again.';
+          }
+          
+          throw new Error(errorMessage);
+        }
+      }
       
       // Enhance error message for better user experience
       if (error instanceof Error) {

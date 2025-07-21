@@ -1,5 +1,5 @@
 /**
- * Next Analytics v2 - Clean, Elevar-inspired analytics system
+ * Next Analytics v0.2.0 - Clean, Elevar-inspired analytics system
  * 
  * This is the main entry point for the analytics system.
  * It provides a simple API for tracking events following industry best practices.

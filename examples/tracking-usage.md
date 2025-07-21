@@ -1,6 +1,6 @@
 # Tracking Implementation - Usage Examples
 
-This document demonstrates how to use the new tracking utilities implemented in the Campaign Cart SDK v2.
+This document demonstrates how to use the new tracking utilities implemented in the Campaign Cart SDK v0.2.0.
 
 ## Overview
 

@@ -49,7 +49,8 @@ export class CheckoutRedirectHandler {
 
   private getNextPageUrlFromMeta(refId?: string): string | null {
     // Check for both new and legacy meta tag names
-    const metaTag = document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
+    const metaTag = document.querySelector('meta[name="next-success-url"]') as HTMLMetaElement ||
+                   document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
                    document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement;
     
     if (!metaTag?.content) {
@@ -76,6 +77,7 @@ export class CheckoutRedirectHandler {
   public getSuccessUrl(): string {
     // Check for meta tag first (support both new and legacy names)
     const metaTag = document.querySelector('meta[name="next-success-url"]') as HTMLMetaElement ||
+                   document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
                    document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement;
     if (metaTag?.content) {
       return metaTag.content;
