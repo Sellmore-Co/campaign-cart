@@ -431,14 +431,14 @@ export class AddressService {
       this.logger.debug(`Autocomplete created for ${fieldKey}, restricted to: ${countryValue}`);
 
       // Handle place selection
-      autocomplete.addListener('place_changed', () => {
+      autocomplete.addListener('place_changed', async () => {
         const place: PlaceResult | undefined = autocomplete.getPlace();
         if (!place || !place.address_components) {
           this.logger.debug('No valid place data returned from autocomplete');
           return;
         }
 
-        this.fillAddressFromAutocomplete(place, fields);
+        await this.fillAddressFromAutocomplete(place, fields);
       });
 
       // Show location fields on long enough input
@@ -463,7 +463,9 @@ export class AddressService {
   /**
    * Fill address fields from Google Maps autocomplete result
    */
-  public fillAddressFromAutocomplete(place: PlaceResult, fields: AddressFields): void {
+  public async fillAddressFromAutocomplete(place: PlaceResult, fields: AddressFields): Promise<void> {
+    console.log('🔍 fillAddressFromAutocomplete called with place:', place);
+    
     if (!place.address_components) return;
 
     this.showLocationFields();
@@ -476,17 +478,125 @@ export class AddressService {
       return;
     }
 
+    // Log autocomplete selection for specific countries (e.g., Brazil)
+    const countryCode = components.country?.short;
+    if (countryCode === 'BR' || countryCode === 'GB' || countryCode === 'JP' || countryCode === 'IN' || countryCode === 'CA') {
+      // Use console.log directly to ensure visibility
+      console.log(`🌍 Google Autocomplete selection for ${countryCode}:`, {
+        country: countryCode,
+        formatted_address: place.formatted_address,
+        components: {
+          street_number: components.street_number?.long,
+          route: components.route?.long,
+          locality: components.locality?.long,
+          postal_town: components.postal_town?.long,
+          sublocality: components.sublocality?.long,
+          sublocality_level_1: components.sublocality_level_1?.long,
+          sublocality_level_2: components.sublocality_level_2?.long,
+          administrative_area_level_1: components.administrative_area_level_1?.long,
+          administrative_area_level_2: components.administrative_area_level_2?.long,
+          administrative_area_level_3: components.administrative_area_level_3?.long,
+          administrative_area_level_4: components.administrative_area_level_4?.long,
+          neighborhood: components.neighborhood?.long,
+          postal_code: components.postal_code?.long,
+          postal_code_suffix: components.postal_code_suffix?.long
+        },
+        all_types: Object.keys(components)
+      });
+    }
+
     // Fill in the address fields
     if (fields.address) {
       const streetNumber = components.street_number?.long || '';
       const route = components.route?.long || '';
-      fields.address.value = [streetNumber, route].filter(Boolean).join(' ');
+      
+      let addressValue = '';
+      
+      // Country-specific address formatting
+      if (countryCode === 'BR' && route && streetNumber) {
+        // Brazil format: "Street Name, Number"
+        addressValue = `${route}, ${streetNumber}`;
+        
+        // Append neighborhood if available
+        if (components.sublocality_level_1) {
+          addressValue += ` - ${components.sublocality_level_1.long}`;
+        } else if (components.sublocality) {
+          addressValue += ` - ${components.sublocality.long}`;
+        }
+      } else {
+        // Default format: "Number Street Name"
+        addressValue = [streetNumber, route].filter(Boolean).join(' ');
+      }
+      
+      fields.address.value = addressValue;
       fields.address.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
-    if (fields.city && components?.locality) {
-      fields.city.value = components.locality.long;
-      fields.city.dispatchEvent(new Event('change', { bubbles: true }));
+    // For Brazil, parse city and state from formatted address if components are missing
+    let parsedCity = '';
+    let parsedState = '';
+    
+    if (countryCode === 'BR' && place.formatted_address && 
+        (!components.administrative_area_level_2 || !components.administrative_area_level_1)) {
+      // BR format: "Street, Number - Neighborhood, City - State, Postal, Country"
+      const addressParts = place.formatted_address.split(',');
+      if (addressParts.length >= 3) {
+        // Extract city and state from the pattern "City - State"
+        const cityStatePart = addressParts[addressParts.length - 3]?.trim();
+        if (cityStatePart && cityStatePart.includes(' - ')) {
+          const [city, state] = cityStatePart.split(' - ').map(s => s.trim());
+          parsedCity = city || '';
+          parsedState = state || '';
+        }
+      }
+    }
+
+    // Enhanced city extraction with fallback logic
+    if (fields.city) {
+      let cityValue = '';
+      
+      // Country-specific logic
+      if (countryCode === 'BR') {
+        // Brazil: try administrative_area_level_2 first, then parsed city
+        if (components.administrative_area_level_2) {
+          cityValue = components.administrative_area_level_2.long;
+        } else if (parsedCity) {
+          cityValue = parsedCity;
+        }
+      }
+      // Primary: Try locality (most common - US, CA, AU, etc.)
+      else if (components.locality) {
+        cityValue = components.locality.long;
+      } 
+      // Fallback 1: Try postal_town (common in UK)
+      else if (components.postal_town) {
+        cityValue = components.postal_town.long;
+      }
+      // Fallback 2: Try administrative_area_level_2 (some countries use this)
+      else if (components.administrative_area_level_2) {
+        cityValue = components.administrative_area_level_2.long;
+      }
+      // Fallback 3: Try sublocality (common in some Asian countries - but not for BR)
+      else if (components.sublocality && countryCode !== 'BR') {
+        cityValue = components.sublocality.long;
+      }
+      // Fallback 4: Try sublocality_level_1 (but not for BR where it's neighborhood)
+      else if (components.sublocality_level_1 && countryCode !== 'BR') {
+        cityValue = components.sublocality_level_1.long;
+      }
+      
+      if (cityValue) {
+        fields.city.value = cityValue;
+        fields.city.dispatchEvent(new Event('change', { bubbles: true }));
+        this.logger.debug(`City set to: ${cityValue} (type: ${
+          components.locality ? 'locality' : 
+          components.postal_town ? 'postal_town' : 
+          components.sublocality ? 'sublocality' : 
+          'sublocality_level_1'
+        })`);
+      } else {
+        this.logger.warn('No suitable city component found in address');
+      }
     }
 
     if (fields.zip && components?.postal_code) {
@@ -497,15 +607,31 @@ export class AddressService {
     // Handle country and state
     if (fields.country && components?.country) {
       const countryCode = components.country.short;
-      if (fields.country.value !== countryCode) {
+      const needsCountryChange = fields.country.value !== countryCode;
+      
+      if (needsCountryChange) {
         fields.country.value = countryCode;
         fields.country.dispatchEvent(new Event('change', { bubbles: true }));
         this.logger.debug(`Country set to ${countryCode}`);
+        console.log(`🌐 Country changed to ${countryCode}`);
       }
 
       // Set state with retry (wait for country change to load states)
-      if (fields.state && components?.administrative_area_level_1) {
-        this.setStateWithRetry(fields.state, components.administrative_area_level_1.short);
+      if (fields.state) {
+        // Add extra delay if country was just changed
+        if (needsCountryChange) {
+          console.log(`⏱️ Country was just changed, adding extra delay before setting state`);
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        if (components?.administrative_area_level_1) {
+          console.log(`🏛️ Setting state from administrative_area_level_1: ${components.administrative_area_level_1.short}`);
+          this.setStateWithRetry(fields.state, components.administrative_area_level_1.short);
+        } else if (countryCode === 'BR' && parsedState) {
+          // For Brazil, use parsed state if component is missing
+          console.log(`🏛️ Setting state from parsed address: ${parsedState}`);
+          this.setStateWithRetry(fields.state, parsedState);
+        }
       }
     }
 
@@ -523,13 +649,28 @@ export class AddressService {
     const components: Record<string, { long: string; short: string }> = {};
     
     addressComponents.forEach(component => {
-      const type = component.types[0];
-      if (type) {
-        components[type] = {
-          long: component.long_name,
-          short: component.short_name
-        };
-      }
+      // Store the component for ALL its types, not just the first one
+      component.types.forEach(type => {
+        // Skip 'political' as it's too generic
+        if (type !== 'political') {
+          components[type] = {
+            long: component.long_name,
+            short: component.short_name
+          };
+        }
+      });
+    });
+
+    // Debug logging for address component parsing
+    this.logger.debug('Parsed address components:', {
+      availableTypes: Object.keys(components),
+      cityRelatedComponents: {
+        locality: components.locality?.long,
+        postal_town: components.postal_town?.long,
+        sublocality: components.sublocality?.long,
+        sublocality_level_1: components.sublocality_level_1?.long
+      },
+      allComponents: components
     });
 
     return components;
@@ -539,8 +680,12 @@ export class AddressService {
    * Set state with retry logic (for when state options are loading)
    */
   private async setStateWithRetry(stateSelect: HTMLSelectElement, stateCode: string, attempt = 0): Promise<void> {
+    console.log(`🔄 setStateWithRetry: Attempting to set state to ${stateCode} (attempt ${attempt + 1}/5)`);
+    
     if (attempt >= 5) {
       this.logger.warn(`Failed to set state ${stateCode} after 5 attempts`);
+      console.log(`❌ Failed to set state ${stateCode} after 5 attempts. Available options:`, 
+        Array.from(stateSelect.options).map(opt => opt.value));
       return;
     }
 
@@ -551,7 +696,10 @@ export class AddressService {
       stateSelect.value = stateCode;
       stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
       this.logger.debug(`State set to ${stateCode}`);
+      console.log(`✅ State successfully set to ${stateCode}`);
     } else {
+      console.log(`⏳ State option ${stateCode} not found yet. Available options:`, 
+        Array.from(stateSelect.options).map(opt => opt.value));
       this.setStateWithRetry(stateSelect, stateCode, attempt + 1);
     }
   }

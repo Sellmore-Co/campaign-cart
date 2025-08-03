@@ -3,15 +3,20 @@ import { FormatType } from './DisplayEnhancerTypes';
 
 export declare class DisplayFormatter {
     private static currencyFormatter;
+    private static currencyFormatterNoZeroCents;
     private static numberFormatter;
     private static dateFormatter;
-    static formatValue(value: any, format?: FormatType): string;
-    static formatCurrency(value: any): string;
+    static formatValue(value: any, format?: FormatType, options?: {
+        hideZeroCents?: boolean;
+    }): string;
+    static formatCurrency(value: any, hideZeroCents?: boolean): string;
     static formatNumber(value: any): string;
     static formatBoolean(value: any): string;
     static formatDate(value: any): string;
     static formatPercentage(value: any): string;
-    static formatAuto(value: any): string;
+    static formatAuto(value: any, options?: {
+        hideZeroCents?: boolean;
+    }): string;
 }
 export declare class PropertyResolver {
     /**
@@ -33,6 +38,7 @@ export declare abstract class BaseDisplayEnhancer extends BaseEnhancer {
     protected formatType: FormatType;
     protected hideIfZero: boolean;
     protected hideIfFalse: boolean;
+    protected hideZeroCents: boolean;
     protected divideBy?: number;
     protected multiplyBy?: number;
     protected lastValue?: any;

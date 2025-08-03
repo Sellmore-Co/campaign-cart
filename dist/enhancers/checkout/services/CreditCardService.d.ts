@@ -77,6 +77,11 @@ export declare class CreditCardService {
      */
     clearAllErrors(): void;
     /**
+     * Clear credit card fields
+     */
+    clearFields(): void;
+    private hidePaymentErrorContainers;
+    /**
      * Set callbacks
      */
     setOnReady(callback: () => void): void;

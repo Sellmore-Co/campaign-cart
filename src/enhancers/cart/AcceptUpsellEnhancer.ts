@@ -15,6 +15,8 @@ import { useOrderStore } from '@/stores/orderStore';
 import { useConfigStore } from '@/stores/configStore';
 import { ApiClient } from '@/api/client';
 import { preserveQueryParams } from '@/utils/url-utils';
+import { GeneralModal } from '@/components/modals/GeneralModal';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import type { AddUpsellLine } from '@/types/api';
 import type { SelectorItem } from '@/types/global';
 import { sentryManager } from '@/utils/monitoring/SentryManager';
@@ -27,9 +29,26 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
   private apiClient?: ApiClient;
   private selectedItem?: SelectorItem | null;
   private clickHandler?: (event: Event) => void;
+  private loadingOverlay: LoadingOverlay;
+  private pageShowHandler?: (event: PageTransitionEvent) => void;
+
+  constructor(element: HTMLElement) {
+    super(element);
+    this.loadingOverlay = new LoadingOverlay();
+  }
 
   public async initialize(): Promise<void> {
     this.validateElement();
+    
+    // Handle browser back button - hide loading overlay when page is shown from bfcache
+    this.pageShowHandler = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        // Page was restored from bfcache
+        this.loadingOverlay.hide(true); // Hide immediately
+        this.setEnabled(true); // Re-enable the button
+      }
+    };
+    window.addEventListener('pageshow', this.pageShowHandler);
     
     // Get optional attributes
     const packageIdAttr = this.getAttribute('data-next-package-id');
@@ -209,7 +228,7 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
           }
         );
       },
-      { showLoading: true, disableOnProcess: true }
+      { showLoading: false, disableOnProcess: true } // Use our own loading overlay
     );
   }
 
@@ -248,8 +267,20 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
       
       if (!shouldProceed) {
         // User declined to add duplicate - skip to next page if URL provided
-        if (this.nextUrl) {
-          const redirectUrl = preserveQueryParams(this.nextUrl);
+        let declineUrl = this.nextUrl;
+        
+        // Fallback to decline meta tag if no URL provided
+        if (!declineUrl) {
+          const declineMeta = document.querySelector('meta[name="next-upsell-decline-url"]');
+          declineUrl = declineMeta?.getAttribute('content') || undefined;
+          
+          if (declineUrl) {
+            this.logger.debug('Using fallback decline URL from meta tag:', declineUrl);
+          }
+        }
+        
+        if (declineUrl) {
+          const redirectUrl = preserveQueryParams(declineUrl);
           window.location.href = redirectUrl;
         }
         return;
@@ -257,6 +288,9 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
     }
     
     try {
+      // Show loading overlay
+      this.loadingOverlay.show();
+      
       const upsellData: AddUpsellLine = {
         lines: [{
           package_id: packageIdToAdd,
@@ -292,12 +326,29 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
       });
       
       // Redirect if URL provided
-      if (this.nextUrl) {
-        const redirectUrl = preserveQueryParams(this.nextUrl);
-        window.location.href = redirectUrl;
+      let redirectUrl = this.nextUrl;
+      
+      // Fallback to meta tag if no URL provided
+      if (!redirectUrl) {
+        const acceptMeta = document.querySelector('meta[name="next-upsell-accept-url"]');
+        redirectUrl = acceptMeta?.getAttribute('content') || undefined;
+        
+        if (redirectUrl) {
+          this.logger.debug('Using fallback accept URL from meta tag:', redirectUrl);
+        }
+      }
+      
+      if (redirectUrl) {
+        const finalUrl = preserveQueryParams(redirectUrl);
+        // LoadingOverlay will hide after 3 seconds on success before navigation
+        window.location.href = finalUrl;
+      } else {
+        // Hide overlay after 3 seconds if no navigation
+        this.loadingOverlay.hide();
       }
     } catch (error) {
       this.logger.error('Failed to accept upsell:', error);
+      this.loadingOverlay.hide(true); // Hide immediately on error
       throw error;
     }
   }
@@ -319,130 +370,9 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
   }
 
   private async showDuplicateUpsellDialog(): Promise<boolean> {
-    return new Promise((resolve) => {
-      // Create modal backdrop
-      const backdrop = document.createElement('div');
-      backdrop.className = 'next-modal-backdrop';
-      backdrop.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-        animation: fadeIn 0.2s ease-out;
-      `;
-      
-      // Create modal content
-      const modal = document.createElement('div');
-      modal.className = 'next-modal';
-      modal.style.cssText = `
-        background: white;
-        border-radius: 8px;
-        padding: 24px;
-        max-width: 400px;
-        width: 90%;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
-        animation: slideIn 0.3s ease-out;
-      `;
-      
-      modal.innerHTML = `
-        <div style="text-align: center;">
-          <h3 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #1a202c;">
-            Already Added!
-          </h3>
-          <p style="margin: 0 0 24px 0; color: #4a5568; line-height: 1.5;">
-            You've already added this item to your order. Would you like to add it again?
-          </p>
-          <div style="display: flex; gap: 12px; justify-content: center;">
-            <button class="next-modal-cancel" style="
-              padding: 10px 20px;
-              border: 1px solid #e2e8f0;
-              background: white;
-              border-radius: 6px;
-              font-size: 16px;
-              cursor: pointer;
-              color: #4a5568;
-              transition: all 0.2s;
-            ">Skip to Next</button>
-            <button class="next-modal-confirm" style="
-              padding: 10px 20px;
-              border: none;
-              background: #3182ce;
-              color: white;
-              border-radius: 6px;
-              font-size: 16px;
-              cursor: pointer;
-              font-weight: 500;
-              transition: all 0.2s;
-            ">Yes, Add Again</button>
-          </div>
-        </div>
-      `;
-      
-      // Add CSS animations
-      const style = document.createElement('style');
-      style.textContent = `
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideIn {
-          from { 
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to { 
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .next-modal-cancel:hover {
-          border-color: #cbd5e0 !important;
-          background: #f7fafc !important;
-        }
-        .next-modal-confirm:hover {
-          background: #2c5282 !important;
-        }
-      `;
-      document.head.appendChild(style);
-      
-      backdrop.appendChild(modal);
-      document.body.appendChild(backdrop);
-      
-      // Handle button clicks
-      const cancelBtn = modal.querySelector('.next-modal-cancel') as HTMLButtonElement;
-      const confirmBtn = modal.querySelector('.next-modal-confirm') as HTMLButtonElement;
-      
-      const cleanup = () => {
-        backdrop.remove();
-        style.remove();
-      };
-      
-      cancelBtn.addEventListener('click', () => {
-        cleanup();
-        this.logger.info('User declined to add duplicate upsell');
-        resolve(false);
-      });
-      
-      confirmBtn.addEventListener('click', () => {
-        cleanup();
-        this.logger.info('User confirmed to add duplicate upsell');
-        resolve(true);
-      });
-      
-      // Also close on backdrop click
-      backdrop.addEventListener('click', (e) => {
-        if (e.target === backdrop) {
-          cleanup();
-          resolve(false);
-        }
-      });
-    });
+    const result = await GeneralModal.showDuplicateUpsell();
+    this.logger.info(result ? 'User confirmed to add duplicate upsell' : 'User declined to add duplicate upsell');
+    return result;
   }
 
   public update(_data?: any): void {
@@ -454,6 +384,10 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
       this.element.removeEventListener('click', this.clickHandler);
     }
     
+    // Remove pageshow listener
+    if (this.pageShowHandler) {
+      window.removeEventListener('pageshow', this.pageShowHandler);
+    }
     
     if (this.selectorId) {
       this.eventBus.off('upsell-selector:item-selected', this.handleSelectorChange.bind(this));

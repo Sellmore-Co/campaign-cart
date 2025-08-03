@@ -77,6 +77,7 @@ export const DISPLAY_ATTRIBUTES = {
   FORMAT: 'data-format',
   HIDE_IF_ZERO: 'data-hide-if-zero',
   HIDE_IF_FALSE: 'data-hide-if-false',
+  HIDE_ZERO_CENTS: 'data-hide-zero-cents',
   DIVIDE_BY: 'data-divide-by',
   MULTIPLY_BY: 'data-multiply-by',
   SELECTOR_ID: 'data-next-selector-id'

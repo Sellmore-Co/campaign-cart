@@ -8,6 +8,9 @@ export declare class AcceptUpsellEnhancer extends BaseActionEnhancer {
     private apiClient?;
     private selectedItem?;
     private clickHandler?;
+    private loadingOverlay;
+    private pageShowHandler?;
+    constructor(element: HTMLElement);
     initialize(): Promise<void>;
     private setupSelectorListener;
     private findSelectorElement;

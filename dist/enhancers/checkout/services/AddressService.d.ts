@@ -68,7 +68,7 @@ export declare class AddressService {
     /**
      * Fill address fields from Google Maps autocomplete result
      */
-    fillAddressFromAutocomplete(place: PlaceResult, fields: AddressFields): void;
+    fillAddressFromAutocomplete(place: PlaceResult, fields: AddressFields): Promise<void>;
     /**
      * Parse Google Maps address components into a usable format
      */

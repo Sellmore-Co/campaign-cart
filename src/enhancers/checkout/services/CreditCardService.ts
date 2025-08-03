@@ -7,6 +7,7 @@ import { createLogger } from '@/utils/logger';
 // import { ErrorDisplayManager } from '../utils/error-display-utils'; - removed unused import
 import { FieldFinder } from '../utils/field-finder-utils';
 import type { Logger } from '@/utils/logger';
+import { useCheckoutStore } from '@/stores/checkoutStore';
 
 declare global {
   interface Window {
@@ -62,6 +63,12 @@ export class CreditCardService {
    */
   public async initialize(): Promise<void> {
     try {
+      // Skip if already initialized
+      if (this.isReady) {
+        this.logger.debug('CreditCardService already initialized, skipping');
+        return;
+      }
+      
       // Find credit card fields
       this.findCreditCardFields();
       
@@ -276,10 +283,47 @@ export class CreditCardService {
     this.clearCreditCardFieldError('month');
     this.clearCreditCardFieldError('year');
     
-    // Hide toast error
-    const toastHandler = document.querySelector('[next-checkout-element="spreedly-error"]');
-    if (toastHandler instanceof HTMLElement) {
-      toastHandler.style.display = 'none';
+    // Hide error containers - this is called after successful tokenization
+    // so it's safe to hide payment errors here
+    this.hidePaymentErrorContainers();
+  }
+
+  /**
+   * Clear credit card fields
+   */
+  public clearFields(): void {
+    // Clear Spreedly iframe fields if available
+    if (window.Spreedly && this.isReady) {
+      try {
+        // Spreedly doesn't provide a direct clear method, but we can try to reset
+        window.Spreedly.reload();
+        this.logger.debug('Spreedly fields reloaded');
+      } catch (error) {
+        this.logger.warn('Failed to reload Spreedly fields:', error);
+      }
+    }
+
+    // Clear month and year fields
+    if (this.monthField instanceof HTMLSelectElement) {
+      this.monthField.selectedIndex = 0;
+    }
+    if (this.yearField instanceof HTMLSelectElement) {
+      this.yearField.selectedIndex = 0;
+    }
+
+    // Clear validation state
+    this.validationState = this.initializeValidationState();
+    
+    // Clear any visible errors
+    this.clearAllErrors();
+  }
+  
+  private hidePaymentErrorContainers(): void {
+    // Hide credit error container (used for all payment errors)
+    const creditErrorContainer = document.querySelector('[data-next-component="credit-error"]');
+    if (creditErrorContainer instanceof HTMLElement) {
+      creditErrorContainer.style.display = 'none';
+      creditErrorContainer.classList.remove('visible');
     }
   }
 
@@ -523,7 +567,7 @@ export class CreditCardService {
   private setupSpreedlyEventListeners(): void {
     // Ready event
     window.Spreedly.on('ready', () => {
-      this.logger.debug('Spreedly ready');
+      this.logger.info('[Spreedly Event: ready] iFrame initialized and ready for configuration');
       this.applySpreedlyConfig();
       this.isReady = true;
       if (this.onReadyCallback) {
@@ -531,10 +575,25 @@ export class CreditCardService {
       }
     });
 
-    // Error event
+    // Error event - triggered when tokenization fails
     window.Spreedly.on('errors', (errors: any[]) => {
-      this.logger.error('Spreedly errors:', errors);
-      const errorMessages = errors.map(error => error.message);
+      this.logger.error('[Spreedly Event: errors] Tokenization failed:', errors.map(e => ({
+        attribute: e.attribute,
+        key: e.key,
+        message: e.message
+      })));
+      
+      // Handle empty error messages with better user feedback
+      const errorMessages = errors.map(error => {
+        if (!error.message || error.message.trim() === '') {
+          // Provide user-friendly messages for known error keys
+          if (error.key === 'errors.unexpected_error' || error.status === 0) {
+            return 'Unable to process payment. Please check your internet connection and try again.';
+          }
+          return 'An error occurred processing your payment. Please try again.';
+        }
+        return error.message;
+      });
       
       if (this.onErrorCallback) {
         this.onErrorCallback(errorMessages);
@@ -543,32 +602,83 @@ export class CreditCardService {
       this.showSpreedlyErrors(errors);
     });
     
-    // Payment method event
+    // Payment method event - successful tokenization
     window.Spreedly.on('paymentMethod', (token: string, pmData: any) => {
-      console.log('🟢 [CreditCardService] Spreedly paymentMethod event received!', { token, pmData });
-      this.logger.debug('Spreedly payment method created:', token);
+      this.logger.info('[Spreedly Event: paymentMethod] Successfully tokenized!', { 
+        token, 
+        last4: pmData.last_four_digits,
+        cardType: pmData.card_type,
+        fingerprint: pmData.fingerprint 
+      });
+      
+      // Clear all errors on successful tokenization
       this.clearAllErrors();
       
       if (this.onTokenCallback) {
-        console.log('🟢 [CreditCardService] Calling onTokenCallback with token:', token);
+        this.logger.debug('[Spreedly] Invoking token callback');
         this.onTokenCallback(token, pmData);
       } else {
-        console.log('🔴 [CreditCardService] No onTokenCallback registered!');
+        this.logger.error('[Spreedly] No onTokenCallback registered!');
       }
     });
     
-    // Field validation event
-    window.Spreedly.on('validation', (result: any) => {
-      this.logger.debug('Spreedly validation:', result);
+    // Validation event - triggered when validate() is called
+    // Note: This is separate from fieldEvent and only fires when explicitly calling Spreedly.validate()
+    window.Spreedly.on('validation', (inputProperties: any) => {
+      this.logger.info('[Spreedly Event: validation] Validation requested:', {
+        cardType: inputProperties.cardType,
+        validNumber: inputProperties.validNumber,
+        validCvv: inputProperties.validCvv,
+        numberLength: inputProperties.numberLength,
+        cvvLength: inputProperties.cvvLength,
+        iin: inputProperties.iin
+      });
       
-      if (result.valid) {
-        this.clearCreditCardFieldError(result.fieldType);
+      // Update validation state based on the event
+      // We keep this separate from fieldEvent in case validate() is called explicitly
+      if (inputProperties.validNumber !== undefined) {
+        this.validationState.number.isValid = inputProperties.validNumber;
+        this.validationState.number.hasError = !inputProperties.validNumber;
       }
+      
+      if (inputProperties.validCvv !== undefined) {
+        this.validationState.cvv.isValid = inputProperties.validCvv;
+        this.validationState.cvv.hasError = !inputProperties.validCvv;
+      }
+      
+      // Note: We don't clear errors here because this event is typically used
+      // for checking validation state, not for real-time user input
     });
     
     // Field events for real-time feedback
     window.Spreedly.on('fieldEvent', (name: string, type: string, _activeEl: any, inputProperties: any) => {
+      
       this.handleSpreedlyFieldEvent(name, type, inputProperties);
+          // Only log input events with properties, reduce noise from other events
+          // if (type === 'input' && inputProperties) {
+          //   this.logger.info(`[Spreedly Event: fieldEvent] ${name} - ${type}`, {
+          //     activeField: activeEl,
+          //     cardType: inputProperties.cardType,
+          //     validNumber: inputProperties.validNumber,
+          //     validCvv: inputProperties.validCvv,
+          //     numberLength: inputProperties.numberLength,
+          //     cvvLength: inputProperties.cvvLength,
+          //     iin: inputProperties.iin
+          //   });
+          // } else if (type === 'focus' || type === 'blur') {
+          //   this.logger.debug(`[Spreedly Event: fieldEvent] ${name} - ${type}`, { activeField: activeEl });
+          // }
+          
+    });
+    
+    // Console error event - useful for debugging
+    window.Spreedly.on('consoleError', (error: any) => {
+      this.logger.error('[Spreedly Event: consoleError] Error from iFrame:', {
+        message: error.msg,
+        url: error.url,
+        line: error.line,
+        col: error.col
+      });
     });
   }
 
@@ -609,11 +719,65 @@ export class CreditCardService {
     // Handle input events for validation
     if (type === 'input' && inputProperties) {
       if (name === 'number' && inputProperties.validNumber !== undefined) {
+        const wasValid = this.validationState.number.isValid;
+        const hadError = this.validationState.number.hasError;
+        
         this.validationState.number.isValid = inputProperties.validNumber;
         this.validationState.number.hasError = !inputProperties.validNumber;
+        
+        if (wasValid !== inputProperties.validNumber) {
+          this.logger.info(`[Spreedly] Card number validation changed: ${wasValid} -> ${inputProperties.validNumber}`);
+        }
+        
+        // Handle validation state changes
+        if (inputProperties.validNumber && (hadError || wasValid !== inputProperties.validNumber)) {
+          // Field became valid - clear errors
+          this.logger.info('[Spreedly] Card number is now valid, clearing error');
+          this.clearCreditCardFieldError('number');
+          
+          // Also clear any general credit card errors from the checkout store
+          const checkoutStore = useCheckoutStore.getState();
+          checkoutStore.clearError('cc-number');
+          checkoutStore.clearError('card_number');
+        } else if (!inputProperties.validNumber && wasValid) {
+          // Field became invalid - show error
+          this.logger.info('[Spreedly] Card number is now invalid, showing error');
+          this.setCreditCardFieldError('number', 'Please enter a valid credit card number');
+          
+          // Also set error in checkout store
+          const checkoutStore = useCheckoutStore.getState();
+          checkoutStore.setError('cc-number', 'Please enter a valid credit card number');
+        }
       } else if (name === 'cvv' && inputProperties.validCvv !== undefined) {
+        const wasValid = this.validationState.cvv.isValid;
+        const hadError = this.validationState.cvv.hasError;
+        
         this.validationState.cvv.isValid = inputProperties.validCvv;
         this.validationState.cvv.hasError = !inputProperties.validCvv;
+        
+        if (wasValid !== inputProperties.validCvv) {
+          this.logger.info(`[Spreedly] CVV validation changed: ${wasValid} -> ${inputProperties.validCvv}`);
+        }
+        
+        // Handle validation state changes
+        if (inputProperties.validCvv && (hadError || wasValid !== inputProperties.validCvv)) {
+          // Field became valid - clear errors
+          this.logger.info('[Spreedly] CVV is now valid, clearing error');
+          this.clearCreditCardFieldError('cvv');
+          
+          // Also clear any general credit card errors from the checkout store
+          const checkoutStore = useCheckoutStore.getState();
+          checkoutStore.clearError('cvv');
+          checkoutStore.clearError('card_cvv');
+        } else if (!inputProperties.validCvv && wasValid) {
+          // Field became invalid - show error
+          this.logger.info('[Spreedly] CVV is now invalid, showing error');
+          this.setCreditCardFieldError('cvv', 'Please enter a valid CVV');
+          
+          // Also set error in checkout store
+          const checkoutStore = useCheckoutStore.getState();
+          checkoutStore.setError('cvv', 'Please enter a valid CVV');
+        }
       }
     }
   }
@@ -667,22 +831,31 @@ export class CreditCardService {
   }
 
   private showSpreedlyErrors(errors: any[]): void {
-    // Show in toast
-    const toastHandler = document.querySelector('[next-checkout-element="spreedly-error"]');
-    if (toastHandler instanceof HTMLElement) {
-      const messageElement = toastHandler.querySelector('[data-os-message="error"]');
+    this.logger.info('[Spreedly] Showing errors:', errors);
+    
+    // Use the credit error container for all payment errors
+    const errorContainer = document.querySelector('[data-next-component="credit-error"]');
+    if (errorContainer instanceof HTMLElement) {
+      const messageElement = errorContainer.querySelector('[data-next-component="credit-error-text"]');
       if (messageElement) {
         const errorMessages = errors.map(e => e.message).join('. ');
         messageElement.textContent = errorMessages;
-        toastHandler.style.display = 'flex';
+        errorContainer.style.display = 'flex';
+        errorContainer.classList.add('visible');
+        
+        this.logger.debug('[Spreedly] Error displayed with message:', errorMessages);
         
         // Auto-hide after 10 seconds
         setTimeout(() => {
-          if (toastHandler.style.display === 'flex') {
-            toastHandler.style.display = 'none';
+          if (errorContainer.style.display === 'flex') {
+            errorContainer.style.display = 'none';
+            errorContainer.classList.remove('visible');
+            this.logger.debug('[Spreedly] Error auto-hidden after 10 seconds');
           }
         }, 10000);
       }
+    } else {
+      this.logger.error('[Spreedly] Could not find error container to display errors');
     }
     
     // Mark fields with errors
@@ -719,48 +892,107 @@ export class CreditCardService {
     this.validationState[fieldType].hasError = true;
     this.validationState[fieldType].errorMessage = message;
     
-    const field = this.getFieldElement(fieldType);
-    if (field) {
-      field.classList.remove('no-error');
-      field.classList.add('has-error', 'next-error-field');
-      
-      const wrapper = FieldFinder.findFieldWrapper(field);
-      if (wrapper) {
-        wrapper.classList.remove('addTick');
-        wrapper.classList.add('has-error', 'addErrorIcon');
-        
-        // Add error message
-        const existingError = wrapper.querySelector('.next-error-label');
-        if (existingError) {
-          existingError.remove();
-        }
-        
-        const errorElement = document.createElement('div');
-        errorElement.className = 'next-error-label';
-        errorElement.textContent = message;
-        wrapper.appendChild(errorElement);
-      }
+    this.logger.debug(`[Spreedly] Setting error for field: ${fieldType} - ${message}`);
+    
+    // Map field types to actual DOM selectors
+    let selector: string | null = null;
+    if (fieldType === 'number') {
+      selector = '[data-next-checkout-field="cc-number"], #spreedly-number';
+    } else if (fieldType === 'cvv') {
+      selector = '[data-next-checkout-field="cvv"], #spreedly-cvv';
+    } else if (fieldType === 'month') {
+      selector = '[data-next-checkout-field="cc-month"], [data-next-checkout-field="exp-month"]';
+    } else if (fieldType === 'year') {
+      selector = '[data-next-checkout-field="cc-year"], [data-next-checkout-field="exp-year"]';
     }
+    
+    if (!selector) {
+      this.logger.warn(`[Spreedly] No selector found for field type: ${fieldType}`);
+      return;
+    }
+    
+    // Find all matching fields
+    const fields = document.querySelectorAll(selector);
+    fields.forEach(field => {
+      if (field instanceof HTMLElement) {
+        // Add error classes to the field itself
+        field.classList.remove('no-error');
+        field.classList.add('has-error', 'next-error-field');
+        
+        // Find the parent wrapper (could be .form-group, .frm-flds, etc.)
+        const wrapper = field.closest('.form-group, .frm-flds, .field-group');
+        if (wrapper) {
+          wrapper.classList.remove('addTick');
+          wrapper.classList.add('has-error', 'addErrorIcon');
+          
+          // Remove any existing error labels
+          const existingErrors = wrapper.querySelectorAll('.next-error-label');
+          existingErrors.forEach(error => error.remove());
+          
+          // Add new error message
+          const errorElement = document.createElement('div');
+          errorElement.className = 'next-error-label';
+          errorElement.setAttribute('role', 'alert');
+          errorElement.setAttribute('aria-live', 'polite');
+          errorElement.textContent = message;
+          wrapper.appendChild(errorElement);
+          
+          this.logger.debug(`[Spreedly] Added error label: ${message}`);
+        }
+      }
+    });
+    
+    // Note: We don't show the general payment error container here
+    // That's only for submission failures, not real-time validation
   }
 
   private clearCreditCardFieldError(fieldType: keyof CreditCardValidationState): void {
     this.validationState[fieldType].hasError = false;
     delete this.validationState[fieldType].errorMessage;
     
-    const field = this.getFieldElement(fieldType);
-    if (field) {
-      field.classList.remove('has-error', 'next-error-field');
-      
-      const wrapper = FieldFinder.findFieldWrapper(field);
-      if (wrapper) {
-        wrapper.classList.remove('has-error', 'addErrorIcon');
+    this.logger.debug(`[Spreedly] Clearing error for field: ${fieldType}`);
+    
+    // Map field types to actual DOM selectors
+    let selector: string | null = null;
+    if (fieldType === 'number') {
+      selector = '[data-next-checkout-field="cc-number"], #spreedly-number';
+    } else if (fieldType === 'cvv') {
+      selector = '[data-next-checkout-field="cvv"], #spreedly-cvv';
+    } else if (fieldType === 'month') {
+      selector = '[data-next-checkout-field="cc-month"], [data-next-checkout-field="exp-month"]';
+    } else if (fieldType === 'year') {
+      selector = '[data-next-checkout-field="cc-year"], [data-next-checkout-field="exp-year"]';
+    }
+    
+    if (!selector) {
+      this.logger.warn(`[Spreedly] No selector found for field type: ${fieldType}`);
+      return;
+    }
+    
+    // Find all matching fields
+    const fields = document.querySelectorAll(selector);
+    fields.forEach(field => {
+      if (field instanceof HTMLElement) {
+        // Remove error classes from the field itself
+        field.classList.remove('has-error', 'next-error-field');
         
-        const errorElement = wrapper.querySelector('.next-error-label');
-        if (errorElement) {
-          errorElement.remove();
+        // Find the parent wrapper (could be .form-group, .frm-flds, etc.)
+        const wrapper = field.closest('.form-group, .frm-flds, .field-group');
+        if (wrapper) {
+          wrapper.classList.remove('has-error', 'addErrorIcon');
+          
+          // Remove any error labels within the wrapper
+          const errorLabels = wrapper.querySelectorAll('.next-error-label, .error-message, [role="alert"]');
+          errorLabels.forEach(label => {
+            this.logger.debug(`[Spreedly] Removing error label: ${label.textContent}`);
+            label.remove();
+          });
         }
       }
-    }
+    });
+    
+    // Note: We don't hide payment error containers here because those are for
+    // backend payment failures, not field validation errors
   }
 
   private getFieldElement(fieldType: keyof CreditCardValidationState): HTMLElement | undefined {

@@ -16,6 +16,10 @@ import { UIService } from './services/UIService';
 import { useAttributionStore } from '@/stores/attributionStore';
 import type { CreateOrder, Address, Payment, Attribution, PaymentMethod } from '@/types/api';
 import { ProspectCartEnhancer } from './ProspectCartEnhancer';
+import { GeneralModal } from '@/components/modals/GeneralModal';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { ExpressCheckoutProcessor } from './processors/ExpressCheckoutProcessor';
+import { OrderManager } from './managers/OrderManager';
 
 // Consolidated constants
 const FIELD_SELECTORS = ['[data-next-checkout-field]', '[os-checkout-field]'] as const;
@@ -59,6 +63,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private validator!: CheckoutValidator;
   private ui!: UIService;
   private prospectCartEnhancer?: ProspectCartEnhancer;
+  private loadingOverlay: LoadingOverlay;
+  private expressProcessor?: ExpressCheckoutProcessor;
+  private orderManager?: OrderManager;
+
+  constructor(element: HTMLElement) {
+    super(element);
+    this.loadingOverlay = new LoadingOverlay();
+  }
   
   // Field collections
   private fields: Map<string, HTMLElement> = new Map();
@@ -106,10 +118,28 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.form = this.element;
     this.form.noValidate = true;
     
+    // Initialize loading overlay
+    this.loadingOverlay = new LoadingOverlay();
+    
     // Initialize core dependencies
     const config = useConfigStore.getState();
     this.apiClient = new ApiClient(config.apiKey);
     this.countryService = CountryService.getInstance();
+    
+    // Initialize OrderManager and ExpressCheckoutProcessor
+    this.orderManager = new OrderManager(
+      this.apiClient,
+      this.logger,
+      (event: string, data: any) => this.emit(event as any, data)
+    );
+    
+    this.expressProcessor = new ExpressCheckoutProcessor(
+      this.logger,
+      () => this.loadingOverlay.show(),
+      (immediate?: boolean) => this.loadingOverlay.hide(immediate),
+      (event: string, data: any) => this.emit(event as any, data),
+      this.orderManager
+    );
     
     // Check for phone input library
     this.isIntlTelInputAvailable = !!(window as any).intlTelInput && !!(window as any).intlTelInputUtils;
@@ -194,6 +224,54 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     
     // Initialize ProspectCartEnhancer
     await this.initializeProspectCart();
+    
+    // Listen for payment errors from other components
+    this.eventBus.on('payment:error', (event: any) => {
+      if (event.message) {
+        this.displayPaymentError(event.message);
+      }
+    });
+    
+    // Handle page restoration from bfcache (back/forward navigation)
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted || 
+          (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'back_forward') {
+        // Page was restored from bfcache
+        this.logger.info('Page restored from bfcache, resetting express checkout state');
+        
+        // Hide loading overlay immediately when coming back
+        this.loadingOverlay.hide(true);
+        
+        const checkoutStore = useCheckoutStore.getState();
+        
+        // Reset processing state
+        if (checkoutStore.isProcessing) {
+          this.logger.info('Resetting processing state after bfcache restore');
+          checkoutStore.setProcessing(false);
+        }
+        if (checkoutStore.paymentMethod === 'apple_pay' || 
+            checkoutStore.paymentMethod === 'google_pay' || 
+            checkoutStore.paymentMethod === 'paypal') {
+          this.logger.info('Resetting payment method from', checkoutStore.paymentMethod, 'to credit-card');
+          checkoutStore.setPaymentMethod('credit-card');
+          checkoutStore.setPaymentToken(''); // Clear any stale payment token
+        }
+        
+        // Re-initialize credit card service if needed
+        if (this.creditCardService && config.spreedlyEnvironmentKey) {
+          this.logger.info('Re-initializing credit card service after bfcache restore');
+          this.creditCardService.initialize().catch(error => {
+            this.logger.error('Failed to re-initialize credit card service:', error);
+          });
+        }
+        
+        // Check for fresh purchase event
+        this.handlePurchaseEvent();
+      }
+    });
+    
+    // Check for fresh purchase on initial load
+    this.handlePurchaseEvent();
     
     this.logger.debug('CheckoutFormEnhancer initialized');
     this.emit('checkout:form-initialized', { form: this.form });
@@ -978,14 +1056,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.logger.debug(`Autocomplete created for ${fieldKey}, restricted to: ${countryValue}`);
 
       // Handle place selection
-      autocomplete.addListener('place_changed', () => {
+      autocomplete.addListener('place_changed', async () => {
         const place = autocomplete.getPlace();
         if (!place || !place.address_components) {
           this.logger.debug('No valid place data returned from autocomplete');
           return;
         }
 
-        this.fillAddressFromAutocomplete(place, type);
+        await this.fillAddressFromAutocomplete(place, type);
       });
 
       // Prevent form submission on Enter
@@ -1000,7 +1078,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
-  private fillAddressFromAutocomplete(place: any, type: 'shipping' | 'billing'): void {
+  private async fillAddressFromAutocomplete(place: any, type: 'shipping' | 'billing'): Promise<void> {
+    console.log('🔍 fillAddressFromAutocomplete called with place:', place, 'type:', type);
+    
     if (!place.address_components) return;
 
     // Parse address components
@@ -1009,6 +1089,34 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (!components) {
       this.logger.warn('Failed to parse address components');
       return;
+    }
+
+    // Log autocomplete selection for specific countries (e.g., Brazil)
+    const countryCode = components.country?.short;
+    if (countryCode === 'BR' || countryCode === 'GB' || countryCode === 'JP' || countryCode === 'IN' || countryCode === 'CA') {
+      // Use console.log directly to ensure visibility
+      console.log(`🌍 Google Autocomplete selection for ${countryCode}:`, {
+        country: countryCode,
+        type: type,
+        formatted_address: place.formatted_address,
+        components: {
+          street_number: components.street_number?.long,
+          route: components.route?.long,
+          locality: components.locality?.long,
+          postal_town: components.postal_town?.long,
+          sublocality: components.sublocality?.long,
+          sublocality_level_1: components.sublocality_level_1?.long,
+          sublocality_level_2: components.sublocality_level_2?.long,
+          administrative_area_level_1: components.administrative_area_level_1?.long,
+          administrative_area_level_2: components.administrative_area_level_2?.long,
+          administrative_area_level_3: components.administrative_area_level_3?.long,
+          administrative_area_level_4: components.administrative_area_level_4?.long,
+          neighborhood: components.neighborhood?.long,
+          postal_code: components.postal_code?.long,
+          postal_code_suffix: components.postal_code_suffix?.long
+        },
+        all_types: Object.keys(components)
+      });
     }
 
     const isShipping = type === 'shipping';
@@ -1021,14 +1129,94 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (addressField instanceof HTMLInputElement) {
       const streetNumber = components.street_number?.long || '';
       const route = components.route?.long || '';
-      addressField.value = [streetNumber, route].filter(Boolean).join(' ');
+      
+      let addressValue = '';
+      
+      // Country-specific address formatting
+      if (countryCode === 'BR' && route && streetNumber) {
+        // Brazil format: "Street Name, Number"
+        addressValue = `${route}, ${streetNumber}`;
+        
+        // Append neighborhood if available
+        if (components.sublocality_level_1) {
+          addressValue += ` - ${components.sublocality_level_1.long}`;
+        } else if (components.sublocality) {
+          addressValue += ` - ${components.sublocality.long}`;
+        }
+      } else {
+        // Default format: "Number Street Name"
+        addressValue = [streetNumber, route].filter(Boolean).join(' ');
+      }
+      
+      addressField.value = addressValue;
       addressField.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
+    // For Brazil, parse city and state from formatted address if components are missing
+    let parsedCity = '';
+    let parsedState = '';
+    
+    if (countryCode === 'BR' && place.formatted_address && 
+        (!components.administrative_area_level_2 || !components.administrative_area_level_1)) {
+      // BR format: "Street, Number - Neighborhood, City - State, Postal, Country"
+      const addressParts = place.formatted_address.split(',');
+      if (addressParts.length >= 3) {
+        // Extract city and state from the pattern "City - State"
+        const cityStatePart = addressParts[addressParts.length - 3]?.trim();
+        if (cityStatePart && cityStatePart.includes(' - ')) {
+          const [city, state] = cityStatePart.split(' - ').map((s: string) => s.trim());
+          parsedCity = city || '';
+          parsedState = state || '';
+        }
+      }
+    }
+
     const cityField = fieldMap.get(`${fieldPrefix}city`);
-    if (cityField instanceof HTMLInputElement && components?.locality) {
-      cityField.value = components.locality.long;
-      cityField.dispatchEvent(new Event('change', { bubbles: true }));
+    if (cityField instanceof HTMLInputElement) {
+      let cityValue = '';
+      
+      // Country-specific logic
+      if (countryCode === 'BR') {
+        // Brazil: try administrative_area_level_2 first, then parsed city
+        if (components.administrative_area_level_2) {
+          cityValue = components.administrative_area_level_2.long;
+        } else if (parsedCity) {
+          cityValue = parsedCity;
+        }
+      }
+      // Primary: Try locality (most common - US, CA, AU, etc.)
+      else if (components.locality) {
+        cityValue = components.locality.long;
+      } 
+      // Fallback 1: Try postal_town (common in UK)
+      else if (components.postal_town) {
+        cityValue = components.postal_town.long;
+      }
+      // Fallback 2: Try administrative_area_level_2 (some countries use this)
+      else if (components.administrative_area_level_2) {
+        cityValue = components.administrative_area_level_2.long;
+      }
+      // Fallback 3: Try sublocality (common in some Asian countries - but not for BR)
+      else if (components.sublocality && countryCode !== 'BR') {
+        cityValue = components.sublocality.long;
+      }
+      // Fallback 4: Try sublocality_level_1 (but not for BR where it's neighborhood)
+      else if (components.sublocality_level_1 && countryCode !== 'BR') {
+        cityValue = components.sublocality_level_1.long;
+      }
+      
+      if (cityValue) {
+        cityField.value = cityValue;
+        cityField.dispatchEvent(new Event('change', { bubbles: true }));
+        this.logger.debug(`City set to: ${cityValue} (type: ${
+          components.locality ? 'locality' : 
+          components.postal_town ? 'postal_town' : 
+          components.sublocality ? 'sublocality' : 
+          'sublocality_level_1'
+        })`);
+      } else {
+        this.logger.warn('No suitable city component found in address');
+      }
     }
 
     const zipField = fieldMap.get(`${fieldPrefix}postal`);
@@ -1049,8 +1237,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
       // Set state with retry (wait for country change to load states)
       const stateField = fieldMap.get(`${fieldPrefix}province`);
-      if (stateField instanceof HTMLSelectElement && components?.administrative_area_level_1) {
-        this.setStateWithRetry(stateField, components.administrative_area_level_1.short, fieldPrefix);
+      if (stateField instanceof HTMLSelectElement) {
+        if (components?.administrative_area_level_1) {
+          this.setStateWithRetry(stateField, components.administrative_area_level_1.short, fieldPrefix);
+        } else if (countryCode === 'BR' && parsedState) {
+          // For Brazil, use parsed state if component is missing
+          this.setStateWithRetry(stateField, parsedState, fieldPrefix);
+        }
       }
     }
 
@@ -1058,9 +1251,43 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (isShipping) {
       const updates: Record<string, string> = {};
       if (components.street_number || components.route) {
-        updates.address1 = [components.street_number?.long || '', components.route?.long || ''].filter(Boolean).join(' ');
+        const streetNumber = components.street_number?.long || '';
+        const route = components.route?.long || '';
+        
+        let addressValue = '';
+        
+        // Country-specific address formatting
+        if (countryCode === 'BR' && route && streetNumber) {
+          // Brazil format: "Street Name, Number"
+          addressValue = `${route}, ${streetNumber}`;
+          
+          // Append neighborhood if available
+          if (components.sublocality_level_1) {
+            addressValue += ` - ${components.sublocality_level_1.long}`;
+          } else if (components.sublocality) {
+            addressValue += ` - ${components.sublocality.long}`;
+          }
+        } else {
+          // Default format: "Number Street Name"
+          addressValue = [streetNumber, route].filter(Boolean).join(' ');
+        }
+        
+        updates.address1 = addressValue;
       }
-      if (components.locality) updates.city = components.locality.long;
+      // Enhanced city extraction for store updates
+      if (countryCode === 'BR' && components.administrative_area_level_2) {
+        updates.city = components.administrative_area_level_2.long;
+      } else if (components.locality) {
+        updates.city = components.locality.long;
+      } else if (components.postal_town) {
+        updates.city = components.postal_town.long;
+      } else if (components.administrative_area_level_2) {
+        updates.city = components.administrative_area_level_2.long;
+      } else if (components.sublocality && countryCode !== 'BR') {
+        updates.city = components.sublocality.long;
+      } else if (components.sublocality_level_1) {
+        updates.city = components.sublocality_level_1.long;
+      }
       if (components.postal_code) updates.postal = components.postal_code.long;
       if (components.country) updates.country = components.country.short;
       if (components.administrative_area_level_1) updates.province = components.administrative_area_level_1.short;
@@ -1074,9 +1301,43 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       const updates: any = { ...currentBillingData };
       if (components.street_number || components.route) {
-        updates.address1 = [components.street_number?.long || '', components.route?.long || ''].filter(Boolean).join(' ');
+        const streetNumber = components.street_number?.long || '';
+        const route = components.route?.long || '';
+        
+        let addressValue = '';
+        
+        // Country-specific address formatting
+        if (countryCode === 'BR' && route && streetNumber) {
+          // Brazil format: "Street Name, Number"
+          addressValue = `${route}, ${streetNumber}`;
+          
+          // Append neighborhood if available
+          if (components.sublocality_level_1) {
+            addressValue += ` - ${components.sublocality_level_1.long}`;
+          } else if (components.sublocality) {
+            addressValue += ` - ${components.sublocality.long}`;
+          }
+        } else {
+          // Default format: "Number Street Name"
+          addressValue = [streetNumber, route].filter(Boolean).join(' ');
+        }
+        
+        updates.address1 = addressValue;
       }
-      if (components.locality) updates.city = components.locality.long;
+      // Enhanced city extraction for store updates
+      if (countryCode === 'BR' && components.administrative_area_level_2) {
+        updates.city = components.administrative_area_level_2.long;
+      } else if (components.locality) {
+        updates.city = components.locality.long;
+      } else if (components.postal_town) {
+        updates.city = components.postal_town.long;
+      } else if (components.administrative_area_level_2) {
+        updates.city = components.administrative_area_level_2.long;
+      } else if (components.sublocality && countryCode !== 'BR') {
+        updates.city = components.sublocality.long;
+      } else if (components.sublocality_level_1) {
+        updates.city = components.sublocality_level_1.long;
+      }
       if (components.postal_code) updates.postal = components.postal_code.long;
       if (components.country) updates.country = components.country.short;
       if (components.administrative_area_level_1) updates.province = components.administrative_area_level_1.short;
@@ -1095,13 +1356,28 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const components: Record<string, { long: string; short: string }> = {};
     
     addressComponents.forEach(component => {
-      const type = component.types[0];
-      if (type) {
-        components[type] = {
-          long: component.long_name,
-          short: component.short_name
-        };
-      }
+      // Store the component for ALL its types, not just the first one
+      component.types.forEach((type: string) => {
+        // Skip 'political' as it's too generic
+        if (type !== 'political') {
+          components[type] = {
+            long: component.long_name,
+            short: component.short_name
+          };
+        }
+      });
+    });
+
+    // Debug logging for address component parsing
+    this.logger.debug('Parsed address components:', {
+      availableTypes: Object.keys(components),
+      cityRelatedComponents: {
+        locality: components.locality?.long,
+        postal_town: components.postal_town?.long,
+        sublocality: components.sublocality?.long,
+        sublocality_level_1: components.sublocality_level_1?.long
+      },
+      allComponents: components
     });
 
     return components;
@@ -1311,10 +1587,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         ? countryField.value.toLowerCase() 
         : this.detectedCountryCode.toLowerCase();
 
+      // Set placeholder based on required attribute
+      const isRequired = phoneField.getAttribute('data-next-required') === 'true' || 
+                        phoneField.hasAttribute('required');
+      phoneField.placeholder = isRequired ? 'Phone*' : 'Phone (Optional)';
+      
       const instance = (window as any).intlTelInput(phoneField, {
         separateDialCode: false,
         nationalMode: true,
-        autoPlaceholder: 'aggressive',
+        autoPlaceholder: 'off',  // Turn off auto placeholder to use our custom one
         utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/utils.js',
         preferredCountries: ['us', 'ca', 'gb', 'au'],
         allowDropdown: false,
@@ -1414,13 +1695,24 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.creditCardService.setOnReady(() => {
         this.removeClass('next-loading-spreedly');
         this.emit('checkout:spreedly-ready', {});
+        this.logger.debug('[Spreedly] Credit card service ready');
+        
+        // Spreedly is now ready and will handle error clearing via field events
       });
       
       this.creditCardService.setOnError((errors) => {
+        this.logger.warn('[Spreedly] Credit card validation errors:', errors);
         this.emit('payment:error', { errors });
+        
+        // Display credit card validation errors
+        if (errors && errors.length > 0) {
+          const errorMessage = errors.map((err: any) => err.message || err).join('. ');
+          this.displayPaymentError(errorMessage);
+        }
       });
       
       this.creditCardService.setOnToken((token, pmData) => {
+        this.logger.info('[Spreedly] Payment token received:', { token, pmData });
         this.handleTokenizedPayment(token, pmData);
       });
       
@@ -1433,6 +1725,150 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.logger.error('Failed to initialize credit card service:', error);
       this.removeClass('next-loading-spreedly');
       throw error;
+    }
+  }
+
+  // ============================================================================
+  // FORM CLEARING
+  // ============================================================================
+
+  private clearAllCheckoutFields(): void {
+    try {
+      // Clear all shipping fields
+      this.fields.forEach((field) => {
+        if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+          if (field.type === 'checkbox' || field.type === 'radio') {
+            (field as HTMLInputElement).checked = false;
+          } else {
+            field.value = '';
+          }
+        } else if (field instanceof HTMLSelectElement) {
+          field.selectedIndex = 0;
+        }
+      });
+
+      // Clear all billing fields
+      this.billingFields.forEach((field) => {
+        if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+          if (field.type === 'checkbox' || field.type === 'radio') {
+            (field as HTMLInputElement).checked = false;
+          } else {
+            field.value = '';
+          }
+        } else if (field instanceof HTMLSelectElement) {
+          field.selectedIndex = 0;
+        }
+      });
+
+      // Clear credit card fields if credit card service exists
+      if (this.creditCardService && typeof this.creditCardService.clearFields === 'function') {
+        this.creditCardService.clearFields();
+      }
+
+      // Reset checkout store
+      const checkoutStore = useCheckoutStore.getState();
+      checkoutStore.reset();
+
+      // Clear any errors
+      checkoutStore.clearAllErrors();
+
+      // Re-initialize country dropdowns with detected country
+      const countryField = this.fields.get('country');
+      if (countryField instanceof HTMLSelectElement && this.detectedCountryCode) {
+        countryField.value = this.detectedCountryCode;
+        countryField.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      // Reset billing same as shipping checkbox
+      const billingToggle = this.form.querySelector('input[name="use_shipping_address"]') as HTMLInputElement;
+      if (billingToggle) {
+        billingToggle.checked = true;
+        billingToggle.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      this.logger.info('All checkout fields cleared');
+    } catch (error) {
+      this.logger.error('Error clearing checkout fields:', error);
+    }
+  }
+
+  // ============================================================================
+  // PURCHASE EVENT HANDLING
+  // ============================================================================
+
+  private async handlePurchaseEvent(): Promise<void> {
+    // Check for existing order in sessionStorage
+    const orderDataStr = sessionStorage.getItem('next-order');
+    if (!orderDataStr) return;
+    
+    try {
+      const orderData = JSON.parse(orderDataStr);
+      const order = orderData?.state?.order;
+      
+      // Check if we have a valid order
+      if (!order?.ref_id || !order?.number) return;
+      
+      // Check if we've already shown the modal for this order
+      const shownOrdersStr = sessionStorage.getItem('next-shown-order-warnings');
+      const shownOrders = shownOrdersStr ? JSON.parse(shownOrdersStr) : [];
+      
+      if (shownOrders.includes(order.ref_id)) {
+        this.logger.debug('Already shown warning for order', order.ref_id);
+        return;
+      }
+      
+      this.logger.info('Fresh purchase detected, showing attention modal', {
+        orderNumber: order.number,
+        refId: order.ref_id
+      });
+      
+      // Ensure checkout is not in processing state before showing modal
+      const checkoutStore = useCheckoutStore.getState();
+      checkoutStore.setProcessing(false);
+      
+      const action = await GeneralModal.show({
+        title: 'Attention',
+        content: 'Your initial order has been successfully processed. Please check your email for the order confirmation. Entering your payment details again will result in a secondary purchase.',
+        buttons: [
+          { text: 'Close', action: 'cancel' },
+          { text: 'Back', action: 'confirm' }
+        ],
+        className: 'purchase-warning-modal'
+      });
+      
+      // Mark this order as shown
+      shownOrders.push(order.ref_id);
+      sessionStorage.setItem('next-shown-order-warnings', JSON.stringify(shownOrders));
+      
+      if (action === 'confirm') {
+        // Handle back button - navigate to the success URL
+        const successUrl = this.getSuccessUrl();
+        if (successUrl) {
+          // Add ref_id to the URL if not already present
+          const url = new URL(successUrl, window.location.origin);
+          if (!url.searchParams.has('ref_id') && order.ref_id) {
+            url.searchParams.set('ref_id', order.ref_id);
+          }
+          window.location.href = url.href;
+        }
+      } else {
+        // User clicked 'Close' - ensure form is properly initialized
+        // Re-populate form data if it exists in the store
+        this.populateFormData();
+        
+        // Ensure UI is in correct state
+        if (this.ui) {
+          this.ui.hideLoading('checkout');
+        }
+        
+        // Clear all form fields and reset checkout state
+        this.clearAllCheckoutFields();
+      }
+    } catch (error) {
+      this.logger.error('Failed to parse order data from sessionStorage:', error);
+      // Ensure we're not stuck in processing state
+      const checkoutStore = useCheckoutStore.getState();
+      checkoutStore.setProcessing(false);
     }
   }
 
@@ -1526,7 +1962,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         throw new Error('Invalid order response: missing ref_id');
       }
       
-      cartStore.reset();
+      // cartStore.reset();
       
       this.logger.info('Order created successfully', {
         ref_id: order.ref_id,
@@ -1537,9 +1973,73 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       return order;
       
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Failed to create order:', error);
       
+      // Check for API errors in the response
+      if (error.status === 400 && error.responseData) {
+        const responseData = error.responseData;
+        
+        // Log the full error response for debugging
+        this.logger.warn('API 400 error response:', responseData);
+        
+        // Check for message array (common API error format)
+        if (responseData.message && Array.isArray(responseData.message)) {
+          // Extract the actual message from each array item
+          const errorMessages = responseData.message.map((msg: any) => {
+            if (typeof msg === 'object' && msg !== null) {
+              // If it's an object, try to extract a message property or stringify it
+              return msg.message || JSON.stringify(msg);
+            }
+            return String(msg);
+          }).join('. ');
+          this.displayPaymentError(errorMessages);
+          throw new Error(errorMessages);
+        }
+        
+        // Check for single message string
+        if (responseData.message && typeof responseData.message === 'string') {
+          this.displayPaymentError(responseData.message);
+          throw new Error(responseData.message);
+        }
+        
+        // Check for payment-specific errors
+        if (responseData.payment_details || responseData.payment_response_code) {
+          this.logger.warn('Payment error detected:', {
+            payment_details: responseData.payment_details,
+            payment_response_code: responseData.payment_response_code
+          });
+          
+          // Display payment error in the UI
+          this.displayPaymentError(responseData.payment_details || 'Payment failed. Please check your payment information.');
+          
+          // Create a user-friendly error message
+          let errorMessage = 'Payment failed: ';
+          if (responseData.payment_details) {
+            errorMessage += responseData.payment_details;
+          } else {
+            errorMessage += 'Please check your payment information and try again.';
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
+        // Check for validation errors
+        if (responseData.errors) {
+          const errorMessages = Object.entries(responseData.errors)
+            .map(([, messages]) => {
+              if (Array.isArray(messages)) {
+                return messages.join('. ');
+              }
+              return messages;
+            })
+            .join('. ');
+          this.displayPaymentError(errorMessages);
+          throw new Error(errorMessages);
+        }
+      }
+      
+      // Enhance error message for better user experience
       if (error instanceof Error) {
         if (error.message.includes('Rate limited')) {
           throw new Error('Too many requests. Please wait a moment and try again.');
@@ -1605,7 +2105,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       };
       
       const order = await this.apiClient.createOrder(testOrderData);
-      cartStore.reset();
+      // cartStore.reset();
       
       return order;
       
@@ -1663,7 +2163,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private getNextPageUrlFromMeta(refId?: string): string | null {
-    const metaTag = document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
+    const metaTag = document.querySelector('meta[name="next-success-url"]') as HTMLMetaElement ||
+                   document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
                    document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement;
     
     if (!metaTag?.content) return null;
@@ -1700,14 +2201,81 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private getSuccessUrl(): string {
     const metaTag = document.querySelector('meta[name="next-success-url"]') as HTMLMetaElement ||
+                   document.querySelector('meta[name="next-next-url"]') as HTMLMetaElement ||
                    document.querySelector('meta[name="os-next-page"]') as HTMLMetaElement;
-    return metaTag?.content || window.location.origin + '/success';
+    
+    if (metaTag?.content) {
+      // Convert to absolute URL if it's a relative path
+      if (metaTag.content.startsWith('/')) {
+        return window.location.origin + metaTag.content;
+      }
+      // Return as-is if it's already an absolute URL
+      return metaTag.content;
+    }
+    
+    return window.location.origin + '/success';
+  }
+
+  private async validateExpressCheckoutFields(formData: any, requiredFields: string[]): Promise<any> {
+    const errors: Record<string, string> = {};
+    let firstErrorField: string | null = null;
+    
+    // Validate only the specified required fields
+    for (const field of requiredFields) {
+      const value = formData[field];
+      
+      if (!value || (typeof value === 'string' && !value.trim())) {
+        const fieldNameMap: Record<string, string> = {
+          'email': 'Email',
+          'fname': 'First Name',
+          'lname': 'Last Name',
+          'phone': 'Phone',
+          'address1': 'Address',
+          'city': 'City',
+          'province': 'State/Province',
+          'postal': 'ZIP/Postal Code',
+          'country': 'Country'
+        };
+        
+        const fieldLabel = fieldNameMap[field] || field;
+        errors[field] = `${fieldLabel} is required`;
+        
+        if (!firstErrorField) {
+          firstErrorField = field;
+        }
+      }
+      
+      // Special validation for email
+      if (field === 'email' && value) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
+          errors[field] = 'Please enter a valid email address';
+          if (!firstErrorField) {
+            firstErrorField = field;
+          }
+        }
+      }
+    }
+    
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors,
+      firstErrorField
+    };
   }
 
   private getFailureUrl(): string {
     const metaTag = document.querySelector('meta[name="next-failure-url"]') as HTMLMetaElement ||
                    document.querySelector('meta[name="os-failure-url"]') as HTMLMetaElement;
-    if (metaTag?.content) return metaTag.content;
+    
+    if (metaTag?.content) {
+      // Convert to absolute URL if it's a relative path
+      if (metaTag.content.startsWith('/')) {
+        return window.location.origin + metaTag.content;
+      }
+      // Return as-is if it's already an absolute URL
+      return metaTag.content;
+    }
     
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('payment_failed', 'true');
@@ -1740,6 +2308,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           checkoutStore.clearAllErrors();
           checkoutStore.setProcessing(true);
           
+          // Show loading overlay
+          this.loadingOverlay.show();
+          
           // Validate phone numbers using intl-tel-input if available
           if (this.isIntlTelInputAvailable) {
             // Validate shipping phone
@@ -1769,31 +2340,138 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             }
           }
           
-          // Use CheckoutValidator for validation
-          const includePayment = checkoutStore.paymentMethod === 'credit-card' || checkoutStore.paymentMethod === 'card_token';
+          // Check if this is an express payment method
+          const expressPaymentMethods = ['paypal', 'apple_pay', 'google_pay'];
+          const isExpressPayment = expressPaymentMethods.includes(checkoutStore.paymentMethod);
           
-          const validation = await this.validator.validateForm(
-            checkoutStore.formData,
-            this.countryConfigs,
-            this.currentCountryConfig,
-            includePayment,
-            checkoutStore.billingAddress,
-            checkoutStore.sameAsShipping
-          );
+          // Check if validation is required for express payments
+          const config = useConfigStore.getState();
+          const requireExpressValidation = config.paymentConfig?.expressCheckout?.requireValidation;
+          
+          // Debug logging
+          this.logger.debug('Express payment config:', {
+            isExpressPayment,
+            paymentMethod: checkoutStore.paymentMethod,
+            requireExpressValidation,
+            hasExpressProcessor: !!this.expressProcessor,
+            fullConfig: config.paymentConfig?.expressCheckout
+          });
+          
+          // If it's an express payment method and validation is NOT required, use ExpressCheckoutProcessor
+          if (isExpressPayment && this.expressProcessor && !requireExpressValidation) {
+            this.logger.info(`Processing express checkout for ${checkoutStore.paymentMethod} (skipping validation)`);
+            
+            // Hide loading overlay first since ExpressCheckoutProcessor will show its own
+            this.loadingOverlay.hide(true);
+            
+            // Use ExpressCheckoutProcessor which handles everything including order creation
+            await this.expressProcessor.handleExpressCheckout(
+              checkoutStore.paymentMethod,
+              cartStore.items,
+              cartStore.isEmpty,
+              () => cartStore.reset()
+            );
+            
+            // ExpressCheckoutProcessor handles all success/error cases and redirects
+            return;
+          }
+          
+          // Log if express payment requires validation
+          if (isExpressPayment && requireExpressValidation) {
+            this.logger.info(`Express payment ${checkoutStore.paymentMethod} requires validation (requireValidation: true)`);
+          }
+          
+          // For regular credit card payments OR express payments with validation required
+          const includePayment = checkoutStore.paymentMethod === 'credit-card' || 
+                               checkoutStore.paymentMethod === 'card_token' ||
+                               (isExpressPayment && requireExpressValidation);
+          
+          let validation;
+          
+          // If express payment with custom required fields, validate only those fields
+          if (isExpressPayment && requireExpressValidation && config.paymentConfig?.expressCheckout?.requiredFields) {
+            const requiredFields = config.paymentConfig.expressCheckout.requiredFields;
+            validation = await this.validateExpressCheckoutFields(checkoutStore.formData, requiredFields);
+          } else {
+            // Otherwise use full validation
+            validation = await this.validator.validateForm(
+              checkoutStore.formData,
+              this.countryConfigs,
+              this.currentCountryConfig,
+              includePayment,
+              checkoutStore.billingAddress,
+              checkoutStore.sameAsShipping
+            );
+          }
           
           if (!validation.isValid) {
             span?.setAttribute('validation.passed', false);
             span?.setAttribute('validation.error_count', Object.keys(validation.errors || {}).length);
             
+            // Log validation errors for debugging
+            this.logger.warn('Validation failed', {
+              paymentMethod: checkoutStore.paymentMethod,
+              isExpressPayment,
+              requireExpressValidation,
+              errors: validation.errors,
+              firstErrorField: validation.firstErrorField
+            });
+            
             if (validation.errors) {
               Object.entries(validation.errors).forEach(([field, error]) => {
-                checkoutStore.setError(field, error);
+                checkoutStore.setError(field, error as string);
+                // Also show error in UI
+                this.validator.showError(field, error as string);
               });
             }
             
-            if (validation.firstErrorField) {
-              this.validator.focusFirstErrorField(validation.firstErrorField);
+            // For express payments with validation, show a detailed error message
+            if (isExpressPayment && requireExpressValidation) {
+              const errorFields = Object.keys(validation.errors || {});
+              // const errorCount = errorFields.length;
+              
+              // Create a human-readable list of field names
+              const fieldNameMap: Record<string, string> = {
+                'email': 'Email',
+                'fname': 'First Name',
+                'lname': 'Last Name',
+                'phone': 'Phone',
+                'address1': 'Address',
+                'city': 'City',
+                'province': 'State/Province',
+                'postal': 'ZIP/Postal Code',
+                'country': 'Country',
+                'cc-month': 'Expiration Month',
+                'cc-year': 'Expiration Year',
+                'exp-month': 'Expiration Month',
+                'exp-year': 'Expiration Year',
+                'billing-fname': 'Billing First Name',
+                'billing-lname': 'Billing Last Name',
+                'billing-address1': 'Billing Address',
+                'billing-city': 'Billing City',
+                'billing-province': 'Billing State/Province',
+                'billing-postal': 'Billing ZIP/Postal Code',
+                'billing-country': 'Billing Country'
+              };
+              
+              const requiredFields = errorFields.map(field => fieldNameMap[field] || field).join(', ');
+              const generalMessage = `Please fill in the following required fields: ${requiredFields}`;
+              checkoutStore.setError('general', generalMessage);
+              
+              // Also show payment error to make it more visible
+              this.displayPaymentError(generalMessage);
             }
+            
+            if (validation.firstErrorField) {
+              // Add a small delay to ensure errors are rendered before scrolling
+              setTimeout(() => {
+                this.validator.focusFirstErrorField(validation.firstErrorField);
+              }, 100);
+            }
+            
+            // Clear processing state when validation fails
+            checkoutStore.setProcessing(false);
+            this.loadingOverlay.hide(true); // Hide immediately on validation error
             return;
           }
           
@@ -1804,6 +2482,26 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             paymentMethod: checkoutStore.paymentMethod
           });
           
+          // For express payment methods (PayPal, Apple Pay, Google Pay), always use ExpressCheckoutProcessor
+          if (isExpressPayment && this.expressProcessor) {
+            this.logger.info(`Processing express checkout for ${checkoutStore.paymentMethod} (after validation)`);
+            
+            // Hide loading overlay first since ExpressCheckoutProcessor will show its own
+            this.loadingOverlay.hide(true);
+            
+            // Use ExpressCheckoutProcessor which handles everything including order creation
+            await this.expressProcessor.handleExpressCheckout(
+              checkoutStore.paymentMethod,
+              cartStore.items,
+              cartStore.isEmpty,
+              () => cartStore.reset()
+            );
+            
+            // ExpressCheckoutProcessor handles all success/error cases and redirects
+            return;
+          }
+          
+          // Only credit card payments go through the regular flow
           if (checkoutStore.paymentMethod === 'credit-card' || checkoutStore.paymentMethod === 'card_token') {
             span?.setAttribute('payment.type', 'credit_card');
             
@@ -1821,6 +2519,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             }
           }
           
+          // This should not be reached for express payments
           span?.setAttribute('payment.type', checkoutStore.paymentMethod || 'unknown');
           await this.processOrder();
           
@@ -1833,6 +2532,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           checkoutStore.setError('general', 'Failed to process order. Please try again.');
           // Only set processing to false on error
           checkoutStore.setProcessing(false);
+          this.loadingOverlay.hide(true); // Hide immediately on error
         }
       }
     );
@@ -1849,10 +2549,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       this.emit('order:completed', order);
       this.handleOrderRedirect(order);
+      // Note: LoadingOverlay will hide after 3 seconds on success
     } catch (error) {
       // Make sure to clear processing state on error
       const checkoutStore = useCheckoutStore.getState();
       checkoutStore.setProcessing(false);
+      this.loadingOverlay.hide(true); // Hide immediately on error
       throw error;
     }
   }
@@ -1866,11 +2568,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       await this.processOrder();
       
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Failed to process tokenized payment:', error);
       const checkoutStore = useCheckoutStore.getState();
-      checkoutStore.setError('general', 'Payment processing failed. Please try again.');
+      
+      // Check if error has payment details
+      if (error.message && error.message.includes('Payment failed:')) {
+        // The error message already contains payment details from createOrder
+        checkoutStore.setError('general', error.message);
+      } else {
+        checkoutStore.setError('general', 'Payment processing failed. Please try again.');
+      }
+      
       checkoutStore.setProcessing(false);
+      this.loadingOverlay.hide(true); // Hide immediately on error
     }
   }
 
@@ -1999,6 +2710,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const mappedMethod = PAYMENT_METHOD_MAP[target.value] || 'credit-card';
     checkoutStore.setPaymentMethod(mappedMethod as any);
     
+    // Hide any payment-specific errors when switching methods
+    const paypalError = document.querySelector('[data-next-component="paypal-error"]');
+    if (paypalError instanceof HTMLElement) {
+      paypalError.style.display = 'none';
+    }
+    
+    const creditError = document.querySelector('[data-next-component="credit-error"]');
+    if (creditError instanceof HTMLElement) {
+      creditError.style.display = 'none';
+    }
+    
     this.ui.updatePaymentFormVisibility(target.value);
   }
 
@@ -2098,6 +2820,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (billingToggle) {
       billingToggle.addEventListener('change', this.billingAddressToggleHandler);
     }
+    
+    // Note: Credit card error clearing is handled by CreditCardService via Spreedly events
   }
 
   // ============================================================================
@@ -2215,20 +2939,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     
     // Handle processing state
     if (state.isProcessing) {
-      this.form.classList.add('next-processing');
-      
-      // Add classes to submit button
+      // Disable submit button when processing
       if (this.submitButton) {
-        this.submitButton.classList.add('next-processing', 'next-loading');
         this.submitButton.disabled = true;
         this.submitButton.setAttribute('aria-busy', 'true');
       }
     } else {
-      this.form.classList.remove('next-processing');
-      
-      // Remove classes from submit button
+      // Enable submit button when not processing
       if (this.submitButton) {
-        this.submitButton.classList.remove('next-processing', 'next-loading');
         this.submitButton.disabled = false;
         this.submitButton.setAttribute('aria-busy', 'false');
       }
@@ -2257,6 +2975,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   public setSuccessUrl(url: string): void {
     this.setOrCreateMetaTag('next-success-url', url);
+    this.setOrCreateMetaTag('next-next-url', url);
     this.setOrCreateMetaTag('os-next-page', url);
   }
 
@@ -2340,6 +3059,49 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (this.boundHandleKonamiActivation) {
       document.removeEventListener('next:test-mode-activated', this.boundHandleKonamiActivation);
     }
+  }
+
+  private displayPaymentError(message: string): void {
+    this.logger.info('[Payment Error] Displaying error:', message);
+    
+    // Use a slight delay to ensure DOM is ready
+    setTimeout(() => {
+      // Find the credit error container
+      const errorContainer = document.querySelector('[data-next-component="credit-error"]');
+      if (errorContainer instanceof HTMLElement) {
+        // Find the message element
+        const messageElement = errorContainer.querySelector('[data-next-component="credit-error-text"]');
+        if (messageElement) {
+          messageElement.textContent = message;
+        }
+        
+        // Force show the error container
+        errorContainer.style.display = 'flex';
+        errorContainer.style.visibility = 'visible';
+        errorContainer.style.opacity = '1';
+        errorContainer.classList.add('visible');
+        errorContainer.classList.remove('hidden');
+        
+        // Remove any inline styles that might be hiding it
+        if (errorContainer.style.display === 'none') {
+          errorContainer.style.removeProperty('display');
+          errorContainer.style.display = 'flex';
+        }
+        
+        this.logger.info('[Payment Error] Error container shown with message:', message);
+        
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+          errorContainer.style.display = 'none';
+          errorContainer.classList.remove('visible');
+        }, 10000);
+      } else {
+        this.logger.error('[Payment Error] Could not find error container element');
+      }
+    }, 100); // Small delay to ensure DOM is ready
+    
+    // Also emit an event for other components to handle
+    this.emit('payment:error', { errors: [message] });
   }
 
   public override destroy(): void {

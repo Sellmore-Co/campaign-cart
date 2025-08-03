@@ -3,6 +3,10 @@
  * Automatically adds current URL parameters to all links on the page
  */
 
+import { createLogger } from '@/utils/logger';
+
+const logger = createLogger('UtmTransfer');
+
 export interface UtmTransferConfig {
   enabled: boolean;
   applyToExternalLinks?: boolean;
@@ -33,7 +37,7 @@ export class UtmTransfer {
    */
   public init(): void {
     if (!this.config.enabled) {
-      this.log('UTM Transfer disabled by configuration');
+      logger.debug('UTM Transfer disabled by configuration');
       return;
     }
     
@@ -42,7 +46,7 @@ export class UtmTransfer {
     
     // Skip if no parameters exist
     if (currentParams.toString() === '') {
-      this.log('No URL parameters to transfer');
+      logger.debug('No URL parameters to transfer');
       return;
     }
     
@@ -52,14 +56,14 @@ export class UtmTransfer {
       currentParams.forEach((value, key) => {
         availableParams.push(`${key}=${value}`);
       });
-      this.log(`Available parameters: ${availableParams.join(', ')}`);
+      logger.debug(`Available parameters: ${availableParams.join(', ')}`);
     }
     
     // Filter parameters if specific ones are specified
     this.prepareParameters(currentParams);
     
     if (this.paramsToApply.toString() === '') {
-      this.log('No matching parameters to transfer');
+      logger.debug('No matching parameters to transfer');
       return;
     }
     
@@ -69,7 +73,7 @@ export class UtmTransfer {
     // Watch for new links added to the DOM
     this.observeNewLinks();
     
-    this.log(`UTM Transfer initialized with parameters: ${this.paramsToApply.toString()}`);
+    logger.debug(`UTM Transfer initialized with parameters: ${this.paramsToApply.toString()}`);
   }
   
   /**
@@ -78,17 +82,17 @@ export class UtmTransfer {
   private prepareParameters(currentParams: URLSearchParams): void {
     if (Array.isArray(this.config.paramsToCopy) && this.config.paramsToCopy.length > 0) {
       // Only copy specific parameters
-      this.log(`Filtering to specific parameters: ${this.config.paramsToCopy.join(', ')}`);
+      logger.debug(`Filtering to specific parameters: ${this.config.paramsToCopy.join(', ')}`);
       
       this.config.paramsToCopy.forEach(param => {
         if (currentParams.has(param)) {
           this.paramsToApply.append(param, currentParams.get(param)!);
-          this.log(`Found parameter to copy: ${param}=${currentParams.get(param)}`);
+          logger.debug(`Found parameter to copy: ${param}=${currentParams.get(param)}`);
         }
       });
     } else {
       // Copy all parameters
-      this.log('No specific parameters configured, will copy all parameters');
+      logger.debug('No specific parameters configured, will copy all parameters');
       currentParams.forEach((value, key) => {
         this.paramsToApply.append(key, value);
       });
@@ -100,7 +104,7 @@ export class UtmTransfer {
    */
   private enhanceLinks(): void {
     const links = document.querySelectorAll('a');
-    this.log(`Found ${links.length} links on the page`);
+    logger.debug(`Found ${links.length} links on the page`);
     
     links.forEach(link => {
       this.addClickListener(link);
@@ -128,7 +132,7 @@ export class UtmTransfer {
    */
   public applyParamsToLink(linkElement: HTMLAnchorElement): void {
     if (!linkElement || !linkElement.getAttribute) {
-      console.error('[UtmTransfer] Invalid link element provided');
+      logger.error('Invalid link element provided');
       return;
     }
     
@@ -159,7 +163,7 @@ export class UtmTransfer {
       // Handle relative URLs
       url = new URL(href, window.location.origin);
     } catch (e) {
-      console.error('[UtmTransfer] Invalid URL:', href);
+      logger.error('Invalid URL:', href);
       return;
     }
     
@@ -183,7 +187,7 @@ export class UtmTransfer {
       // Update the href attribute
       linkElement.setAttribute('href', url.toString());
       
-      this.log(`Updated link ${href} to ${url.toString()}`);
+      logger.debug(`Updated link ${href} to ${url.toString()}`);
     }
   }
   
@@ -248,14 +252,6 @@ export class UtmTransfer {
     });
   }
   
-  /**
-   * Log message if debug is enabled
-   */
-  private log(message: string): void {
-    if (this.config.debug) {
-      console.log(`[UtmTransfer] ${message}`);
-    }
-  }
   
   /**
    * Get current configuration

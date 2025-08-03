@@ -27,7 +27,7 @@ export class OrderManager {
     sameAsShipping: boolean = true,
     shippingMethod?: any,
     vouchers: string[] = [],
-    resetCartCallback?: () => void
+    // resetCartCallback?: () => void
   ): Promise<any> {
     console.log('🟢 [OrderManager] createOrder called with:', {
       paymentMethod,
@@ -97,10 +97,10 @@ export class OrderManager {
       }
       
       // Clear cart after successful order creation
-      if (resetCartCallback) {
-        console.log('🟢 [OrderManager] Clearing cart after successful order');
-        resetCartCallback();
-      }
+      // if (resetCartCallback) {
+      //   console.log('🟢 [OrderManager] Clearing cart after successful order');
+      //   resetCartCallback();
+      // }
       
       // Log success
       this.logger.info('Order created successfully', {
@@ -166,9 +166,9 @@ export class OrderManager {
   public async createExpressOrder(
     cartItems: any[],
     paymentMethod: 'paypal' | 'apple_pay' | 'google_pay',
-    resetCartCallback?: () => void
+    // resetCartCallback?: () => void
   ): Promise<any> {
-    console.log('🟢 [OrderManager] createExpressOrder called with:', {
+    this.logger.info('createExpressOrder called with:', {
       paymentMethod,
       itemCount: cartItems.length
     });
@@ -183,12 +183,12 @@ export class OrderManager {
       const orderData = this.orderBuilder.buildExpressOrder(cartItems, paymentMethod);
       
       this.logger.debug('Creating express order with minimal data:', orderData);
-      console.log('🟢 [OrderManager] Express order data built');
+      this.logger.info('Express order data built');
       
       // Create the order
       const order = await this.apiClient.createOrder(orderData);
       
-      console.log('🟢 [OrderManager] Express order created:', {
+      this.logger.info('Express order created:', {
         ref_id: order.ref_id,
         has_order_status_url: !!order.order_status_url,
         has_payment_complete_url: !!order.payment_complete_url
@@ -196,14 +196,12 @@ export class OrderManager {
       
       // Only clear cart if payment is complete (has order_status_url)
       // If payment_complete_url is returned, user needs to complete payment first
-      if (resetCartCallback && order.order_status_url && !order.payment_complete_url) {
-        console.log('🟢 [OrderManager] Express payment is complete, clearing cart');
-        this.logger.debug('Payment is complete, clearing cart');
-        resetCartCallback();
-      } else if (order.payment_complete_url) {
-        console.log('🟢 [OrderManager] Express payment requires completion at gateway, keeping cart');
-        this.logger.debug('Payment requires completion at payment gateway, keeping cart intact');
-      }
+      // if (resetCartCallback && order.order_status_url && !order.payment_complete_url) {
+      //   this.logger.info('Express payment is complete, clearing cart');
+      //   resetCartCallback();
+      // } else if (order.payment_complete_url) {
+      //   this.logger.info('Express payment requires completion at gateway, keeping cart');
+      // }
       
       return order;
       
@@ -216,7 +214,7 @@ export class OrderManager {
 
   public async createTestOrder(
     cartItems: any[],
-    resetCartCallback?: () => void
+    // resetCartCallback?: () => void
   ): Promise<any> {
     console.log('🟢 [OrderManager] createTestOrder called with:', {
       itemCount: cartItems.length
@@ -239,10 +237,10 @@ export class OrderManager {
       });
       
       // Clear cart after successful test order
-      if (resetCartCallback) {
-        console.log('🟢 [OrderManager] Clearing cart after test order');
-        resetCartCallback();
-      }
+      // if (resetCartCallback) {
+      //   console.log('🟢 [OrderManager] Clearing cart after test order');
+      //   resetCartCallback();
+      // }
       
       return order;
       
@@ -254,7 +252,7 @@ export class OrderManager {
   }
 
   public handleOrderRedirect(order: any): void {
-    console.log('🟢 [OrderManager] handleOrderRedirect called with order:', {
+    this.logger.info('handleOrderRedirect called with order:', {
       ref_id: order.ref_id,
       has_order_status_url: !!order.order_status_url,
       has_payment_complete_url: !!order.payment_complete_url

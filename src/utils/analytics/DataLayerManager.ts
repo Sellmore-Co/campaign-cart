@@ -1,5 +1,5 @@
 /**
- * Analyticsv v0.2.0 DataLayerManager
+ * Analytics V2 DataLayerManager
  * Core data layer management following Elevar's pattern
  */
 

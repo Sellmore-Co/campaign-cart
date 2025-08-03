@@ -379,12 +379,25 @@ export class CountryService {
   }
 
   private applyStateFiltering(states: State[]): State[] {
-    if (!this.config.dontShowStates || this.config.dontShowStates.length === 0) {
-      return states;
+    // Hardcoded US territories to exclude
+    const US_TERRITORIES_TO_HIDE = [
+      "AS", "UM-81", "GU", "UM-84", "UM-86", "UM-67", 
+      "UM-89", "UM-71", "UM-76", "MP", "UM-95", "PR", 
+      "UM", "VI", "UM-79"
+    ];
+    
+    // Apply hardcoded filtering first
+    let filteredStates = states.filter(state => 
+      !US_TERRITORIES_TO_HIDE.includes(state.code)
+    );
+    
+    // Then apply config-based filtering if any
+    if (this.config.dontShowStates && this.config.dontShowStates.length > 0) {
+      filteredStates = filteredStates.filter(state => 
+        !this.config.dontShowStates!.includes(state.code)
+      );
     }
     
-    return states.filter(state => 
-      !this.config.dontShowStates!.includes(state.code)
-    );
+    return filteredStates;
   }
 } 

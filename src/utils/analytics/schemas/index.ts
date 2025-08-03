@@ -1,4 +1,4 @@
-// Event schema types and definitions for analyticsv v0.2.0
+// Event schema types and definitions for analytics v2
 
 export interface ProductSchema {
   item_id: string;

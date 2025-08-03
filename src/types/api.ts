@@ -10,6 +10,8 @@ export interface Campaign {
   packages: PackageSerializer[];
   payment_env_key: string;
   shipping_methods: ShippingOption[];
+  available_express_payment_methods?: PaymentMethodOption[];
+  available_payment_methods?: PaymentMethodOption[];
 }
 
 export interface PackageSerializer {
@@ -118,6 +120,11 @@ export interface ShippingOption {
   ref_id: number;
   code: string;
   price: string;
+}
+
+export interface PaymentMethodOption {
+  code: string;
+  label: string;
 }
 
 export interface User {

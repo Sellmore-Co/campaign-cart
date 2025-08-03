@@ -358,6 +358,17 @@ export class PaymentService {
         creditCardForm.style.display = 'block';
       }
     }
+
+    // Hide all payment error messages when switching payment methods
+    const paypalError = document.querySelector('[data-next-component="paypal-error"]') as HTMLElement;
+    if (paypalError) {
+      paypalError.style.display = 'none';
+    }
+
+    const creditError = document.querySelector('[data-next-component="credit-error"]') as HTMLElement;
+    if (creditError) {
+      creditError.style.display = 'none';
+    }
   }
 
   /**

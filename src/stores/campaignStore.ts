@@ -5,9 +5,12 @@
 import { create } from 'zustand';
 import type { Campaign, Package } from '@/types/global';
 import { sessionStorageManager, CAMPAIGN_STORAGE_KEY } from '@/utils/storage';
+import { createLogger } from '@/utils/logger';
 
 // Cache expiry time: 5 minutes (300,000 milliseconds)
 const CACHE_EXPIRY_MS = 5 * 60 * 1000;
+
+const logger = createLogger('CampaignStore');
 
 interface CachedCampaignData {
   campaign: Campaign;
@@ -55,14 +58,13 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
           cachedData.apiKey === apiKey && 
           (now - cachedData.timestamp) < CACHE_EXPIRY_MS) {
         
-        console.log('🎯 Using cached campaign data (expires in', 
-          Math.round((CACHE_EXPIRY_MS - (now - cachedData.timestamp)) / 1000), 'seconds)');
+        logger.info('🎯 Using cached campaign data (expires in ' + 
+          Math.round((CACHE_EXPIRY_MS - (now - cachedData.timestamp)) / 1000) + ' seconds)');
         
         // Update config store with payment_env_key from cached data
         const { useConfigStore } = await import('./configStore');
         if (cachedData.campaign.payment_env_key) {
           useConfigStore.getState().setSpreedlyEnvironmentKey(cachedData.campaign.payment_env_key);
-          console.log('💳 Spreedly environment key updated from cached campaign data');
         }
         
         set({
@@ -75,7 +77,7 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       }
       
       // Cache miss or expired - fetch from API
-      console.log('🌐 Fetching fresh campaign data from API...');
+      logger.info('🌐 Fetching fresh campaign data from API...');
       const { ApiClient } = await import('@/api/client');
       const client = new ApiClient(apiKey);
       
@@ -89,7 +91,7 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       const { useConfigStore } = await import('./configStore');
       if (campaign.payment_env_key) {
         useConfigStore.getState().setSpreedlyEnvironmentKey(campaign.payment_env_key);
-        console.log('💳 Spreedly environment key updated from campaign API:', campaign.payment_env_key);
+        logger.info('💳 Spreedly environment key updated from campaign API: ' + campaign.payment_env_key);
       }
       
       // Cache the fresh data
@@ -100,7 +102,7 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       };
       
       sessionStorageManager.set(CAMPAIGN_STORAGE_KEY, cacheData);
-      console.log('💾 Campaign data cached for 5 minutes');
+      logger.info('💾 Campaign data cached for 5 minutes');
 
       set({
         data: campaign,
@@ -140,7 +142,7 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
 
   clearCache: () => {
     sessionStorageManager.remove(CAMPAIGN_STORAGE_KEY);
-    console.log('🗑️ Campaign cache cleared');
+    logger.info('🗑️ Campaign cache cleared');
   },
 
   getCacheInfo: () => {

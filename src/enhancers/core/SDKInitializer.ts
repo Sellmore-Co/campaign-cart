@@ -3,7 +3,7 @@
  * Handles auto-initialization, configuration loading, and setup
  */
 
-import { createLogger } from '@/utils/logger';
+import { createLogger, Logger, LogLevel } from '@/utils/logger';
 import { useConfigStore } from '@/stores/configStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
@@ -31,7 +31,7 @@ export class SDKInitializer {
     }
 
     try {
-      this.logger.info('Initializing 29Next Campaign Cart SDKv v0.2.0...');
+      this.logger.info('Initializing 29Next Campaign Cart SDK v2...');
 
       // Wait for DOM to be ready
       await this.waitForDOM();
@@ -269,15 +269,15 @@ export class SDKInitializer {
     // This ensures analytics doesn't block core functionality
     setTimeout(async () => {
       try {
-        this.logger.info('Initializing analyticsv v0.2.0 (lazy)...');
+        this.logger.info('Initializing analytics v2 (lazy)...');
         
-        // Dynamically import new analyticsv v0.2.0 to avoid loading it during initial bundle
+        // Dynamically import new analytics v2 to avoid loading it during initial bundle
         const { nextAnalytics } = await import('@/utils/analytics/index');
         await nextAnalytics.initialize();
         
-        this.logger.debug('Analyticsv v0.2.0 initialized successfully (lazy)');
+        this.logger.debug('Analytics v2 initialized successfully (lazy)');
       } catch (error) {
-        this.logger.warn('Analyticsv v0.2.0 initialization failed (non-critical):', error);
+        this.logger.warn('Analytics v2 initialization failed (non-critical):', error);
         // Don't throw - analytics failure shouldn't break SDK initialization
       }
     }, 0); // Run on next tick after SDK initialization completes
@@ -395,6 +395,10 @@ export class SDKInitializer {
     
     if (configStore.debug) {
       this.logger.info('Debug mode enabled - initializing debug utilities');
+      
+      // Set logger to DEBUG level when debug mode is enabled
+      Logger.setLogLevel(LogLevel.DEBUG);
+      this.logger.info('Logger level set to DEBUG');
       
       // Initialize debug overlay
       debugOverlay.initialize();
@@ -549,7 +553,7 @@ export class SDKInitializer {
         
         // Element highlighting
         highlightElement: (selector: string) => {
-          console.log(`🎯 Highlighting element: ${selector}`);
+          this.logger.debug(`🎯 Highlighting element: ${selector}`);
           // TODO: Implement element highlighting in DebugOverlay
         },
         

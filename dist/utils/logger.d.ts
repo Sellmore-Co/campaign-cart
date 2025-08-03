@@ -7,7 +7,13 @@ export declare enum LogLevel {
     INFO = 2,
     DEBUG = 3
 }
-export declare class Logger {
+interface ILogger {
+    error(message: string, ...args: any[]): void;
+    warn(message: string, ...args: any[]): void;
+    info(message: string, ...args: any[]): void;
+    debug(message: string, ...args: any[]): void;
+}
+export declare class Logger implements ILogger {
     private context;
     private static globalLevel;
     constructor(context: string);
@@ -20,4 +26,5 @@ export declare class Logger {
 }
 export declare function createLogger(context: string): Logger;
 export declare const logger: Logger;
+export {};
 //# sourceMappingURL=logger.d.ts.map

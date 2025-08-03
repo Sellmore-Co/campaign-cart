@@ -1,11 +1,11 @@
 /**
- * 29Next Campaign Cart SDKv v0.2.0
+ * 29Next Campaign Cart SDK v2
  * 
  * Modern TypeScript SDK for seamless e-commerce integration via data attributes.
  * Provides progressive enhancement without disrupting existing HTML/CSS.
  * 
  * @version 0.2.0
- * @author Next Commerce
+ * @author NextCommerce
  * @license MIT
  */
 
@@ -91,7 +91,7 @@ if (typeof window !== 'undefined') {
         import('./enhancers/behavior/SimpleExitIntentEnhancer');
         
         // Checkout services (heavier modules)
-        import('./enhancers/checkout/services/AddressService');
+        // import('./enhancers/checkout/services/AddressService');
       }, { timeout: 5000 });
     } else {
       // Fallback for browsers without requestIdleCallback

@@ -15,19 +15,31 @@ import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useConfigStore } from '@/stores/configStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
+import { useCampaignStore } from '@/stores/campaignStore';
 import { ApiClient } from '@/api/client';
 import { OrderManager } from './managers/OrderManager';
 import { ExpressCheckoutProcessor } from './processors/ExpressCheckoutProcessor';
 import { PAYPAL_SVG, APPLE_PAY_SVG, GOOGLE_PAY_SVG } from './constants/payment-icons';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 import type { PaymentConfig, CartState } from '@/types/global';
+import type { PaymentMethodOption } from '@/types/api';
 
 export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
   private buttonsContainer?: HTMLElement;
   private buttonInstances: Map<string, HTMLElement> = new Map();
   private buttonClickHandlers: Map<string, (event: Event) => void> = new Map();
   private paymentConfig?: PaymentConfig;
+  private availableExpressMethods?: PaymentMethodOption[];
   private orderManager?: OrderManager;
   private expressProcessor?: ExpressCheckoutProcessor;
+  private loadingOverlay: LoadingOverlay;
+  private errorElement?: HTMLElement;
+  private errorTextElement?: HTMLElement;
+
+  constructor(element: HTMLElement) {
+    super(element);
+    this.loadingOverlay = new LoadingOverlay();
+  }
   
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -44,6 +56,15 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
       return;
     }
     
+    // Find error elements
+    this.errorElement = document.querySelector('[data-next-component="express-error"]') as HTMLElement;
+    this.errorTextElement = document.querySelector('[data-next-component="express-error-text"]') as HTMLElement;
+    
+    // Initially hide error element
+    if (this.errorElement) {
+      this.errorElement.style.display = 'none';
+    }
+    
     // Initialize dependencies
     const config = useConfigStore.getState();
     const apiClient = new ApiClient(config.apiKey);
@@ -56,8 +77,8 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
     
     this.expressProcessor = new ExpressCheckoutProcessor(
       this.logger,
-      this.addClass.bind(this),
-      this.removeClass.bind(this),
+      () => this.loadingOverlay.show(),
+      (immediate?: boolean) => this.loadingOverlay.hide(immediate),
       (event: string, data: any) => this.emit(event as any, data),
       this.orderManager
     );
@@ -65,11 +86,15 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
     // Subscribe to config changes
     this.subscribe(useConfigStore, this.handleConfigUpdate.bind(this));
     
+    // Subscribe to campaign changes to get available payment methods
+    this.subscribe(useCampaignStore, this.handleCampaignUpdate.bind(this));
+    
     // Subscribe to cart changes to update button states
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     
     // Initial setup
     this.handleConfigUpdate(useConfigStore.getState());
+    this.handleCampaignUpdate(useCampaignStore.getState());
     
     this.logger.debug('ExpressCheckoutContainerEnhancer initialized');
   }
@@ -79,51 +104,88 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
     this.updateExpressCheckoutButtons();
   }
   
+  private handleCampaignUpdate(state: any): void {
+    this.availableExpressMethods = state.data?.available_express_payment_methods;
+    this.updateExpressCheckoutButtons();
+  }
+  
   private async updateExpressCheckoutButtons(): Promise<void> {
-    if (!this.buttonsContainer || !this.paymentConfig?.expressCheckout) {
+    if (!this.buttonsContainer) {
       this.hideContainer();
       return;
     }
     
-    const { enabled, methods } = this.paymentConfig.expressCheckout;
-    
-    if (!enabled) {
+    // Use campaign data if available, otherwise fall back to config
+    if (this.availableExpressMethods && this.availableExpressMethods.length > 0) {
+      // Use campaign data
+      this.showContainer();
+      this.clearButtons();
+      
+      // Create buttons based on available express methods from campaign
+      for (const method of this.availableExpressMethods) {
+        switch (method.code) {
+          case 'paypal':
+            this.createPayPalButton();
+            break;
+          case 'apple_pay':
+            this.createApplePayButton();
+            break;
+          case 'google_pay':
+            this.createGooglePayButton();
+            break;
+          default:
+            this.logger.warn(`Unknown express payment method: ${method.code}`);
+        }
+      }
+      
+      this.logger.debug('Express checkout buttons updated from campaign data', {
+        methods: this.availableExpressMethods.map(m => m.code)
+      });
+    } else if (this.paymentConfig?.expressCheckout) {
+      // Fall back to config-based setup
+      const { enabled, methods } = this.paymentConfig.expressCheckout;
+      
+      if (!enabled) {
+        this.hideContainer();
+        return;
+      }
+      
+      // Check if any method is enabled
+      const hasEnabledMethods = Object.values(methods || {}).some(enabled => enabled);
+      
+      if (!hasEnabledMethods) {
+        this.hideContainer();
+        return;
+      }
+      
+      // Show container
+      this.showContainer();
+      
+      // Clear existing buttons
+      this.clearButtons();
+      
+      // Create buttons for enabled methods
+      if (methods.paypal) {
+        this.createPayPalButton();
+      }
+      
+      if (methods.applePay) {
+        this.createApplePayButton();
+      }
+      
+      if (methods.googlePay) {
+        this.createGooglePayButton();
+      }
+      
+      this.logger.debug('Express checkout buttons updated from config', {
+        paypal: methods.paypal,
+        applePay: methods.applePay,
+        googlePay: methods.googlePay
+      });
+    } else {
+      // No payment methods available
       this.hideContainer();
-      return;
     }
-    
-    // Check if any method is enabled
-    const hasEnabledMethods = Object.values(methods || {}).some(enabled => enabled);
-    
-    if (!hasEnabledMethods) {
-      this.hideContainer();
-      return;
-    }
-    
-    // Show container
-    this.showContainer();
-    
-    // Clear existing buttons
-    this.clearButtons();
-    
-    // Create buttons for enabled methods
-    if (methods.paypal) {
-      this.createPayPalButton();
-    }
-    
-    if (methods.applePay) {
-      this.createApplePayButton();
-    }
-    
-    if (methods.googlePay) {
-      this.createGooglePayButton();
-    }
-    
-    this.logger.debug('Express checkout buttons updated', {
-      paypal: methods.paypal,
-      applePay: methods.applePay,
-      googlePay: methods.googlePay
-    });
   }
   
   private hideContainer(): void {
@@ -158,8 +220,24 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
   private async handleButtonClick(method: string, event: Event): Promise<void> {
     event.preventDefault();
     
+    // Prevent double-clicks
+    const button = event.currentTarget as HTMLButtonElement;
+    if (button.disabled) return;
+    
+    // Hide any existing error when starting new attempt
+    if (this.errorElement) {
+      this.errorElement.style.display = 'none';
+    }
+    
+    // Disable all express buttons
+    for (const [, btn] of this.buttonInstances) {
+      btn.setAttribute('disabled', 'true');
+    }
+    
     const cartStore = useCartStore.getState();
     const checkoutStore = useCheckoutStore.getState();
+    
+    // let hasError = false;
     
     try {
       checkoutStore.setProcessing(true);
@@ -173,9 +251,35 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
         () => cartStore.reset()
       );
       
+      // If we reach here, it was successful - keep buttons disabled for 3 seconds
+      setTimeout(() => {
+        for (const [, btn] of this.buttonInstances) {
+          if (!cartStore.isEmpty) {
+            btn.removeAttribute('disabled');
+          }
+        }
+      }, 3000);
+      
     } catch (error) {
+      // hasError = true;
       this.handleError(error, 'handleButtonClick');
       checkoutStore.setError('payment', 'Express checkout failed. Please try again.');
+      
+      // Show error message
+      if (this.errorElement && this.errorTextElement) {
+        const errorMessage = error instanceof Error ? error.message : 'Express checkout failed';
+        this.errorTextElement.textContent = `${errorMessage}. Please try a different payment method.`;
+        this.errorElement.style.display = 'flex';
+        this.errorElement.style.position = 'relative';
+        this.errorElement.style.zIndex = '10000'; // Higher than overlay
+      }
+      
+      // Re-enable buttons immediately on error so user can try another method
+      for (const [, btn] of this.buttonInstances) {
+        if (!cartStore.isEmpty) {
+          btn.removeAttribute('disabled');
+        }
+      }
     } finally {
       checkoutStore.setProcessing(false);
     }

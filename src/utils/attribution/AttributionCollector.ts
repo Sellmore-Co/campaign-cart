@@ -3,6 +3,9 @@
  */
 
 import type { AttributionState, AttributionMetadata } from '@/stores/attributionStore';
+import { createLogger } from '@/utils/logger';
+
+const logger = createLogger('AttributionCollector');
 
 export class AttributionCollector {
   /**
@@ -160,14 +163,14 @@ export class AttributionCollector {
       // Check sessionStorage first (current session)
       const sessionFunnel = sessionStorage.getItem('next_funnel_name');
       if (sessionFunnel) {
-        console.debug(`[AttributionCollector] Using persisted funnel from session: ${sessionFunnel}`);
+        logger.debug(`Using persisted funnel from session: ${sessionFunnel}`);
         return sessionFunnel;
       }
       
       // Check localStorage (cross-session)
       const localFunnel = localStorage.getItem('next_funnel_name');
       if (localFunnel) {
-        console.debug(`[AttributionCollector] Using persisted funnel from localStorage: ${localFunnel}`);
+        logger.debug(`Using persisted funnel from localStorage: ${localFunnel}`);
         // Also set in sessionStorage for consistency
         sessionStorage.setItem('next_funnel_name', localFunnel);
         return localFunnel;
@@ -178,7 +181,7 @@ export class AttributionCollector {
       if (persistedData) {
         const parsed = JSON.parse(persistedData);
         if (parsed.state && parsed.state.funnel) {
-          console.debug(`[AttributionCollector] Using persisted funnel from attribution: ${parsed.state.funnel}`);
+          logger.debug(`Using persisted funnel from attribution: ${parsed.state.funnel}`);
           // Also set in session/localStorage for faster access
           sessionStorage.setItem('next_funnel_name', parsed.state.funnel);
           localStorage.setItem('next_funnel_name', parsed.state.funnel);
@@ -200,12 +203,12 @@ export class AttributionCollector {
       const value = funnelMetaTag.getAttribute('data-tag-value') || 
                     funnelMetaTag.getAttribute('content');
       if (value) {
-        console.debug(`[AttributionCollector] New funnel found from meta tag: ${value}`);
+        logger.debug(`New funnel found from meta tag: ${value}`);
         // Persist the funnel name
         try {
           sessionStorage.setItem('next_funnel_name', value);
           localStorage.setItem('next_funnel_name', value);
-          console.info(`[AttributionCollector] Persisted funnel name: ${value}`);
+          logger.info(`Persisted funnel name: ${value}`);
         } catch (error) {
           console.error('[AttributionCollector] Error persisting funnel name:', error);
         }
@@ -229,14 +232,14 @@ export class AttributionCollector {
       evclid = urlParams.get('evclid') || '';
       localStorage.setItem('evclid', evclid);
       sessionStorage.setItem('evclid', evclid);
-      console.debug(`[AttributionCollector] Everflow click ID found in URL: ${evclid}`);
+      logger.debug(`Everflow click ID found in URL: ${evclid}`);
     } 
     // Try sessionStorage as fallback
     else if (!evclid && sessionStorage.getItem('evclid')) {
       evclid = sessionStorage.getItem('evclid');
       if (evclid) {
         localStorage.setItem('evclid', evclid);
-        console.debug(`[AttributionCollector] Everflow click ID found in sessionStorage: ${evclid}`);
+        logger.debug(`Everflow click ID found in sessionStorage: ${evclid}`);
       }
     }
     
@@ -246,7 +249,7 @@ export class AttributionCollector {
       sessionStorage.setItem('sg_evclid', sg_evclid);
       localStorage.setItem('sg_evclid', sg_evclid);
       metadata.sg_evclid = sg_evclid;
-      console.debug(`[AttributionCollector] SG Everflow click ID found: ${sg_evclid}`);
+      logger.debug(`SG Everflow click ID found: ${sg_evclid}`);
     } else {
       const storedSgEvclid = localStorage.getItem('sg_evclid');
       if (storedSgEvclid) {
@@ -257,7 +260,7 @@ export class AttributionCollector {
     // Set the transaction ID in metadata if we have it
     if (evclid) {
       metadata.everflow_transaction_id = evclid;
-      console.debug(`[AttributionCollector] Added Everflow transaction ID to metadata: ${evclid}`);
+      logger.debug(`Added Everflow transaction ID to metadata: ${evclid}`);
     }
   }
   
@@ -270,7 +273,7 @@ export class AttributionCollector {
       'meta[name="os-tracking-tag"], meta[name="data-next-tracking-tag"]'
     );
     
-    console.debug(`[AttributionCollector] Found ${trackingTags.length} tracking tags`);
+    logger.debug(`Found ${trackingTags.length} tracking tags`);
     
     trackingTags.forEach(tag => {
       const tagName = tag.getAttribute('data-tag-name');
@@ -279,13 +282,13 @@ export class AttributionCollector {
       
       if (tagName && tagValue) {
         metadata[tagName] = tagValue;
-        console.debug(`[AttributionCollector] Added tracking tag: ${tagName} = ${tagValue}`);
+        logger.debug(`Added tracking tag: ${tagName} = ${tagValue}`);
         
         // Store in sessionStorage if it should persist
         if (shouldPersist) {
           try {
             sessionStorage.setItem(`tn_tag_${tagName}`, tagValue);
-            console.debug(`[AttributionCollector] Persisted tracking tag: ${tagName}`);
+            logger.debug(`Persisted tracking tag: ${tagName}`);
           } catch (error) {
             console.error(`[AttributionCollector] Error persisting tag ${tagName}:`, error);
           }
@@ -306,7 +309,7 @@ export class AttributionCollector {
     if (pixelMeta) {
       const pixelId = pixelMeta.getAttribute('content');
       if (pixelId) {
-        console.debug(`[AttributionCollector] Facebook Pixel ID found from meta tag: ${pixelId}`);
+        logger.debug(`Facebook Pixel ID found from meta tag: ${pixelId}`);
         return pixelId;
       }
     }
@@ -318,7 +321,7 @@ export class AttributionCollector {
       if (content.includes('fbq(') && content.includes('init')) {
         const match = content.match(/fbq\s*\(\s*['"]init['"],\s*['"](\d+)['"]/);
         if (match && match[1]) {
-          console.debug(`[AttributionCollector] Facebook Pixel ID found from script: ${match[1]}`);
+          logger.debug(`Facebook Pixel ID found from script: ${match[1]}`);
           return match[1];
         }
       }

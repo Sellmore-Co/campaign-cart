@@ -11,6 +11,7 @@ declare global {
  * Facebook Pixel adapter
  */
 export class FacebookAdapter extends ProviderAdapter {
+  private blockedEvents: string[] = [];
   private eventMapping: Record<string, string> = {
     // Data layer events to Facebook events
     'dl_page_view': 'PageView',
@@ -48,8 +49,11 @@ export class FacebookAdapter extends ProviderAdapter {
     'view_cart': 'ViewCart'
   };
 
-  constructor() {
+  constructor(config?: any) {
     super('Facebook');
+    if (config?.blockedEvents) {
+      this.blockedEvents = config.blockedEvents;
+    }
   }
 
   /**
@@ -72,6 +76,17 @@ export class FacebookAdapter extends ProviderAdapter {
   sendEvent(event: DataLayerEvent): void {
     if (!this.enabled) {
       this.debug('Facebook adapter disabled');
+      return;
+    }
+
+    // Check if this event is blocked
+    if (this.blockedEvents.includes(event.event)) {
+      console.log(`[Analytics] Event "${event.event}" was blocked from being sent to Facebook`, {
+        event: event.event,
+        blockedEvents: this.blockedEvents,
+        eventData: event
+      });
+      this.debug(`Event ${event.event} is blocked for Facebook`);
       return;
     }
 

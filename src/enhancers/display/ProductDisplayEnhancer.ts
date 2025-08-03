@@ -175,19 +175,19 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     const metrics = PriceCalculator.calculatePackageMetrics(calculatorInput);
     
     // Debug logging for savings calculation
-    if (property === 'savingsAmount' || property === 'hasSavings') {
-      this.logger.warn('[SAVINGS DEBUG] Package savings calculation:', {
-        packageId: this.packageData.ref_id,
-        packageName: this.packageData.name,
-        input: calculatorInput,
-        output: {
-          totalSavings: metrics.totalSavings,
-          hasSavings: metrics.hasSavings,
-          totalPrice: metrics.totalPrice,
-          totalRetailPrice: metrics.totalRetailPrice
-        }
-      });
-    }
+    // if (property === 'savingsAmount' || property === 'hasSavings') {
+    //   this.logger.debug('[SAVINGS DEBUG] Package savings calculation:', {
+    //     packageId: this.packageData.ref_id,
+    //     packageName: this.packageData.name,
+    //     input: calculatorInput,
+    //     output: {
+    //       totalSavings: metrics.totalSavings,
+    //       hasSavings: metrics.hasSavings,
+    //       totalPrice: metrics.totalPrice,
+    //       totalRetailPrice: metrics.totalRetailPrice
+    //     }
+    //   });
+    // }
 
     // Check for mapped properties first
     const mappedPath = getPropertyMapping('package', property);

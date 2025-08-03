@@ -7,13 +7,18 @@ const config = {
     apiKey: "kLGpgEfCX3iUZG16hpI5zrCH9qxcOdahDY1im6ud",
     debug: true, // Always true since this file only loads in debug mode
     paymentConfig: {
-      expressCheckout: { // TODO: Remove this once we have available payment methods from campaign api
-        enabled: true,
-        methods: {
-          paypal: true,
-          applePay: true,
-          googlePay: true
-        }
+      expressCheckout: {
+        // enabled: false,         DEPRECATED: FETCHED FROM CAMPAIGN API
+        // methods: {              DEPRECATED: FETCHED FROM CAMPAIGN API
+        //   paypal: true,         DEPRECATED: FETCHED FROM CAMPAIGN API
+        //   applePay: true,       DEPRECATED: FETCHED FROM CAMPAIGN API
+        //   googlePay: true       DEPRECATED: FETCHED FROM CAMPAIGN API
+        // },                      DEPRECATED: FETCHED FROM CAMPAIGN API
+        // Optional: Require form validation for express payment methods in combo form
+        // By default (false), express payments skip all validation for quick checkout
+        // Set to true if you need to collect customer information before express checkout
+        requireValidation: true,
+        requiredFields: ['email', 'fname', 'lname']
       }
     },
     addressConfig: {

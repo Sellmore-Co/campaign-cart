@@ -1,5 +1,8 @@
 import { ProviderAdapter } from './ProviderAdapter';
 import { DataLayerEvent } from '../types';
+import { createLogger } from '@/utils/logger';
+
+const logger = createLogger('RudderStack');
 
 declare global {
   interface Window {
@@ -47,6 +50,12 @@ export class RudderStackAdapter extends ProviderAdapter {
       this.debug('RudderStack adapter disabled');
       return;
     }
+
+    // Log all events being sent to RudderStack
+    logger.info(`Processing event "${event.event}"`, {
+      eventName: event.event,
+      eventData: event
+    });
 
     // If RudderStack is not loaded yet, wait for it
     if (!this.isRudderStackLoaded()) {

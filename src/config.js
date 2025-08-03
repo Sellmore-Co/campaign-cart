@@ -4,17 +4,22 @@ window.nextConfig = {
     paymentConfig: {
       expressCheckout: {
         enabled: true,
-        methods: {
-          paypal: false,
-          applePay: true,
-          googlePay: true
-        }
+        // methods: {
+        //   paypal: true,
+        //   applePay: true,
+        //   googlePay: true
+        // },
+        // Optional: Require form validation for express payment methods in combo form
+        // By default (false), express payments skip all validation for quick checkout
+        // Set to true if you need to collect customer information before express checkout
+        requireValidation: false,
+        requiredFields: ['email', 'fname', 'lname']
       }
     },
     addressConfig: {
       defaultCountry: "US",
       showCountries: ["US", "CA", "GB"],
-      dontShowStates: ["AS", "GU", "PR", "VI"]
+      // dontShowStates: ["AS", "GU", "PR", "VI"]
     },
     discounts: {
       SAVE10: {

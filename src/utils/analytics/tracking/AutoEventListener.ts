@@ -128,7 +128,7 @@ export class AutoEventListener {
       }
       
       dataLayer.push(event);
-      logger.info('Tracked add to cart:', packageId);
+      logger.debug('Tracked add to cart:', packageId);
     };
 
     this.eventBus.on('cart:item-added', handleAddToCart);
@@ -168,7 +168,7 @@ export class AutoEventListener {
       });
 
       dataLayer.push(event);
-      logger.info('Tracked remove from cart:', packageId);
+      logger.debug('Tracked remove from cart:', packageId);
     };
 
     this.eventBus.on('cart:item-removed', handleRemoveFromCart);

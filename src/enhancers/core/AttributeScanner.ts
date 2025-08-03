@@ -79,7 +79,8 @@ export class AttributeScanner {
         '[data-next-coupon=""]',
         '[data-next-accordion]',
         '[data-next-tooltip]',
-        '[data-next-express-checkout="container"]'
+        '[data-next-express-checkout="container"]',
+        '[data-next-component="scroll-hint"]'
       ].join(', ');
       
       const elements = root.querySelectorAll(selector);
@@ -364,6 +365,10 @@ export class AttributeScanner {
         case 'tooltip':
           const { TooltipEnhancer } = await import('@/enhancers/ui/TooltipEnhancer');
           return new TooltipEnhancer(element);
+
+        case 'scroll-hint':
+          const { ScrollHintEnhancer } = await import('@/enhancers/ui/ScrollHintEnhancer');
+          return new ScrollHintEnhancer(element);
           
         default:
           this.logger.warn(`Unknown enhancer type: ${type}`);

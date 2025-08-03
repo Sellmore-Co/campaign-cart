@@ -8,6 +8,10 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private validator;
     private ui;
     private prospectCartEnhancer?;
+    private loadingOverlay;
+    private expressProcessor?;
+    private orderManager?;
+    constructor(element: HTMLElement);
     private fields;
     private billingFields;
     private paymentButtons;
@@ -69,6 +73,8 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private initializePhoneInputs;
     private initializePhoneInput;
     private initializeCreditCard;
+    private clearAllCheckoutFields;
+    private handlePurchaseEvent;
     private buildOrderData;
     private createOrder;
     private createTestOrder;
@@ -77,6 +83,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private getNextPageUrlFromMeta;
     private preserveQueryParams;
     private getSuccessUrl;
+    private validateExpressCheckoutFields;
     private getFailureUrl;
     private handleFormSubmit;
     private processOrder;
@@ -107,6 +114,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     clearAllValidationErrors(): void;
     update(): void;
     protected cleanupEventListeners(): void;
+    private displayPaymentError;
     destroy(): void;
 }
 //# sourceMappingURL=CheckoutFormEnhancer.d.ts.map

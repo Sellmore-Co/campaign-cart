@@ -8,7 +8,8 @@ import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useOrderStore } from '@/stores/orderStore';
 import { useConfigStore } from '@/stores/configStore';
 import { ApiClient } from '@/api/client';
-import { TemplateRenderer } from '@/shared/utils/TemplateRenderer';
+import { TemplateRenderer, TemplateFormatters } from '@/shared/utils/TemplateRenderer';
+import { DisplayFormatter } from '@/enhancers/display/DisplayEnhancerCore';
 import type { OrderLine } from '@/types/api';
 // Order type is imported but not used in this file
 // import type { Order, OrderLine } from '@/types/api';
@@ -21,8 +22,19 @@ export class OrderItemListEnhancer extends BaseEnhancer {
   public async initialize(): Promise<void> {
     this.validateElement();
 
-    // Get template from data attribute or use original content
-    this.template = this.getAttribute('data-item-template') || this.element.innerHTML.trim();
+    // Get template from template ID, selector, data attribute or use original content
+    const templateId = this.getAttribute('data-item-template-id');
+    const templateSelector = this.getAttribute('data-item-template-selector');
+    
+    if (templateId) {
+      const templateElement = document.getElementById(templateId);
+      this.template = templateElement?.innerHTML.trim() ?? '';
+    } else if (templateSelector) {
+      const templateElement = document.querySelector(templateSelector);
+      this.template = templateElement?.innerHTML.trim() ?? '';
+    } else {
+      this.template = this.getAttribute('data-item-template') || this.element.innerHTML.trim();
+    }
     
     // If template is empty or just comments, use default template
     if (!this.template || this.template.replace(/<!--[\s\S]*?-->/g, '').trim() === '') {
@@ -133,9 +145,15 @@ export class OrderItemListEnhancer extends BaseEnhancer {
       const itemData = this.prepareOrderLineData(line);
       const template = this.template || this.getDefaultItemTemplate();
       
+      // Use TemplateRenderer with formatters (matching CartItemListEnhancer)
+      const formatters: TemplateFormatters = {
+        ...TemplateRenderer.createDefaultFormatters(),
+        currency: (value: any) => DisplayFormatter.formatCurrency(value)
+      };
+      
       return TemplateRenderer.render(template, {
         data: { item: itemData },
-        formatters: TemplateRenderer.createDefaultFormatters()
+        formatters
       });
     } catch (error) {
       this.logger.error('Error rendering order item:', error);

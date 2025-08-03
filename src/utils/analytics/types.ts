@@ -1,5 +1,5 @@
 /**
- * Analyticsv v0.2.0 Types
+ * Analytics V2 Types
  * Core type definitions for the analytics system
  */
 
@@ -177,6 +177,7 @@ export interface AnalyticsConfig {
     gtm?: {
       enabled: boolean;
       settings?: Record<string, any>;
+      blockedEvents?: string[];
     };
     facebook?: {
       enabled: boolean;
@@ -184,6 +185,7 @@ export interface AnalyticsConfig {
         pixelId: string;
         [key: string]: any;
       };
+      blockedEvents?: string[];
     };
     custom?: {
       enabled: boolean;
@@ -191,6 +193,17 @@ export interface AnalyticsConfig {
         endpoint: string;
         [key: string]: any;
       };
+      blockedEvents?: string[];
+    };
+    rudderstack?: {
+      enabled: boolean;
+      settings?: Record<string, any>;
+      blockedEvents?: string[];
+    };
+    nextCampaign?: {
+      enabled: boolean;
+      settings?: Record<string, any>;
+      blockedEvents?: string[];
     };
   };
 }

@@ -18,6 +18,7 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
   private items: SelectorItem[] = [];
   private selectedItem: SelectorItem | null = null;
   private clickHandlers = new Map<HTMLElement, (event: Event) => void>();
+  private mutationObserver: MutationObserver | null = null;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -31,6 +32,9 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
     
     // Find and register all selector cards
     this.initializeSelectorCards();
+    
+    // Set up mutation observer to watch for changes
+    this.setupMutationObserver();
     
     // Subscribe to cart changes
     this.subscribe(useCartStore, this.syncWithCart.bind(this));
@@ -83,6 +87,30 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
     const isPreSelected = cardElement.getAttribute('data-next-selected') === 'true';
     const shippingId = cardElement.getAttribute('data-next-shipping-id');
 
+    // Check if we already have this element registered
+    const existingItemIndex = this.items.findIndex(item => item.element === cardElement);
+    if (existingItemIndex !== -1) {
+      // Update existing item
+      const existingItem = this.items[existingItemIndex];
+      if (existingItem) {
+        existingItem.packageId = packageId;
+        existingItem.quantity = quantity;
+        existingItem.isPreSelected = isPreSelected;
+        existingItem.shippingId = shippingId || undefined;
+        
+        // Update package data
+        this.updateItemPackageData(existingItem);
+      }
+      
+      this.logger.debug(`Updated existing selector card:`, {
+        packageId,
+        quantity,
+        isPreSelected,
+        shippingId
+      });
+      return;
+    }
+
     // Try to get package data for name and price
     let packageData: Package | undefined;
     try {
@@ -123,6 +151,162 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
     });
   }
 
+  private setupMutationObserver(): void {
+    this.mutationObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        // Handle attribute changes on existing cards
+        if (mutation.type === 'attributes' && mutation.target instanceof HTMLElement) {
+          const target = mutation.target;
+          
+          // Check if this is a selector card and if package ID changed
+          if (target.hasAttribute('data-next-selector-card') && 
+              mutation.attributeName === 'data-next-package-id') {
+            this.handlePackageIdChange(target);
+          }
+        }
+        
+        // Handle new nodes being added
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach((node) => {
+            if (node instanceof HTMLElement) {
+              // Check if the added node is a selector card
+              if (node.hasAttribute('data-next-selector-card')) {
+                this.registerCard(node);
+              }
+              
+              // Also check children of added nodes
+              const cards = node.querySelectorAll('[data-next-selector-card]');
+              cards.forEach((card) => {
+                if (card instanceof HTMLElement) {
+                  this.registerCard(card);
+                }
+              });
+            }
+          });
+          
+          // Handle removed nodes
+          mutation.removedNodes.forEach((node) => {
+            if (node instanceof HTMLElement) {
+              this.handleCardRemoval(node);
+            }
+          });
+        }
+      });
+    });
+    
+    // Observe the selector element for changes
+    this.mutationObserver.observe(this.element, {
+      attributes: true,
+      attributeFilter: ['data-next-package-id', 'data-next-quantity', 'data-next-selected', 'data-next-shipping-id'],
+      childList: true,
+      subtree: true
+    });
+  }
+
+  private handlePackageIdChange(cardElement: HTMLElement): void {
+    const item = this.items.find(i => i.element === cardElement);
+    if (!item) {
+      // Card not registered yet, register it now
+      this.registerCard(cardElement);
+      return;
+    }
+    
+    const newPackageIdAttr = cardElement.getAttribute('data-next-package-id');
+    if (!newPackageIdAttr) {
+      this.logger.warn('Card package ID removed', cardElement);
+      return;
+    }
+    
+    const newPackageId = parseInt(newPackageIdAttr, 10);
+    const oldPackageId = item.packageId;
+    
+    if (newPackageId !== oldPackageId) {
+      // Update item properties
+      item.packageId = newPackageId;
+      item.quantity = parseInt(cardElement.getAttribute('data-next-quantity') || '1', 10);
+      item.shippingId = cardElement.getAttribute('data-next-shipping-id') || undefined;
+      
+      // Update package data (name, price)
+      this.updateItemPackageData(item);
+      
+      // If this was the selected item and we're in swap mode, update the cart
+      if (this.selectedItem === item && this.mode === 'swap') {
+        this.updateCart({ ...item, packageId: oldPackageId }, item).catch(error => {
+          this.logger.error('Failed to update cart after package ID change:', error);
+        });
+      }
+      
+      // Re-sync with cart to update UI states
+      this.syncWithCart(useCartStore.getState());
+      
+      this.logger.debug('Package ID changed on selector card:', {
+        oldPackageId,
+        newPackageId,
+        isSelected: this.selectedItem === item
+      });
+    }
+  }
+  
+  private updateItemPackageData(item: SelectorItem): void {
+    try {
+      const campaignState = useCampaignStore.getState();
+      const packageData = campaignState.getPackage(item.packageId);
+      
+      if (packageData) {
+        item.price = packageData.price ? parseFloat(packageData.price) : item.price;
+        item.name = packageData.name || item.name;
+      } else {
+        // Fallback to extracting from DOM
+        item.price = ElementDataExtractor.extractPrice(item.element);
+        item.name = ElementDataExtractor.extractName(item.element) || `Package ${item.packageId}`;
+      }
+    } catch (error) {
+      this.logger.debug('Failed to update package data:', error);
+    }
+  }
+  
+  private handleCardRemoval(element: HTMLElement): void {
+    // Check if this element or any of its children were selector cards
+    const cardsToRemove: HTMLElement[] = [];
+    
+    if (element.hasAttribute('data-next-selector-card')) {
+      cardsToRemove.push(element);
+    }
+    
+    const childCards = element.querySelectorAll('[data-next-selector-card]');
+    childCards.forEach((card) => {
+      if (card instanceof HTMLElement) {
+        cardsToRemove.push(card);
+      }
+    });
+    
+    cardsToRemove.forEach((cardElement) => {
+      const itemIndex = this.items.findIndex(item => item.element === cardElement);
+      if (itemIndex !== -1) {
+        const removedItem = this.items[itemIndex];
+        
+        // Remove click handler
+        const handler = this.clickHandlers.get(cardElement);
+        if (handler) {
+          cardElement.removeEventListener('click', handler);
+          this.clickHandlers.delete(cardElement);
+        }
+        
+        // Remove from items array
+        this.items.splice(itemIndex, 1);
+        
+        // If this was the selected item, clear selection
+        if (this.selectedItem === removedItem) {
+          this.selectedItem = null;
+          this.element.removeAttribute('data-selected-package');
+        }
+        
+        this.logger.debug('Removed selector card:', {
+          packageId: removedItem?.packageId
+        });
+      }
+    });
+  }
 
   private async handleCardClick(event: Event, item: SelectorItem): Promise<void> {
     event.preventDefault();
@@ -321,6 +505,12 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
       element.removeEventListener('click', handler);
     });
     this.clickHandlers.clear();
+    
+    // Stop mutation observer
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
+      this.mutationObserver = null;
+    }
   }
 
   public override destroy(): void {

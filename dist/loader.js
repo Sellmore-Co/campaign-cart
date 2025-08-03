@@ -1,6 +1,6 @@
 /**
- * Campaign Cart SDK Loaderv v0.2.0
- * Simplified loader that matches existing setup
+ * Campaign Cart SDK Loader
+ * Version is controlled by SDK_VERSION constant below
  */
 (function() {
   // Initialize globals (safe to call multiple times)
@@ -12,25 +12,31 @@
   const isDebug = qs.get('debug') === 'true';
   
   // Configuration
+  const SDK_VERSION = '0.2.0'; // Update this with each release
   const DEV_HOST = 'http://localhost:3000';
-  const PROD_HOST = 'https://campaign-cart-v2.pages.dev';
+  const PROD_HOST = `https://cdn.jsdelivr.net/gh/sellmore-co/campaign-cart@v${SDK_VERSION}/dist`;
   const DEV_ENTRY_PATH = '/src/index.ts';
   const PROD_ENTRY_PATH = '/index.es.js';
   const sdkUrl = isDebug ? DEV_HOST + DEV_ENTRY_PATH : PROD_HOST + PROD_ENTRY_PATH;
   
   // Load config
   if (isDebug) {
-    // Dev mode - try both .ts and .js
-    const configScript = document.createElement('script');
-    configScript.type = 'module';
-    configScript.src = DEV_HOST + '/src/config.ts';
-    configScript.onerror = () => {
-      // Fallback to .js if .ts fails
-      const jsConfig = document.createElement('script');
-      jsConfig.src = DEV_HOST + '/src/config.js';
-      document.head.appendChild(jsConfig);
-    };
-    document.head.appendChild(configScript);
+    // Dev mode - check if window.nextConfig already exists
+    if (!window.nextConfig) {
+      // Only load local config if no config is provided on the page
+      const configScript = document.createElement('script');
+      configScript.type = 'module';
+      configScript.src = DEV_HOST + '/src/config.ts';
+      configScript.onerror = () => {
+        // Fallback to .js if .ts fails
+        const jsConfig = document.createElement('script');
+        jsConfig.src = DEV_HOST + '/src/config.js';
+        document.head.appendChild(jsConfig);
+      };
+      document.head.appendChild(configScript);
+    } else {
+      console.log('Using page-provided nextConfig in debug mode');
+    }
   } else {
     // Production - check for config
     if (!window.nextConfig) {
@@ -87,18 +93,18 @@
             .then(m => m.useCampaignStore.getState())
         };
         
-        console.log('🚀 Next Commerce Campaign-Cart SDKv v0.2.0 — DEV build loaded');
-        console.log(\`⚡ Load time: \${loadTime.toFixed(2)}ms\`);
-        console.log('💡 Try nextDebug.cartStore() or nextDebug.orderStore()');
+        console.log(\`Next Commerce Campaign-Cart SDK v\${SDK_VERSION} — DEV build loaded\`);
+        console.log(\`Load time: \${loadTime.toFixed(2)}ms\`);
+        console.log('Try nextDebug.cartStore() or nextDebug.orderStore()');
       } else {
-        console.log('🚀 Next Commerce Campaign-Cart SDKv v0.2.0 — Production loaded');
+        console.log(\`Next Commerce Campaign-Cart SDK v\${SDK_VERSION} — Production loaded\`);
       }
       
       // Emit ready event
       window.dispatchEvent(new CustomEvent('next:ready', {
         detail: {
           loadTime,
-          version: '0.2.0',
+          version: SDK_VERSION,
           mode: ${isDebug} ? 'development' : 'production'
         }
       }));
@@ -114,11 +120,11 @@
         const fallback = document.createElement('script');
         fallback.src = '${PROD_HOST}/index.umd.js';
         fallback.onload = function() {
-          console.log('🚀 Next Commerce Campaign-Cart SDKv v0.2.0 — UMD fallback loaded');
+          console.log(\`Next Commerce Campaign-Cart SDK v\${SDK_VERSION} — UMD fallback loaded\`);
           window.dispatchEvent(new CustomEvent('next:ready', {
             detail: {
               fallback: true,
-              version: '0.2.0'
+              version: SDK_VERSION
             }
           }));
         };
@@ -137,11 +143,11 @@
     script.src = '${PROD_HOST}/index.umd.js';
     script.async = true;
     script.onload = function() {
-      console.log('🚀 Next Commerce Campaign-Cart SDKv v0.2.0 — Legacy browser support');
+      console.log('Next Commerce Campaign-Cart SDK v' + SDK_VERSION + ' — Legacy browser support');
       window.dispatchEvent(new CustomEvent('next:ready', {
         detail: {
           fallback: true,
-          version: '0.2.0',
+          version: SDK_VERSION,
           legacy: true
         }
       }));

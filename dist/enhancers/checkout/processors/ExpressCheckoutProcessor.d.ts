@@ -4,11 +4,14 @@ import { CartItem } from '../../../types/global';
 
 export declare class ExpressCheckoutProcessor {
     private logger;
-    private addClassCallback;
-    private removeClassCallback;
+    private showLoadingCallback;
+    private hideLoadingCallback;
     private emitCallback;
     private orderManager;
-    constructor(logger: Logger, addClassCallback: (className: string) => void, removeClassCallback: (className: string) => void, emitCallback: (event: string, data: any) => void, orderManager: OrderManager);
-    handleExpressCheckout(method: string, cartItems: CartItem[], isCartEmpty: boolean, resetCart: () => void): Promise<void>;
+    constructor(logger: Logger, showLoadingCallback: () => void, hideLoadingCallback: (immediate?: boolean) => void, emitCallback: (event: string, data: any) => void, orderManager: OrderManager);
+    handleExpressCheckout(method: string, cartItems: CartItem[], isCartEmpty: boolean, _resetCart: () => void): Promise<void>;
+    private displayPayPalError;
+    private displayExpressPaymentError;
+    private displayGeneralPaymentError;
 }
 //# sourceMappingURL=ExpressCheckoutProcessor.d.ts.map

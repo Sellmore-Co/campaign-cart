@@ -7,6 +7,9 @@ import { subscribeWithSelector, persist } from 'zustand/middleware';
 import type { CartState, CartItem, CartTotals, DiscountDefinition, AppliedCoupon } from '@/types/global';
 import { sessionStorageManager, CART_STORAGE_KEY } from '@/utils/storage';
 import { EventBus } from '@/utils/events';
+import { createLogger } from '@/utils/logger';
+
+const logger = createLogger('CartStore');
 
 interface CartActions {
   addItem: (item: Partial<CartItem> & { isUpsell: boolean | undefined }) => Promise<void>;
@@ -103,7 +106,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
           
           // Console log for debugging upsell items
           if (item.isUpsell) {
-            console.log(`[CartStore] Adding upsell item:`, {
+            logger.debug(`Adding upsell item:`, {
               packageId: newItem.packageId,
               isUpsell: item.isUpsell,
               finalItemIsUpsell: newItem.is_upsell,
@@ -218,7 +221,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
 
       syncWithAPI: async () => {
         // TODO: Implement API sync
-        console.log('syncWithAPI not yet implemented');
+        logger.debug('syncWithAPI not yet implemented');
       },
 
       calculateTotals: async () => {

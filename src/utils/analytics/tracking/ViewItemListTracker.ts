@@ -175,7 +175,7 @@ export class ViewItemListTracker {
     dataLayer.push(event);
     this.trackedProducts.add(product.packageId);
 
-    logger.info('Tracked view_item:', product.packageId);
+    logger.debug('Tracked view_item:', product.packageId);
   }
 
   /**
@@ -247,7 +247,7 @@ export class ViewItemListTracker {
 
     dataLayer.push(event);
 
-    logger.info(`Tracked view_item_list with ${items.length} items`);
+    logger.debug(`Tracked view_item_list with ${items.length} items`);
   }
 
   /**

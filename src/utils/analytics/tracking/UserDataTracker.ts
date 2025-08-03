@@ -80,7 +80,7 @@ export class UserDataTracker {
     const event = dataLayer.formatUserDataEvent(userData);
     dataLayer.push(event);
 
-    logger.info('Tracked user data:', {
+    logger.debug('Tracked user data:', {
       hasUserId: !!userData.userId,
       hasEmail: !!userData.email,
       cartValue: userData.cartValue,

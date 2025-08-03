@@ -116,7 +116,7 @@ export class CustomAdapter extends ProviderAdapter {
         batch_info: {
           size: transformedEvents.length,
           timestamp: new Date().toISOString(),
-          source: 'campaign-cart'
+          source: 'next-campaign-cart'
         }
       };
 

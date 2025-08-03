@@ -1,5 +1,5 @@
 /**
- * Analyticsv v0.2.0 Configuration
+ * Analytics V2 Configuration
  * Default settings and provider configurations
  */
 

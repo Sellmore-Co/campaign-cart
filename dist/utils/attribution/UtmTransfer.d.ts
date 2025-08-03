@@ -50,10 +50,6 @@ export declare class UtmTransfer {
      */
     private observeNewLinks;
     /**
-     * Log message if debug is enabled
-     */
-    private log;
-    /**
      * Get current configuration
      */
     getConfig(): UtmTransferConfig;

@@ -460,6 +460,8 @@ export interface PaymentConfig {
             applePay?: boolean;
             googlePay?: boolean;
         };
+        requireValidation?: boolean;
+        requiredFields?: string[];
     };
 }
 export type CallbackType = 'beforeRender' | 'afterRender' | 'beforeCheckout' | 'afterCheckout' | 'beforeRedirect' | 'itemAdded' | 'itemRemoved' | 'cartCleared';

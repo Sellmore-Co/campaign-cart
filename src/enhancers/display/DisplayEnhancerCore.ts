@@ -19,6 +19,13 @@ export class DisplayFormatter {
     currency: 'USD'
   });
 
+  private static currencyFormatterNoZeroCents = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+
   private static numberFormatter = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2
@@ -32,7 +39,7 @@ export class DisplayFormatter {
     minute: '2-digit'
   });
 
-  static formatValue(value: any, format: FormatType = 'auto'): string {
+  static formatValue(value: any, format: FormatType = 'auto', options?: { hideZeroCents?: boolean }): string {
     return DisplayErrorBoundary.wrap(() => {
       if (value === null || value === undefined) {
         return '';
@@ -40,7 +47,7 @@ export class DisplayFormatter {
 
       switch (format) {
         case 'currency':
-          return this.formatCurrency(value);
+          return this.formatCurrency(value, options?.hideZeroCents);
         
         case 'number':
           return this.formatNumber(value);
@@ -59,7 +66,7 @@ export class DisplayFormatter {
         
         case 'auto':
         default:
-          return this.formatAuto(value);
+          return this.formatAuto(value, options);
       }
     }, '', {
       operation: 'formatValue',
@@ -68,12 +75,17 @@ export class DisplayFormatter {
     });
   }
 
-  static formatCurrency(value: any): string {
+  static formatCurrency(value: any, hideZeroCents?: boolean): string {
     // Check if already formatted
     if (typeof value === 'string' && value.includes('$')) {
       return value; // Already formatted, return as-is
     }
     const numValue = DisplayValueValidator.validateCurrency(value);
+    
+    // Use appropriate formatter based on hideZeroCents option
+    if (hideZeroCents) {
+      return this.currencyFormatterNoZeroCents.format(numValue);
+    }
     return this.currencyFormatter.format(numValue);
   }
 
@@ -111,7 +123,7 @@ export class DisplayFormatter {
     return `${Math.round(numValue)}%`;
   }
 
-  static formatAuto(value: any): string {
+  static formatAuto(value: any, options?: { hideZeroCents?: boolean }): string {
     // Auto-detect format based on value characteristics
     if (typeof value === 'boolean') {
       return this.formatBoolean(value);
@@ -126,7 +138,7 @@ export class DisplayFormatter {
       // If it has exactly 2 decimal places, it's likely a price
       const valueStr = value.toString();
       if (valueStr.includes('.') && valueStr.split('.')[1]?.length === 2) {
-        return this.formatCurrency(value);
+        return this.formatCurrency(value, options?.hideZeroCents);
       }
       
       // If it's a whole number between 0-100, might be percentage
@@ -152,7 +164,7 @@ export class DisplayFormatter {
         // Only format if it has decimal places (likely a price)
         const valueStr = numValue.toString();
         if (valueStr.includes('.') && valueStr.split('.')[1]?.length === 2) {
-          return this.formatCurrency(numValue);
+          return this.formatCurrency(numValue, options?.hideZeroCents);
         }
         return this.formatNumber(numValue);
       }
@@ -237,6 +249,7 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
   protected formatType: FormatType = 'auto';
   protected hideIfZero: boolean = false;
   protected hideIfFalse: boolean = false;
+  protected hideZeroCents: boolean = false;
   protected divideBy?: number;
   protected multiplyBy?: number;
   protected lastValue?: any;
@@ -273,6 +286,7 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
     
     this.hideIfZero = this.getAttribute('data-hide-if-zero') === 'true';
     this.hideIfFalse = this.getAttribute('data-hide-if-false') === 'true';
+    this.hideZeroCents = this.getAttribute('data-hide-zero-cents') === 'true';
     
     const divideBy = this.getAttribute('data-divide-by');
     if (divideBy) this.divideBy = parseFloat(divideBy);
@@ -501,7 +515,9 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
         effectiveFormatType = 'percentage';
       }
       
-      const formattedValue = DisplayFormatter.formatValue(rawValue, effectiveFormatType);
+      const formattedValue = DisplayFormatter.formatValue(rawValue, effectiveFormatType, {
+        hideZeroCents: this.hideZeroCents
+      });
       
       // Add debug information to element in development mode
       if (this.debugMode) {

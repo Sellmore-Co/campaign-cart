@@ -62,6 +62,7 @@ export declare const DISPLAY_ATTRIBUTES: {
     readonly FORMAT: "data-format";
     readonly HIDE_IF_ZERO: "data-hide-if-zero";
     readonly HIDE_IF_FALSE: "data-hide-if-false";
+    readonly HIDE_ZERO_CENTS: "data-hide-zero-cents";
     readonly DIVIDE_BY: "data-divide-by";
     readonly MULTIPLY_BY: "data-multiply-by";
     readonly SELECTOR_ID: "data-next-selector-id";

@@ -1,5 +1,5 @@
 /**
- * Analyticsv v0.2.0 Tracking Module
+ * Analytics V2 Tracking Module
  * Export all tracking components
  */
 export { ListAttributionTracker } from './ListAttributionTracker';

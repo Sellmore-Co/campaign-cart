@@ -1,4 +1,4 @@
-# Next Analyticsv v0.2.0
+# Next Analytics v2
 
 A clean, Elevar-inspired analytics system for Next Campaign Cart SDK.
 
@@ -69,7 +69,7 @@ window.NextDataLayerTransformFn = (event) => {
 
 ### Basic Tracking
 ```javascript
-import { nextAnalytics } from '@/utils/analytics/';
+import { nextAnalytics } from '@/utils/analytics/v2';
 
 // Track add to cart
 nextAnalytics.trackAddToCart('PRODUCT_ID', 1);
@@ -83,7 +83,7 @@ nextAnalytics.trackPurchase({
 
 ### Manual Event Creation
 ```javascript
-import { EcommerceEvents } from '@/utils/analytics/';
+import { EcommerceEvents } from '@/utils/analytics/v2';
 
 // Create and track custom event
 const event = EcommerceEvents.createAddToCartEvent({

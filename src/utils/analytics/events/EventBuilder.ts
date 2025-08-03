@@ -136,7 +136,7 @@ export class EventBuilder {
       debug_mode: false, // Can be controlled via config
       session_id: this.getSessionId(),
       sequence_number: this.getNextSequenceNumber(),
-      source: 'campaign-cart',
+      source: 'next-campaign-cart',
       version: '0.2.0'
     };
   }

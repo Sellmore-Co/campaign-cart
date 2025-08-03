@@ -1,5 +1,5 @@
 /**
- * Pending Events Handler for Analyticsv v0.2.0
+ * Pending Events Handler for Analytics v2
  * 
  * Manages analytics events that need to be fired after page redirects.
  * This is crucial for purchase events that happen right before redirects.
@@ -10,9 +10,9 @@ import { dataLayer } from '../DataLayerManager';
 import type { DataLayerEvent } from '../types';
 
 const logger = createLogger('PendingEventsHandler');
-const STORAGE_KEY = 'next_pending_events';
+const STORAGE_KEY = 'next_v2_pending_events';
 
-export interface PendingNextEvent {
+export interface PendingEventV2 {
   event: DataLayerEvent;
   timestamp: number;
   id: string;
@@ -36,7 +36,7 @@ export class PendingEventsHandler {
   public queueEvent(event: DataLayerEvent): void {
     try {
       const pending = this.getPendingEvents();
-      const pendingEvent: PendingNextEvent = {
+      const pendingEvent: PendingEventV2 = {
         event,
         timestamp: Date.now(),
         id: `${event.event}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -54,7 +54,7 @@ export class PendingEventsHandler {
   /**
    * Get all pending events
    */
-  private getPendingEvents(): PendingNextEvent[] {
+  private getPendingEvents(): PendingEventV2[] {
     try {
       const data = sessionStorage.getItem(STORAGE_KEY);
       if (!data) return [];

@@ -10,8 +10,9 @@ declare global {
  * Facebook Pixel adapter
  */
 export declare class FacebookAdapter extends ProviderAdapter {
+    private blockedEvents;
     private eventMapping;
-    constructor();
+    constructor(config?: any);
     /**
      * Track event - called by DataLayerManager
      */

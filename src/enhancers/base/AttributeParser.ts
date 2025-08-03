@@ -182,6 +182,12 @@ export class AttributeParser {
       types.push('tooltip');
     }
 
+    // Check for scroll hint enhancer
+    if (element.hasAttribute('data-next-component') && 
+        element.getAttribute('data-next-component') === 'scroll-hint') {
+      types.push('scroll-hint');
+    }
+
     // Remove duplicates (just in case)
     return [...new Set(types)];
   }

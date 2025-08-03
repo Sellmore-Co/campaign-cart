@@ -3,12 +3,8 @@ declare const config: {
     debug: boolean;
     paymentConfig: {
         expressCheckout: {
-            enabled: boolean;
-            methods: {
-                paypal: boolean;
-                applePay: boolean;
-                googlePay: boolean;
-            };
+            requireValidation: boolean;
+            requiredFields: string[];
         };
     };
     addressConfig: {

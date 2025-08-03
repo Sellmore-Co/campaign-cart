@@ -19,8 +19,19 @@ export class CartItemListEnhancer extends BaseEnhancer {
   public async initialize(): Promise<void> {
     this.validateElement();
 
-    // Get template from data attribute or use original content
-    this.template = this.getAttribute('data-item-template') || this.element.innerHTML.trim();
+    // Get template from template ID, selector, data attribute or use original content
+    const templateId = this.getAttribute('data-item-template-id');
+    const templateSelector = this.getAttribute('data-item-template-selector');
+    
+    if (templateId) {
+      const templateElement = document.getElementById(templateId);
+      this.template = templateElement?.innerHTML.trim() ?? '';
+    } else if (templateSelector) {
+      const templateElement = document.querySelector(templateSelector);
+      this.template = templateElement?.innerHTML.trim() ?? '';
+    } else {
+      this.template = this.getAttribute('data-item-template') || this.element.innerHTML.trim();
+    }
     
     // If template is empty or just comments, use default template
     if (!this.template || this.template.replace(/<!--[\s\S]*?-->/g, '').trim() === '') {

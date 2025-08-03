@@ -36,6 +36,7 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write src/**/*.ts",
     "type-check": "tsc --noEmit",
+    "validate:display": "ts-node scripts/validate-display-config.ts",
     "clean": "rimraf dist"
   },
   "dependencies": {
@@ -84,7 +85,7 @@
     "url": "https://github.com/29next/campaign-cart-v2.git"
   },
   "bugs": {
-    "url": "https://github.com/29next/campaign-cart-v2/issues"
+    "url": "https://github.com/29next/campaign-cart-v2/issue"
   },
   "homepage": "https://github.com/29next/campaign-cart-v2#readme"
 }

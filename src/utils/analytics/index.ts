@@ -1,5 +1,5 @@
 /**
- * Next Analytics v0.2.0 - Clean, Elevar-inspired analytics system
+ * Next Analytics v2 - Clean, Elevar-inspired analytics system
  * 
  * This is the main entry point for the analytics system.
  * It provides a simple API for tracking events following industry best practices.
@@ -124,10 +124,12 @@ export class NextAnalytics {
 
     // Facebook Pixel Adapter
     if (config.providers?.facebook?.enabled && config.providers.facebook.settings?.pixelId) {
-      const fbAdapter = new FacebookAdapter();
+      const fbAdapter = new FacebookAdapter(config.providers.facebook);
       this.providers.set('facebook', fbAdapter);
       dataLayer.addProvider(fbAdapter);
-      logger.info('Facebook Pixel adapter initialized');
+      logger.info('Facebook Pixel adapter initialized', {
+        blockedEvents: config.providers.facebook.blockedEvents || []
+      });
     }
 
     // RudderStack Adapter
