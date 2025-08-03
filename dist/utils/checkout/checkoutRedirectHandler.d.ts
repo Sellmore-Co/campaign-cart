@@ -1,5 +1,4 @@
 import { Logger } from '../logger';
-
 export declare class CheckoutRedirectHandler {
     private logger;
     constructor(logger: Logger);

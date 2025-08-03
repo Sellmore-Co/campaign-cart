@@ -1,6 +1,5 @@
 import { CountryService, CountryConfig } from '../countryService';
 import { Logger } from '../logger';
-
 export declare class CheckoutFormPopulator {
     private fields;
     private countryService;

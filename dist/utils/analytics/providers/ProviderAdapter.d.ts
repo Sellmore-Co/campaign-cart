@@ -1,5 +1,4 @@
 import { DataLayerEvent } from '../types';
-
 /**
  * Base adapter class for analytics providers
  */

@@ -12,7 +12,7 @@ import { useOrderStore } from '@/stores/orderStore';
 import { useAttributionStore } from '@/stores/attributionStore';
 import { AttributeScanner } from './AttributeScanner';
 import { NextCommerce } from '@/core/NextCommerce';
-import { debugOverlay } from '@/utils/debug/DebugOverlay';
+// Debug overlay imported dynamically when needed
 import { testModeManager } from '@/utils/testMode';
 import { EventBus } from '@/utils/events';
 import { ApiClient } from '@/api/client';
@@ -48,10 +48,8 @@ export class SDKInitializer {
       // Initialize analytics after campaign data is loaded
       await this.initializeAnalytics();
       
-      // Initialize Sentry error monitoring if configured
-      await this.initializeSentry();
       
-      // Initialize global error handler (works with or without Sentry)
+      // Initialize global error handler
       this.initializeErrorHandler();
 
       // Check if there's a ref_id parameter and load order if found
@@ -64,7 +62,7 @@ export class SDKInitializer {
       this.setupReadyCallbacks();
 
       // Initialize debug utilities if debug mode is enabled
-      this.initializeDebugMode();
+      await this.initializeDebugMode();
 
       this.initialized = true;
       this.retryAttempts = 0;
@@ -283,27 +281,6 @@ export class SDKInitializer {
     }, 0); // Run on next tick after SDK initialization completes
   }
   
-  private static async initializeSentry(): Promise<void> {
-    const configStore = useConfigStore.getState();
-    
-    // Only initialize if Sentry is configured
-    if (!configStore.monitoring?.sentry?.enabled) {
-      return;
-    }
-    
-    try {
-      this.logger.info('Initializing Sentry error monitoring...');
-      
-      // Dynamically import Sentry manager to avoid loading it if not configured
-      const { sentryManager } = await import('@/utils/monitoring/SentryManager');
-      await sentryManager.initialize(configStore);
-      
-      this.logger.debug('Sentry initialized successfully');
-    } catch (error) {
-      this.logger.warn('Sentry initialization failed (non-critical):', error);
-      // Don't throw - monitoring failure shouldn't break SDK initialization
-    }
-  }
   
   private static initializeErrorHandler(): void {
     try {
@@ -390,7 +367,7 @@ export class SDKInitializer {
     }
   }
 
-  private static initializeDebugMode(): void {
+  private static async initializeDebugMode(): Promise<void> {
     const configStore = useConfigStore.getState();
     
     if (configStore.debug) {
@@ -400,7 +377,8 @@ export class SDKInitializer {
       Logger.setLogLevel(LogLevel.DEBUG);
       this.logger.info('Logger level set to DEBUG');
       
-      // Initialize debug overlay
+      // Initialize debug overlay only in debug mode
+      const { debugOverlay } = await import('@/utils/debug/DebugOverlay');
       debugOverlay.initialize();
       
       // Initialize test mode manager
@@ -419,7 +397,7 @@ export class SDKInitializer {
     if (typeof window !== 'undefined') {
       // Add global debug utilities to window for console access
       (window as any).nextDebug = {
-        overlay: debugOverlay,
+        overlay: () => import('@/utils/debug/DebugOverlay').then(m => m.debugOverlay),
         testMode: testModeManager,
         stores: {
           cart: useCartStore,

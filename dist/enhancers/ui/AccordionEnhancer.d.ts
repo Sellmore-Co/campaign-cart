@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 export declare class AccordionEnhancer extends BaseEnhancer {
     static selector: string;
     private accordions;

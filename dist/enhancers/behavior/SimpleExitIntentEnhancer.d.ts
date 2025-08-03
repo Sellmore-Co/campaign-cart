@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 export declare class ExitIntentEnhancer extends BaseEnhancer {
     private isEnabled;
     private triggerCount;

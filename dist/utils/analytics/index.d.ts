@@ -1,6 +1,5 @@
 import { DataLayerEvent } from './types';
 import { CartItem, EnrichedCartLine } from '../../types/global';
-
 export declare class NextAnalytics {
     private static instance;
     private initialized;

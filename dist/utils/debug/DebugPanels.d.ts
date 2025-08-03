@@ -1,5 +1,4 @@
 import { DebugEvent } from './DebugEventManager';
-
 export interface DebugPanel {
     id: string;
     title: string;

@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 export declare class TimerEnhancer extends BaseEnhancer {
     private duration;
     private persistenceId;

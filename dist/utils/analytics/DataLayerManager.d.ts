@@ -1,5 +1,4 @@
 import { DataLayerEvent, DataLayerConfig, EventContext, DataLayerTransformFn, DebugOptions } from './types';
-
 declare global {
     interface Window {
         NextDataLayer: DataLayerEvent[];

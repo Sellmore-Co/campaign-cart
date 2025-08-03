@@ -14,7 +14,6 @@
 import { BaseActionEnhancer } from '@/enhancers/base/BaseActionEnhancer';
 import { useCartStore } from '@/stores/cartStore';
 import type { SelectorItem } from '@/types/global';
-import { sentryManager } from '@/utils/monitoring/SentryManager';
 import { preserveQueryParams } from '@/utils/url-utils';
 
 export class AddToCartEnhancer extends BaseActionEnhancer {
@@ -189,20 +188,7 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
     
     await this.executeAction(
       async () => {
-        await sentryManager.startSpan(
-          {
-            op: 'ui.click',
-            name: 'Add to Cart Button Click',
-            attributes: {
-              'button.package_id': this.packageId,
-              'button.selector_id': this.selectorId,
-              'button.quantity': this.quantity
-            }
-          },
-          async () => {
-            await this.addToCart();
-          }
-        );
+        await this.addToCart();
       },
       { showLoading: true, disableOnProcess: true }
     );

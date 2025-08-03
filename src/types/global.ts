@@ -298,20 +298,8 @@ export interface ConfigState {
     };
   };
   
-  // Error monitoring configuration
-  monitoring?: {
-    sentry?: {
-      enabled: boolean;
-      dsn: string;
-      environment?: string;
-      release?: string;
-      tracesSampleRate?: number;
-      tracePropagationTargets?: string[];
-      replaysSessionSampleRate?: number;
-      replaysOnErrorSampleRate?: number;
-      beforeSend?: (event: any) => any;
-    };
-  };
+  // Error monitoring configuration - removed
+  // Error tracking can be added externally via HTML/scripts
 }
 
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';

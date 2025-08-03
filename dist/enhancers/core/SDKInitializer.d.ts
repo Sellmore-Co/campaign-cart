@@ -1,5 +1,4 @@
 import { AttributeScanner } from './AttributeScanner';
-
 export declare class SDKInitializer {
     private static logger;
     private static initialized;
@@ -13,7 +12,6 @@ export declare class SDKInitializer {
     private static initializeAttribution;
     private static setupAttributionListeners;
     private static initializeAnalytics;
-    private static initializeSentry;
     private static initializeErrorHandler;
     private static checkAndLoadOrder;
     private static scanAndEnhanceDOM;

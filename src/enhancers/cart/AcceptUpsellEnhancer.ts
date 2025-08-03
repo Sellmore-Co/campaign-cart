@@ -19,7 +19,6 @@ import { GeneralModal } from '@/components/modals/GeneralModal';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import type { AddUpsellLine } from '@/types/api';
 import type { SelectorItem } from '@/types/global';
-import { sentryManager } from '@/utils/monitoring/SentryManager';
 
 export class AcceptUpsellEnhancer extends BaseActionEnhancer {
   private packageId?: number;
@@ -213,20 +212,7 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
     
     await this.executeAction(
       async () => {
-        await sentryManager.startSpan(
-          {
-            op: 'ui.click',
-            name: 'Accept Upsell Button Click',
-            attributes: {
-              'button.package_id': this.packageId,
-              'button.selector_id': this.selectorId,
-              'button.quantity': this.quantity
-            }
-          },
-          async () => {
-            await this.acceptUpsell();
-          }
-        );
+        await this.acceptUpsell();
       },
       { showLoading: false, disableOnProcess: true } // Use our own loading overlay
     );

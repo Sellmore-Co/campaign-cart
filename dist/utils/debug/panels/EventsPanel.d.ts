@@ -1,6 +1,5 @@
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
 import { DebugEvent } from '../DebugEventManager';
-
 export declare class EventsPanel implements DebugPanel {
     private events;
     id: string;

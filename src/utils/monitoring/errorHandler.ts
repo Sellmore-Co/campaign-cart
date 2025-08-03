@@ -1,5 +1,4 @@
 import { Logger } from '../logger';
-import { sentryManager } from './SentryManager';
 import { EventBus } from '../events';
 
 class GlobalErrorHandler {
@@ -79,8 +78,6 @@ class GlobalErrorHandler {
       // Log locally (this might trigger console.error, but we're protected by isHandlingError flag)
       this.logger.error('Captured error:', errorObj, enrichedContext);
       
-      // Send to Sentry
-      sentryManager.captureException(errorObj, enrichedContext);
       
       // Emit error event
       EventBus.getInstance().emit('error:occurred', {
@@ -93,17 +90,17 @@ class GlobalErrorHandler {
     }
   }
 
-  captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info'): void {
-    sentryManager.captureMessage(message, level);
+  captureMessage(_message: string, _level: 'info' | 'warning' | 'error' = 'info'): void {
+    // Error tracking removed - add externally via HTML/scripts if needed
   }
 
-  addBreadcrumb(breadcrumb: {
+  addBreadcrumb(_breadcrumb: {
     message: string;
     category?: string;
     level?: string;
     data?: Record<string, any>;
   }): void {
-    sentryManager.addBreadcrumb(breadcrumb);
+    // Error tracking removed - add externally via HTML/scripts if needed
   }
 }
 

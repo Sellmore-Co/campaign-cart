@@ -1,7 +1,6 @@
 import { Logger } from '../../utils/logger';
 import { EventBus } from '../../utils/events';
 import { EventMap } from '../../types/global';
-
 export declare abstract class BaseEnhancer {
     protected logger: Logger;
     protected eventBus: EventBus;

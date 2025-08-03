@@ -66,14 +66,4 @@ window.nextConfig = {
         }
       }
     },
-    monitoring: {
-      sentry: {
-        enabled: true,
-        dsn: "https://YOUR_SENTRY_DSN@sentry.io/YOUR_PROJECT_ID", // Replace with your actual Sentry DSN
-        environment: "development",
-        tracesSampleRate: 1.0, // 100% in dev, should be lower in production
-        replaysSessionSampleRate: 0.1,
-        replaysOnErrorSampleRate: 1.0
-      }
-    }
   };

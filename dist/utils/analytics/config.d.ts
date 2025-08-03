@@ -1,5 +1,4 @@
 import { DataLayerConfig, DebugOptions, AnalyticsProvider } from './types';
-
 /**
  * Default debug configuration
  */

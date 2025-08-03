@@ -1,5 +1,4 @@
 import { BaseEnhancer } from './BaseEnhancer';
-
 export declare abstract class BaseActionEnhancer extends BaseEnhancer {
     protected isProcessing: boolean;
     /**

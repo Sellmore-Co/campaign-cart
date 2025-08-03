@@ -1,5 +1,4 @@
 import { BaseDisplayEnhancer } from './DisplayEnhancerCore';
-
 export declare class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     private campaignState?;
     private packageId?;

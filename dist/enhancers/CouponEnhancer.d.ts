@@ -1,5 +1,4 @@
 import { BaseActionEnhancer } from './base/BaseActionEnhancer';
-
 export declare class CouponEnhancer extends BaseActionEnhancer {
     private input;
     private button;

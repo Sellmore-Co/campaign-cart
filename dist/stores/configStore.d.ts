@@ -1,5 +1,4 @@
 import { ConfigState } from '../types/global.js';
-
 interface ConfigActions {
     loadFromMeta: () => void;
     loadFromWindow: () => void;

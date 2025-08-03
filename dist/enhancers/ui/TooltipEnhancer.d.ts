@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 export interface TooltipConfig {
     placement?: 'top' | 'bottom' | 'left' | 'right';
     offset?: number;

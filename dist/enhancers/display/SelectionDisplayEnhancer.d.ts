@@ -1,5 +1,4 @@
 import { BaseDisplayEnhancer } from './DisplayEnhancerCore';
-
 export declare class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
     private selectorId?;
     private selectedItem;

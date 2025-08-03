@@ -1,5 +1,4 @@
 import { AttributionState } from '../../stores/attributionStore';
-
 export declare class AttributionCollector {
     /**
      * Collect attribution data from all available sources

@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private form;
     private apiClient;

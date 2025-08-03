@@ -1,6 +1,5 @@
 import { ProviderAdapter } from './ProviderAdapter';
 import { DataLayerEvent } from '../types';
-
 interface CustomAdapterConfig {
     endpoint?: string;
     headers?: Record<string, string>;

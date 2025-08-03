@@ -1,5 +1,4 @@
 import { DebugPanel } from './DebugPanels';
-
 export declare class EnhancedDebugUI {
     static createOverlayHTML(panels: DebugPanel[], activePanel: string, isExpanded: boolean, activePanelTab?: string): string;
     private static createBottomBar;

@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 export declare class CartItemListEnhancer extends BaseEnhancer {
     private template?;
     private emptyTemplate?;

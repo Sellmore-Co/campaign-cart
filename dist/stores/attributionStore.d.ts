@@ -1,5 +1,4 @@
 import { Attribution } from '../types/api';
-
 export interface AttributionMetadata {
     landing_page: string;
     referrer: string;

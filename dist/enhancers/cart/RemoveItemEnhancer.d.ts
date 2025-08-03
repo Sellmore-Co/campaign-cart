@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 export declare class RemoveItemEnhancer extends BaseEnhancer {
     private packageId;
     private confirmRemoval;

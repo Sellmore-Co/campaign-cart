@@ -78,16 +78,7 @@ const config = {
         }
       }
     },
-    // monitoring: {
-    //   sentry: {
-    //     enabled: false,
-    //     dsn: "https://603d3dac83e6726187873ecbdbd02b70@o4509606113902592.ingest.us.sentry.io/4509612409290752",
-    //     environment: "development", // Always development since this config only loads in debug mode
-    //     tracesSampleRate: 1.0, // 100% in dev
-    //     replaysSessionSampleRate: 0, // No general session replays
-    //     replaysOnErrorSampleRate: 1.0 // 100% replay on errors in dev
-    //   }
-    // },
+    // Error monitoring removed - add externally via HTML/scripts if needed,
     utmTransfer: {
       enabled: true,
       applyToExternalLinks: false,

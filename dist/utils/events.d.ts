@@ -1,5 +1,4 @@
 import { EventMap } from '../types/global';
-
 export declare class EventBus {
     private static instance;
     private listeners;

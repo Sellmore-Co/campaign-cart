@@ -1,6 +1,5 @@
 import { Logger } from '../../../utils/logger';
 import { CheckoutState } from '../../../stores/checkoutStore';
-
 export declare class BillingManager {
     private form;
     private billingFields;

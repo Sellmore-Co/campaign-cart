@@ -1,5 +1,4 @@
 import { BaseDisplayEnhancer } from './DisplayEnhancerCore';
-
 export declare class ShippingDisplayEnhancer extends BaseDisplayEnhancer {
     private shippingId?;
     private shippingMethod?;

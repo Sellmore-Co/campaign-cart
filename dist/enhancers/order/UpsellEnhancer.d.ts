@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 export declare class UpsellEnhancer extends BaseEnhancer {
     private static pageViewTracked;
     private static currentPagePath;

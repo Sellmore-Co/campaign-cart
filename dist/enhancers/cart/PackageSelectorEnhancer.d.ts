@@ -1,6 +1,5 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
 import { SelectorItem } from '../../types/global';
-
 export declare class PackageSelectorEnhancer extends BaseEnhancer {
     private selectorId;
     private mode;

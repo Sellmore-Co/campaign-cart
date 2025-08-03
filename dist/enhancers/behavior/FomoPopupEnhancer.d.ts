@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 interface FomoItem {
     text: string;
     image: string;

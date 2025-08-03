@@ -1,6 +1,5 @@
 import { DebugEventManager } from './DebugEventManager';
 import { DebugPanel } from './panels';
-
 export declare class DebugOverlay {
     private static instance;
     private visible;

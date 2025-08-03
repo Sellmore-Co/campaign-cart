@@ -1,6 +1,5 @@
 import { ProviderAdapter } from './ProviderAdapter';
 import { DataLayerEvent } from '../types';
-
 declare global {
     interface Window {
         fbq: (command: string, event: string, parameters?: any) => void;

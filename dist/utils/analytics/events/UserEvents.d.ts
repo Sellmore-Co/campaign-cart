@@ -1,5 +1,4 @@
 import { DataLayerEvent, UserProperties } from '../types';
-
 export declare class UserEvents {
     /**
      * Create base user data event

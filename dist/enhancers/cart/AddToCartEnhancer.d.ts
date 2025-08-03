@@ -1,5 +1,4 @@
 import { BaseActionEnhancer } from '../base/BaseActionEnhancer';
-
 export declare class AddToCartEnhancer extends BaseActionEnhancer {
     private packageId?;
     private quantity;

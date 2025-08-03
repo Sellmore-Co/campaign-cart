@@ -1,5 +1,4 @@
 import { DataLayerEvent } from '../types';
-
 export interface PendingEventV2 {
     event: DataLayerEvent;
     timestamp: number;

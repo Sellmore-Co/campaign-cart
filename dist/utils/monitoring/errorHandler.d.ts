@@ -4,8 +4,8 @@ declare class GlobalErrorHandler {
     private isHandlingError;
     initialize(): void;
     handleError(error: Error | any, context?: Record<string, any>): void;
-    captureMessage(message: string, level?: 'info' | 'warning' | 'error'): void;
-    addBreadcrumb(breadcrumb: {
+    captureMessage(_message: string, _level?: 'info' | 'warning' | 'error'): void;
+    addBreadcrumb(_breadcrumb: {
         message: string;
         category?: string;
         level?: string;

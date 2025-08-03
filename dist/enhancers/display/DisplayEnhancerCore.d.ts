@@ -1,6 +1,5 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
 import { FormatType } from './DisplayEnhancerTypes';
-
 export declare class DisplayFormatter {
     private static currencyFormatter;
     private static currencyFormatterNoZeroCents;

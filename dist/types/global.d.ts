@@ -431,19 +431,6 @@ export interface ConfigState {
             };
         };
     };
-    monitoring?: {
-        sentry?: {
-            enabled: boolean;
-            dsn: string;
-            environment?: string;
-            release?: string;
-            tracesSampleRate?: number;
-            tracePropagationTargets?: string[];
-            replaysSessionSampleRate?: number;
-            replaysOnErrorSampleRate?: number;
-            beforeSend?: (event: any) => any;
-        };
-    };
 }
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
 export interface PaymentConfig {

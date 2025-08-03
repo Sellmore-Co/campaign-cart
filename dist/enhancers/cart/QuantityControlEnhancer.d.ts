@@ -1,6 +1,5 @@
 import { BaseCartEnhancer } from '../base/BaseCartEnhancer';
 import { CartState } from '../../types/global';
-
 export declare class QuantityControlEnhancer extends BaseCartEnhancer {
     private action;
     private packageId;

@@ -1,6 +1,5 @@
 import { Logger } from '../../../utils/logger';
 import { CartState } from '../../../types/global';
-
 export declare class UIService {
     private form;
     private fields;

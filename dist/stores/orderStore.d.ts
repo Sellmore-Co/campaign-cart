@@ -1,5 +1,4 @@
 import { Order, AddUpsellLine } from '../types/api';
-
 export interface OrderState {
     order: Order | null;
     refId: string | null;

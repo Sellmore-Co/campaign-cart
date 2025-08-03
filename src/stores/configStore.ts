@@ -58,8 +58,7 @@ const initialState: ConfigState = {
   // Tracking configuration
   tracking: 'auto', // 'auto', 'manual', 'disabled'
   
-  // Monitoring configuration (not set by default)
-  // monitoring: undefined - omitted,
+  // Error monitoring removed - add externally via HTML/scripts
 };
 
 export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
@@ -172,10 +171,7 @@ export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
       updates.analytics = windowConfig.analytics;
     }
     
-    // Load monitoring configuration (including Sentry)
-    if (windowConfig.monitoring && typeof windowConfig.monitoring === 'object') {
-      updates.monitoring = windowConfig.monitoring;
-    }
+    // Monitoring configuration removed - add error tracking externally via HTML/scripts
     
     // Load UTM transfer configuration
     if (windowConfig.utmTransfer && typeof windowConfig.utmTransfer === 'object') {

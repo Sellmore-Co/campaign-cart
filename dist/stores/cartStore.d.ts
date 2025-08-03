@@ -1,5 +1,4 @@
 import { CartState, CartItem, CartTotals, DiscountDefinition, AppliedCoupon } from '../types/global';
-
 interface CartActions {
     addItem: (item: Partial<CartItem> & {
         isUpsell: boolean | undefined;

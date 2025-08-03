@@ -1,5 +1,4 @@
 import { CartItem, Package, SelectorItem } from '../types/global';
-
 /**
  * Type guard for checking if a value is a valid non-null string
  */

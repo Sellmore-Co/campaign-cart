@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 export declare class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
     private buttonsContainer?;
     private buttonInstances;

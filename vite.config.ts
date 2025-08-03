@@ -1,6 +1,7 @@
 import { defineConfig, build } from 'vite';
 import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig({
   plugins: [
@@ -9,11 +10,74 @@ export default defineConfig({
       exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
       insertTypesEntry: true,
     }),
+    // Bundle analyzer - only enabled when --analyze flag is passed
+    process.env.ANALYZE && visualizer({
+      filename: 'dist/stats.html',
+      open: true,
+      gzipSize: true,
+      brotliSize: true,
+      template: 'treemap', // or 'sunburst', 'network', 'raw-data', 'list'
+    }),
     {
-      name: 'build-css-bundle',
+      name: 'build-umd-and-css',
       async closeBundle() {
-        // Build CSS bundle separately
+        // Build UMD bundle separately (without code splitting)
         const { build } = await import('vite');
+        await build({
+          configFile: false,
+          resolve: {
+            alias: {
+              '@': resolve(__dirname, 'src'),
+              '@/types': resolve(__dirname, 'src/types'),
+              '@/utils': resolve(__dirname, 'src/utils'),
+              '@/stores': resolve(__dirname, 'src/stores'),
+              '@/enhancers': resolve(__dirname, 'src/enhancers'),
+              '@/api': resolve(__dirname, 'src/api'),
+              '@/core': resolve(__dirname, 'src/core'),
+            },
+          },
+          build: {
+            outDir: 'dist',
+            emptyOutDir: false,
+            lib: {
+              entry: resolve(__dirname, 'src/index.ts'),
+              name: 'NextCommerce',
+              formats: ['umd'],
+              fileName: () => 'index.umd.js',
+            },
+            rollupOptions: {
+              external: [/src\/config/],
+              output: {
+                globals: {},
+                inlineDynamicImports: true, // Required for UMD with dynamic imports
+              },
+            },
+            minify: 'terser',
+            terserOptions: {
+              compress: {
+                drop_console: true,
+                drop_debugger: true,
+                pure_funcs: ['console.log', 'console.info', 'console.warn', 'console.debug'],
+              },
+              format: {
+                comments: false,
+              },
+              mangle: {
+                safari10: true,
+              },
+            },
+            sourcemap: false,
+            target: 'es2020',
+          },
+          define: {
+            __VERSION__: JSON.stringify(process.env.npm_package_version || '0.2.0'),
+            'process.env.NODE_ENV': '"production"',
+            'process.env': '{}',
+            global: 'globalThis',
+          },
+        });
+        
+        // Build CSS bundle separately
         await build({
           configFile: false,
           build: {
@@ -46,7 +110,7 @@ export default defineConfig({
         }
       }
     }
-  ],
+  ].filter(Boolean),
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),

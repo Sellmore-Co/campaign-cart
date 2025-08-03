@@ -1,5 +1,4 @@
 import { DebugPanel } from '../DebugPanels';
-
 export declare class EventTimelinePanel implements DebugPanel {
     id: string;
     title: string;

@@ -1,6 +1,5 @@
 import { BaseDisplayEnhancer } from './DisplayEnhancerCore';
 import { CartState } from '../../types/global';
-
 export declare class CartDisplayEnhancer extends BaseDisplayEnhancer {
     private cartState?;
     protected setupStoreSubscriptions(): void;

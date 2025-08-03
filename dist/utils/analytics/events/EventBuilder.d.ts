@@ -1,5 +1,4 @@
 import { DataLayerEvent, UserProperties, EventContext, EcommerceItem } from '../types';
-
 interface MinimalCartItem {
     id?: string | number;
     packageId?: string | number;

@@ -1,7 +1,6 @@
 import { Country, CountryConfig } from '../../../utils/countryService';
 import { Logger } from '../../../utils/logger';
 import { AddressFields } from '../types';
-
 interface AddressComponent {
     types: string[];
     long_name: string;

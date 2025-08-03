@@ -1,7 +1,6 @@
 import { Logger } from '../../../utils/logger';
 import { OrderManager } from '../managers/OrderManager';
 import { CartItem } from '../../../types/global';
-
 export declare class ExpressCheckoutProcessor {
     private logger;
     private showLoadingCallback;

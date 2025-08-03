@@ -1,6 +1,5 @@
 import { CreditCardService } from './CreditCardService';
 import { Logger } from '../../../utils/logger';
-
 declare global {
     interface Window {
         intlTelInput: any;

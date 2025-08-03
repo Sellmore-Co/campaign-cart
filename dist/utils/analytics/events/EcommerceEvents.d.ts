@@ -1,6 +1,5 @@
 import { DataLayerEvent } from '../types';
 import { CartItem, EnrichedCartLine } from '../../../types/global';
-
 export declare class EcommerceEvents {
     /**
      * Create view_item_list event with impressions array

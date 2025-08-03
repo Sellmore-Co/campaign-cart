@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 export declare class CartToggleEnhancer extends BaseEnhancer {
     private packageId?;
     private quantity;

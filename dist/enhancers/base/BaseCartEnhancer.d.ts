@@ -1,6 +1,5 @@
 import { BaseEnhancer } from './BaseEnhancer';
 import { CartState, CartItem } from '../../types/global';
-
 export declare abstract class BaseCartEnhancer extends BaseEnhancer {
     protected cartState?: CartState;
     /**

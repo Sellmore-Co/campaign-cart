@@ -1,5 +1,4 @@
 import { CartTotals, Campaign, CallbackType, CallbackData, EventMap, AppliedCoupon, DiscountDefinition } from '../types/global';
-
 export declare class NextCommerce {
     private static instance;
     private logger;

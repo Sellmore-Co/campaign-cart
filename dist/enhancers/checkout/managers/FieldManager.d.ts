@@ -1,5 +1,4 @@
 import { Logger } from '../../../utils/logger';
-
 export declare class FieldManager {
     private form;
     private logger;

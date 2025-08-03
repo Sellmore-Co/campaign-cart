@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 export interface ProspectCartConfig {
     autoCreate?: boolean;
     triggerOn?: 'formStart' | 'emailEntry' | 'manual';

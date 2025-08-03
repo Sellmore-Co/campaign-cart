@@ -1,5 +1,4 @@
 import { Campaign, Package } from '../types/global';
-
 interface CampaignState {
     data: Campaign | null;
     packages: Package[];

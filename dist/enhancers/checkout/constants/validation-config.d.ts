@@ -1,5 +1,4 @@
 import { isValidEmail, isValidPhone } from '../utils/validation-utils';
-
 export interface CreditCardValidationPattern {
     regex?: RegExp;
     minLength?: number;

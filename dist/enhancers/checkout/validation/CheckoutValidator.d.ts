@@ -1,7 +1,6 @@
 import { CountryConfig } from '../../../utils/countryService';
 import { Logger } from '../../../utils/logger';
 import { CreditCardService } from '../services/CreditCardService';
-
 export declare const VALIDATION_PATTERNS: {
     readonly EMAIL: RegExp;
     readonly PHONE: RegExp;

@@ -1,6 +1,5 @@
 import { ApiClient } from '../../../api/client';
 import { Logger } from '../../../utils/logger';
-
 export declare class OrderManager {
     private apiClient;
     private logger;

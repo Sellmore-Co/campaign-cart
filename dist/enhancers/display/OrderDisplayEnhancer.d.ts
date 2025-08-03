@@ -1,5 +1,4 @@
 import { BaseDisplayEnhancer } from './DisplayEnhancerCore';
-
 export declare class OrderDisplayEnhancer extends BaseDisplayEnhancer {
     private apiClient?;
     private orderState;

@@ -1,5 +1,4 @@
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
-
 export declare class ConfigPanel implements DebugPanel {
     id: string;
     title: string;

@@ -1,7 +1,6 @@
 import { ApiClient } from '../../api/client';
 import { CheckoutRedirectHandler } from '../../utils/checkout/checkoutRedirectHandler';
 import { Logger } from '../../utils/logger';
-
 export declare class CheckoutOrderManager {
     private apiClient;
     private redirectHandler;

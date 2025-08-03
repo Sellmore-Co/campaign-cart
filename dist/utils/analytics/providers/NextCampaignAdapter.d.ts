@@ -1,6 +1,5 @@
 import { ProviderAdapter } from './ProviderAdapter';
 import { DataLayerEvent } from '../types';
-
 declare global {
     interface Window {
         nextCampaign: {

@@ -9,7 +9,6 @@ import { useConfigStore } from '@/stores/configStore';
 import { ApiClient } from '@/api/client';
 import { CountryService, type Country, type CountryConfig } from '@/utils/countryService';
 import type { CartState } from '@/types/global';
-import { sentryManager } from '@/utils/monitoring/SentryManager';
 import { CreditCardService, type CreditCardData } from './services/CreditCardService';
 import { CheckoutValidator } from './validation/CheckoutValidator';
 import { UIService } from './services/UIService';
@@ -2292,18 +2291,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const checkoutStore = useCheckoutStore.getState();
     const cartStore = useCartStore.getState();
     
-    await sentryManager.startSpan(
-      {
-        op: 'ui.click',
-        name: 'Checkout Form Submit',
-        attributes: {
-          'checkout.payment_method': checkoutStore.paymentMethod,
-          'cart.item_count': cartStore.items.length,
-          'cart.total_value': cartStore.total,
-          'checkout.same_as_shipping': checkoutStore.sameAsShipping
-        }
-      },
-      async (span) => {
         try {
           checkoutStore.clearAllErrors();
           checkoutStore.setProcessing(true);
@@ -2405,8 +2392,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           }
           
           if (!validation.isValid) {
-            span?.setAttribute('validation.passed', false);
-            span?.setAttribute('validation.error_count', Object.keys(validation.errors || {}).length);
             
             // Log validation errors for debugging
             this.logger.warn('Validation failed', {
@@ -2475,7 +2460,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             return;
           }
           
-          span?.setAttribute('validation.passed', true);
+          // span?.setAttribute('validation.passed', true);
           
           this.emit('checkout:started', {
             formData: checkoutStore.formData,
@@ -2503,7 +2488,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           
           // Only credit card payments go through the regular flow
           if (checkoutStore.paymentMethod === 'credit-card' || checkoutStore.paymentMethod === 'card_token') {
-            span?.setAttribute('payment.type', 'credit_card');
+            // span?.setAttribute('payment.type', 'credit_card');
             
             if (this.creditCardService?.ready) {
               const cardData: CreditCardData = {
@@ -2512,7 +2497,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
                 year: checkoutStore.formData['cc-year'] || checkoutStore.formData['exp-year'] || ''
               };
               await this.creditCardService.tokenizeCard(cardData);
-              span?.setAttribute('payment.tokenization_started', true);
+              // span?.setAttribute('payment.tokenization_started', true);
               return;
             } else {
               throw new Error('Credit card payment system is not ready. Please refresh the page and try again.');
@@ -2520,13 +2505,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           }
           
           // This should not be reached for express payments
-          span?.setAttribute('payment.type', checkoutStore.paymentMethod || 'unknown');
+          // span?.setAttribute('payment.type', checkoutStore.paymentMethod || 'unknown');
           await this.processOrder();
           
         } catch (error) {
-          span?.setAttribute('error', true);
-          span?.setAttribute('error.type', (error as Error).name);
-          span?.setAttribute('error.message', (error as Error).message);
+          // span?.setAttribute('error', true);
+          // span?.setAttribute('error.type', (error as Error).name);
+          // span?.setAttribute('error.message', (error as Error).message);
           
           this.handleError(error, 'handleFormSubmit');
           checkoutStore.setError('general', 'Failed to process order. Please try again.');
@@ -2534,8 +2519,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           checkoutStore.setProcessing(false);
           this.loadingOverlay.hide(true); // Hide immediately on error
         }
-      }
-    );
   }
 
   private async processOrder(): Promise<void> {

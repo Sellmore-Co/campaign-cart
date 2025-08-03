@@ -1,5 +1,4 @@
 import { Logger } from '../../../utils/logger';
-
 export declare class TestOrderManager {
     private logger;
     private emitCallback;

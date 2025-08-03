@@ -1,5 +1,4 @@
 import { Campaign, Cart, Order, CartBase, CreateOrder, AddUpsellLine } from '../types/api';
-
 export declare class ApiClient {
     private baseURL;
     private apiKey;

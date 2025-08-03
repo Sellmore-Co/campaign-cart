@@ -1,5 +1,4 @@
 import { EventSchema } from '../schemas';
-
 export interface ValidationResult {
     valid: boolean;
     errors: string[];

@@ -1,5 +1,4 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
-
 export declare class ConditionalDisplayEnhancer extends BaseEnhancer {
     private condition;
     private showCondition;

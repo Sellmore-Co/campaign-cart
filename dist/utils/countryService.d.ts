@@ -1,5 +1,4 @@
 import { AddressConfig } from '../types/global';
-
 export interface CountryConfig {
     stateLabel: string;
     stateRequired: boolean;
