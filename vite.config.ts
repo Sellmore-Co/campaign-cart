@@ -190,9 +190,6 @@ export default defineConfig({
       external: [
         // More specific external configuration
         /src\/config\.ts$/,
-        // Don't bundle peer dependencies
-        /^react($|\/)/,
-        /^react-dom($|\/)/,
       ],
       
       output: {
