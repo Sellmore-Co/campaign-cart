@@ -14,7 +14,21 @@
   // Configuration
   const SDK_VERSION = '0.2.0'; // Update this with each release
   const DEV_HOST = 'http://localhost:3000';
-  const PROD_HOST = `https://cdn.jsdelivr.net/gh/sellmore-co/campaign-cart@v${SDK_VERSION}/dist`;
+  
+  // Auto-detect the host from the loader's own URL
+  const loaderScript = document.currentScript || document.querySelector('script[src*="loader.js"]');
+  const loaderUrl = loaderScript?.src || '';
+  
+  // Extract the base path from loader URL (everything before /loader.js)
+  let PROD_HOST;
+  if (loaderUrl.includes('jsdelivr.net')) {
+    // We're loaded from jsDelivr - use the same path as the loader
+    PROD_HOST = loaderUrl.substring(0, loaderUrl.lastIndexOf('/loader.js'));
+  } else {
+    // Fallback to versioned URL
+    PROD_HOST = `https://cdn.jsdelivr.net/gh/sellmore-co/campaign-cart@v${SDK_VERSION}/dist`;
+  }
+  
   const DEV_ENTRY_PATH = '/src/index.ts';
   const PROD_ENTRY_PATH = '/index.js';
   const sdkUrl = isDebug ? DEV_HOST + DEV_ENTRY_PATH : PROD_HOST + PROD_ENTRY_PATH;
