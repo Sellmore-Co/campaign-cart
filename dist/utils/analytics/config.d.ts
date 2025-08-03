@@ -1,15 +1,6 @@
 import { DataLayerConfig, DebugOptions, AnalyticsProvider } from './types';
-/**
- * Default debug configuration
- */
 export declare const DEFAULT_DEBUG_CONFIG: DebugOptions;
-/**
- * Default analytics configuration
- */
 export declare const DEFAULT_CONFIG: DataLayerConfig;
-/**
- * Provider settings structure
- */
 export declare const PROVIDER_SETTINGS: {
     readonly GA4: {
         readonly name: "Google Analytics 4";
@@ -32,9 +23,6 @@ export declare const PROVIDER_SETTINGS: {
         readonly optionalConfig: readonly ["cdnURL", "integrations"];
     };
 };
-/**
- * Event validation rules
- */
 export declare const EVENT_VALIDATION_RULES: {
     required: string[];
     eventSpecific: {
@@ -59,18 +47,12 @@ export declare const EVENT_VALIDATION_RULES: {
         'ecommerce.discount': string;
     };
 };
-/**
- * Local storage keys
- */
 export declare const STORAGE_KEYS: {
     readonly DEBUG_MODE: "nextDataLayer_debugMode";
     readonly SESSION_ID: "nextDataLayer_sessionId";
     readonly SESSION_START: "nextDataLayer_sessionStart";
     readonly USER_PROPERTIES: "nextDataLayer_userProperties";
 };
-/**
- * Analytics event names (following GA4 conventions)
- */
 export declare const ANALYTICS_EVENTS: {
     readonly VIEW_ITEM: "view_item";
     readonly VIEW_ITEM_LIST: "view_item_list";
@@ -90,12 +72,6 @@ export declare const ANALYTICS_EVENTS: {
     readonly SHARE: "share";
     readonly CUSTOM: "custom_event";
 };
-/**
- * Get provider configuration by name
- */
 export declare function getProviderConfig(providerName: keyof typeof PROVIDER_SETTINGS): typeof PROVIDER_SETTINGS[keyof typeof PROVIDER_SETTINGS];
-/**
- * Validate provider configuration
- */
 export declare function validateProviderConfig(provider: AnalyticsProvider, settings: typeof PROVIDER_SETTINGS[keyof typeof PROVIDER_SETTINGS]): boolean;
 //# sourceMappingURL=config.d.ts.map

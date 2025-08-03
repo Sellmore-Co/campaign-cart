@@ -1,6 +1,3 @@
-/**
- * DOM selector constants for checkout form elements
- */
 export declare const FIELD_SELECTORS: readonly ["[data-next-checkout-field]", "[os-checkout-field]"];
 export declare const PAYMENT_BUTTON_SELECTORS: readonly ["[data-next-checkout-payment]", "[os-checkout-payment]"];
 export declare const BILLING_FIELD_SELECTORS: readonly ["[os-checkout-field^=\"billing-\"]", "[data-next-checkout-field^=\"billing-\"]"];

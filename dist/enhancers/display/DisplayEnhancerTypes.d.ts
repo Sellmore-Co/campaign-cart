@@ -1,29 +1,3 @@
-/**
- * Display Enhancer Types and Constants
- * Consolidated type definitions and constants for all display enhancers
- *
- * DISPLAY FORMATTING PIPELINE:
- *
- * 1. Property Mapping (PROPERTY_MAPPINGS):
- *    - Maps display properties to data paths
- *    - Indicates if values are pre-formatted with { preformatted: true }
- *    - Example: cart.total -> { path: 'totals.total.formatted', preformatted: true }
- *
- * 2. Format Detection (PROPERTY_FORMAT_REGISTRY + getDefaultFormatType):
- *    - Explicit format registry for properties that need formatting
- *    - Fallback to name-based detection for unmapped properties
- *    - Only applies to raw values, not pre-formatted ones
- *
- * 3. Value Formatting (DisplayFormatter):
- *    - Pre-formatted values bypass formatting entirely
- *    - Raw values are formatted based on detected format type
- *    - Validation is applied during formatting
- *
- * BEST PRACTICES:
- * - Cart/Order data: Use pre-formatted values from store (e.g., cart.total)
- * - Package data: Use raw values that need formatting (e.g., package.price)
- * - For calculations: Use .raw suffix to get numeric values (e.g., cart.total.raw)
- */
 export type FormatType = 'currency' | 'number' | 'boolean' | 'date' | 'percentage' | 'text' | 'auto';
 export interface DisplayProperty {
     path: string;
@@ -91,30 +65,11 @@ export interface PropertyConfig {
 }
 type PropertyMap = Record<string, string | PropertyConfig | boolean>;
 export declare const PROPERTY_MAPPINGS: Record<string, PropertyMap>;
-/**
- * Get property configuration for a given object type and property name
- * This is the single source of truth for property mappings
- */
 export declare function getPropertyConfig(objectType: keyof typeof PROPERTY_MAPPINGS, propertyName: string): PropertyConfig | null;
-/**
- * Get property mapping path (for backward compatibility)
- */
 export declare function getPropertyMapping(objectType: keyof typeof PROPERTY_MAPPINGS, propertyName: string): string | undefined;
-/**
- * Check if a property name is a raw value accessor
- */
 export declare function isRawValueProperty(propertyName: string): boolean;
-/**
- * Check if a property name is a formatted value accessor
- */
 export declare function isFormattedValueProperty(propertyName: string): boolean;
-/**
- * Get base property name without .raw or .formatted suffix
- */
 export declare function getBasePropertyName(propertyName: string): string;
-/**
- * Check if expression evaluation is enabled for an object type
- */
 export declare function supportsExpressions(objectType: keyof typeof PROPERTY_MAPPINGS): boolean;
 export {};
 //# sourceMappingURL=DisplayEnhancerTypes.d.ts.map

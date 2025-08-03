@@ -1,7 +1,3 @@
-/**
- * X-Ray Styles Configuration
- * Structured system for visualizing data-next attributes
- */
 export interface XrayAttributeConfig {
     selector: string;
     color: string;

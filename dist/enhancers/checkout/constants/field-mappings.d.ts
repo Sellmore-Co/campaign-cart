@@ -1,6 +1,3 @@
-/**
- * Field mapping constants for checkout form
- */
 export declare const COMMON_FIELD_PATTERNS: readonly [{
     readonly pattern: RegExp;
     readonly key: "country";

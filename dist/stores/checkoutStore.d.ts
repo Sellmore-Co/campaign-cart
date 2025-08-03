@@ -1,6 +1,3 @@
-/**
- * Checkout Store - Zustand store for checkout flow state management
- */
 export interface CheckoutState {
     step: number;
     isProcessing: boolean;

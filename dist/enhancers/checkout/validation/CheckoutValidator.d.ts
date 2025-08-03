@@ -30,22 +30,10 @@ export declare class CheckoutValidator {
     private rules;
     private errors;
     constructor(logger: Logger, countryService: any, phoneInputManager?: any);
-    /**
-     * Set credit card service for payment validation
-     */
     setCreditCardService(creditCardService: CreditCardService): void;
-    /**
-     * Set custom phone validator function
-     */
     setPhoneValidator(validator: (phoneNumber: string, type?: 'shipping' | 'billing') => boolean): void;
     private initializeValidationRules;
-    /**
-     * Validate a single field based on its rules
-     */
     validateField(name: string, value: any, context?: any): ValidationResult;
-    /**
-     * Validate entire form including billing address if needed
-     */
     validateForm(formData: Record<string, any>, countryConfigs: Map<string, CountryConfig>, currentCountryConfig?: CountryConfig, includePayment?: boolean, billingAddress?: any, sameAsShipping?: boolean): Promise<FormValidationResult>;
     private applyRule;
     isValidEmail(email: string): boolean;

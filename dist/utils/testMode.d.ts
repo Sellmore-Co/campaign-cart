@@ -1,7 +1,3 @@
-/**
- * Test Mode Utilities
- * Handles test mode features including Konami code and test card numbers
- */
 export interface TestCard {
     number: string;
     name: string;

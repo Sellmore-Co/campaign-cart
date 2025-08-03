@@ -11,9 +11,6 @@ export declare class OrderManager {
     createTestOrder(cartItems: any[]): Promise<any>;
     handleOrderRedirect(order: any): void;
     handleTokenizedPayment(token: string, pmData: any, createOrderCallback: () => Promise<any>): Promise<void>;
-    /**
-     * Get order status for debugging
-     */
     getOrderStatus(refId: string): Promise<any>;
 }
 //# sourceMappingURL=OrderManager.d.ts.map

@@ -18,17 +18,8 @@ export declare class DisplayFormatter {
     }): string;
 }
 export declare class PropertyResolver {
-    /**
-     * Safely gets nested property value from an object
-     */
     static getNestedProperty(obj: any, path: string): any;
-    /**
-     * Checks if a property path exists in an object
-     */
     static hasProperty(obj: any, path: string): boolean;
-    /**
-     * Gets property with fallback values
-     */
     static getPropertyWithFallbacks(obj: any, paths: string[]): any;
 }
 export declare abstract class BaseDisplayEnhancer extends BaseEnhancer {
@@ -43,16 +34,7 @@ export declare abstract class BaseDisplayEnhancer extends BaseEnhancer {
     protected lastValue?: any;
     private debugMode;
     initialize(): Promise<void>;
-    /**
-     * Parses display-related attributes from the element
-     * Note: Subclasses should NOT override unless they need custom parsing logic
-     * (e.g., SelectionDisplayEnhancer extracts selector ID from path)
-     */
     protected parseDisplayAttributes(): void;
-    /**
-     * Determines the default format type based on property name
-     * This enables smart formatting for common property patterns
-     */
     protected getDefaultFormatType(property: string): FormatType;
     protected abstract setupStoreSubscriptions(): void;
     protected abstract getPropertyValue(): any;

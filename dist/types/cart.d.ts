@@ -1,6 +1,3 @@
-/**
- * Cart-specific type definitions
- */
 export interface CartItem {
     id: number;
     packageId: number;

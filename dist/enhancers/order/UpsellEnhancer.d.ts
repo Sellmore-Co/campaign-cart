@@ -28,11 +28,6 @@ export declare class UpsellEnhancer extends BaseEnhancer {
     private handleActionClick;
     private addUpsellToOrder;
     private skipUpsell;
-    /**
-     * Navigate to a URL, preserving ref_id and debug parameters
-     * @param url - The URL to navigate to
-     * @param refId - Optional ref_id to preserve (defaults to current order ref_id)
-     */
     private navigateToUrl;
     private handleOrderUpdate;
     private updateUpsellDisplay;

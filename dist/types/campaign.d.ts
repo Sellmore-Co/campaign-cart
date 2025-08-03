@@ -1,6 +1,3 @@
-/**
- * Campaign-specific type definitions
- */
 export interface Campaign {
     currency: string;
     language: string;

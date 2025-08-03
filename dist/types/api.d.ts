@@ -1,6 +1,3 @@
-/**
- * API type definitions based on 29Next Campaigns API schema
- */
 export interface Campaign {
     currency: string;
     language: string;

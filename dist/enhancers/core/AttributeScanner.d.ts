@@ -1,17 +1,3 @@
-/**
- * Attribute Scanner
- * Scans DOM for data attributes and instantiates appropriate enhancers
- *
- * Memory Management:
- * - Uses WeakMap for automatic garbage collection of enhancers
- * - Elements removed from DOM will have their enhancers cleaned up automatically
- * - Tracks enhancer count separately since WeakMap doesn't support .size
- *
- * Performance:
- * - Batch processing with yield between batches
- * - Debounced queue processing
- * - DOM observation for dynamic content
- */
 export declare class AttributeScanner {
     private logger;
     private enhancers;

@@ -1,7 +1,3 @@
-/**
- * Attribute Parser
- * Parses and validates data attributes for enhancers
- */
 export interface ParsedAttribute {
     raw: string | null;
     parsed: any;

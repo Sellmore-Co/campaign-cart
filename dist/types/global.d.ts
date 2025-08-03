@@ -1,6 +1,3 @@
-/**
- * Global type definitions for the SDK
- */
 export interface EventMap {
     'cart:updated': CartState;
     'cart:item-added': {

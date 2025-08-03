@@ -1,7 +1,3 @@
-/**
- * Debug Panel Components
- * Centralized exports for all debug panel components
- */
 export { CartPanel } from './CartPanel';
 export { EventsPanel } from './EventsPanel';
 export { EventTimelinePanel } from './EventTimelinePanel';

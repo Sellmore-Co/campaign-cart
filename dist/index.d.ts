@@ -1,13 +1,3 @@
-/**
- * 29Next Campaign Cart SDK v2
- *
- * Modern TypeScript SDK for seamless e-commerce integration via data attributes.
- * Provides progressive enhancement without disrupting existing HTML/CSS.
- *
- * @version 0.2.0
- * @author NextCommerce
- * @license MIT
- */
 export { NextCommerce } from './core/NextCommerce';
 export { SDKInitializer } from './enhancers/core/SDKInitializer';
 export { useCartStore } from './stores/cartStore';

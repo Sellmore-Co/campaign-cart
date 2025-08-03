@@ -1,7 +1,3 @@
-/**
- * Credit Card Service - Consolidated credit card processing
- * Handles Spreedly integration, validation, and tokenization
- */
 declare global {
     interface Window {
         Spreedly: any;
@@ -47,24 +43,12 @@ export declare class CreditCardService {
     private monthField?;
     private yearField?;
     constructor(environmentKey: string);
-    /**
-     * Initialize the credit card service
-     */
     initialize(): Promise<void>;
-    /**
-     * Tokenize credit card data
-     */
     tokenizeCard(cardData: CreditCardData): Promise<string>;
-    /**
-     * Validate credit card form data
-     */
     validateCreditCard(cardData: CreditCardData): {
         isValid: boolean;
         errors?: Record<string, string>;
     };
-    /**
-     * Check if Spreedly fields are ready for validation
-     */
     checkSpreedlyFieldsReady(): {
         hasEmptyFields: boolean;
         errors: Array<{
@@ -72,28 +56,13 @@ export declare class CreditCardService {
             message: string;
         }>;
     };
-    /**
-     * Clear all credit card errors
-     */
     clearAllErrors(): void;
-    /**
-     * Clear credit card fields
-     */
     clearFields(): void;
     private hidePaymentErrorContainers;
-    /**
-     * Set callbacks
-     */
     setOnReady(callback: () => void): void;
     setOnError(callback: (errors: string[]) => void): void;
     setOnToken(callback: (token: string, pmData: any) => void): void;
-    /**
-     * Check if service is ready
-     */
     get ready(): boolean;
-    /**
-     * Focus a specific Spreedly field
-     */
     focusField(field: 'number' | 'cvv'): void;
     private initializeValidationState;
     private findCreditCardFields;

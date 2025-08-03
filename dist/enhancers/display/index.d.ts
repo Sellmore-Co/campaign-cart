@@ -1,7 +1,3 @@
-/**
- * Display Formatting System Exports
- * Central export point for all display formatting enhancements
- */
 export { BaseDisplayEnhancer, DisplayFormatter, PropertyResolver } from './DisplayEnhancerCore';
 export { ProductDisplayEnhancer } from './ProductDisplayEnhancer';
 export { CartDisplayEnhancer } from './CartDisplayEnhancer';

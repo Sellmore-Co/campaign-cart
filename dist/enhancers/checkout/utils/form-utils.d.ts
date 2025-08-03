@@ -1,6 +1,3 @@
-/**
- * Consolidated Form Utilities - Field finding, error display, and form management
- */
 export interface FieldSearchOptions {
     container?: HTMLElement;
     includeDisabled?: boolean;

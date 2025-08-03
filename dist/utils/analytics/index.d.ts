@@ -11,41 +11,14 @@ export declare class NextAnalytics {
     private autoListener;
     private constructor();
     static getInstance(): NextAnalytics;
-    /**
-     * Initialize the analytics system
-     */
     initialize(): Promise<void>;
-    /**
-     * Initialize analytics providers
-     */
     private initializeProviders;
-    /**
-     * Initialize automatic tracking features
-     */
     private initializeAutoTracking;
-    /**
-     * Track an event
-     */
     track(event: DataLayerEvent): void;
-    /**
-     * Enable/disable debug mode
-     */
     setDebugMode(enabled: boolean): void;
-    /**
-     * Set transform function for events
-     */
     setTransformFunction(fn: (event: DataLayerEvent) => DataLayerEvent | null): void;
-    /**
-     * Handle route changes (for SPAs)
-     */
     invalidateContext(): void;
-    /**
-     * Get analytics status
-     */
     getStatus(): any;
-    /**
-     * Convenience methods for common events
-     */
     trackViewItemList(items: (CartItem | EnrichedCartLine | any)[], listId?: string, listName?: string): void;
     trackViewItem(item: CartItem | EnrichedCartLine | any): void;
     trackAddToCart(item: CartItem | EnrichedCartLine | any, listId?: string, listName?: string): void;

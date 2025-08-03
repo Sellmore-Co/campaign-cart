@@ -1,6 +1,3 @@
-/**
- * Storage utilities for persistent state management
- */
 export interface StorageOptions {
     key: string;
     storage?: Storage;
@@ -23,9 +20,6 @@ export declare class StorageManager {
 }
 export declare const sessionStorageManager: StorageManager;
 export declare const localStorageManager: StorageManager;
-/**
- * Zustand persistence middleware helper
- */
 export declare const createStoragePersist: <T>(storageManager: StorageManager, key: string, partialize?: (state: T) => Partial<T>) => {
     name: string;
     storage: {
@@ -34,30 +28,18 @@ export declare const createStoragePersist: <T>(storageManager: StorageManager, k
         removeItem: (name: string) => void;
     };
 };
-/**
- * Cart-specific storage helpers - KEEP EXACT SAME EXPORTS
- */
 export declare const CART_STORAGE_KEY = "next-cart-state";
 export declare const CONFIG_STORAGE_KEY = "next-config-state";
 export declare const CAMPAIGN_STORAGE_KEY = "next-campaign-cache";
-/**
- * Timer persistence helpers
- */
 export declare const TIMER_STORAGE_PREFIX = "next-timer-";
 export declare const getTimerKey: (persistenceId: string) => string;
 export declare const saveTimerState: (persistenceId: string, endTime: number) => void;
 export declare const loadTimerState: (persistenceId: string) => number | null;
 export declare const clearTimerState: (persistenceId: string) => void;
-/**
- * Storage quota helpers
- */
 export declare const getStorageQuota: () => Promise<{
     quota: number;
     usage: number;
 } | null>;
-/**
- * Storage event listener for cross-tab synchronization
- */
 export declare const onStorageChange: (callback: (event: {
     key: string;
     oldValue: any;

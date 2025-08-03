@@ -1,7 +1,3 @@
-/**
- * Debug Event Manager
- * Handles event capture and logging for debug overlay
- */
 export interface DebugEvent {
     timestamp: Date;
     type: string;

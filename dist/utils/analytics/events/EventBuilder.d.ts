@@ -33,59 +33,23 @@ interface MinimalCartItem {
     };
 }
 export declare class EventBuilder {
-    /**
-     * Create base event with standard properties
-     */
     static createEvent(eventName: string, eventData?: Partial<DataLayerEvent>): DataLayerEvent;
-    /**
-     * Generate unique event ID
-     */
     private static generateEventId;
-    /**
-     * Get user properties from stores
-     */
     static getUserProperties(): UserProperties;
-    /**
-     * Get event context (page info, session, etc.)
-     */
     static getEventContext(): EventContext;
-    /**
-     * Get event metadata
-     */
     private static getEventMetadata;
-    /**
-     * Get or create session ID
-     */
     static getSessionId(): string;
-    /**
-     * Get next sequence number for event ordering
-     */
     private static getNextSequenceNumber;
-    /**
-     * Get currency from campaign store
-     */
     static getCurrency(): string;
-    /**
-     * Format cart item to ecommerce item
-     */
     static formatEcommerceItem(item: MinimalCartItem, index?: number, list?: {
         id?: string;
         name?: string;
     }): EcommerceItem;
-    /**
-     * Get list attribution from sessionStorage
-     */
     static getListAttribution(): {
         id?: string;
         name?: string;
     } | undefined;
-    /**
-     * Set list attribution in sessionStorage
-     */
     static setListAttribution(listId?: string, listName?: string): void;
-    /**
-     * Clear list attribution
-     */
     static clearListAttribution(): void;
 }
 export {};

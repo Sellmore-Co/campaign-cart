@@ -16,7 +16,7 @@
   const DEV_HOST = 'http://localhost:3000';
   const PROD_HOST = `https://cdn.jsdelivr.net/gh/sellmore-co/campaign-cart@v${SDK_VERSION}/dist`;
   const DEV_ENTRY_PATH = '/src/index.ts';
-  const PROD_ENTRY_PATH = '/index.es.js';
+  const PROD_ENTRY_PATH = '/index.js';
   const sdkUrl = isDebug ? DEV_HOST + DEV_ENTRY_PATH : PROD_HOST + PROD_ENTRY_PATH;
   
   // Load config

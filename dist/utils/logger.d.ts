@@ -1,6 +1,3 @@
-/**
- * Logger utility with different log levels and debugging support
- */
 export declare enum LogLevel {
     ERROR = 0,
     WARN = 1,

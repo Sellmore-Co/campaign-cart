@@ -1,10 +1,3 @@
-/**
- * Analytics V2 Types
- * Core type definitions for the analytics system
- */
-/**
- * Base event structure for all analytics events
- */
 export interface DataLayerEvent {
     event: string;
     event_id?: string;
@@ -24,9 +17,6 @@ export interface DataLayerEvent {
     upsell?: UpsellData;
     [key: string]: any;
 }
-/**
- * User properties matching Elevar's structure
- */
 export interface UserProperties {
     visitor_type?: 'guest' | 'customer' | 'returning_customer';
     customer_id?: string;
@@ -45,9 +35,6 @@ export interface UserProperties {
     customer_total_spent?: number;
     [key: string]: any;
 }
-/**
- * Ecommerce data types
- */
 export interface EcommerceData {
     currency?: string;
     value?: number;
@@ -79,9 +66,6 @@ export interface EcommerceItem {
     item_list_id?: string;
     item_list_name?: string;
 }
-/**
- * Event context for enrichment
- */
 export interface EventContext {
     page_location?: string;
     page_title?: string;
@@ -92,9 +76,6 @@ export interface EventContext {
     session_id?: string;
     timestamp?: number;
 }
-/**
- * Event metadata added by the system
- */
 export interface EventMetadata {
     pushed_at: number;
     debug_mode?: boolean;
@@ -103,9 +84,6 @@ export interface EventMetadata {
     source?: string;
     version?: string;
 }
-/**
- * Upsell event data
- */
 export interface UpsellData {
     package_id: string;
     package_name: string;
@@ -114,9 +92,6 @@ export interface UpsellData {
     value?: number;
     currency?: string;
 }
-/**
- * Upsell events
- */
 export interface UpsellViewedEvent extends DataLayerEvent {
     event: 'dl_viewed_upsell';
     order_id: string;
@@ -132,13 +107,7 @@ export interface UpsellSkippedEvent extends DataLayerEvent {
     order_id: string;
     upsell: Pick<UpsellData, 'package_id' | 'package_name'>;
 }
-/**
- * Transform function type (like ElevarTransformFn)
- */
 export type DataLayerTransformFn = (event: DataLayerEvent) => DataLayerEvent | null;
-/**
- * Analytics provider configuration
- */
 export interface AnalyticsProvider {
     name: string;
     enabled: boolean;
@@ -146,13 +115,7 @@ export interface AnalyticsProvider {
     initialize?: () => Promise<void>;
     trackEvent?: (event: DataLayerEvent) => void;
 }
-/**
- * Analytics event type (alias for DataLayerEvent)
- */
 export type AnalyticsEvent = DataLayerEvent;
-/**
- * Analytics configuration
- */
 export interface AnalyticsConfig {
     enabled: boolean;
     debug?: boolean;
@@ -191,9 +154,6 @@ export interface AnalyticsConfig {
         };
     };
 }
-/**
- * Tracking item interface
- */
 export interface TrackingItem {
     id: string;
     name: string;
@@ -204,15 +164,9 @@ export interface TrackingItem {
     brand?: string;
     [key: string]: any;
 }
-/**
- * Ecommerce event interface
- */
 export interface EcommerceEvent extends DataLayerEvent {
     ecommerce: EcommerceData;
 }
-/**
- * Debug mode options
- */
 export interface DebugOptions {
     enabled: boolean;
     verbose?: boolean;
@@ -220,9 +174,6 @@ export interface DebugOptions {
     logErrors?: boolean;
     persistInLocalStorage?: boolean;
 }
-/**
- * Data Layer configuration
- */
 export interface DataLayerConfig {
     debug?: DebugOptions;
     providers?: (AnalyticsProvider | any)[];
