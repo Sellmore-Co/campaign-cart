@@ -60,7 +60,7 @@ export class QuantityTextEnhancer extends BaseEnhancer {
   
   private setupQuantityListeners(): void {
     // Listen for quantity change events
-    this.eventBus.on('upsell:quantity-changed', (data: { selectorId: string; quantity: number; packageId?: number }) => {
+    this.eventBus.on('upsell:quantity-changed', (data) => {
       // Check if this quantity change is relevant to us
       if (this.quantitySelectorId && data.selectorId === this.quantitySelectorId) {
         this.currentQuantity = data.quantity;
@@ -121,7 +121,7 @@ export class QuantityTextEnhancer extends BaseEnhancer {
     let text = this.template;
     
     // Find all {qty} patterns and their variations
-    text = text.replace(/\{qty([*+\-]?\d*)\}/g, (match, operation) => {
+    text = text.replace(/\{qty([*+\-]?\d*)\}/g, (_match, operation) => {
       let result = this.currentQuantity;
       
       if (operation) {
@@ -146,7 +146,7 @@ export class QuantityTextEnhancer extends BaseEnhancer {
     
     // Handle singular/plural forms
     // Format: {singular|plural} will choose based on quantity
-    text = text.replace(/\{([^|]+)\|([^}]+)\}/g, (match, singular, plural) => {
+    text = text.replace(/\{([^|]+)\|([^}]+)\}/g, (_match, singular, plural) => {
       return this.currentQuantity === 1 ? singular : plural;
     });
     
@@ -158,7 +158,7 @@ export class QuantityTextEnhancer extends BaseEnhancer {
     this.updateText();
   }
   
-  public destroy(): void {
+  public override destroy(): void {
     super.destroy();
   }
 }

@@ -134,7 +134,7 @@ export class UpsellEnhancer extends BaseEnhancer {
     // Campaign updates are handled by ProductDisplayEnhancer for any display elements
     
     // Listen for quantity changes from other containers
-    this.eventBus.on('upsell:quantity-changed', (data: { selectorId?: string; quantity: number; packageId?: number }) => {
+    this.eventBus.on('upsell:quantity-changed', (data) => {
       // Match by selector ID if both have one, otherwise match by package ID
       const shouldSync = (this.selectorId && data.selectorId === this.selectorId) ||
                         (!this.selectorId && !data.selectorId && this.packageId && data.packageId === this.packageId);
@@ -155,7 +155,7 @@ export class UpsellEnhancer extends BaseEnhancer {
     
     // Listen for option selection changes from other containers
     // This handles both the main selector and any nested selectors
-    this.eventBus.on('upsell:option-selected', (data: { selectorId: string; packageId: number }) => {
+    this.eventBus.on('upsell:option-selected', (data) => {
       // Check if this event is for a selector within our container or a matching selector elsewhere
       const ourSelectors = this.element.querySelectorAll('[data-next-selector-id]');
       let shouldUpdate = false;

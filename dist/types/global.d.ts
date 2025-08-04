@@ -89,6 +89,15 @@ export interface EventMap {
         selectorId: string;
         packageId: number;
     };
+    'upsell:quantity-changed': {
+        selectorId?: string | undefined;
+        quantity: number;
+        packageId?: number | undefined;
+    };
+    'upsell:option-selected': {
+        selectorId: string;
+        packageId: number;
+    };
     'message:displayed': {
         message: string;
         type: string;
@@ -371,6 +380,7 @@ export interface ConfigState {
     campaignId: string;
     debug: boolean;
     pageType: PageType;
+    storeName?: string;
     spreedlyEnvironmentKey?: string | undefined;
     paymentConfig: PaymentConfig;
     googleMapsConfig: GoogleMapsConfig;
@@ -416,6 +426,7 @@ export interface ConfigState {
                     accessToken?: string;
                     testEventCode?: string;
                 };
+                blockedEvents?: string[];
             };
             custom: {
                 enabled: boolean;

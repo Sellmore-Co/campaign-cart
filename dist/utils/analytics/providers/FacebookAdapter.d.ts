@@ -7,6 +7,7 @@ declare global {
 }
 export declare class FacebookAdapter extends ProviderAdapter {
     private blockedEvents;
+    private storeName?;
     private eventMapping;
     constructor(config?: any);
     trackEvent(event: DataLayerEvent): void;

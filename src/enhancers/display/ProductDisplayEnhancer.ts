@@ -69,7 +69,7 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     if (!this.multiplyByQuantity) return;
     
     // Listen for quantity change events from UpsellEnhancer
-    this.eventBus.on('upsell:quantity-changed', (data: { selectorId: string; quantity: number; packageId?: number }) => {
+    this.eventBus.on('upsell:quantity-changed', (data) => {
       // Check if this quantity change is relevant to us
       if (this.quantitySelectorId && data.selectorId === this.quantitySelectorId) {
         this.currentQuantity = data.quantity;

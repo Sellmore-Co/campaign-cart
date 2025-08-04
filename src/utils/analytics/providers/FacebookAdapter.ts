@@ -146,8 +146,10 @@ export class FacebookAdapter extends ProviderAdapter {
           const orderIdentifier = parameters.order_number || parameters.order_id;
           if (orderIdentifier) {
             const eventId = `${this.storeName}-${orderIdentifier}`;
-            window.fbq('track', fbEventName, parameters, { event_id: eventId });
-            this.debug(`Event sent to Facebook: ${fbEventName} with event_id: ${eventId}`, parameters);
+            // Include event_id in the parameters object
+            const paramsWithEventId = { ...parameters, event_id: eventId };
+            window.fbq('track', fbEventName, paramsWithEventId);
+            this.debug(`Event sent to Facebook: ${fbEventName} with event_id: ${eventId}`, paramsWithEventId);
           } else {
             window.fbq('track', fbEventName, parameters);
             this.debug(`Event sent to Facebook: ${fbEventName} (no order identifier for event_id)`, parameters);

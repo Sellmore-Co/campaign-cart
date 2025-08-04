@@ -34,6 +34,8 @@ export interface EventMap {
   // Upsell Events
   'upsell:accepted': { packageId: number; quantity: number; orderId: string; value?: number };
   'upsell-selector:item-selected': { selectorId: string; packageId: number };
+  'upsell:quantity-changed': { selectorId?: string | undefined; quantity: number; packageId?: number | undefined };
+  'upsell:option-selected': { selectorId: string; packageId: number };
   
   // Message Events
   'message:displayed': { message: string; type: string };

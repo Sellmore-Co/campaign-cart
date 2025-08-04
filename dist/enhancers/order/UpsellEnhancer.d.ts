@@ -24,6 +24,8 @@ export declare class UpsellEnhancer extends BaseEnhancer {
     private scanUpsellElements;
     private updateQuantityDisplay;
     private updateQuantityToggles;
+    private syncQuantityAcrossContainers;
+    private syncOptionSelectionAcrossContainers;
     private setupEventHandlers;
     private handleActionClick;
     private addUpsellToOrder;
