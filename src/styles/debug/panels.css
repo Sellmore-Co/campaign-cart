@@ -1,0 +1,364 @@
+/**
+ * Debug Overlay - Panel Content Styles
+ * Main content area and panel layouts
+ */
+
+/* Main Content */
+.debug-main-content {
+  flex: 1;
+  background: #1a1a1a;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.debug-panel-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #333;
+  background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-icon {
+  font-size: 20px;
+}
+
+.panel-title h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.panel-action-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.panel-action-btn.primary {
+  background: #3C7DFF;
+  color: #ffffff;
+}
+
+.panel-action-btn.secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid #333;
+}
+
+.panel-action-btn.danger {
+  background: rgba(255, 71, 87, 0.1);
+  color: #ff4757;
+  border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+.panel-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.panel-action-btn.primary:hover {
+  background: #2563eb;
+}
+
+.panel-action-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.panel-action-btn.danger:hover {
+  background: rgba(255, 71, 87, 0.2);
+}
+
+/* Horizontal Tabs */
+.panel-horizontal-tabs {
+  display: flex;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+  overflow-x: auto;
+}
+
+.horizontal-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+
+.horizontal-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ccc;
+}
+
+.horizontal-tab.active {
+  color: #3C7DFF;
+  border-bottom-color: #3C7DFF;
+  background: rgba(60, 125, 255, 0.05);
+}
+
+.horizontal-tab .tab-icon {
+  font-size: 14px;
+}
+
+.horizontal-tab .tab-label {
+  font-weight: 500;
+}
+
+.panel-content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  color: #ccc;
+}
+
+/* Fix margin issues when using horizontal tabs */
+.panel-content > .enhanced-panel {
+  margin-top: 0;
+}
+
+.panel-content > .enhanced-panel > *:first-child {
+  margin-top: 0;
+}
+
+.panel-content .section:first-child {
+  margin-top: 0;
+}
+
+.panel-content .section:first-child .section-title {
+  margin-top: 0;
+}
+
+.panel-content h3:first-child,
+.panel-content .section-title:first-child {
+  margin-top: 0;
+}
+
+/* Reset browser default margins for headings in panel content */
+.panel-content h1,
+.panel-content h2,
+.panel-content h3,
+.panel-content h4,
+.panel-content h5,
+.panel-content h6 {
+  margin-top: 0;
+}
+
+/* Enhanced Panel Layout */
+.enhanced-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.metric-card {
+  background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.metric-card:hover {
+  border-color: #3C7DFF;
+  box-shadow: 0 4px 12px rgba(60, 125, 255, 0.1);
+}
+
+.metric-icon {
+  font-size: 20px;
+  width: 32px;
+  text-align: center;
+}
+
+.metric-content {
+  flex: 1;
+}
+
+.metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #3C7DFF;
+  line-height: 1;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #333;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.sort-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid #333;
+  color: #ccc;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sort-btn:hover {
+  background: rgba(60, 125, 255, 0.1);
+  border-color: #3C7DFF;
+  color: #3C7DFF;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: #888;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 32px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 14px;
+}
+
+.empty-action {
+  background: #3C7DFF;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* JSON Viewer */
+.json-viewer {
+  background: #0f0f0f;
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.json-viewer pre {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  font-family: 'SF Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #e6e6e6;
+}
+
+/* Debug Metrics */
+.debug-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.debug-metric:last-child {
+  border-bottom: none;
+}
+
+.metric-label {
+  color: #888;
+  font-weight: 500;
+}
+
+.metric-value {
+  color: #3C7DFF;
+  font-family: 'SF Mono', monospace;
+  font-weight: 600;
+}
+
+/* Responsive panels */
+@media (max-width: 768px) {
+  .panel-header {
+    padding: 16px;
+  }
+  
+  .panel-content {
+    padding: 16px;
+  }
+  
+  .metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+}

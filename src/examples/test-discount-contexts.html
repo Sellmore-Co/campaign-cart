@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Discount Display Contexts</title>
+    <script src="https://campaign-cart-v2.pages.dev/config.js"></script>
+    <script src="https://campaign-cart-v2.pages.dev/loader.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin: 20px 0;
+            background: #f5f5f5;
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .price-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .label {
+            font-weight: bold;
+            min-width: 200px;
+        }
+        .value {
+            color: #007bff;
+            font-size: 18px;
+        }
+        .discount {
+            color: #dc3545;
+        }
+        .savings {
+            color: #28a745;
+        }
+        code {
+            background: #e9ecef;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Discount Display Context Testing</h1>
+    
+    <!-- Test 1: Package Context -->
+    <div class="test-section" data-next-package-id="2">
+        <h2>1. Package Context (Package ID: 2)</h2>
+        <p>These should work when inside an element with <code>data-next-package-id="2"</code></p>
+        
+        <div class="price-display">
+            <span class="label">Original Price:</span>
+            <span class="value" data-next-display="package.price">$0.00</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Discounted Price (finalPrice):</span>
+            <span class="value discount" data-next-display="package.finalPrice">$0.00</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Discount Amount:</span>
+            <span class="value savings" data-next-display="package.appliedDiscountAmount">$0.00</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Has Discount:</span>
+            <span class="value" data-next-display="package.hasDiscount">false</span>
+        </div>
+    </div>
+    
+    <!-- Test 2: Specific Package ID -->
+    <div class="test-section">
+        <h2>2. Specific Package IDs (Testing packages 3 and 4)</h2>
+        <p>These use explicit package ID in the path like <code>package.3.finalPrice</code></p>
+        
+        <h3>Package 3:</h3>
+        <div class="price-display">
+            <span class="label">Package 3 Name:</span>
+            <span class="value" data-next-display="package.3.name">Loading...</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Package 3 Original Price:</span>
+            <span class="value" data-next-display="package.3.price">$0.00</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Package 3 Final Price:</span>
+            <span class="value discount" data-next-display="package.3.finalPrice">$0.00</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Package 3 Discount:</span>
+            <span class="value savings" data-next-display="package.3.appliedDiscountAmount">$0.00</span>
+        </div>
+        
+        <h3>Package 4:</h3>
+        <div class="price-display">
+            <span class="label">Package 4 Name:</span>
+            <span class="value" data-next-display="package.4.name">Loading...</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Package 4 Original Price:</span>
+            <span class="value" data-next-display="package.4.price">$0.00</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Package 4 Final Price:</span>
+            <span class="value discount" data-next-display="package.4.finalPrice">$0.00</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Package 4 Discount:</span>
+            <span class="value savings" data-next-display="package.4.appliedDiscountAmount">$0.00</span>
+        </div>
+    </div>
+    
+    <!-- Test 3: Selection Context -->
+    <div class="test-section">
+        <h2>3. Selection Context</h2>
+        <p>These work with package selectors using <code>selection.selectorId.property</code></p>
+        
+        <!-- Assuming we have a selector with ID "main-selector" -->
+        <div class="price-display">
+            <span class="label">Selected Package Price:</span>
+            <span class="value" data-next-display="selection.main-selector.price">$0.00</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Selected Final Price:</span>
+            <span class="value discount" data-next-display="selection.main-selector.finalPrice">$0.00</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Selected Discount Amount:</span>
+            <span class="value savings" data-next-display="selection.main-selector.appliedDiscountAmount">$0.00</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Selected Has Discount:</span>
+            <span class="value" data-next-display="selection.main-selector.hasDiscount">false</span>
+        </div>
+    </div>
+    
+    <!-- Test 4: Cart-level Discount Display -->
+    <div class="test-section">
+        <h2>4. Cart Discount Information</h2>
+        <p>For reference - cart-level discount display</p>
+        
+        <div class="price-display">
+            <span class="label">Active Discount Code:</span>
+            <span class="value" data-next-display="cart.discountCode">None</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Total Cart Discounts:</span>
+            <span class="value discount" data-next-display="cart.discounts">$0.00</span>
+        </div>
+        
+        <div class="price-display">
+            <span class="label">Has Active Coupons:</span>
+            <span class="value" data-next-display="cart.hasCoupons">No</span>
+        </div>
+    </div>
+    
+    <!-- Test 5: Conditional Display -->
+    <div class="test-section">
+        <h2>5. Conditional Display Tests</h2>
+        
+        <div data-next-show="cart.hasCoupons" style="display: none;">
+            <p class="discount">✓ Discount codes are active!</p>
+        </div>
+        
+        <div data-next-hide="cart.hasCoupons">
+            <p>No discount codes active</p>
+        </div>
+        
+        <div data-next-show="package.3.hasDiscount" style="display: none;">
+            <p class="savings">✓ Package 3 has a discount applied!</p>
+        </div>
+        
+        <div data-next-show="package.4.hasDiscount" style="display: none;">
+            <p class="savings">✓ Package 4 has a discount applied!</p>
+        </div>
+        
+        <div data-next-show="selection.main-selector.hasDiscount" style="display: none;">
+            <p class="savings">✓ Selected package has a discount!</p>
+        </div>
+    </div>
+
+    <!-- Instructions Section -->
+    <div class="test-section" style="background: #e3f2fd; border-color: #2196f3;">
+        <h2>📋 Test Instructions</h2>
+        <ol>
+            <li><strong>Add packages to cart:</strong> Add packages 2, 3, and 4 to your cart</li>
+            <li><strong>Apply discount code:</strong> Use code <code style="font-size: 16px; font-weight: bold;">SAVE10</code> for 10% off</li>
+            <li><strong>Watch the values update:</strong> All discount-related fields should update in real-time</li>
+        </ol>
+        
+        <h3>Quick Actions:</h3>
+        <button data-next-action="cart.add" data-next-package-id="2" data-next-quantity="1" style="padding: 10px 20px; margin: 5px;">
+            Add Package 2 to Cart
+        </button>
+        <button data-next-action="cart.add" data-next-package-id="3" data-next-quantity="1" style="padding: 10px 20px; margin: 5px;">
+            Add Package 3 to Cart
+        </button>
+        <button data-next-action="cart.add" data-next-package-id="4" data-next-quantity="1" style="padding: 10px 20px; margin: 5px;">
+            Add Package 4 to Cart
+        </button>
+    </div>
+
+    <script>
+        // This would normally be included via your build process
+        console.log('Test page loaded. The enhancers should initialize and populate these values.');
+        console.log('Use discount code SAVE10 to see the discount calculations in action!');
+        
+        // Log when discount is applied
+        if (window.useCartStore) {
+            window.useCartStore.subscribe((state) => {
+                if (state.appliedCoupons?.length > 0) {
+                    console.log('Discount applied! Check the values above to see the updates.');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

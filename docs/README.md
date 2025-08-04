@@ -1,153 +1,118 @@
-# Campaign Cart Initialization and Configuration
+# Next Commerce JS SDK Documentation
 
-This document explains the various ways to initialize and configure the Campaign Cart library in your application.
+Welcome to the Next Commerce JS SDK documentation. This SDK enables developers to create e-commerce storefront experiences using HTML attributes, JavaScript, and CSS.
 
-## Documentation Links
-
-- [Cart Display System](./components/CartDisplay.md) - Documentation on cart display attributes and usage
-- [Cart Functions](./components/CartFunctions.md) - Documentation on cart manipulation methods
-- [Unit Pricing System](./components/UnitPricing.md) - Documentation on unit pricing for selector cards
-- [Events System](./Events.md) - Documentation on events and their usage
-- [Checkout System](./checkout/) - Checkout page documentation
-- [Upsell System](./Upsell.md) - Documentation on implementing upsells
-- [Voucher System](./Vouchers.md) - Documentation on using the voucher/discount system
-
-## Auto-Initialization
-
-By default, the library will automatically initialize when the DOM is loaded. This behavior can be customized with configuration parameters.
-
-### Meta Tags Configuration
-
-The simplest way to configure the library is through meta tags in your HTML:
+## Quick Start
 
 ```html
-<!-- Required parameters -->
-<meta name="os-api-key" content="YOUR_API_KEY">
+<!-- Load SDK -->
+<script src="https://campaign-cart-v2.pages.dev/loader.js"></script>
 
-<!-- Optional parameters -->
-<meta name="os-debug" content="true">
-
-<!-- Disable auto-initialization if needed -->
-<meta name="os-disable-auto-init" content="true">
+<!-- Campaign API Key -->
+<meta name="next-api-key" content="your-api-key-here">
 ```
 
-## Manual Initialization
+## Features
 
-If you want more control over when the library initializes, you can disable auto-initialization and initialize it manually:
+- **Attribute-driven architecture** - Build cart functionality with HTML attributes
+- **Cart management** - Add to cart, selectors, quantity controls
+- **Post-purchase upsells** - Maximize order value with upsell flows
+- **Dynamic content** - Display prices, totals, and product data
+- **Conversion tools** - FOMO notifications and exit intent popups
 
+## Documentation Structure
+
+### Getting Started
+- [Installation](getting-started/installation.md) - Setup and configuration
+- [Configuration](getting-started/configuration.md) - Meta tags and options
+- [Quick Start](getting-started/quick-start.md) - Basic examples
+- [URL Parameters](getting-started/url-parameters.md) - forcePackageId and ref_id
+- [Troubleshooting](getting-started/troubleshooting.md) - Common issues
+
+### Core Features
+- [Cart System](cart-system/overview.md) - Cart management and controls
+  - [Selectors](cart-system/selectors.md) - Product selection patterns
+  - [Buttons](cart-system/buttons.md) - Add to cart and toggle buttons
+  - [Quantity Controls](cart-system/quantity-controls.md) - Managing quantities
+  - [State Management](cart-system/state-management.md) - Cart state and persistence
+
+- [Upsells](upsells/overview.md) - Post-purchase upsell flows
+  - [Direct Upsells](upsells/direct-upsells.md) - Simple yes/no offers
+  - [Selection Upsells](upsells/selection-upsells.md) - Multiple choice offers
+  - [Quantity Upsells](upsells/quantity-upsells.md) - Quantity-based offers
+  - [Configuration](upsells/configuration.md) - Advanced upsell settings
+
+- [Attributes](attributes/overview.md) - Display and conditional attributes
+  - [Campaign](attributes/campaign.md) - Campaign-level data
+  - [Package](attributes/package.md) - Product information  
+  - [Selection](attributes/selection.md) - Selected item data
+  - [Cart](attributes/cart.md) - Shopping cart data
+  - [Order](attributes/order.md) - Order details
+  - [Conditionals](attributes/conditionals.md) - Show/hide logic
+  - [Formatting](attributes/formatting.md) - Value formatting
+
+- [Utilities](utilities/fomo.md) - FOMO and exit intent tools
+  - [FOMO](utilities/fomo.md) - Social proof notifications
+  - [Exit Intent](utilities/exit-intent.md) - Exit intent popups
+  - [Loading States](utilities/loading-states.md) - Loading skeletons
+  - [Analytics](utilities/analytics.md) - Event tracking
+  - [Debugger](utilities/debugger.md) - Debug mode and overlay
+
+### Reference
+- [API Reference](api-reference/methods.md) - JavaScript methods and events
+  - [Methods](api-reference/methods.md) - JavaScript API methods
+  - [Events](api-reference/events.md) - SDK event system
+  - [Data Attributes](api-reference/data-attributes.md) - Complete attribute reference
+  - [CSS Classes](api-reference/css-classes.md) - Automatic CSS classes
+
+- [Examples](examples/basic-product-page.md) - Complete implementations
+  - [Basic Product Page](examples/basic-product-page.md) - Simple product page
+  - [Checkout Page](examples/checkout-page.md) - Checkout implementation
+  - [Upsell Flow](examples/upsell-flow.md) - Multi-step upsells
+  - [Subscription Products](examples/subscription-products.md) - Recurring products
+  - [Advanced Customization](examples/advanced-customization.md) - Complex scenarios
+
+- [Guides](guides/best-practices.md) - Best practices and optimization
+  - [Migration](guides/migration.md) - Upgrading from older versions
+  - [Best Practices](guides/best-practices.md) - Recommended patterns
+  - [Performance](guides/performance.md) - Optimization tips
+  - [Accessibility](guides/accessibility.md) - A11y considerations
+
+## Browser Support
+
+The SDK supports all modern browsers including Chrome, Firefox, Safari, and Edge.
+
+## Quick Examples
+
+### Add to Cart Button
 ```html
-<meta name="os-disable-auto-init" content="true">
+<button data-next-action="add-to-cart" 
+        data-next-package-id="1"
+        data-next-quantity="1">
+  Add to Cart
+</button>
 ```
 
-```javascript
-import { TwentyNineNext } from '@29next/campaign-cart';
-
-// Initialize with configuration
-const client = new TwentyNineNext({
-  apiKey: 'YOUR_API_KEY',
-  campaignId: 'YOUR_CAMPAIGN_ID',
-  debug: true,
-  autoInit: true, // Set to false if you want to call init() manually
-  googleMapsApiKey: 'YOUR_MAPS_API_KEY'
-  });
-
-// Manually initialize if autoInit was set to false
-// client.init();
-
-// Register ready callbacks
-client.onReady(() => {
-  // Do something when the client is ready
-  console.log('Client ready!');
-});
+### Product Selector
+```html
+<div data-next-cart-selector data-next-selection-mode="swap">
+  <div data-next-selector-card data-next-package-id="1">Option 1</div>
+  <div data-next-selector-card data-next-package-id="2">Option 2</div>
+</div>
 ```
 
-## JavaScript Configuration
-
-You can also configure various aspects of the library using the global `window.osConfig` object:
-
-### UTM Transfer Configuration
-
-```javascript
-window.osConfig = window.osConfig || {};
-window.osConfig.utmTransfer = {
-  enabled: true,               // Enable/disable UTM parameter transfer
-  applyToExternalLinks: false, // Apply to links outside your domain
-  debug: true,                 // Enable debug logging for UTM transfer
-  excludedDomains: ['example.com', 'test.org'], // Domains to exclude
-  paramsToCopy: ['utm_source', 'utm_medium']    // Specific params to transfer (defaults to all UTM params)
-};
+### Display Cart Total
+```html
+<span data-next-display="cart.total">$0.00</span>
 ```
 
-### Address Configuration
-
-```javascript
-window.osConfig = window.osConfig || {};
-window.osConfig.addressConfig = {
-  defaultCountry: "US",                  // Default country for address forms
-  showCountries: ['US', 'GB', 'AU', 'DE'], // Countries to show in dropdown
-  dontShowStates: [                      // States to hide from dropdown
-    "AS", "GU", "HI", "MP", "PR", "VI", 
-    "UM-81", "UM-84", "UM-86", "UM-67", "UM-89", 
-    "UM-71", "UM-76", "UM-95", "UM", "UM-79"
-  ]
-};
+### Conditional Display
+```html
+<div data-next-show="cart.hasItems">
+  <button onclick="checkout()">Proceed to Checkout</button>
+</div>
 ```
 
-### Cart Display Configuration
+## Support
 
-```javascript
-window.osConfig = window.osConfig || {};
-window.osConfig.cartDisplay = {
-  showSavings: true,           // Show savings amount in cart
-  showRetailPrice: true,       // Show original price for discounted items
-  animateQuantityChanges: true // Animate quantity changes in cart
-};
-```
-
-### Google Maps Configuration
-
-```javascript
-window.osConfig = window.osConfig || {};
-window.osConfig.googleMaps = {
-  apiKey: 'YOUR_GOOGLE_MAPS_API_KEY',
-  region: 'US',                // Bias results to this region
-  enableAutocomplete: true     // Enable address autocomplete
-};
-```
-
-## Event System
-
-The library provides a comprehensive event system that allows you to listen for various events:
-
-```javascript
-// Using the client instance
-client.on('cart.updated', (data) => {
-  console.log('Cart updated:', data);
-});
-
-// Using the global push method (for auto-initialization)
-window.on29NextReady = window.on29NextReady || [];
-window.on29NextReady.push((client) => {
-  client.on('checkout.started', (data) => {
-    console.log('Checkout started:', data);
-  });
-});
-```
-
-## Advanced Configuration
-
-For more advanced use cases, you can configure the library directly at runtime by accessing the global instance:
-
-```javascript
-window.on29NextReady = window.on29NextReady || [];
-window.on29NextReady.push((client) => {
-  // Configure specific components
-  client.cart.setMaxQuantity(10);
-  client.display.setDefaultAnimation('fade');
-  
-  // Listen for specific events
-  client.on('payment.completed', (data) => {
-    // Custom tracking or post-purchase actions
-  });
-});
-```
+For issues or questions, visit our support documentation or contact our team.

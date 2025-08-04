@@ -1,0 +1,606 @@
+/**
+ * Debug Overlay - Panel Component Specific Styles
+ * Styles for individual panel components like checkout, storage, etc.
+ */
+
+/* Enhanced Panel Base Styles */
+.enhanced-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Metrics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.metric-card {
+  background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.metric-card:hover {
+  border-color: #3C7DFF;
+  box-shadow: 0 4px 12px rgba(60, 125, 255, 0.1);
+}
+
+.metric-icon {
+  font-size: 20px;
+  width: 32px;
+  text-align: center;
+}
+
+.metric-content {
+  flex: 1;
+}
+
+.metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #3C7DFF;
+  line-height: 1;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* Section Styles */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #333;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: #888;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 32px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 14px;
+}
+
+.empty-action {
+  background: #3C7DFF;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Config Panel Specific */
+.config-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.config-group {
+  background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.config-group-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #333;
+}
+
+.config-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.config-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.config-key {
+  font-size: 12px;
+  color: #ccc;
+  font-weight: 500;
+}
+
+.config-value {
+  font-size: 12px;
+  color: #ffffff;
+  font-family: 'SF Mono', monospace;
+}
+
+.config-value.enabled {
+  color: #00ff88;
+}
+
+.config-value.disabled {
+  color: #888;
+}
+
+/* Checkout Panel Specific */
+.form-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.field-status-card {
+  background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.field-status-card.filled {
+  border-color: rgba(0, 255, 136, 0.3);
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, #1a1a1a 100%);
+}
+
+.field-status-card.error {
+  border-color: rgba(255, 71, 87, 0.3);
+  background: linear-gradient(135deg, rgba(255, 71, 87, 0.1) 0%, #1a1a1a 100%);
+}
+
+.field-name {
+  font-size: 11px;
+  color: #ccc;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.field-status {
+  font-size: 14px;
+}
+
+.customer-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.info-card {
+  background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.info-card h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #888;
+}
+
+.info-value {
+  font-size: 12px;
+  color: #ffffff;
+  font-family: 'SF Mono', monospace;
+}
+
+.info-empty {
+  color: #666;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.address-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.validation-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.error-item {
+  background: linear-gradient(135deg, rgba(255, 71, 87, 0.1) 0%, #1a1a1a 100%);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.error-field {
+  font-weight: 600;
+  color: #ff4757;
+  font-size: 12px;
+}
+
+.error-message {
+  color: #ccc;
+  font-size: 12px;
+}
+
+/* Storage Panel Specific */
+.storage-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.storage-item-card {
+  background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.storage-item-card.next-item {
+  border-color: rgba(60, 125, 255, 0.3);
+  background: linear-gradient(135deg, rgba(60, 125, 255, 0.05) 0%, #1a1a1a 100%);
+}
+
+.storage-item-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.storage-key {
+  flex: 1;
+  font-family: 'SF Mono', monospace;
+  font-size: 12px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.storage-type {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.storage-type.local {
+  background: rgba(0, 255, 136, 0.2);
+  color: #00ff88;
+}
+
+.storage-type.session {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+}
+
+.storage-delete-btn {
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(255, 71, 87, 0.3);
+  background: rgba(255, 71, 87, 0.1);
+  color: #ff4757;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.storage-delete-btn:hover {
+  background: rgba(255, 71, 87, 0.2);
+}
+
+.storage-item-size {
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.storage-item-value {
+  background: #0f0f0f;
+  border: 1px solid #333;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.storage-item-value pre {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  font-family: 'SF Mono', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #e6e6e6;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* JSON Viewer */
+.json-viewer {
+  background: #0f0f0f;
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.json-viewer pre {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  font-family: 'SF Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #e6e6e6;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Events Panel Analytics */
+.analytics-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.analytics-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bar-label {
+  font-size: 12px;
+  color: #ccc;
+  font-weight: 500;
+}
+
+.bar-container {
+  position: relative;
+  background: #0f0f0f;
+  border: 1px solid #333;
+  border-radius: 4px;
+  height: 24px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  background: linear-gradient(90deg, #3C7DFF 0%, #2563eb 100%);
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.bar-value {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.source-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.source-stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+.source-name {
+  font-size: 12px;
+  color: #ccc;
+}
+
+.source-count {
+  font-size: 12px;
+  color: #3C7DFF;
+  font-weight: 600;
+}
+
+/* API Panel Performance */
+.method-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.method-stat-card {
+  background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.method-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.method-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.method-metrics .metric {
+  font-size: 11px;
+  color: #888;
+}
+
+.performance-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.performance-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Enhancer Panel */
+.enhancer-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.enhancer-dist-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+.enhancer-type {
+  font-size: 12px;
+  color: #ccc;
+}
+
+.enhancer-count {
+  font-size: 12px;
+  color: #3C7DFF;
+  font-weight: 600;
+}
+
+.performance-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.performance-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+.enhancement-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+.timeline-time {
+  font-size: 11px;
+  color: #888;
+  font-family: 'SF Mono', monospace;
+  min-width: 60px;
+}
+
+.timeline-event {
+  font-size: 12px;
+  color: #ccc;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .form-fields-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .customer-info {
+    grid-template-columns: 1fr;
+  }
+
+  .config-groups {
+    gap: 16px;
+  }
+
+  .storage-items {
+    gap: 8px;
+  }
+
+  .method-stats {
+    grid-template-columns: 1fr;
+  }
+}

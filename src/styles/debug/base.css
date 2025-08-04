@@ -1,0 +1,246 @@
+/**
+ * Debug Overlay - Base Styles
+ * Core layout and component styles
+ */
+
+/* Enhanced Debug Overlay Styles */
+.enhanced-debug-overlay {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #ffffff;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.3);
+}
+
+.enhanced-debug-overlay.collapsed {
+  height: 60px;
+}
+
+.enhanced-debug-overlay.expanded {
+  height: 40vh;
+  min-height: 450px;
+  max-height: calc(100vh - 120px);
+}
+
+/* Adjust body when debug overlay is expanded */
+body:has(.enhanced-debug-overlay.expanded) {
+  padding-bottom: 40vh;
+}
+
+/* Fallback for browsers that don't support :has() */
+.debug-body-expanded {
+  padding-bottom: 40vh !important;
+  box-sizing: border-box;
+}
+
+/* Also adjust html element */
+html.debug-body-expanded {
+  overflow-x: hidden;
+}
+
+/* Bottom Bar */
+.debug-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-top: 1px solid #3C7DFF;
+  padding: 0 20px;
+  backdrop-filter: blur(20px);
+}
+
+.debug-logo-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.debug-logo {
+  color: #3C7DFF;
+  filter: drop-shadow(0 0 8px rgba(60, 125, 255, 0.3));
+}
+
+.debug-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+}
+
+.debug-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  padding: 4px 8px;
+  background: rgba(60, 125, 255, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(60, 125, 255, 0.2);
+}
+
+.status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00ff88;
+  box-shadow: 0 0 6px #00ff88;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.status-text {
+  font-size: 11px;
+  color: #3C7DFF;
+  font-weight: 500;
+}
+
+/* Quick Stats */
+.debug-quick-stats {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #3C7DFF;
+  min-width: 40px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* Controls */
+.debug-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.debug-control-btn, .debug-expand-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.debug-control-btn:hover, .debug-expand-btn:hover {
+  background: rgba(60, 125, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(60, 125, 255, 0.3);
+}
+
+.debug-control-btn.active {
+  background: rgba(60, 125, 255, 0.3);
+  color: #87b4ff;
+  box-shadow: inset 0 0 0 1px rgba(60, 125, 255, 0.5);
+}
+
+.debug-control-btn.active:hover {
+  background: rgba(60, 125, 255, 0.4);
+}
+
+.debug-expand-btn {
+  background: #3C7DFF;
+  color: #ffffff;
+}
+
+.debug-expand-btn:hover {
+  background: #2563eb;
+  transform: translateY(-1px) scale(1.05);
+}
+
+.expand-icon {
+  transition: transform 0.3s ease;
+}
+
+.expand-icon.rotated {
+  transform: rotate(180deg);
+}
+
+.close-btn:hover {
+  background: rgba(255, 71, 87, 0.2) !important;
+  color: #ff4757;
+}
+
+/* Expanded Content */
+.debug-expanded-content {
+  display: flex;
+  height: calc(100% - 60px);
+  background: #1a1a1a;
+}
+
+/* Element highlighting */
+.debug-highlight {
+  outline: 2px solid #3C7DFF !important;
+  outline-offset: 2px !important;
+  background: rgba(60, 125, 255, 0.1) !important;
+  position: relative !important;
+  z-index: 999998 !important;
+}
+
+.debug-highlight::after {
+  content: attr(data-debug-label);
+  position: absolute;
+  top: -30px;
+  left: 0;
+  background: #3C7DFF;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 999999;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .debug-quick-stats {
+    display: none;
+  }
+  
+  .debug-bottom-bar {
+    padding: 0 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .debug-title {
+    display: none;
+  }
+}
