@@ -133,6 +133,56 @@ export class UpsellEnhancer extends BaseEnhancer {
     this.subscribe(useOrderStore, this.handleOrderUpdate.bind(this));
     // Campaign updates are handled by ProductDisplayEnhancer for any display elements
     
+    // Listen for quantity changes from other containers
+    if (this.selectorId) {
+      this.eventBus.on('upsell:quantity-changed', (data: { selectorId: string; quantity: number }) => {
+        if (data.selectorId === this.selectorId) {
+          // Update our local quantity map
+          this.quantityBySelectorId.set(data.selectorId, data.quantity);
+          this.currentQuantitySelectorId = data.selectorId;
+          // Update displays
+          this.updateQuantityDisplay();
+        }
+      });
+    }
+    
+    // Listen for option selection changes from other containers
+    // This handles both the main selector and any nested selectors
+    this.eventBus.on('upsell:option-selected', (data: { selectorId: string; packageId: number }) => {
+      // Check if this event is for a selector within our container or a matching selector elsewhere
+      const ourSelectors = this.element.querySelectorAll('[data-next-selector-id]');
+      let shouldUpdate = false;
+      
+      ourSelectors.forEach(selector => {
+        const selectorId = selector.getAttribute('data-next-selector-id');
+        if (selectorId === data.selectorId) {
+          shouldUpdate = true;
+        }
+      });
+      
+      // Also check if our main selector matches
+      if (this.selectorId === data.selectorId) {
+        shouldUpdate = true;
+      }
+      
+      if (shouldUpdate) {
+        // Update our local state
+        this.selectedPackageId = data.packageId;
+        this.packageId = data.packageId;
+        
+        // Update visual state of our options
+        this.options.forEach((element, id) => {
+          if (id === data.packageId) {
+            element.classList.add('next-selected');
+            element.setAttribute('data-next-selected', 'true');
+          } else {
+            element.classList.remove('next-selected');
+            element.setAttribute('data-next-selected', 'false');
+          }
+        });
+      }
+    });
+    
     // Initial state update
     this.updateUpsellDisplay();
     
@@ -186,7 +236,7 @@ export class UpsellEnhancer extends BaseEnhancer {
       this.quantityBySelectorId.set(this.selectorId, this.quantity);
     }
     
-    // Find all option elements
+    // Find all option elements (including those in nested selectors)
     const optionElements = this.element.querySelectorAll('[data-next-upsell-option]');
     
     optionElements.forEach((element) => {
@@ -244,7 +294,7 @@ export class UpsellEnhancer extends BaseEnhancer {
   }
   
   private selectOption(packageId: number): void {
-    // Update visual state for card options
+    // Update visual state for card options in THIS container
     this.options.forEach((element, id) => {
       if (id === packageId) {
         element.classList.add('next-selected');
@@ -258,16 +308,37 @@ export class UpsellEnhancer extends BaseEnhancer {
     this.selectedPackageId = packageId;
     this.packageId = packageId; // Set for compatibility
     
-    // Emit selection event
+    // Find the actual selector ID from the option's parent selector element
+    let actualSelectorId = this.selectorId;
+    const selectedOption = this.options.get(packageId);
+    if (selectedOption) {
+      const parentSelector = selectedOption.closest('[data-next-selector-id]');
+      if (parentSelector) {
+        actualSelectorId = parentSelector.getAttribute('data-next-selector-id') || this.selectorId;
+      }
+    }
+    
+    // Emit selection event for both old and new event names
     this.eventBus.emit('upsell-selector:item-selected', {
-      selectorId: this.selectorId || '',
+      selectorId: actualSelectorId || '',
       packageId: packageId
     });
+    
+    // Emit new event for cross-container sync
+    this.eventBus.emit('upsell:option-selected', {
+      selectorId: actualSelectorId || '',
+      packageId: packageId
+    });
+    
+    // Sync option selection across all containers with same selector
+    if (actualSelectorId) {
+      this.syncOptionSelectionAcrossContainers(actualSelectorId, packageId);
+    }
     
     // Store on element for external access
     (this.element as any)._selectedPackageId = packageId;
     
-    this.logger.debug('Upsell option selected:', { packageId, selectorId: this.selectorId });
+    this.logger.debug('Upsell option selected:', { packageId, selectorId: actualSelectorId });
   }
 
   private scanUpsellElements(): void {
@@ -298,12 +369,20 @@ export class UpsellEnhancer extends BaseEnhancer {
       increaseBtn.addEventListener('click', () => {
         if (quantitySelectorId) {
           const currentQty = this.quantityBySelectorId.get(quantitySelectorId) || 1;
-          this.quantityBySelectorId.set(quantitySelectorId, Math.min(10, currentQty + 1));
+          const newQty = Math.min(10, currentQty + 1);
+          this.quantityBySelectorId.set(quantitySelectorId, newQty);
           this.currentQuantitySelectorId = quantitySelectorId;
+          
+          // Emit event for cross-container sync
+          this.eventBus.emit('upsell:quantity-changed', {
+            selectorId: quantitySelectorId,
+            quantity: newQty
+          });
         } else {
           this.quantity = Math.min(10, this.quantity + 1);
         }
         this.updateQuantityDisplay();
+        this.syncQuantityAcrossContainers(quantitySelectorId);
       });
     }
     
@@ -311,12 +390,20 @@ export class UpsellEnhancer extends BaseEnhancer {
       decreaseBtn.addEventListener('click', () => {
         if (quantitySelectorId) {
           const currentQty = this.quantityBySelectorId.get(quantitySelectorId) || 1;
-          this.quantityBySelectorId.set(quantitySelectorId, Math.max(1, currentQty - 1));
+          const newQty = Math.max(1, currentQty - 1);
+          this.quantityBySelectorId.set(quantitySelectorId, newQty);
           this.currentQuantitySelectorId = quantitySelectorId;
+          
+          // Emit event for cross-container sync
+          this.eventBus.emit('upsell:quantity-changed', {
+            selectorId: quantitySelectorId,
+            quantity: newQty
+          });
         } else {
           this.quantity = Math.max(1, this.quantity - 1);
         }
         this.updateQuantityDisplay();
+        this.syncQuantityAcrossContainers(quantitySelectorId);
       });
     }
     
@@ -340,16 +427,32 @@ export class UpsellEnhancer extends BaseEnhancer {
   }
   
   private updateQuantityDisplay(): void {
-    const display = this.element.querySelector('[data-next-upsell-quantity="display"]');
-    if (display) {
-      // Get the selector ID for this display
-      const displaySelectorId = display.getAttribute('data-next-quantity-selector-id') || 
-                               this.currentQuantitySelectorId || 
-                               this.selectorId;
+    // Determine which selector ID we're working with
+    const selectorId = this.currentQuantitySelectorId || this.selectorId;
+    
+    if (selectorId && this.quantityBySelectorId.has(selectorId)) {
+      // Update ALL displays across the page with this selector ID
+      const allDisplays = document.querySelectorAll(
+        `[data-next-upsell-quantity="display"][data-next-quantity-selector-id="${selectorId}"]`
+      );
       
-      if (displaySelectorId && this.quantityBySelectorId.has(displaySelectorId)) {
-        display.textContent = this.quantityBySelectorId.get(displaySelectorId)!.toString();
-      } else {
+      const quantity = this.quantityBySelectorId.get(selectorId)!;
+      
+      allDisplays.forEach(display => {
+        if (display instanceof HTMLElement) {
+          display.textContent = quantity.toString();
+        }
+      });
+      
+      // Also update displays without selector ID within the current container
+      const localDisplay = this.element.querySelector('[data-next-upsell-quantity="display"]:not([data-next-quantity-selector-id])');
+      if (localDisplay && localDisplay instanceof HTMLElement) {
+        localDisplay.textContent = quantity.toString();
+      }
+    } else {
+      // Fallback: update only the display in current container
+      const display = this.element.querySelector('[data-next-upsell-quantity="display"]');
+      if (display) {
         display.textContent = this.quantity.toString();
       }
     }
@@ -364,6 +467,84 @@ export class UpsellEnhancer extends BaseEnhancer {
           toggle.classList.add('next-selected');
         } else {
           toggle.classList.remove('next-selected');
+        }
+      }
+    });
+  }
+  
+  /**
+   * Synchronize quantity across all containers with the same selector ID
+   * This ensures all upsell containers for the same offer stay in sync
+   */
+  private syncQuantityAcrossContainers(selectorId?: string): void {
+    if (!selectorId) return;
+    
+    const quantity = this.quantityBySelectorId.get(selectorId);
+    if (!quantity) return;
+    
+    // Update all option elements with this selector ID to reflect the new quantity
+    const allOptions = document.querySelectorAll(
+      `[data-next-selector-id="${selectorId}"] [data-next-upsell-option]`
+    );
+    
+    allOptions.forEach(option => {
+      if (option instanceof HTMLElement) {
+        // Update the data-next-quantity attribute on each option
+        option.setAttribute('data-next-quantity', quantity.toString());
+      }
+    });
+    
+    // Also sync any select elements
+    const selectElements = document.querySelectorAll(
+      `[data-next-upsell-select="${selectorId}"]`
+    );
+    
+    selectElements.forEach(select => {
+      if (select instanceof HTMLSelectElement) {
+        // Update quantity data attribute on select options if needed
+        const options = select.querySelectorAll('option[data-next-package-id]');
+        options.forEach(option => {
+          if (option instanceof HTMLOptionElement) {
+            option.setAttribute('data-next-quantity', quantity.toString());
+          }
+        });
+      }
+    });
+  }
+  
+  /**
+   * Synchronize option selection across all containers with the same selector ID
+   * This ensures all option groups stay in sync when one is selected
+   */
+  private syncOptionSelectionAcrossContainers(selectorId: string, selectedPackageId: number): void {
+    // Find all option groups with this selector ID across the page
+    const allSelectors = document.querySelectorAll(`[data-next-selector-id="${selectorId}"]`);
+    
+    allSelectors.forEach(selectorElement => {
+      if (selectorElement instanceof HTMLElement) {
+        // Find all options within this selector
+        const options = selectorElement.querySelectorAll('[data-next-upsell-option]');
+        
+        options.forEach(option => {
+          if (option instanceof HTMLElement) {
+            const packageId = parseInt(option.getAttribute('data-next-package-id') || '0', 10);
+            
+            if (packageId === selectedPackageId) {
+              // Mark as selected
+              option.classList.add('next-selected');
+              option.setAttribute('data-next-selected', 'true');
+            } else {
+              // Mark as not selected
+              option.classList.remove('next-selected');
+              option.setAttribute('data-next-selected', 'false');
+            }
+          }
+        });
+        
+        // Also update any select elements
+        const selectElement = selectorElement.querySelector('select');
+        if (selectElement) {
+          selectElement.value = selectedPackageId.toString();
         }
       }
     });
@@ -491,6 +672,9 @@ export class UpsellEnhancer extends BaseEnhancer {
       let quantityToUse = this.quantity;
       if (this.selectorId && this.quantityBySelectorId.has(this.selectorId)) {
         quantityToUse = this.quantityBySelectorId.get(this.selectorId)!;
+      } else if (this.currentQuantitySelectorId && this.quantityBySelectorId.has(this.currentQuantitySelectorId)) {
+        // Also check if a specific quantity selector was recently used
+        quantityToUse = this.quantityBySelectorId.get(this.currentQuantitySelectorId)!;
       }
       
       // Build upsell data
