@@ -77,7 +77,7 @@ export class NextAnalytics {
       }
 
       // Initialize providers based on configuration FIRST
-      await this.initializeProviders(config.analytics);
+      await this.initializeProviders(config.analytics, config.storeName);
 
       // Process any pending events from previous page AFTER providers are ready
       PendingEventsHandler.getInstance().processPendingEvents();
@@ -104,7 +104,7 @@ export class NextAnalytics {
   /**
    * Initialize analytics providers
    */
-  private async initializeProviders(config: any): Promise<void> {
+  private async initializeProviders(config: any, storeName?: string): Promise<void> {
     // NextCampaign Adapter (29Next's own analytics)
     if (config.providers?.nextCampaign?.enabled) {
       const nextCampaignAdapter = new NextCampaignAdapter();
@@ -124,11 +124,16 @@ export class NextAnalytics {
 
     // Facebook Pixel Adapter
     if (config.providers?.facebook?.enabled && config.providers.facebook.settings?.pixelId) {
-      const fbAdapter = new FacebookAdapter(config.providers.facebook);
+      const fbConfig = {
+        ...config.providers.facebook,
+        storeName: storeName  // Pass storeName from root config
+      };
+      const fbAdapter = new FacebookAdapter(fbConfig);
       this.providers.set('facebook', fbAdapter);
       dataLayer.addProvider(fbAdapter);
       logger.info('Facebook Pixel adapter initialized', {
-        blockedEvents: config.providers.facebook.blockedEvents || []
+        blockedEvents: config.providers.facebook.blockedEvents || [],
+        storeName: storeName
       });
     }
 

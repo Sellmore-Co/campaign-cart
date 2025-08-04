@@ -421,6 +421,7 @@ export class AutoEventListener {
 
       const purchaseData = {
         transaction_id: orderId,
+        order_number: order.number, // Add the actual order number
         currency: order.currency || 'USD',
         value: total || 0,
         items: items,

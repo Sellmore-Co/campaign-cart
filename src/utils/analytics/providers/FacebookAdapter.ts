@@ -12,6 +12,7 @@ declare global {
  */
 export class FacebookAdapter extends ProviderAdapter {
   private blockedEvents: string[] = [];
+  private storeName?: string;
   private eventMapping: Record<string, string> = {
     // Data layer events to Facebook events
     'dl_page_view': 'PageView',
@@ -53,6 +54,9 @@ export class FacebookAdapter extends ProviderAdapter {
     super('Facebook');
     if (config?.blockedEvents) {
       this.blockedEvents = config.blockedEvents;
+    }
+    if (config?.storeName) {
+      this.storeName = config.storeName;
     }
   }
 
@@ -136,8 +140,22 @@ export class FacebookAdapter extends ProviderAdapter {
 
     try {
       if (window.fbq) {
-        window.fbq('track', fbEventName, parameters);
-        this.debug(`Event sent to Facebook: ${fbEventName}`, parameters);
+        // For Purchase events, include event_id for deduplication if storeName is configured
+        if (fbEventName === 'Purchase' && this.storeName) {
+          // Use order_number if available, fallback to order_id (ref_id)
+          const orderIdentifier = parameters.order_number || parameters.order_id;
+          if (orderIdentifier) {
+            const eventId = `${this.storeName}-${orderIdentifier}`;
+            window.fbq('track', fbEventName, parameters, { event_id: eventId });
+            this.debug(`Event sent to Facebook: ${fbEventName} with event_id: ${eventId}`, parameters);
+          } else {
+            window.fbq('track', fbEventName, parameters);
+            this.debug(`Event sent to Facebook: ${fbEventName} (no order identifier for event_id)`, parameters);
+          }
+        } else {
+          window.fbq('track', fbEventName, parameters);
+          this.debug(`Event sent to Facebook: ${fbEventName}`, parameters);
+        }
       }
     } catch (error) {
       console.error('Error sending event to Facebook:', error);
@@ -319,7 +337,8 @@ export class FacebookAdapter extends ProviderAdapter {
       currency: data.currency || 'USD',
       value: data.value || data.total || 0,
       num_items: items.length,
-      order_id: data.transaction_id || data.order_id
+      order_id: data.transaction_id || data.order_id,
+      order_number: data.order_number // Include order_number for event_id
     };
 
     if (items.length > 0) {

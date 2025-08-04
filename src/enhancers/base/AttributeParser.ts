@@ -187,6 +187,11 @@ export class AttributeParser {
         element.getAttribute('data-next-component') === 'scroll-hint') {
       types.push('scroll-hint');
     }
+    
+    // Check for quantity text enhancer
+    if (element.hasAttribute('data-next-quantity-text')) {
+      types.push('quantity-text');
+    }
 
     // Remove duplicates (just in case)
     return [...new Set(types)];

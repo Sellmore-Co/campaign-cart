@@ -18,17 +18,25 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
   private packageId?: number;
   private contextPackageId?: number | undefined;
   private packageData?: Package;
+  private multiplyByQuantity: boolean = false;
+  private currentQuantity: number = 1;
+  private quantitySelectorId?: string;
 
   override async initialize(): Promise<void> {
     this.validateElement();
     this.parseDisplayAttributes();
     
+    // Check for quantity multiplication attribute
+    this.multiplyByQuantity = this.element.hasAttribute('data-next-multiply-quantity');
+    this.quantitySelectorId = this.getAttribute('data-next-quantity-selector-id') || '';
+    
     // PRESERVE: Package context detection
     this.detectPackageContext();
     
     this.setupStoreSubscriptions();
+    this.setupQuantityListeners();
     await this.performInitialUpdate();
-    this.logger.debug(`ProductDisplayEnhancer initialized with package ${this.packageId}, path: ${this.displayPath}, format: ${this.formatType}`);
+    this.logger.debug(`ProductDisplayEnhancer initialized with package ${this.packageId}, path: ${this.displayPath}, format: ${this.formatType}, multiplyByQuantity: ${this.multiplyByQuantity}`);
   }
 
   protected setupStoreSubscriptions(): void {
@@ -54,6 +62,66 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
   private handleCartUpdate(): void {
     // Update display when cart changes (discount codes might affect package price)
     this.updateDisplay();
+  }
+  
+  private setupQuantityListeners(): void {
+    // Listen for quantity changes if multiplication is enabled
+    if (!this.multiplyByQuantity) return;
+    
+    // Listen for quantity change events from UpsellEnhancer
+    this.eventBus.on('upsell:quantity-changed', (data: { selectorId: string; quantity: number; packageId?: number }) => {
+      // Check if this quantity change is relevant to us
+      if (this.quantitySelectorId && data.selectorId === this.quantitySelectorId) {
+        this.currentQuantity = data.quantity;
+        this.updateDisplay();
+      } else if (!this.quantitySelectorId && !data.selectorId) {
+        // No selector IDs on either side - match by package ID
+        if (data.packageId === this.packageId) {
+          this.currentQuantity = data.quantity;
+          this.updateDisplay();
+        }
+      } else if (!this.quantitySelectorId) {
+        // Check if we're in a container with matching selector ID
+        const container = this.element.closest('[data-next-selector-id]');
+        if (container) {
+          const containerSelectorId = container.getAttribute('data-next-selector-id');
+          if (containerSelectorId === data.selectorId) {
+            this.currentQuantity = data.quantity;
+            this.updateDisplay();
+          }
+        } else if (data.packageId === this.packageId) {
+          // Fallback: match by package ID if no selector context
+          this.currentQuantity = data.quantity;
+          this.updateDisplay();
+        }
+      }
+    });
+    
+    // Try to get initial quantity from the container
+    if (this.quantitySelectorId) {
+      // Check for existing quantity in the UpsellEnhancer's shared state
+      const quantityDisplay = document.querySelector(
+        `[data-next-upsell-quantity="display"][data-next-quantity-selector-id="${this.quantitySelectorId}"]`
+      );
+      if (quantityDisplay && quantityDisplay.textContent) {
+        const qty = parseInt(quantityDisplay.textContent, 10);
+        if (!isNaN(qty)) {
+          this.currentQuantity = qty;
+        }
+      }
+    } else {
+      // No selector ID - try to find quantity display in same container
+      const container = this.element.closest('[data-next-upsell="offer"]');
+      if (container) {
+        const quantityDisplay = container.querySelector('[data-next-upsell-quantity="display"]');
+        if (quantityDisplay && quantityDisplay.textContent) {
+          const qty = parseInt(quantityDisplay.textContent, 10);
+          if (!isNaN(qty)) {
+            this.currentQuantity = qty;
+          }
+        }
+      }
+    }
   }
 
   // PRESERVE: Package context detection
@@ -107,11 +175,45 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     // Handle calculated properties
     const calculatedValue = this.getCalculatedProperty(this.property);
     if (calculatedValue !== undefined) {
+      // Apply quantity multiplication if enabled and value is a number
+      if (this.multiplyByQuantity && typeof calculatedValue === 'number') {
+        return calculatedValue * this.currentQuantity;
+      }
       return calculatedValue;
     }
 
     // Direct property access on package
-    return this.getPackageValue(this.packageData, this.property);
+    const value = this.getPackageValue(this.packageData, this.property);
+    
+    // Apply quantity multiplication for price-related properties
+    if (this.multiplyByQuantity && this.isPriceProperty(this.property)) {
+      const numericValue = this.parseNumericValue(value);
+      if (numericValue !== null) {
+        return numericValue * this.currentQuantity;
+      }
+    }
+    
+    return value;
+  }
+  
+  private isPriceProperty(property: string): boolean {
+    const priceProperties = [
+      'price', 'price_total', 'price_retail', 'price_retail_total',
+      'discountedPrice', 'discountedPriceTotal', 'finalPrice', 'finalPriceTotal',
+      'savingsAmount', 'discountAmount'
+    ];
+    return priceProperties.includes(property);
+  }
+  
+  private parseNumericValue(value: any): number | null {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      // Remove currency symbols and parse
+      const cleaned = value.replace(/[^0-9.-]/g, '');
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? null : parsed;
+    }
+    return null;
   }
 
   // Override to handle special element types and container hiding

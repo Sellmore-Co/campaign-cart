@@ -226,6 +226,7 @@ export interface ConfigState {
   campaignId: string;
   debug: boolean;
   pageType: PageType;
+  storeName?: string;
   spreedlyEnvironmentKey?: string | undefined;
   paymentConfig: PaymentConfig;
   googleMapsConfig: GoogleMapsConfig;
@@ -285,6 +286,7 @@ export interface ConfigState {
           accessToken?: string;
           testEventCode?: string;
         };
+        blockedEvents?: string[];
       };
       custom: {
         enabled: boolean;

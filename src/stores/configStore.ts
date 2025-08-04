@@ -129,6 +129,10 @@ export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
       updates.debug = windowConfig.debug;
     }
     
+    if (typeof windowConfig.storeName === 'string') {
+      updates.storeName = windowConfig.storeName;
+    }
+    
     if (typeof windowConfig.pageType === 'string') {
       updates.pageType = windowConfig.pageType as PageType;
     }

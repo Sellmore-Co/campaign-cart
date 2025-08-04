@@ -80,7 +80,8 @@ export class AttributeScanner {
         '[data-next-accordion]',
         '[data-next-tooltip]',
         '[data-next-express-checkout="container"]',
-        '[data-next-component="scroll-hint"]'
+        '[data-next-component="scroll-hint"]',
+        '[data-next-quantity-text]'
       ].join(', ');
       
       const elements = root.querySelectorAll(selector);
@@ -369,6 +370,10 @@ export class AttributeScanner {
         case 'scroll-hint':
           const { ScrollHintEnhancer } = await import('@/enhancers/ui/ScrollHintEnhancer');
           return new ScrollHintEnhancer(element);
+        
+        case 'quantity-text':
+          const { QuantityTextEnhancer } = await import('@/enhancers/display/QuantityTextEnhancer');
+          return new QuantityTextEnhancer(element);
           
         default:
           this.logger.warn(`Unknown enhancer type: ${type}`);
