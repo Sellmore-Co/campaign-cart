@@ -690,7 +690,7 @@ export class CreditCardService {
       window.Spreedly.setNumberFormat('prettyFormat');
       
       // Set placeholders
-      window.Spreedly.setPlaceholder('number', 'Credit Card Number');
+      window.Spreedly.setPlaceholder('number', 'Card Number');
       window.Spreedly.setPlaceholder('cvv', 'CVV *');
       
       // Set styling
