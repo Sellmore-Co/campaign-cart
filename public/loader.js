@@ -107,18 +107,18 @@
             .then(m => m.useCampaignStore.getState())
         };
         
-        console.log(\`Next Commerce Campaign-Cart SDK v\${SDK_VERSION} — DEV build loaded\`);
+        console.log('Next Commerce Campaign-Cart SDK v${SDK_VERSION} — DEV build loaded');
         console.log(\`Load time: \${loadTime.toFixed(2)}ms\`);
         console.log('Try nextDebug.cartStore() or nextDebug.orderStore()');
       } else {
-        console.log(\`Next Commerce Campaign-Cart SDK v\${SDK_VERSION} — Production loaded\`);
+        console.log('Next Commerce Campaign-Cart SDK v${SDK_VERSION} — Production loaded');
       }
       
       // Emit ready event
       window.dispatchEvent(new CustomEvent('next:ready', {
         detail: {
           loadTime,
-          version: SDK_VERSION,
+          version: '${SDK_VERSION}',
           mode: ${isDebug} ? 'development' : 'production'
         }
       }));
@@ -134,11 +134,11 @@
         const fallback = document.createElement('script');
         fallback.src = '${PROD_HOST}/index.umd.js';
         fallback.onload = function() {
-          console.log(\`Next Commerce Campaign-Cart SDK v\${SDK_VERSION} — UMD fallback loaded\`);
+          console.log('Next Commerce Campaign-Cart SDK v${SDK_VERSION} — UMD fallback loaded');
           window.dispatchEvent(new CustomEvent('next:ready', {
             detail: {
               fallback: true,
-              version: SDK_VERSION
+              version: '${SDK_VERSION}'
             }
           }));
         };
@@ -157,11 +157,11 @@
     script.src = '${PROD_HOST}/index.umd.js';
     script.async = true;
     script.onload = function() {
-      console.log('Next Commerce Campaign-Cart SDK v' + SDK_VERSION + ' — Legacy browser support');
+      console.log('Next Commerce Campaign-Cart SDK v${SDK_VERSION} — Legacy browser support');
       window.dispatchEvent(new CustomEvent('next:ready', {
         detail: {
           fallback: true,
-          version: SDK_VERSION,
+          version: '${SDK_VERSION}',
           legacy: true
         }
       }));
