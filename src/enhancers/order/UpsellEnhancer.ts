@@ -435,6 +435,13 @@ export class UpsellEnhancer extends BaseEnhancer {
           this.quantity = qty;
           this.updateQuantityDisplay();
           this.updateQuantityToggles();
+          
+          // Emit event for cross-container sync and price updates
+          this.eventBus.emit('upsell:quantity-changed', {
+            selectorId: this.selectorId,
+            quantity: this.quantity,
+            packageId: this.packageId
+          });
         });
         
         // Set initial state
