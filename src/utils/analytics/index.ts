@@ -40,6 +40,8 @@ export class NextAnalytics {
     // Set up global transform function support
     if (typeof window !== 'undefined') {
       (window as any).NextDataLayerTransformFn = null;
+      // Check and set ignore flag on initialization
+      this.checkAndSetIgnoreFlag();
     }
   }
 
@@ -51,11 +53,60 @@ export class NextAnalytics {
   }
 
   /**
+   * Check URL for ignore parameter and set session storage flag
+   */
+  private checkAndSetIgnoreFlag(): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const ignoreParam = urlParams.get('ignore');
+      
+      if (ignoreParam === 'true') {
+        // Set session storage flag
+        sessionStorage.setItem('analytics_ignore', 'true');
+        logger.info('Analytics ignore flag set from URL parameter');
+      }
+    } catch (error) {
+      logger.error('Error checking ignore parameter:', error);
+    }
+  }
+
+  /**
+   * Check if analytics should be ignored
+   */
+  private shouldIgnoreAnalytics(): boolean {
+    if (typeof window === 'undefined') return false;
+
+    try {
+      // Check session storage first
+      const sessionIgnore = sessionStorage.getItem('analytics_ignore');
+      if (sessionIgnore === 'true') {
+        return true;
+      }
+
+      // Also check current URL in case it was just set
+      const urlParams = new URLSearchParams(window.location.search);
+      const ignoreParam = urlParams.get('ignore');
+      return ignoreParam === 'true';
+    } catch (error) {
+      logger.error('Error checking ignore status:', error);
+      return false;
+    }
+  }
+
+  /**
    * Initialize the analytics system
    */
   public async initialize(): Promise<void> {
     if (this.initialized) {
       logger.debug('Analytics already initialized');
+      return;
+    }
+
+    // Check for ignore parameter in URL or session storage
+    if (this.shouldIgnoreAnalytics()) {
+      logger.info('Analytics ignored due to ignore parameter');
       return;
     }
 
@@ -171,6 +222,12 @@ export class NextAnalytics {
    * Track an event
    */
   public track(event: DataLayerEvent): void {
+    // Skip tracking if analytics should be ignored
+    if (this.shouldIgnoreAnalytics()) {
+      logger.debug('Event tracking skipped due to ignore flag:', event.event);
+      return;
+    }
+
     if (!this.initialized) {
       logger.warn('Analytics not initialized, queuing event:', event.event);
       // Events will be queued in DataLayerManager
@@ -225,8 +282,23 @@ export class NextAnalytics {
       initialized: this.initialized,
       debugMode: dataLayer.isDebugMode(),
       providers: Array.from(this.providers.keys()),
-      eventsTracked: dataLayer.getEventCount()
+      eventsTracked: dataLayer.getEventCount(),
+      ignored: this.shouldIgnoreAnalytics()
     };
+  }
+
+  /**
+   * Clear the analytics ignore flag from session storage
+   */
+  public clearIgnoreFlag(): void {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('analytics_ignore');
+        logger.info('Analytics ignore flag cleared');
+      } catch (error) {
+        logger.error('Error clearing ignore flag:', error);
+      }
+    }
   }
 
   /**
@@ -281,5 +353,10 @@ if (typeof window !== 'undefined') {
   // Set up route change handling
   (window as any).NextInvalidateContext = () => {
     nextAnalytics.invalidateContext();
+  };
+  
+  // Set up ignore flag management
+  (window as any).NextAnalyticsClearIgnore = () => {
+    nextAnalytics.clearIgnoreFlag();
   };
 }
