@@ -11,6 +11,8 @@ export declare class NextAnalytics {
     private autoListener;
     private constructor();
     static getInstance(): NextAnalytics;
+    private checkAndSetIgnoreFlag;
+    private shouldIgnoreAnalytics;
     initialize(): Promise<void>;
     private initializeProviders;
     private initializeAutoTracking;
@@ -19,6 +21,7 @@ export declare class NextAnalytics {
     setTransformFunction(fn: (event: DataLayerEvent) => DataLayerEvent | null): void;
     invalidateContext(): void;
     getStatus(): any;
+    clearIgnoreFlag(): void;
     trackViewItemList(items: (CartItem | EnrichedCartLine | any)[], listId?: string, listName?: string): void;
     trackViewItem(item: CartItem | EnrichedCartLine | any): void;
     trackAddToCart(item: CartItem | EnrichedCartLine | any, listId?: string, listName?: string): void;
