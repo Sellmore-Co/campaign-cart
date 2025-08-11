@@ -308,6 +308,9 @@ export default defineConfig({
       clientFiles: ['./src/index.ts'],
     },
   },
+  
+  // Public directory for serving static files (including debug files)
+  publicDir: 'public',
 
   // Preview server configuration
   preview: {
