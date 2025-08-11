@@ -92,6 +92,11 @@ export const useAttributionStore = create<AttributionState & AttributionActions>
           set((state) => ({
             ...state,
             ...data,
+            // Merge metadata to preserve custom fields
+            metadata: {
+              ...state.metadata,  // Preserve existing custom fields
+              ...data.metadata    // Update with new collected data
+            },
             // Preserve first visit timestamp if it exists
             first_visit_timestamp: state.first_visit_timestamp || data.first_visit_timestamp
           }));
