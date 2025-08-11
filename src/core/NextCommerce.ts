@@ -18,6 +18,7 @@ import { useCampaignStore } from '@/stores/campaignStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { useOrderStore } from '@/stores/orderStore';
 import { useConfigStore } from '@/stores/configStore';
+import { useAttributionStore } from '@/stores/attributionStore';
 import { EventBus } from '@/utils/events';
 import { Logger } from '@/utils/logger';
 import { ApiClient } from '@/api/client';
@@ -285,6 +286,106 @@ export class NextCommerce {
         this.logger.debug('Analytics context invalidation failed (non-critical):', error);
       }
     });
+  }
+
+  // Attribution metadata methods
+  public addMetadata(key: string, value: any): void {
+    try {
+      const store = useAttributionStore.getState();
+      const currentMetadata = store.metadata || {};
+      
+      store.updateAttribution({
+        metadata: {
+          ...currentMetadata,
+          [key]: value
+        }
+      });
+      
+      this.logger.debug(`Attribution metadata added: ${key}`, value);
+    } catch (error) {
+      this.logger.error('Failed to add attribution metadata:', error);
+    }
+  }
+
+  public setMetadata(metadata: Record<string, any>): void {
+    try {
+      const store = useAttributionStore.getState();
+      const currentMetadata = store.metadata || {};
+      
+      // Merge with existing metadata to preserve automatic fields
+      store.updateAttribution({ 
+        metadata: {
+          ...currentMetadata,
+          ...metadata
+        }
+      });
+      
+      this.logger.debug('Attribution metadata set:', metadata);
+    } catch (error) {
+      this.logger.error('Failed to set attribution metadata:', error);
+    }
+  }
+
+  public clearMetadata(): void {
+    try {
+      const store = useAttributionStore.getState();
+      
+      store.updateAttribution({ 
+        metadata: {
+          // Preserve automatic fields
+          landing_page: store.metadata?.landing_page || '',
+          referrer: store.metadata?.referrer || '',
+          device: store.metadata?.device || '',
+          device_type: store.metadata?.device_type || 'desktop',
+          domain: store.metadata?.domain || '',
+          timestamp: store.metadata?.timestamp || Date.now()
+        }
+      });
+      
+      this.logger.debug('Attribution metadata cleared');
+    } catch (error) {
+      this.logger.error('Failed to clear attribution metadata:', error);
+    }
+  }
+
+  public getMetadata(): Record<string, any> | undefined {
+    try {
+      const store = useAttributionStore.getState();
+      return store.metadata;
+    } catch (error) {
+      this.logger.error('Failed to get attribution metadata:', error);
+      return undefined;
+    }
+  }
+
+  public setAttribution(attribution: Record<string, any>): void {
+    try {
+      const store = useAttributionStore.getState();
+      store.updateAttribution(attribution);
+      
+      this.logger.debug('Attribution set:', attribution);
+    } catch (error) {
+      this.logger.error('Failed to set attribution:', error);
+    }
+  }
+
+  public getAttribution(): Record<string, any> | undefined {
+    try {
+      const store = useAttributionStore.getState();
+      return store.getAttributionForApi();
+    } catch (error) {
+      this.logger.error('Failed to get attribution:', error);
+      return undefined;
+    }
+  }
+
+  public debugAttribution(): void {
+    try {
+      const store = useAttributionStore.getState();
+      store.debug();
+    } catch (error) {
+      this.logger.error('Failed to debug attribution:', error);
+    }
   }
 
   // Shipping methods

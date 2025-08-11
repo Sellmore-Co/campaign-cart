@@ -43,6 +43,13 @@ export declare class NextCommerce {
     trackLogin(email: string): Promise<void>;
     setDebugMode(enabled: boolean): Promise<void>;
     invalidateAnalyticsContext(): Promise<void>;
+    addMetadata(key: string, value: any): void;
+    setMetadata(metadata: Record<string, any>): void;
+    clearMetadata(): void;
+    getMetadata(): Record<string, any> | undefined;
+    setAttribution(attribution: Record<string, any>): void;
+    getAttribution(): Record<string, any> | undefined;
+    debugAttribution(): void;
     getShippingMethods(): Array<{
         ref_id: number;
         code: string;
