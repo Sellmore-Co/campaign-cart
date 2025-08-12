@@ -397,7 +397,7 @@ export class RudderStackAdapter extends ProviderAdapter {
     const props: any = {
       checkout_id: `checkout-${Date.now()}`,
       order_id: data.transaction_id || '',
-      affiliation: 'Hanacure',
+      affiliation: data.affiliation || campaignData.campaignName || 'Funnels',
       total: parseFloat(data.value) || 0,
       revenue: parseFloat(data.value) || 0,
       shipping: parseFloat(data.shipping) || 0,
@@ -489,7 +489,7 @@ export class RudderStackAdapter extends ProviderAdapter {
       price: parseFloat(item.price) || 0,
       quantity: parseInt(item.quantity) || 1,
       category: item.item_category || item.category || '',
-      brand: item.item_brand || 'Hanacure',
+      brand: item.item_brand || item.brand || '',
       variant: item.item_variant || '',
       position: item.position || 0,
       url: window.location.href,
