@@ -2,7 +2,9 @@ import { ProviderAdapter } from './ProviderAdapter';
 import { DataLayerEvent } from '../types';
 declare global {
     interface Window {
-        fbq: (command: string, event: string, parameters?: any) => void;
+        fbq: (command: string, event: string, parameters?: any, eventData?: {
+            eventID?: string;
+        }) => void;
     }
 }
 export declare class FacebookAdapter extends ProviderAdapter {
