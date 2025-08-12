@@ -140,19 +140,18 @@ export class FacebookAdapter extends ProviderAdapter {
 
     try {
       if (window.fbq) {
-        // For Purchase events, include event_id for deduplication if storeName is configured
+        // For Purchase events, include eventID for deduplication if storeName is configured
         if (fbEventName === 'Purchase' && this.storeName) {
           // Use order_number if available, fallback to order_id (ref_id)
           const orderIdentifier = parameters.order_number || parameters.order_id;
           if (orderIdentifier) {
             const eventId = `${this.storeName}-${orderIdentifier}`;
-            // Include event_id in the parameters object
-            const paramsWithEventId = { ...parameters, event_id: eventId };
-            window.fbq('track', fbEventName, paramsWithEventId);
-            this.debug(`Event sent to Facebook: ${fbEventName} with event_id: ${eventId}`, paramsWithEventId);
+            // Pass eventID as 4th parameter to fbq track call for proper deduplication
+            window.fbq('track', fbEventName, parameters, { eventID: eventId });
+            this.debug(`Event sent to Facebook: ${fbEventName} with eventID: ${eventId}`, parameters);
           } else {
             window.fbq('track', fbEventName, parameters);
-            this.debug(`Event sent to Facebook: ${fbEventName} (no order identifier for event_id)`, parameters);
+            this.debug(`Event sent to Facebook: ${fbEventName} (no order identifier for eventID)`, parameters);
           }
         } else {
           window.fbq('track', fbEventName, parameters);
@@ -340,7 +339,7 @@ export class FacebookAdapter extends ProviderAdapter {
       value: data.value || data.total || 0,
       num_items: items.length,
       order_id: data.transaction_id || data.order_id,
-      order_number: data.order_number // Include order_number for event_id
+      order_number: data.order_number // Include order_number for eventID deduplication
     };
 
     if (items.length > 0) {
