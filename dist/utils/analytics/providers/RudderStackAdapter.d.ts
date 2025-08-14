@@ -27,6 +27,8 @@ export declare class RudderStackAdapter extends ProviderAdapter {
     private buildProductListViewedProps;
     private buildProductAddedRemovedProps;
     private buildCartViewedProps;
+    private buildShippingInfoProps;
+    private buildPaymentInfoProps;
     private buildCheckoutStartedProps;
     private buildOrderCompletedProps;
     private buildUpsellProps;

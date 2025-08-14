@@ -110,9 +110,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private boundHandleKonamiActivation?: EventListener;
   
   // Track if analytics events have been fired
-  private hasTrackedBeginCheckout = false;
   private hasTrackedShippingInfo = false;
-  private hasTrackedPaymentInfo = false;
 
   public async initialize(): Promise<void> {
     this.validateElement();

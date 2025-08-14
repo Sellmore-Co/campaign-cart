@@ -35,6 +35,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private billingAddressToggleHandler?;
     private boundHandleTestDataFilled?;
     private boundHandleKonamiActivation?;
+    private hasTrackedShippingInfo;
     initialize(): Promise<void>;
     private scanAllFields;
     private scanBillingFields;
@@ -94,6 +95,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private handlePaymentMethodChange;
     private handleShippingMethodChange;
     private handleBillingAddressToggle;
+    private setupAutofillDetection;
     private setupEventHandlers;
     private updateFormData;
     private clearError;

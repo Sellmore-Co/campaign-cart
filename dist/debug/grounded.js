@@ -1,5 +1,90 @@
+/// Function to get prices from campaign data
+function getPricesFromCampaign() {
+  try {
+    // Check if campaign data exists in sessionStorage (not localStorage)
+    const cacheData = sessionStorage.getItem('next-campaign-cache');
+    console.log('[Grounded] Cache data exists:', !!cacheData);
+    
+    if (!cacheData) {
+      console.log('[Grounded] No cache data found in sessionStorage');
+      return null;
+    }
+    
+    const cache = JSON.parse(cacheData);
+    console.log('[Grounded] Parsed cache:', cache);
+    
+    if (!cache.campaign || !cache.campaign.packages) {
+      console.log('[Grounded] No campaign or packages in cache');
+      return null;
+    }
+    
+    const packages = cache.campaign.packages;
+    console.log('[Grounded] Found packages:', packages.length);
+    
+    const priceMap = {};
+    
+    // Build a map of ref_id to prices
+    packages.forEach(pkg => {
+      console.log('[Grounded] Processing package:', pkg.ref_id, pkg.price, pkg.price_retail);
+      if (pkg.ref_id && pkg.price && pkg.price_retail) {
+        priceMap[pkg.ref_id] = {
+          salePrice: parseFloat(pkg.price),
+          regularPrice: parseFloat(pkg.price_retail)
+        };
+      }
+    });
+    
+    console.log('[Grounded] Built price map:', priceMap);
+    return priceMap;
+  } catch (error) {
+    console.warn('[Grounded] Could not load prices from campaign data:', error);
+    return null;
+  }
+}
+
 // Variant mapping placeholder - add your variants here
-const groundedSheetsVariants = [
+// Pricing structure for Grounded Sheets (fallback prices)
+const sizePricing = {
+  "Single": { regular: 898, sale: 449 },
+  "Twin": { regular: 998, sale: 499 },
+  "Double": { regular: 1198, sale: 599 },
+  "Queen": { regular: 1398, sale: 649 },
+  "King": { regular: 1598, sale: 749 },
+  "Cali King": { regular: 1598, sale: 749 }
+};
+
+// Function to enhance variants with prices
+function enhanceVariantsWithPrices(variants, campaignPrices = null) {
+  return variants.map(variant => {
+    // Check if we have campaign price for this variant
+    if (campaignPrices && campaignPrices[variant.id]) {
+      console.log(`[Grounded] Using campaign price for variant ${variant.id}:`, campaignPrices[variant.id]);
+      return {
+        ...variant,
+        regularPrice: campaignPrices[variant.id].regularPrice,
+        salePrice: campaignPrices[variant.id].salePrice
+      };
+    }
+    
+    // Otherwise use fallback prices based on size and quantity
+    const basePrice = sizePricing[variant.size];
+    if (basePrice) {
+      console.log(`[Grounded] Using fallback price for variant ${variant.id}:`, basePrice);
+      return {
+        ...variant,
+        regularPrice: basePrice.regular * variant.quantity,
+        salePrice: basePrice.sale * variant.quantity
+      };
+    }
+    
+    // Return variant as-is if no pricing found
+    console.log(`[Grounded] No pricing found for variant ${variant.id}`);
+    return variant;
+  });
+}
+
+// Keep existing structure but rename to avoid conflicts
+const groundedSheetsVariantsOriginal = [
   // Single quantity variants
   { id: 1, size: "Twin", color: "Obsidian Grey", quantity: 1 },
   { id: 2, size: "Twin", color: "Chateau Ivory", quantity: 1 },
@@ -18,13 +103,13 @@ const groundedSheetsVariants = [
   { id: 15, size: "Queen", color: "Verdant Sage", quantity: 1 },
   { id: 16, size: "King", color: "Verdant Sage", quantity: 1 },
   { id: 17, size: "Single", color: "Obsidian Grey", quantity: 1 },
-  { id: 18, size: "California King", color: "Obsidian Grey", quantity: 1 },
+  { id: 18, size: "Cali King", color: "Obsidian Grey", quantity: 1 },
   { id: 19, size: "Single", color: "Chateau Ivory", quantity: 1 },
-  { id: 20, size: "California King", color: "Chateau Ivory", quantity: 1 },
+  { id: 20, size: "Cali King", color: "Chateau Ivory", quantity: 1 },
   { id: 21, size: "Single", color: "Scribe Blue", quantity: 1 },
-  { id: 22, size: "California King", color: "Scribe Blue", quantity: 1 },
+  { id: 22, size: "Cali King", color: "Scribe Blue", quantity: 1 },
   { id: 23, size: "Single", color: "Verdant Sage", quantity: 1 },
-  { id: 24, size: "California King", color: "Verdant Sage", quantity: 1 },
+  { id: 24, size: "Cali King", color: "Verdant Sage", quantity: 1 },
   
   // 2-pack variants
   { id: 25, size: "Single", color: "Obsidian Grey", quantity: 2 },
@@ -47,10 +132,10 @@ const groundedSheetsVariants = [
   { id: 42, size: "King", color: "Chateau Ivory", quantity: 2 },
   { id: 43, size: "King", color: "Scribe Blue", quantity: 2 },
   { id: 44, size: "King", color: "Verdant Sage", quantity: 2 },
-  { id: 45, size: "California King", color: "Obsidian Grey", quantity: 2 },
-  { id: 46, size: "California King", color: "Chateau Ivory", quantity: 2 },
-  { id: 47, size: "California King", color: "Scribe Blue", quantity: 2 },
-  { id: 48, size: "California King", color: "Verdant Sage", quantity: 2 },
+  { id: 45, size: "Cali King", color: "Obsidian Grey", quantity: 2 },
+  { id: 46, size: "Cali King", color: "Chateau Ivory", quantity: 2 },
+  { id: 47, size: "Cali King", color: "Scribe Blue", quantity: 2 },
+  { id: 48, size: "Cali King", color: "Verdant Sage", quantity: 2 },
   
   // 3-pack variants
   { id: 49, size: "Single", color: "Obsidian Grey", quantity: 3 },
@@ -73,10 +158,10 @@ const groundedSheetsVariants = [
   { id: 67, size: "King", color: "Chateau Ivory", quantity: 3 },
   { id: 68, size: "King", color: "Scribe Blue", quantity: 3 },
   { id: 69, size: "King", color: "Verdant Sage", quantity: 3 },
-  { id: 70, size: "California King", color: "Obsidian Grey", quantity: 3 },
-  { id: 71, size: "California King", color: "Chateau Ivory", quantity: 3 },
-  { id: 72, size: "California King", color: "Scribe Blue", quantity: 3 },
-  { id: 73, size: "California King", color: "Verdant Sage", quantity: 3 },
+  { id: 70, size: "Cali King", color: "Obsidian Grey", quantity: 3 },
+  { id: 71, size: "Cali King", color: "Chateau Ivory", quantity: 3 },
+  { id: 72, size: "Cali King", color: "Scribe Blue", quantity: 3 },
+  { id: 73, size: "Cali King", color: "Verdant Sage", quantity: 3 },
   
   // Exit 10% discount variants - Single quantity
   { id: 74, size: "Single", color: "Obsidian Grey", quantity: 1, discount: "Exit 10%" },
@@ -99,10 +184,10 @@ const groundedSheetsVariants = [
   { id: 91, size: "King", color: "Chateau Ivory", quantity: 1, discount: "Exit 10%" },
   { id: 92, size: "King", color: "Scribe Blue", quantity: 1, discount: "Exit 10%" },
   { id: 93, size: "King", color: "Verdant Sage", quantity: 1, discount: "Exit 10%" },
-  { id: 94, size: "California King", color: "Obsidian Grey", quantity: 1, discount: "Exit 10%" },
-  { id: 95, size: "California King", color: "Chateau Ivory", quantity: 1, discount: "Exit 10%" },
-  { id: 96, size: "California King", color: "Scribe Blue", quantity: 1, discount: "Exit 10%" },
-  { id: 97, size: "California King", color: "Verdant Sage", quantity: 1, discount: "Exit 10%" },
+  { id: 94, size: "Cali King", color: "Obsidian Grey", quantity: 1, discount: "Exit 10%" },
+  { id: 95, size: "Cali King", color: "Chateau Ivory", quantity: 1, discount: "Exit 10%" },
+  { id: 96, size: "Cali King", color: "Scribe Blue", quantity: 1, discount: "Exit 10%" },
+  { id: 97, size: "Cali King", color: "Verdant Sage", quantity: 1, discount: "Exit 10%" },
   
   // Exit 10% discount variants - 2-pack
   { id: 98, size: "Single", color: "Obsidian Grey", quantity: 2, discount: "Exit 10%" },
@@ -125,10 +210,10 @@ const groundedSheetsVariants = [
   { id: 115, size: "King", color: "Chateau Ivory", quantity: 2, discount: "Exit 10%" },
   { id: 116, size: "King", color: "Scribe Blue", quantity: 2, discount: "Exit 10%" },
   { id: 117, size: "King", color: "Verdant Sage", quantity: 2, discount: "Exit 10%" },
-  { id: 118, size: "California King", color: "Obsidian Grey", quantity: 2, discount: "Exit 10%" },
-  { id: 119, size: "California King", color: "Chateau Ivory", quantity: 2, discount: "Exit 10%" },
-  { id: 120, size: "California King", color: "Scribe Blue", quantity: 2, discount: "Exit 10%" },
-  { id: 121, size: "California King", color: "Verdant Sage", quantity: 2, discount: "Exit 10%" },
+  { id: 118, size: "Cali King", color: "Obsidian Grey", quantity: 2, discount: "Exit 10%" },
+  { id: 119, size: "Cali King", color: "Chateau Ivory", quantity: 2, discount: "Exit 10%" },
+  { id: 120, size: "Cali King", color: "Scribe Blue", quantity: 2, discount: "Exit 10%" },
+  { id: 121, size: "Cali King", color: "Verdant Sage", quantity: 2, discount: "Exit 10%" },
   
   // Exit 10% discount variants - 3-pack
   { id: 122, size: "Single", color: "Obsidian Grey", quantity: 3, discount: "Exit 10%" },
@@ -151,11 +236,14 @@ const groundedSheetsVariants = [
   { id: 139, size: "King", color: "Chateau Ivory", quantity: 3, discount: "Exit 10%" },
   { id: 140, size: "King", color: "Scribe Blue", quantity: 3, discount: "Exit 10%" },
   { id: 141, size: "King", color: "Verdant Sage", quantity: 3, discount: "Exit 10%" },
-  { id: 142, size: "California King", color: "Obsidian Grey", quantity: 3, discount: "Exit 10%" },
-  { id: 143, size: "California King", color: "Chateau Ivory", quantity: 3, discount: "Exit 10%" },
-  { id: 144, size: "California King", color: "Scribe Blue", quantity: 3, discount: "Exit 10%" },
-  { id: 145, size: "California King", color: "Verdant Sage", quantity: 3, discount: "Exit 10%" }
+  { id: 142, size: "Cali King", color: "Obsidian Grey", quantity: 3, discount: "Exit 10%" },
+  { id: 143, size: "Cali King", color: "Chateau Ivory", quantity: 3, discount: "Exit 10%" },
+  { id: 144, size: "Cali King", color: "Scribe Blue", quantity: 3, discount: "Exit 10%" },
+  { id: 145, size: "Cali King", color: "Verdant Sage", quantity: 3, discount: "Exit 10%" }
 ];
+
+// Initialize variants without prices first
+let groundedSheetsVariants = [...groundedSheetsVariantsOriginal];
 
 const helpers = {
   getBySize: (size) => groundedSheetsVariants.filter(v => v.size === size),
@@ -719,21 +807,19 @@ class OSDropdownItem extends ConversionElement {
 }
 
 // Tier Controller
-// Tier Controller
 class TierController {
   constructor() {
     this.currentTier = 1;
     this.selectedVariants = new Map();
     this.slotCartMapping = new Map(); // Track which variant ID is in cart for each slot
 
-        // Image mapping for colors
+    // Image mapping for colors
     this.colorImages = {
       'obsidian-grey': 'https://cdn.29next.store/media/bareearth/uploads/obsidian-grey.png',
       'chateau-ivory': 'https://cdn.29next.store/media/bareearth/uploads/chateau-ivory.png',
       'scribe-blue': 'https://cdn.29next.store/media/bareearth/uploads/scribe-blue.png',
       'verdant-sage': 'https://cdn.29next.store/media/bareearth/uploads/verdant-sage.png'
     };
-
 
     this.init();
   }
@@ -748,9 +834,173 @@ class TierController {
     this.populateAllDropdowns();
     this.updateExistingColorItems();
     this.initializeColorSwatches();
-    this.initializeSlotImages(); // Add this line
+    this.initializeSlotImages();
     this.setupCampaignCartListeners();
+    
+    // Apply campaign prices if available
+    this.refreshPricesFromCampaign();
   }
+  
+  refreshPricesFromCampaign() {
+    console.log('[Grounded] Refreshing prices from campaign data');
+    const campaignPrices = getPricesFromCampaign();
+    
+    if (campaignPrices) {
+      console.log('[Grounded] Found campaign prices, updating variants');
+      // Update all variants with campaign prices
+      groundedSheetsVariants = enhanceVariantsWithPrices(groundedSheetsVariantsOriginal, campaignPrices);
+      
+      // Refresh all dropdowns to show updated prices
+      this.populateAllDropdowns();
+      console.log('[Grounded] Prices refreshed from campaign data');
+    } else {
+      console.log('[Grounded] No campaign prices found, using fallback prices');
+      // Use fallback prices
+      groundedSheetsVariants = enhanceVariantsWithPrices(groundedSheetsVariantsOriginal, null);
+    }
+  }
+
+
+  // Add this method to check if all selections are complete
+// Update this method in TierController class
+checkAllSelectionsComplete() {
+  let completeCount = 0;
+  let totalSlots = this.currentTier;
+  
+  console.log(`[Grounded] Checking completion status for ${totalSlots} slots`);
+  
+  for (let i = 1; i <= totalSlots; i++) {
+    const slotVariants = this.selectedVariants.get(i);
+    const hasColor = slotVariants?.color && slotVariants.color !== 'select-color';
+    const hasSize = slotVariants?.size && slotVariants.size !== 'select-size';
+    
+    console.log(`[Grounded] Slot ${i}: color=${slotVariants?.color}, size=${slotVariants?.size}, complete=${hasColor && hasSize}`);
+    
+    if (hasColor && hasSize) {
+      completeCount++;
+    }
+  }
+  
+  const allComplete = completeCount === totalSlots;
+  console.log(`[Grounded] Selection status: ${completeCount}/${totalSlots} complete = ${allComplete}`);
+  
+  return allComplete;
+}
+
+// Add this method to update CTA buttons
+// Update this method in TierController class
+updateCTAButtons() {
+  const allComplete = this.checkAllSelectionsComplete();
+  const pendingCTA = document.querySelector('[data-cta="selection-pending"]');
+  const completeCTA = document.querySelector('[data-cta="selection-complete"]');
+  
+  console.log(`[Grounded] Updating CTA buttons - All complete: ${allComplete}`);
+  
+  if (pendingCTA && completeCTA) {
+    if (allComplete) {
+      // Show complete button, hide pending button
+      pendingCTA.classList.remove('active');
+      completeCTA.classList.add('active');
+      console.log('[Grounded] ✅ Switched to complete CTA - all selections done');
+    } else {
+      // Show pending button, hide complete button
+      pendingCTA.classList.add('active');
+      completeCTA.classList.remove('active');
+      console.log('[Grounded] ⏳ Switched to pending CTA - selections incomplete');
+    }
+  } else {
+    console.warn('[Grounded] CTA buttons not found in DOM');
+  }
+}
+
+// Add this method to find first incomplete slot
+findFirstIncompleteSlot() {
+  for (let i = 1; i <= this.currentTier; i++) {
+    if (!this.checkCompleteSelection(i, false)) {
+      return i;
+    }
+  }
+  return null;
+}
+
+// Add this method to scroll to incomplete slot
+scrollToIncompleteSlot() {
+  const incompleteSlot = this.findFirstIncompleteSlot();
+  if (incompleteSlot) {
+    const slotElement = document.querySelector(`[next-slot="${incompleteSlot}"]`);
+    if (slotElement) {
+      slotElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
+      console.log(`[Grounded] Scrolled to incomplete slot ${incompleteSlot}`);
+      return true;
+    }
+  }
+  return false;
+}
+
+// Add this method to handle verify button click
+handleVerifyButtonClick() {
+  const allComplete = this.checkAllSelectionsComplete();
+  
+  if (allComplete) {
+    // All selections complete, switch to complete button
+    this.updateCTAButtons();
+    return true;
+  } else {
+    // Scroll to first incomplete slot
+    this.scrollToIncompleteSlot();
+    return false;
+  }
+}
+
+
+  updateDropdownsForTierChange(newTier, previousTier) {
+  if (newTier === previousTier) return;
+  
+  console.log(`[Grounded] Updating dropdowns for tier change: ${previousTier} → ${newTier}`);
+  
+  const slots = document.querySelectorAll('[next-slot]');
+  
+  slots.forEach(slot => {
+    const slotNumber = parseInt(slot.getAttribute('next-slot'));
+    
+    // Only update active slots
+    if (slotNumber <= newTier) {
+      const colorDropdown = slot.querySelector('os-dropdown[next-variant-option="color"]');
+      const sizeDropdown = slot.querySelector('os-dropdown[next-variant-option="size"]');
+      
+      // Get current selections
+      const currentColorValue = colorDropdown?.value;
+      const currentSizeValue = sizeDropdown?.value;
+      
+      // Repopulate dropdowns with new tier data
+      this.populateSlotDropdowns(slot, slotNumber);
+      
+      // Restore selections but DON'T trigger cart updates - just update internal state
+      if (currentColorValue && currentColorValue !== 'select-color') {
+        colorDropdown.value = currentColorValue;
+        // Update internal state without triggering cart updates
+        const variantType = 'color';
+        if (!this.selectedVariants.has(slotNumber)) {
+          this.selectedVariants.set(slotNumber, {});
+        }
+        this.selectedVariants.get(slotNumber)[variantType] = currentColorValue;
+      }
+      
+      if (currentSizeValue && currentSizeValue !== 'select-size') {
+        sizeDropdown.value = currentSizeValue;
+        // Update internal state without triggering cart updates
+        const variantType = 'size';
+        if (!this.selectedVariants.has(slotNumber)) {
+          this.selectedVariants.set(slotNumber, {});
+        }
+        this.selectedVariants.get(slotNumber)[variantType] = currentSizeValue;
+      }
+    }
+  });
+}
   
   clearCartOnPageLoad() {
     // Wait for SDK to be ready before clearing
@@ -844,37 +1094,37 @@ class TierController {
   }
 
   updateColorSwatch(dropdown, colorValue) {
-  const toggle = dropdown.querySelector('button');
-  const swatch = toggle?.querySelector('.os-card__variant-swatch');
-  
-  if (swatch && colorValue) {
-    // Map color values to actual color names for variant lookup
-    const colorMap = {
-      'obsidian-grey': 'Obsidian Grey',
-      'chateau-ivory': 'Chateau Ivory', 
-      'scribe-blue': 'Scribe Blue',
-      'verdant-sage': 'Verdant Sage'
-    };
+    const toggle = dropdown.querySelector('button');
+    const swatch = toggle?.querySelector('.os-card__variant-swatch');
     
-    const colorName = colorMap[colorValue];
-    
-    // You can add CSS classes or styles based on the color
-    swatch.className = 'os-card__variant-swatch'; // Reset classes
-    swatch.classList.add(`swatch-${colorValue}`);
-    
-    // Or set background color directly if you have color values
-    const colorStyles = {
-      'obsidian-grey': '#9699a6',
-      'chateau-ivory': '#e4e4e5',
-      'scribe-blue': '#4a90e2',
-      'verdant-sage': '#87a96b'
-    };
-    
-    if (colorStyles[colorValue]) {
-      swatch.style.backgroundColor = colorStyles[colorValue];
+    if (swatch && colorValue) {
+      // Map color values to actual color names for variant lookup
+      const colorMap = {
+        'obsidian-grey': 'Obsidian Grey',
+        'chateau-ivory': 'Chateau Ivory', 
+        'scribe-blue': 'Scribe Blue',
+        'verdant-sage': 'Verdant Sage'
+      };
+      
+      const colorName = colorMap[colorValue];
+      
+      // You can add CSS classes or styles based on the color
+      swatch.className = 'os-card__variant-swatch'; // Reset classes
+      swatch.classList.add(`swatch-${colorValue}`);
+      
+      // Or set background color directly if you have color values
+      const colorStyles = {
+        'obsidian-grey': '#9699a6',
+        'chateau-ivory': '#e4e4e5',
+        'scribe-blue': '#4a90e2',
+        'verdant-sage': '#87a96b'
+      };
+      
+      if (colorStyles[colorValue]) {
+        swatch.style.backgroundColor = colorStyles[colorValue];
+      }
     }
   }
-}
 
   bindDropdownEvents() {
     document.addEventListener('variantSelected', (e) => {
@@ -949,105 +1199,174 @@ class TierController {
   }
 
   updateExistingColorItems() {
-  const colorDropdowns = document.querySelectorAll('os-dropdown[next-variant-option="color"]');
-  
-  const colorStyles = {
-      'obsidian-grey': '#9699a6',
-      'chateau-ivory': '#e4e4e5',
-      'scribe-blue': '#4a90e2',
-      'verdant-sage': '#87a96b'
-  };
-  
-  colorDropdowns.forEach(dropdown => {
-    const menu = dropdown.querySelector('os-dropdown-menu');
-    if (!menu) return;
+    const colorDropdowns = document.querySelectorAll('os-dropdown[next-variant-option="color"]');
     
-    const colorItems = menu.querySelectorAll('os-dropdown-item');
-    colorItems.forEach(item => {
-      const value = item.getAttribute('value');
-      const toggleOption = item.querySelector('.os-card__toggle-option');
+    const colorStyles = {
+        'obsidian-grey': '#9699a6',
+        'chateau-ivory': '#e4e4e5',
+        'scribe-blue': '#4a90e2',
+        'verdant-sage': '#87a96b'
+    };
+    
+    colorDropdowns.forEach(dropdown => {
+      const menu = dropdown.querySelector('os-dropdown-menu');
+      if (!menu) return;
       
-      if (value && colorStyles[value] && toggleOption) {
-        // Check if it already has the swatch structure
-        const existingSwatch = toggleOption.querySelector('.os-card__variant-swatch');
-        if (!existingSwatch) {
-          // Update the structure to include swatch
-          const colorName = toggleOption.querySelector('.os-card__variant-toggle-name')?.textContent;
-          if (colorName) {
-            toggleOption.innerHTML = `
-              <div class="os-card__variant-toggle-info">
-                <div data-swatch="color" class="os-card__variant-swatch" style="background-color: ${colorStyles[value]}"></div>
-                <div class="os-card__variant-toggle-name">${colorName}</div>
-              </div>
-            `;
+      const colorItems = menu.querySelectorAll('os-dropdown-item');
+      colorItems.forEach(item => {
+        const value = item.getAttribute('value');
+        const toggleOption = item.querySelector('.os-card__toggle-option');
+        
+        if (value && colorStyles[value] && toggleOption) {
+          // Check if it already has the swatch structure
+          const existingSwatch = toggleOption.querySelector('.os-card__variant-swatch');
+          if (!existingSwatch) {
+            // Update the structure to include swatch
+            const colorName = toggleOption.querySelector('.os-card__variant-toggle-name')?.textContent;
+            if (colorName) {
+              toggleOption.innerHTML = `
+                <div class="os-card__variant-toggle-info">
+                  <div data-swatch="color" class="os-card__variant-swatch" style="background-color: ${colorStyles[value]}"></div>
+                  <div class="os-card__variant-toggle-name">${colorName}</div>
+                </div>
+              `;
+            }
           }
         }
-      }
-    });
-  });
-}
-
-  populateSizeDropdown(dropdown, availableVariants) {
-    const menu = dropdown.querySelector('os-dropdown-menu');
-    if (!menu) return;
-
-    // Get unique sizes from available variants
-    const availableSizes = [...new Set(availableVariants.map(v => v.size))];
-    
-    // Clear existing items (except default/placeholder items)
-    const existingItems = menu.querySelectorAll('os-dropdown-item');
-    existingItems.forEach(item => {
-      const value = item.getAttribute('value');
-      if (value && !value.includes('select') && !availableSizes.some(size => 
-        size.toLowerCase().replace(/\s+/g, '-') === value
-      )) {
-        item.remove();
-      }
-    });
-
-    // Add missing size options
-    availableSizes.forEach(size => {
-      const sizeValue = size.toLowerCase().replace(/\s+/g, '-');
-      
-      // Check if item already exists
-      const existingItem = menu.querySelector(`os-dropdown-item[value="${sizeValue}"]`);
-      if (!existingItem) {
-        this.createSizeDropdownItem(menu, size, sizeValue);
-      }
+      });
     });
   }
 
-createColorDropdownItem(menu, colorName, colorValue) {
-  const item = document.createElement('os-dropdown-item');
-  item.setAttribute('value', colorValue);
-  
-  // Create the color styles mapping
-  const colorStyles = {
-      'obsidian-grey': '#9699a6',
-      'chateau-ivory': '#e4e4e5',
-      'scribe-blue': '#4a90e2',
-      'verdant-sage': '#87a96b'
-  };
-  
-  item.innerHTML = `
-    <div class="os-card__toggle-option os--distribute">
-      <div class="os-card__variant-toggle-info">
-        <div data-swatch="color" class="os-card__variant-swatch" style="background-color: ${colorStyles[colorValue] || '#ccc'}"></div>
-        <div class="os-card__variant-toggle-name">${colorName}</div>
-      </div>
-    </div>
-  `;
-  
-  menu.appendChild(item);
-}
+populateSizeDropdown(dropdown, availableVariants) {
+  const menu = dropdown.querySelector('os-dropdown-menu');
+  if (!menu) return;
 
-  createSizeDropdownItem(menu, sizeName, sizeValue) {
+  // Get unique sizes from available variants
+  const availableSizes = [...new Set(availableVariants.map(v => v.size))];
+  
+  // Sort sizes by price (cheapest to most expensive)
+  const sizesWithPrices = availableSizes.map(size => {
+    const variantWithPrice = availableVariants.find(v => v.size === size);
+    return {
+      size,
+      salePrice: variantWithPrice?.salePrice || 0,
+      variant: variantWithPrice
+    };
+  }).sort((a, b) => a.salePrice - b.salePrice);
+  
+  // Clear existing items (except default/placeholder items)
+  const existingItems = menu.querySelectorAll('os-dropdown-item');
+  existingItems.forEach(item => {
+    const value = item.getAttribute('value');
+    if (value && !value.includes('select') && !availableSizes.some(size => 
+      size.toLowerCase().replace(/\s+/g, '-') === value
+    )) {
+      item.remove();
+    }
+  });
+
+  // Add missing size options with price data in sorted order
+  sizesWithPrices.forEach(({ size, variant }) => {
+    const sizeValue = size.toLowerCase().replace(/\s+/g, '-');
+    
+    // Check if item already exists
+    const existingItem = menu.querySelector(`os-dropdown-item[value="${sizeValue}"]`);
+    if (!existingItem) {
+      this.createSizeDropdownItem(menu, size, sizeValue, variant);
+    } else {
+      // Update existing item with price data
+      this.updateSizeItemPrices(existingItem, size, availableVariants);
+      // Move existing item to correct position
+      menu.appendChild(existingItem);
+    }
+  });
+}
+  
+  updateSizeItemPrices(item, sizeName, availableVariants) {
+    const variantWithPrice = availableVariants.find(v => v.size === sizeName);
+    console.log('[Grounded] Updating size item prices for:', sizeName, variantWithPrice);
+    
+    if (!variantWithPrice || !variantWithPrice.regularPrice || !variantWithPrice.salePrice) {
+      console.log('[Grounded] No price data available for variant');
+      return;
+    }
+    
+    const toggleOption = item.querySelector('.os-card__toggle-option');
+    if (!toggleOption) return;
+    
+    // Check if prices already exist
+    let priceContainer = toggleOption.querySelector('.os-card__variant-toggle-price');
+    
+    if (!priceContainer) {
+      // Add price container if it doesn't exist
+      priceContainer = document.createElement('div');
+      priceContainer.className = 'os-card__variant-toggle-price';
+      priceContainer.innerHTML = `
+        <div data-option="reg" class="os-card__variant-toggle-price--compare-2">(Reg $${variantWithPrice.regularPrice.toLocaleString()})</div>
+        <div data-option="price" class="os-card__variant-toggle-price--sale-2">$${variantWithPrice.salePrice.toLocaleString()}</div>
+      `;
+      toggleOption.appendChild(priceContainer);
+    } else {
+      // Update existing prices
+      const regPrice = priceContainer.querySelector('[data-option="reg"]');
+      const salePrice = priceContainer.querySelector('[data-option="price"]');
+      
+      if (regPrice) {
+        regPrice.textContent = `(Reg $${variantWithPrice.regularPrice.toLocaleString()})`;
+      }
+      if (salePrice) {
+        salePrice.textContent = `$${variantWithPrice.salePrice.toLocaleString()}`;
+      }
+    }
+    
+    console.log('[Grounded] Updated prices in DOM for:', sizeName);
+  }
+
+  createColorDropdownItem(menu, colorName, colorValue) {
     const item = document.createElement('os-dropdown-item');
-    item.setAttribute('value', sizeValue);
+    item.setAttribute('value', colorValue);
+    
+    // Create the color styles mapping
+    const colorStyles = {
+        'obsidian-grey': '#9699a6',
+        'chateau-ivory': '#e4e4e5',
+        'scribe-blue': '#4a90e2',
+        'verdant-sage': '#87a96b'
+    };
     
     item.innerHTML = `
       <div class="os-card__toggle-option os--distribute">
-        <div class="os-card__variant-toggle-name">${sizeName}</div>
+        <div class="os-card__variant-toggle-info">
+          <div data-swatch="color" class="os-card__variant-swatch" style="background-color: ${colorStyles[colorValue] || '#ccc'}"></div>
+          <div class="os-card__variant-toggle-name">${colorName}</div>
+        </div>
+      </div>
+    `;
+    
+    menu.appendChild(item);
+  }
+
+  createSizeDropdownItem(menu, sizeName, sizeValue, variant = null) {
+    const item = document.createElement('os-dropdown-item');
+    item.setAttribute('value', sizeValue);
+    
+    // Get price for this size based on current tier
+    let priceHTML = '';
+    if (variant && variant.regularPrice && variant.salePrice) {
+      priceHTML = `
+        <div class="os-card__variant-toggle-price">
+          <div data-option="reg" class="os-card__variant-toggle-price--compare-2">(Reg $${variant.regularPrice.toLocaleString()})</div>
+          <div data-option="price" class="os-card__variant-toggle-price--sale-2">$${variant.salePrice.toLocaleString()}</div>
+        </div>
+      `;
+    }
+    
+    item.innerHTML = `
+      <div class="os-card__toggle-option os--distribute">
+        <div class="os-card__variant-toggle-info">
+          <div class="os-card__variant-toggle-name">${sizeName}</div>
+        </div>
+        ${priceHTML}
       </div>
     `;
     
@@ -1055,45 +1374,138 @@ createColorDropdownItem(menu, colorName, colorValue) {
   }
 
   // Update the selectTier method to refresh images
-  selectTier(tierNumber) {
-    console.log(`Selecting tier: ${tierNumber}`);
-    
-    const previousTier = this.currentTier;
-    this.currentTier = tierNumber;
+selectTier(tierNumber) {
+  console.log(`Selecting tier: ${tierNumber}`);
+  
+  const previousTier = this.currentTier;
+  
+  // Early exit if tier hasn't actually changed
+  if (tierNumber === previousTier) {
+    console.log(`[Grounded] Tier unchanged: ${tierNumber}, skipping reprocessing`);
     this.updateTierCardStates(tierNumber);
     this.updateSlotStates(tierNumber);
-    
-    // Handle tier changes - DON'T update existing items in cart
-    if (tierNumber !== previousTier) {
-      console.log(`[Grounded] Tier changed from ${previousTier} to ${tierNumber}`);
-      
-      // If decreasing tier, remove items for slots that are no longer active
-      if (tierNumber < previousTier) {
-        for (let i = tierNumber + 1; i <= previousTier; i++) {
-          // Remove from cart if it exists
-          const variantId = this.slotCartMapping.get(i);
-          if (variantId && window.next) {
-            console.log(`[Grounded] Removing item from cart for inactive slot ${i}`);
-            window.next.removeItem({ packageId: variantId });
-          }
-          this.selectedVariants.delete(i);
-          this.slotCartMapping.delete(i);
-          console.log(`[Grounded] Removed selection for slot ${i} (no longer active)`);
-        }
-      }
-      
-      // DON'T update existing selections - they should keep their original variant IDs
-      // The tier just controls how many slots are available, not which variants are selected
-      console.log(`[Grounded] Keeping existing selections as-is`);
-    } else {
-      console.log(`[Grounded] Tier unchanged: ${tierNumber}`);
-    }
-    
     this.populateAllDropdowns();
-    this.initializeSlotImages(); // Add this line to refresh images
+    this.initializeSlotImages();
+    this.updateCTAButtons(); // Add this line
     this.dispatchTierChangeEvent(tierNumber);
+    return;
   }
   
+  this.currentTier = tierNumber;
+  this.updateTierCardStates(tierNumber);
+  this.updateSlotStates(tierNumber);
+  
+  console.log(`[Grounded] Tier changed from ${previousTier} to ${tierNumber}`);
+  
+  // Clear all cart items when tier changes since quantities are different
+  this.clearAllCartItems();
+  
+  // If decreasing tier, remove selections for slots that are no longer active
+  if (tierNumber < previousTier) {
+    for (let i = tierNumber + 1; i <= previousTier; i++) {
+      this.selectedVariants.delete(i);
+      this.slotCartMapping.delete(i);
+      console.log(`[Grounded] Removed selection for slot ${i} (no longer active)`);
+    }
+  }
+  
+  // Update dropdowns for the tier change BEFORE populating
+  this.updateDropdownsForTierChange(tierNumber, previousTier);
+  
+  // Re-add items to cart with new tier quantities
+  this.reprocessAllSelections();
+  
+  this.initializeSlotImages();
+  this.updateCTAButtons(); // Add this line
+  this.dispatchTierChangeEvent(tierNumber);
+}
+  
+
+// Add these new helper methods
+clearAllCartItems() {
+  if (typeof window.next !== 'undefined' && window.next.clearCart) {
+    try {
+      window.next.clearCart();
+      this.slotCartMapping.clear();
+      console.log('[Grounded] All cart items cleared for tier change');
+    } catch (error) {
+      console.error('[Grounded] Error clearing cart:', error);
+    }
+  }
+}
+
+reprocessAllSelections() {
+  // Wait a bit for cart clear to process
+  setTimeout(() => {
+    console.log('[Grounded] Reprocessing all selections after tier change');
+    
+    // Count how many slots selected each variant
+    const variantSlotCount = new Map(); // variant.id -> count of slots that selected it
+    
+    // Process each slot to count variant selections
+    for (let i = 1; i <= this.currentTier; i++) {
+      const slotVariants = this.selectedVariants.get(i);
+      if (slotVariants && slotVariants.color && slotVariants.size) {
+        const valueToVariantMap = {
+          'obsidian-grey': 'Obsidian Grey',
+          'chateau-ivory': 'Chateau Ivory',
+          'scribe-blue': 'Scribe Blue',
+          'verdant-sage': 'Verdant Sage',
+          'single': 'Single',
+          'twin': 'Twin',
+          'double': 'Double',
+          'queen': 'Queen',
+          'king': 'King',
+          'california-king': 'Cali King'
+        };
+        
+        const colorName = valueToVariantMap[slotVariants.color];
+        const sizeName = valueToVariantMap[slotVariants.size];
+        
+        const matchingVariant = groundedSheetsVariants.find(v => 
+          v.color === colorName && 
+          v.size === sizeName && 
+          v.quantity === this.currentTier
+        );
+        
+        if (matchingVariant) {
+          // Count how many slots selected this variant
+          const currentCount = variantSlotCount.get(matchingVariant.id) || 0;
+          variantSlotCount.set(matchingVariant.id, currentCount + 1);
+          
+          // Track which variant this slot maps to (for UI purposes)
+          this.slotCartMapping.set(i, matchingVariant.id);
+        }
+      }
+    }
+    
+    // Add each variant to cart with the correct quantity (number of slots that selected it)
+    variantSlotCount.forEach((slotCount, variantId) => {
+      const variant = groundedSheetsVariants.find(v => v.id === variantId);
+      if (variant) {
+        // Check if item is already in cart to avoid duplicates
+        const cartHasVariant = window.next.hasItem && window.next.hasItem(variantId);
+        
+        if (!cartHasVariant) {
+          console.log(`[Grounded] Re-adding variant ${variantId} to cart with quantity ${slotCount} (${slotCount} slots selected it):`, variant);
+          
+          const cartItem = {
+            packageId: variant.id,
+            quantity: slotCount  // This is the key fix - quantity = number of slots that selected this variant
+          };
+          
+          window.next.addItem(cartItem);
+        } else {
+          console.log(`[Grounded] Variant ${variantId} already in cart, skipping`);
+        }
+      }
+    });
+    
+  }, 200);
+}
+
+
+
   clearCampaignCart() {
     if (typeof window.next !== 'undefined' && window.next.clearCart) {
       try {
@@ -1104,16 +1516,6 @@ createColorDropdownItem(menu, colorName, colorValue) {
       }
     }
   }
-  
-  // DEPRECATED - We don't update variant IDs when changing tiers
-  // Each tier is just controlling how many slots are available
-  // The variants selected remain the same (1-pack items stay as 1-pack, etc.)
-  /*
-  updateSelectionsForNewTier(previousTier, newTier) {
-    // This method is no longer used
-    // We keep existing selections as-is when changing tiers
-  }
-  */
 
   updateTierCardStates(selectedTier) {
     const tierCards = document.querySelectorAll('[data-next-tier]');
@@ -1153,7 +1555,7 @@ createColorDropdownItem(menu, colorName, colorValue) {
     });
   }
 
-    // Add this new method to initialize slot images based on current selections
+  // Add this new method to initialize slot images based on current selections
   initializeSlotImages() {
     const slots = document.querySelectorAll('[next-slot]');
     
@@ -1194,136 +1596,160 @@ createColorDropdownItem(menu, colorName, colorValue) {
     }
   }
 
-
 handleVariantSelection(detail) {
-    const { value, item, component, type } = detail;
-    
-    const slot = component.closest('[next-slot]');
-    if (!slot) return;
-    
-    const slotNumber = parseInt(slot.getAttribute('next-slot'));
-    const variantType = component.getAttribute('next-variant-option');
-    
-    if (!this.selectedVariants.has(slotNumber)) {
-      this.selectedVariants.set(slotNumber, {});
-    }
-    
-    const slotVariants = this.selectedVariants.get(slotNumber);
-    
-    // Before updating, check if the other dropdown already has a pre-selected value
-    if (!slotVariants.color && variantType === 'size') {
-      // Check if color dropdown has a pre-selected value
-      const colorDropdown = slot.querySelector('os-dropdown[next-variant-option="color"]');
-      if (colorDropdown) {
-        const colorValue = colorDropdown.value || colorDropdown.getAttribute('value');
-        if (colorValue && colorValue !== 'select-color' && colorValue !== '') {
-          slotVariants.color = colorValue;
-          console.log(`[Grounded] Found pre-selected color while selecting size: ${colorValue}`);
-        }
-      }
-    } else if (!slotVariants.size && variantType === 'color') {
-      // Check if size dropdown has a pre-selected value
-      const sizeDropdown = slot.querySelector('os-dropdown[next-variant-option="size"]');
-      if (sizeDropdown) {
-        const sizeValue = sizeDropdown.value || sizeDropdown.getAttribute('value');
-        if (sizeValue && sizeValue !== 'select-size' && sizeValue !== '') {
-          slotVariants.size = sizeValue;
-          console.log(`[Grounded] Found pre-selected size while selecting color: ${sizeValue}`);
-        }
-      }
-    }
-    
-    slotVariants[variantType] = value;
-    
-    console.log(`Slot ${slotNumber} ${variantType} selected:`, value);
-    
-    // Update color swatch if color was selected
-    if (variantType === 'color') {
-      this.updateColorSwatch(component, value);
-      // Update slot image when color changes
-      this.updateSlotImage(slot, value);
-    }
-    
-    this.updateAvailableOptions(slotNumber, variantType);
-    this.checkCompleteSelection(slotNumber);
-  }
-
-  handleDropdownChange(dropdown) {
-    const value = dropdown.value;
-    const variantType = dropdown.getAttribute('next-variant-option');
-    
-    if (!variantType) return;
-    
-    const slot = dropdown.closest('[next-slot]');
-    if (!slot) return;
-    
-    const slotNumber = parseInt(slot.getAttribute('next-slot'));
-    
-    if (!this.selectedVariants.has(slotNumber)) {
-      this.selectedVariants.set(slotNumber, {});
-    }
-    
-    const slotVariants = this.selectedVariants.get(slotNumber);
-    slotVariants[variantType] = value;
-    
-    console.log(`Slot ${slotNumber} ${variantType} changed:`, value);
-    
-    this.updateDependentDropdowns(slotNumber, variantType);
-  }
-
-updateAvailableOptions(slotNumber, changedVariantType) {
-  const slot = document.querySelector(`[next-slot="${slotNumber}"]`);
+  const { value, item, component, type } = detail;
+  
+  const slot = component.closest('[next-slot]');
   if (!slot) return;
   
-  const slotVariants = this.selectedVariants.get(slotNumber) || {};
-  const currentQuantity = this.currentTier;
+  const slotNumber = parseInt(slot.getAttribute('next-slot'));
+  const variantType = component.getAttribute('next-variant-option');
   
-  // Map dropdown values back to variant property values
-  const valueToVariantMap = {
-    // Colors
-    'obsidian-grey': 'Obsidian Grey',
-    'chateau-ivory': 'Chateau Ivory',
-    'scribe-blue': 'Scribe Blue',
-    'verdant-sage': 'Verdant Sage',
-    // Sizes  
-    'single': 'Single',
-    'twin': 'Twin',
-    'double': 'Double',
-    'queen': 'Queen',
-    'king': 'King',
-    'california-king': 'California King'
-  };
+  if (!this.selectedVariants.has(slotNumber)) {
+    this.selectedVariants.set(slotNumber, {});
+  }
   
-  let availableVariants = helpers.getByQuantity(currentQuantity);
+  const slotVariants = this.selectedVariants.get(slotNumber);
   
-  // Update the appropriate dropdown based on what changed
-  if (changedVariantType === 'color') {
-    // When color changes, filter sizes based on selected color
-    if (slotVariants.color) {
-      const colorName = valueToVariantMap[slotVariants.color];
-      if (colorName) {
-        const filteredVariants = availableVariants.filter(v => v.color === colorName);
-        this.updateSizeDropdown(slot, filteredVariants);
-      }
-    }
-    // Update color swatch
+  // Check if this is actually a change
+  if (slotVariants[variantType] === value) {
+    console.log(`[Grounded] No change detected for slot ${slotNumber} ${variantType}: ${value}`);
+    return; // Exit early if no actual change
+  }
+  
+  // Store the old selection to detect changes
+  const oldSelection = { ...slotVariants };
+  
+  // Before updating, check if the other dropdown already has a pre-selected value
+  if (!slotVariants.color && variantType === 'size') {
     const colorDropdown = slot.querySelector('os-dropdown[next-variant-option="color"]');
     if (colorDropdown) {
-      this.updateColorSwatch(colorDropdown, slotVariants.color);
+      const colorValue = colorDropdown.value || colorDropdown.getAttribute('value');
+      if (colorValue && colorValue !== 'select-color' && colorValue !== '') {
+        slotVariants.color = colorValue;
+        console.log(`[Grounded] Found pre-selected color while selecting size: ${colorValue}`);
+      }
     }
-  }
-  
-  if (changedVariantType === 'size') {
-    // When size changes, filter colors based on selected size
-    if (slotVariants.size) {
-      const sizeName = valueToVariantMap[slotVariants.size];
-      if (sizeName) {
-        const filteredVariants = availableVariants.filter(v => v.size === sizeName);
-        this.updateColorDropdown(slot, filteredVariants);
+  } else if (!slotVariants.size && variantType === 'color') {
+    const sizeDropdown = slot.querySelector('os-dropdown[next-variant-option="size"]');
+    if (sizeDropdown) {
+      const sizeValue = sizeDropdown.value || sizeDropdown.getAttribute('value');
+      if (sizeValue && sizeValue !== 'select-size' && sizeValue !== '') {
+        slotVariants.size = sizeValue;
+        console.log(`[Grounded] Found pre-selected size while selecting color: ${sizeValue}`);
       }
     }
   }
+  
+  slotVariants[variantType] = value;
+  
+  console.log(`Slot ${slotNumber} ${variantType} selected:`, value);
+  
+  // Update color swatch if color was selected
+  if (variantType === 'color') {
+    this.updateColorSwatch(component, value);
+    this.updateSlotImage(slot, value);
+  }
+  
+  this.updateAvailableOptions(slotNumber, variantType);
+  
+  // Check if we had a complete selection before that's now changing
+  const hadCompleteSelection = oldSelection.color && oldSelection.size;
+  const hasCompleteSelection = slotVariants.color && slotVariants.size;
+  
+  if (hadCompleteSelection || hasCompleteSelection) {
+    // If we had a complete selection or now have one, recalculate the entire cart
+    console.log(`[Grounded] Selection change detected for slot ${slotNumber}, recalculating cart`);
+    
+    // Small delay to ensure all UI updates are complete
+    setTimeout(() => {
+      this.recalculateEntireCart();
+    }, 50);
+  }
+  
+  this.checkCompleteSelection(slotNumber);
+  // Note: updateCTAButtons() is called from checkCompleteSelection
 }
+
+handleDropdownChange(dropdown) {
+  const value = dropdown.value;
+  const variantType = dropdown.getAttribute('next-variant-option');
+  
+  if (!variantType) return;
+  
+  const slot = dropdown.closest('[next-slot]');
+  if (!slot) return;
+  
+  const slotNumber = parseInt(slot.getAttribute('next-slot'));
+  
+  console.log(`[Grounded] Dropdown change event for slot ${slotNumber} ${variantType}: ${value}`);
+  
+  // Only handle UI updates here, not selection logic
+  // The selection logic is handled by handleVariantSelection
+  
+  // Update color swatch if this is a color dropdown
+  if (variantType === 'color') {
+    this.updateColorSwatch(dropdown, value);
+    this.updateSlotImage(slot, value);
+  }
+  
+  // Update dependent dropdowns (enable/disable options)
+  this.updateDependentDropdowns(slotNumber, variantType);
+}
+
+  updateAvailableOptions(slotNumber, changedVariantType) {
+    const slot = document.querySelector(`[next-slot="${slotNumber}"]`);
+    if (!slot) return;
+    
+    const slotVariants = this.selectedVariants.get(slotNumber) || {};
+    const currentQuantity = this.currentTier;
+    
+    // Map dropdown values back to variant property values
+    const valueToVariantMap = {
+      // Colors
+      'obsidian-grey': 'Obsidian Grey',
+      'chateau-ivory': 'Chateau Ivory',
+      'scribe-blue': 'Scribe Blue',
+      'verdant-sage': 'Verdant Sage',
+      // Sizes  
+      'single': 'Single',
+      'twin': 'Twin',
+      'double': 'Double',
+      'queen': 'Queen',
+      'king': 'King',
+      'california-king': 'Cali King'
+    };
+    
+    let availableVariants = helpers.getByQuantity(currentQuantity);
+    
+    // Update the appropriate dropdown based on what changed
+    if (changedVariantType === 'color') {
+      // When color changes, filter sizes based on selected color
+      if (slotVariants.color) {
+        const colorName = valueToVariantMap[slotVariants.color];
+        if (colorName) {
+          const filteredVariants = availableVariants.filter(v => v.color === colorName);
+          this.updateSizeDropdown(slot, filteredVariants);
+        }
+      }
+      // Update color swatch
+      const colorDropdown = slot.querySelector('os-dropdown[next-variant-option="color"]');
+      if (colorDropdown) {
+        this.updateColorSwatch(colorDropdown, slotVariants.color);
+      }
+    }
+    
+    if (changedVariantType === 'size') {
+      // When size changes, filter colors based on selected size
+      if (slotVariants.size) {
+        const sizeName = valueToVariantMap[slotVariants.size];
+        if (sizeName) {
+          const filteredVariants = availableVariants.filter(v => v.size === sizeName);
+          this.updateColorDropdown(slot, filteredVariants);
+        }
+      }
+    }
+  }
 
   updateSizeDropdown(slot, availableVariants) {
     const sizeDropdown = slot.querySelector('os-dropdown[next-variant-option="size"]');
@@ -1340,28 +1766,30 @@ updateAvailableOptions(slotNumber, changedVariantType) {
       } else {
         item.removeAttribute('disabled');
         item.classList.remove('disabled');
+        // Update prices when enabling the item
+        this.updateSizeItemPrices(item, sizeName, availableVariants);
       }
     });
   }
 
-updateColorDropdown(slot, availableVariants) {
-  const colorDropdown = slot.querySelector('os-dropdown[next-variant-option="color"]');
-  if (!colorDropdown) return;
-  
-  const availableColors = [...new Set(availableVariants.map(v => v.color))];
-  const colorItems = colorDropdown.querySelectorAll('os-dropdown-item');
-  
-  colorItems.forEach(item => {
-    const colorName = item.querySelector('.os-card__variant-toggle-name')?.textContent?.trim();
-    if (colorName && !availableColors.includes(colorName)) {
-      item.setAttribute('disabled', '');
-      item.classList.add('disabled');
-    } else {
-      item.removeAttribute('disabled');
-      item.classList.remove('disabled');
-    }
-  });
-}
+  updateColorDropdown(slot, availableVariants) {
+    const colorDropdown = slot.querySelector('os-dropdown[next-variant-option="color"]');
+    if (!colorDropdown) return;
+    
+    const availableColors = [...new Set(availableVariants.map(v => v.color))];
+    const colorItems = colorDropdown.querySelectorAll('os-dropdown-item');
+    
+    colorItems.forEach(item => {
+      const colorName = item.querySelector('.os-card__variant-toggle-name')?.textContent?.trim();
+      if (colorName && !availableColors.includes(colorName)) {
+        item.setAttribute('disabled', '');
+        item.classList.add('disabled');
+      } else {
+        item.removeAttribute('disabled');
+        item.classList.remove('disabled');
+      }
+    });
+  }
 
   updateDependentDropdowns(slotNumber, changedVariantType) {
     this.updateAvailableOptions(slotNumber, changedVariantType);
@@ -1373,6 +1801,10 @@ checkCompleteSelection(slotNumber, shouldDispatchEvent = true) {
   
   if (!slotVariants) {
     console.log(`[Grounded] No variants selected for slot ${slotNumber}`);
+    // Update CTA buttons for incomplete state
+    if (shouldDispatchEvent) {
+      setTimeout(() => this.updateCTAButtons(), 100);
+    }
     return false;
   }
   
@@ -1382,7 +1814,6 @@ checkCompleteSelection(slotNumber, shouldDispatchEvent = true) {
   console.log(`[Grounded] Slot ${slotNumber} - hasColor: ${hasColor} (${slotVariants.color}), hasSize: ${hasSize} (${slotVariants.size})`);
   
   if (hasColor && hasSize) {
-    // Map dropdown values to variant properties
     const valueToVariantMap = {
       'obsidian-grey': 'Obsidian Grey',
       'chateau-ivory': 'Chateau Ivory',
@@ -1393,7 +1824,7 @@ checkCompleteSelection(slotNumber, shouldDispatchEvent = true) {
       'double': 'Double',
       'queen': 'Queen',
       'king': 'King',
-      'california-king': 'California King'
+      'california-king': 'Cali King'
     };
     
     const colorName = valueToVariantMap[slotVariants.color];
@@ -1409,9 +1840,16 @@ checkCompleteSelection(slotNumber, shouldDispatchEvent = true) {
     
     if (matchingVariant) {
       console.log(`[Grounded] ✅ Complete selection for slot ${slotNumber}:`, matchingVariant);
-      // Only dispatch event if requested (to prevent infinite loops)
+      
+      // Update cart for this specific slot
       if (shouldDispatchEvent) {
+        this.updateCampaignCart(slotNumber, matchingVariant);
+        
+        // Dispatch event for this slot
         this.dispatchVariantCompleteEvent(slotNumber, matchingVariant);
+        
+        // Update CTA buttons after a delay to ensure cart operations complete
+        setTimeout(() => this.updateCTAButtons(), 200);
       }
       return true;
     } else {
@@ -1419,8 +1857,16 @@ checkCompleteSelection(slotNumber, shouldDispatchEvent = true) {
     }
   }
   
+  // Update CTA buttons for incomplete selections
+  if (shouldDispatchEvent) {
+    setTimeout(() => this.updateCTAButtons(), 100);
+  }
+  
   return false;
 }
+
+
+
 
   // Update the resetVariantSelections method to reset images
   resetVariantSelections() {
@@ -1442,8 +1888,7 @@ checkCompleteSelection(slotNumber, shouldDispatchEvent = true) {
     });
   }
 
-
-   // Add a method to preload images for better performance
+  // Add a method to preload images for better performance
   preloadImages() {
     Object.values(this.colorImages).forEach(imageUrl => {
       const img = new Image();
@@ -1451,17 +1896,16 @@ checkCompleteSelection(slotNumber, shouldDispatchEvent = true) {
     });
   }
 
-
   initializeColorSwatches() {
-  const colorDropdowns = document.querySelectorAll('os-dropdown[next-variant-option="color"]');
-  
-  colorDropdowns.forEach(dropdown => {
-    const currentValue = dropdown.getAttribute('value');
-    if (currentValue && currentValue !== 'select-color') {
-      this.updateColorSwatch(dropdown, currentValue);
-    }
-  });
-}
+    const colorDropdowns = document.querySelectorAll('os-dropdown[next-variant-option="color"]');
+    
+    colorDropdowns.forEach(dropdown => {
+      const currentValue = dropdown.getAttribute('value');
+      if (currentValue && currentValue !== 'select-color') {
+        this.updateColorSwatch(dropdown, currentValue);
+      }
+    });
+  }
 
   initializeDefaultState() {
     const defaultSelectedCard = document.querySelector('.os-card.next-selected');
@@ -1541,86 +1985,199 @@ checkCompleteSelection(slotNumber, shouldDispatchEvent = true) {
     document.dispatchEvent(event);
   }
 
-  dispatchVariantCompleteEvent(slotNumber, variant) {
-    const event = new CustomEvent('variantComplete', {
-      detail: {
-        slot: slotNumber,
-        variant: variant,
-        tier: this.currentTier,
-        controller: this
-      },
-      bubbles: true
-    });
-    
-    document.dispatchEvent(event);
-    
-    // Update campaign cart when a variant is selected
-    this.updateCampaignCart(slotNumber, variant);
+dispatchVariantCompleteEvent(slotNumber, variant) {
+  const event = new CustomEvent('variantComplete', {
+    detail: {
+      slot: slotNumber,
+      variant: variant,
+      tier: this.currentTier,
+      controller: this
+    },
+    bubbles: true
+  });
+  
+  document.dispatchEvent(event);
+  
+  // Note: updateCampaignCart is called from checkCompleteSelection, not here
+  // to avoid double-calling it
+}
+  
+// Replace the updateCampaignCart method
+// Replace the updateCampaignCart method
+updateCampaignCart(slotNumber, variant) {
+  console.log('[Grounded] updateCampaignCart called for slot', slotNumber, variant);
+  
+  // Check if next is available
+  if (typeof window.next === 'undefined') {
+    console.warn('[Grounded] window.next not available');
+    return;
   }
   
-  updateCampaignCart(slotNumber, variant) {
-    console.log('[Grounded] updateCampaignCart called for slot', slotNumber, variant);
+  try {
+    // Get the previous variant for this slot (if any)
+    const previousVariantId = this.slotCartMapping.get(slotNumber);
     
-    // Check if next is available
-    if (typeof window.next === 'undefined') {
-      console.warn('[Grounded] window.next not available');
+    // If this slot had a different variant before, we need to recalculate the entire cart
+    if (previousVariantId && previousVariantId !== variant.id) {
+      console.log(`[Grounded] Slot ${slotNumber} changed from variant ${previousVariantId} to ${variant.id}, recalculating cart`);
+      this.recalculateEntireCart(slotNumber, variant);
       return;
     }
     
-    try {
-      // Check if this slot already had a selection in the cart
-      const previousVariantId = this.slotCartMapping.get(slotNumber);
-      if (previousVariantId) {
-        console.log(`[Grounded] Slot ${slotNumber} had previous selection (variant ${previousVariantId}), removing it`);
-        // Remove the previous item for this slot
-        window.next.removeItem({ packageId: previousVariantId });
-      }
-      
-      // Map grounded variant ID to campaign package ref_id
-      const packageId = variant.id; // Keep as number, not string
-      
-      // Track this selection for the slot
-      this.slotCartMapping.set(slotNumber, packageId);
-      
-      // Add the variant to cart
-      const cartItem = {
-        packageId: packageId,
-        quantity: 1
+    // If this is the same variant for this slot, no change needed
+    if (previousVariantId === variant.id) {
+      console.log(`[Grounded] Slot ${slotNumber} already has variant ${variant.id}, no change needed`);
+      return;
+    }
+    
+    // This is a new selection for this slot
+    this.slotCartMapping.set(slotNumber, variant.id);
+    
+    // Add the variant to cart
+    const cartItem = {
+      packageId: variant.id,
+      quantity: 1  // Always 1 because variant already contains correct quantity for tier
+    };
+    
+    console.log('[Grounded] Adding new variant to cart:', cartItem);
+    window.next.addItem(cartItem);
+    
+    console.log(`[Grounded] Successfully added to cart - Slot ${slotNumber}:`, variant);
+    
+  } catch (error) {
+    console.error('[Grounded] Error updating cart:', error);
+  }
+}
+
+// Add this new method to properly recalculate the entire cart
+// Update this method in TierController class
+recalculateEntireCart(changedSlotNumber = null, newVariant = null) {
+  console.log('[Grounded] Recalculating entire cart...');
+  
+  // Clear the cart completely
+  if (typeof window.next !== 'undefined' && window.next.clearCart) {
+    window.next.clearCart();
+  }
+  
+  // Update the slot mapping for the changed slot
+  if (changedSlotNumber && newVariant) {
+    this.slotCartMapping.set(changedSlotNumber, newVariant.id);
+  }
+  
+  // Count how many slots selected each variant
+  const variantSlotCount = new Map(); // variant.id -> count of slots that selected it
+  
+  // Go through all active slots and count variant selections
+  for (let i = 1; i <= this.currentTier; i++) {
+    const slotVariants = this.selectedVariants.get(i);
+    if (slotVariants && slotVariants.color && slotVariants.size) {
+      const valueToVariantMap = {
+        'obsidian-grey': 'Obsidian Grey',
+        'chateau-ivory': 'Chateau Ivory',
+        'scribe-blue': 'Scribe Blue',
+        'verdant-sage': 'Verdant Sage',
+        'single': 'Single',
+        'twin': 'Twin',
+        'double': 'Double',
+        'queen': 'Queen',
+        'king': 'King',
+        'california-king': 'Cali King'
       };
       
-      console.log('[Grounded] Adding item to cart with packageId:', packageId, 'Full item:', cartItem);
-      window.next.addItem(cartItem);
+      const colorName = valueToVariantMap[slotVariants.color];
+      const sizeName = valueToVariantMap[slotVariants.size];
       
-      console.log(`[Grounded] Successfully added to cart - Slot ${slotNumber}:`, variant);
+      const matchingVariant = groundedSheetsVariants.find(v => 
+        v.color === colorName && 
+        v.size === sizeName && 
+        v.quantity === this.currentTier
+      );
       
-      // Check if all slots are complete for current tier
-      const allSlotsComplete = this.checkAllSlotsComplete();
-      if (allSlotsComplete) {
-        console.log('[Grounded] All slots complete for tier', this.currentTier);
-        // Emit custom event for completion
-        const event = new CustomEvent('grounded:selection-complete', {
-          detail: {
-            tier: this.currentTier,
-            selections: this.getCompleteSelections()
-          },
-          bubbles: true
-        });
-        document.dispatchEvent(event);
+      if (matchingVariant) {
+        // Update slot mapping
+        this.slotCartMapping.set(i, matchingVariant.id);
+        
+        // Count how many slots selected this variant
+        const currentCount = variantSlotCount.get(matchingVariant.id) || 0;
+        variantSlotCount.set(matchingVariant.id, currentCount + 1);
       }
-    } catch (error) {
-      console.error('[Grounded] Error updating cart:', error);
     }
   }
   
-  checkAllSlotsComplete() {
-    for (let i = 1; i <= this.currentTier; i++) {
-      // Pass false to prevent dispatching events (avoid infinite loop)
-      if (!this.checkCompleteSelection(i, false)) {
-        return false;
-      }
+  // Add each variant to cart with the correct quantity (number of slots that selected it)
+  variantSlotCount.forEach((slotCount, variantId) => {
+    const variant = groundedSheetsVariants.find(v => v.id === variantId);
+    if (variant) {
+      console.log(`[Grounded] Adding variant ${variantId} with quantity ${slotCount} to cart (${slotCount} slots selected it)`);
+      
+      const cartItem = {
+        packageId: variantId,
+        quantity: slotCount  // Key fix: quantity = number of slots that selected this variant
+      };
+      
+      window.next.addItem(cartItem);
     }
-    return true;
+  });
+  
+  // Update CTA buttons after cart operations complete
+  setTimeout(() => {
+    this.updateCTAButtons();
+  }, 300);
+  
+  console.log('[Grounded] Cart recalculation complete');
+}
+
+// Add this new helper method
+addVariantToCart(slotNumber, variant) {
+  const packageId = variant.id;
+  
+  // Only track slot mapping for actual slot selections (not unique variant adds)
+  if (slotNumber > 0) {
+    this.slotCartMapping.set(slotNumber, packageId);
   }
+  
+  // Add the variant to cart
+  const cartItem = {
+    packageId: packageId,
+    quantity: 1
+  };
+  
+  console.log('[Grounded] Adding item to cart with packageId:', packageId, 'Full item:', cartItem);
+  window.next.addItem(cartItem);
+  
+  if (slotNumber > 0) {
+    console.log(`[Grounded] Successfully added to cart - Slot ${slotNumber}:`, variant);
+  } else {
+    console.log(`[Grounded] Successfully added unique variant to cart:`, variant);
+  }
+}
+  
+checkAllSlotsComplete() {
+  let completeCount = 0;
+  for (let i = 1; i <= this.currentTier; i++) {
+    // Pass false to prevent dispatching events (avoid infinite loop)
+    if (this.checkCompleteSelection(i, false)) {
+      completeCount++;
+    }
+  }
+  
+  const allComplete = completeCount === this.currentTier;
+  
+  if (allComplete) {
+    console.log('[Grounded] All slots complete for tier', this.currentTier);
+    // Only emit the completion event once
+    const event = new CustomEvent('grounded:selection-complete', {
+      detail: {
+        tier: this.currentTier,
+        selections: this.getCompleteSelections()
+      },
+      bubbles: true
+    });
+    document.dispatchEvent(event);
+  }
+  
+  return allComplete;
+}
 
   // Public API methods
   getCurrentTier() {
@@ -1647,7 +2204,7 @@ checkCompleteSelection(slotNumber, shouldDispatchEvent = true) {
           'double': 'Double',
           'queen': 'Queen',
           'king': 'King',
-          'california-king': 'California King'
+          'california-king': 'Cali King'
         };
         
         const colorName = valueToVariantMap[slotVariants.color];
@@ -1680,8 +2237,43 @@ customElements.define('os-dropdown-item', OSDropdownItem);
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  window.tierController = new TierController();
-    window.tierController.preloadImages(); // Optional: preload images
+  // Check for campaign prices periodically until found or timeout
+  let priceCheckAttempts = 0;
+  const maxAttempts = 10;
+  
+  const checkForCampaignPrices = () => {
+    priceCheckAttempts++;
+    const campaignPrices = getPricesFromCampaign();
+    
+    if (campaignPrices) {
+      console.log('[Grounded] Found campaign prices on attempt', priceCheckAttempts);
+      // Apply campaign prices to variants
+      groundedSheetsVariants = enhanceVariantsWithPrices(groundedSheetsVariantsOriginal, campaignPrices);
+      
+      // Initialize controller
+      window.tierController = new TierController();
+      window.tierController.preloadImages();
+      
+      // Set up event listeners
+      setupEventListeners();
+    } else if (priceCheckAttempts < maxAttempts) {
+      console.log('[Grounded] Campaign prices not found, attempt', priceCheckAttempts, 'of', maxAttempts);
+      setTimeout(checkForCampaignPrices, 500);
+    } else {
+      console.log('[Grounded] Max attempts reached, using fallback prices');
+      // Use fallback prices
+      groundedSheetsVariants = enhanceVariantsWithPrices(groundedSheetsVariantsOriginal, null);
+      
+      // Initialize controller
+      window.tierController = new TierController();
+      window.tierController.preloadImages();
+      
+      // Set up event listeners
+      setupEventListeners();
+    }
+  };
+  
+const setupEventListeners = () => {
   // Global event listeners for debugging/monitoring
   document.addEventListener('tierChange', (e) => {
     console.log('Tier changed:', e.detail);
@@ -1690,9 +2282,184 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('variantComplete', (e) => {
     console.log('Variant selection complete:', e.detail);
   });
+  
+  // Add verify button click handler
+  const verifyButton = document.querySelector('[os-checkout="verify-step"]');
+  if (verifyButton) {
+    verifyButton.addEventListener('click', (e) => {
+      if (window.tierController) {
+        const isComplete = window.tierController.handleVerifyButtonClick();
+        if (!isComplete) {
+          // Prevent the default action if selections are incomplete
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    });
+  }
+};
+  
+  // Start checking for campaign prices
+  checkForCampaignPrices();
 });
 
 // Export for module systems
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { TierController, OSDropdown, OSDropdownMenu, OSDropdownItem, groundedSheetsVariants, helpers };
 }
+
+
+
+
+
+
+
+
+
+class ProgressBarController {
+  constructor() {
+    this.progressItems = document.querySelectorAll('[data-progress]');
+    this.sections = document.querySelectorAll('[data-progress-trigger]');
+    this.currentActiveStep = null;
+    this.completedSteps = new Set(); // Track permanently completed steps
+    
+    this.init();
+  }
+
+  init() {
+    console.log('Found sections:', this.sections.length);
+    console.log('Found progress items:', this.progressItems.length);
+    
+    // Reset all steps on init
+    this.resetAllSteps();
+    
+    // Setup scroll listener
+    this.setupScrollListener();
+    
+    // Initial check
+    setTimeout(() => {
+      this.checkVisibility();
+    }, 100);
+  }
+
+  resetAllSteps() {
+    this.progressItems.forEach(item => {
+      item.classList.remove('active', 'completed');
+    });
+    this.completedSteps.clear();
+  }
+
+  setupScrollListener() {
+    let ticking = false;
+    
+    const handleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          this.checkVisibility();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('resize', handleScroll);
+  }
+
+  checkVisibility() {
+    const scrollTop = window.pageYOffset;
+    const windowHeight = window.innerHeight;
+    const viewportCenter = scrollTop + (windowHeight / 2);
+    
+    let activeSection = null;
+    let activeSectionName = null;
+
+    // Find which section is currently in view
+    this.sections.forEach(section => {
+      const rect = section.getBoundingClientRect();
+      const sectionTop = scrollTop + rect.top;
+      const sectionBottom = sectionTop + rect.height;
+      
+      // Check if viewport center is within this section
+      if (viewportCenter >= sectionTop && viewportCenter <= sectionBottom) {
+        activeSection = section;
+        activeSectionName = section.getAttribute('data-progress-trigger');
+      }
+    });
+
+    // If no section is active, check if we're above the first section
+    if (!activeSection && this.sections.length > 0) {
+      const firstSection = this.sections[0];
+      const firstSectionTop = scrollTop + firstSection.getBoundingClientRect().top;
+      
+      if (viewportCenter < firstSectionTop) {
+        // We're above all sections, activate first step
+        activeSectionName = firstSection.getAttribute('data-progress-trigger');
+      }
+    }
+
+    // Mark steps as completed when we've moved past them
+    this.markCompletedSteps(viewportCenter, scrollTop);
+
+    // Update progress bar if active step changed
+    if (activeSectionName !== this.currentActiveStep) {
+      this.currentActiveStep = activeSectionName;
+      this.updateProgressBar(activeSectionName);
+    }
+  }
+
+  markCompletedSteps(viewportCenter, scrollTop) {
+    this.sections.forEach(section => {
+      const rect = section.getBoundingClientRect();
+      const sectionTop = scrollTop + rect.top;
+      const sectionBottom = sectionTop + rect.height;
+      const stepName = section.getAttribute('data-progress-trigger');
+      
+      // Mark as completed if we've scrolled well past this section
+      if (viewportCenter > sectionBottom) {
+        this.completedSteps.add(stepName);
+      }
+    });
+  }
+
+  updateProgressBar(activeStepName) {
+    console.log('Active step:', activeStepName, 'Completed:', Array.from(this.completedSteps));
+    
+    this.progressItems.forEach(item => {
+      const stepName = item.getAttribute('data-progress');
+      
+      // Remove existing classes
+      item.classList.remove('active', 'completed');
+      
+      // Once completed, always stay completed
+      if (this.completedSteps.has(stepName)) {
+        item.classList.add('completed');
+      } else if (stepName === activeStepName) {
+        // Current step = active (only if not already completed)
+        item.classList.add('active');
+      }
+      // Steps that haven't been reached = no class (default state)
+    });
+  }
+
+  // Manual control methods
+  setActiveStep(stepName) {
+    this.currentActiveStep = stepName;
+    this.updateProgressBar(stepName);
+  }
+
+  completeStep(stepName) {
+    this.completedSteps.add(stepName);
+    this.updateProgressBar(this.currentActiveStep);
+  }
+
+  reset() {
+    this.currentActiveStep = null;
+    this.resetAllSteps();
+  }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  window.progressBarController = new ProgressBarController();
+});

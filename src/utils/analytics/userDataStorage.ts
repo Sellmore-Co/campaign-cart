@@ -211,7 +211,13 @@ class UserDataStorage {
     const { visitorId, sessionId } = this.userData;
     
     // Clear all data
-    this.userData = { visitorId, sessionId };
+    this.userData = {};
+    if (visitorId !== undefined) {
+      this.userData.visitorId = visitorId;
+    }
+    if (sessionId !== undefined) {
+      this.userData.sessionId = sessionId;
+    }
     
     // Clear storage
     this.deleteCookie('next_user_data');
