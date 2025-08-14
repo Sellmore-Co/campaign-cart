@@ -5,6 +5,7 @@
       "Bash(mkdir:*)",
       "Bash(npm run build:*)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }

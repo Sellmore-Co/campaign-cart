@@ -759,10 +759,12 @@ export class UpsellEnhancer extends BaseEnhancer {
         
         if (addedLine?.price_incl_tax) {
           upsellValue = parseFloat(addedLine.price_incl_tax);
-        } else {
-          // Fallback: get price from campaign store
-          const packageData = useCampaignStore.getState().getPackage(packageToAdd);
-          if (packageData?.price) {
+        }
+        
+        // Get package data for name and fallback price
+        const packageData = useCampaignStore.getState().getPackage(packageToAdd);
+        if (packageData) {
+          if (!upsellValue && packageData.price) {
             upsellValue = parseFloat(packageData.price) * this.quantity;
           }
         }
@@ -771,13 +773,16 @@ export class UpsellEnhancer extends BaseEnhancer {
           packageId: packageToAdd,
           quantity: quantityToUse,
           order: updatedOrder,
-          value: upsellValue
+          value: upsellValue,
+          willRedirect: !!nextUrl
         });
         
         // Navigate to next URL if provided
         if (nextUrl) {
-          // LoadingOverlay will hide after 3 seconds on success before navigation
-          this.navigateToUrl(nextUrl, updatedOrder.ref_id);
+          // Give analytics time to fire before navigation
+          setTimeout(() => {
+            this.navigateToUrl(nextUrl, updatedOrder.ref_id);
+          }, 100);  // 100ms delay to ensure events are queued
         } else {
           // Hide overlay after 3 seconds if no navigation
           this.loadingOverlay.hide();

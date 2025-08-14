@@ -336,6 +336,46 @@ export const eventSchemas: Record<string, EventSchema> = {
     }
   },
 
+  dl_add_shipping_info: {
+    name: 'dl_add_shipping_info',
+    fields: {
+      event: { type: 'string', required: true },
+      ecommerce: {
+        type: 'object',
+        required: true,
+        properties: {
+          ...ecommerceWithItemsFields,
+          shipping_tier: { type: 'string' }
+        }
+      },
+      shipping_tier: { type: 'string' },
+      user_properties: {
+        type: 'object',
+        properties: userPropertiesFields
+      }
+    }
+  },
+
+  dl_add_payment_info: {
+    name: 'dl_add_payment_info',
+    fields: {
+      event: { type: 'string', required: true },
+      ecommerce: {
+        type: 'object',
+        required: true,
+        properties: {
+          ...ecommerceWithItemsFields,
+          payment_type: { type: 'string' }
+        }
+      },
+      payment_type: { type: 'string' },
+      user_properties: {
+        type: 'object',
+        properties: userPropertiesFields
+      }
+    }
+  },
+
   dl_purchase: {
     name: 'dl_purchase',
     fields: {

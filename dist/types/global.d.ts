@@ -166,6 +166,7 @@ export interface EventMap {
         quantity: number;
         order: any;
         value?: number;
+        willRedirect?: boolean;
     };
     'upsell:error': {
         packageId: number;

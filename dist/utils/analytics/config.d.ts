@@ -34,6 +34,14 @@ export declare const EVENT_VALIDATION_RULES: {
         begin_checkout: string[];
         add_payment_info: string[];
         add_shipping_info: string[];
+        dl_purchase: string[];
+        dl_add_to_cart: string[];
+        dl_remove_from_cart: string[];
+        dl_view_item: string[];
+        dl_view_item_list: string[];
+        dl_begin_checkout: string[];
+        dl_add_payment_info: string[];
+        dl_add_shipping_info: string[];
     };
     fieldTypes: {
         event: string;

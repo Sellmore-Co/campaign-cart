@@ -9,5 +9,7 @@ export declare class EcommerceEvents {
     static createBeginCheckoutEvent(): DataLayerEvent;
     static createPurchaseEvent(orderData: any): DataLayerEvent;
     static createViewCartEvent(): DataLayerEvent;
+    static createAddShippingInfoEvent(shippingTier?: string): DataLayerEvent;
+    static createAddPaymentInfoEvent(paymentType?: string): DataLayerEvent;
 }
 //# sourceMappingURL=EcommerceEvents.d.ts.map

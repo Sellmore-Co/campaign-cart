@@ -7,6 +7,7 @@ import { createLogger } from '@/utils/logger';
 import { useCartStore } from '@/stores/cartStore';
 import { dataLayer } from '../DataLayerManager';
 import { EventBus } from '@/utils/events';
+import { userDataStorage } from '../userDataStorage';
 
 const logger = createLogger('UserDataTracker');
 
@@ -92,34 +93,11 @@ export class UserDataTracker {
    * Collect user data from stores
    */
   private collectUserData(): UserData {
-    const userData: UserData = {};
-
-    // Get user data from session storage or form fields
-    try {
-      // Check sessionStorage for user data
-      const storedUser = sessionStorage.getItem('user_data');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        userData.userId = parsedUser.id || parsedUser.userId;
-        userData.email = parsedUser.email;
-        userData.phone = parsedUser.phone;
-        userData.firstName = parsedUser.firstName;
-        userData.lastName = parsedUser.lastName;
-      }
-
-      // Check for session/visitor IDs in storage
-      const sessionId = sessionStorage.getItem('session_id');
-      const visitorId = sessionStorage.getItem('visitor_id') || localStorage.getItem('visitor_id');
-      
-      if (sessionId) {
-        userData.sessionId = sessionId;
-      }
-      if (visitorId) {
-        userData.visitorId = visitorId;
-      }
-    } catch (error) {
-      logger.debug('Error accessing user data from storage:', error);
-    }
+    // Get user data from our storage utility (includes cookie data)
+    const userData: UserData = userDataStorage.getUserData();
+    
+    // Update from form fields if on checkout page
+    userDataStorage.updateFromFormFields();
 
     // Get cart data from cart store
     try {

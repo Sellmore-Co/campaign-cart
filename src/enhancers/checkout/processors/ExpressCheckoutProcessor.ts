@@ -6,6 +6,7 @@ import { EXPRESS_PAYMENT_METHOD_MAP } from '../constants/field-mappings';
 import type { Logger } from '@/utils/logger';
 import type { OrderManager } from '../managers/OrderManager';
 import type { CartItem } from '@/types/global';
+import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
 
 export class ExpressCheckoutProcessor {
   constructor(
@@ -40,6 +41,28 @@ export class ExpressCheckoutProcessor {
       
       // Get mapped payment method
       const paymentMethod = EXPRESS_PAYMENT_METHOD_MAP[method] || method;
+      
+      // Track begin_checkout event for express payment methods
+      try {
+        nextAnalytics.track(EcommerceEvents.createBeginCheckoutEvent());
+        this.logger.info('Tracked begin_checkout event for express checkout', { method });
+      } catch (analyticsError) {
+        this.logger.warn('Failed to track begin_checkout event:', analyticsError);
+      }
+      
+      // Track add_payment_info event immediately for express methods
+      try {
+        const paymentTypeMap: Record<string, string> = {
+          'paypal': 'PayPal',
+          'apple_pay': 'Apple Pay',
+          'google_pay': 'Google Pay'
+        };
+        const paymentType = paymentTypeMap[paymentMethod] || paymentMethod;
+        nextAnalytics.track(EcommerceEvents.createAddPaymentInfoEvent(paymentType));
+        this.logger.info('Tracked add_payment_info event for express checkout', { paymentType });
+      } catch (analyticsError) {
+        this.logger.warn('Failed to track add_payment_info event:', analyticsError);
+      }
       
       // Emit express checkout started event
       this.emitCallback('express-checkout:started', { 

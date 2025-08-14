@@ -19,6 +19,8 @@ import { GeneralModal } from '@/components/modals/GeneralModal';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ExpressCheckoutProcessor } from './processors/ExpressCheckoutProcessor';
 import { OrderManager } from './managers/OrderManager';
+import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
+import { userDataStorage } from '@/utils/analytics/userDataStorage';
 
 // Consolidated constants
 const FIELD_SELECTORS = ['[data-next-checkout-field]', '[os-checkout-field]'] as const;
@@ -106,6 +108,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private billingAddressToggleHandler?: (event: Event) => void;
   private boundHandleTestDataFilled?: EventListener;
   private boundHandleKonamiActivation?: EventListener;
+  
+  // Track if analytics events have been fired
+  private hasTrackedShippingInfo = false;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -783,6 +788,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private async updateStateOptions(country: string, provinceField: HTMLSelectElement): Promise<void> {
+    // If country is empty, just clear the state field
+    if (!country || country.trim() === '') {
+      provinceField.innerHTML = '<option value="">Select Country First</option>';
+      provinceField.disabled = true;
+      return;
+    }
+    
     provinceField.disabled = true;
     const originalHTML = provinceField.innerHTML;
     provinceField.innerHTML = '<option value="">Loading...</option>';
@@ -836,17 +848,40 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         provinceField.removeAttribute('required');
       }
       
+      // Store the current value (might be from autofill)
+      const currentProvinceValue = provinceField.value;
+      
+      // Clear the form data but keep the field value if it exists
       this.updateFormData({ province: '' });
       this.clearError('province');
-      provinceField.value = '';
       
-      if (countryData.states.length > 0 && countryData.countryConfig.stateRequired) {
+      // Check if the current value is valid for the new country
+      let validStateFound = false;
+      if (currentProvinceValue) {
+        const isValidState = countryData.states.some((state: any) => state.code === currentProvinceValue);
+        if (isValidState) {
+          // Keep the autofilled value if it's valid
+          provinceField.value = currentProvinceValue;
+          this.updateFormData({ province: currentProvinceValue });
+          validStateFound = true;
+          this.logger.debug(`Kept autofilled state: ${currentProvinceValue}`);
+        } else {
+          // Clear invalid state
+          provinceField.value = '';
+        }
+      } else {
+        provinceField.value = '';
+      }
+      
+      // Only auto-select first state if no valid state was found and states are required
+      if (!validStateFound && countryData.states.length > 0 && countryData.countryConfig.stateRequired) {
         const firstState = countryData.states[0];
         if (firstState) {
           provinceField.value = firstState.code;
           this.updateFormData({ province: firstState.code });
           this.clearError('province');
           provinceField.dispatchEvent(new Event('change', { bubbles: true }));
+          this.logger.debug(`Auto-selected first state: ${firstState.name} (${firstState.code})`);
         }
       }
       
@@ -1292,6 +1327,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       if (components.administrative_area_level_1) updates.province = components.administrative_area_level_1.short;
       
       checkoutStore.updateFormData(updates);
+      
+      // Check if we should track shipping info after autofill
+      if (!this.hasTrackedShippingInfo && updates.city && updates.province) {
+        try {
+          // Get current shipping method if selected
+          const shippingMethod = checkoutStore.shippingMethod;
+          const shippingTier = shippingMethod ? shippingMethod.name : 'Standard';
+          nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
+          this.hasTrackedShippingInfo = true;
+          this.logger.info('Tracked add_shipping_info event (Google Places autofill)', { shippingTier });
+        } catch (error) {
+          this.logger.warn('Failed to track add_shipping_info event after autofill:', error);
+        }
+      }
     } else {
       // Update billing address
       const currentBillingData = checkoutStore.billingAddress || {
@@ -2599,11 +2648,38 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Show location fields when address1 is populated
       if (fieldName === 'address1' && target.value && target.value.trim().length > 0) {
         this.showLocationFields();
+        
+        // Track add_shipping_info when user has entered a shipping address
+        // Check if we have enough address info to consider it "entered"
+        if (!this.hasTrackedShippingInfo && checkoutStore.formData.city && checkoutStore.formData.province) {
+          try {
+            // Get current shipping method if selected
+            const shippingMethod = checkoutStore.shippingMethod;
+            const shippingTier = shippingMethod ? shippingMethod.name : 'Standard';
+            nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
+            this.hasTrackedShippingInfo = true;
+            this.logger.info('Tracked add_shipping_info event (address complete)', { shippingTier });
+          } catch (error) {
+            this.logger.warn('Failed to track add_shipping_info event:', error);
+          }
+        }
       }
       
       // Update ProspectCartEnhancer when email changes
       if (fieldName === 'email' && this.prospectCartEnhancer) {
         this.prospectCartEnhancer.updateEmail(target.value);
+      }
+      
+      // Save user data to cookies for persistence
+      if (fieldName === 'email' || fieldName === 'fname' || fieldName === 'lname' || fieldName === 'phone') {
+        const updates: any = {};
+        if (fieldName === 'email') updates.email = target.value;
+        if (fieldName === 'fname') updates.firstName = target.value;
+        if (fieldName === 'lname') updates.lastName = target.value;
+        if (fieldName === 'phone') updates.phone = target.value;
+        
+        userDataStorage.updateUserData(updates);
+        this.logger.debug('Updated user data storage:', fieldName, target.value);
       }
     }
     
@@ -2615,6 +2691,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private async updateBillingStateOptions(country: string, billingProvinceField: HTMLSelectElement, shippingProvince?: string): Promise<void> {
+    // If country is empty, just clear the state field
+    if (!country || country.trim() === '') {
+      billingProvinceField.innerHTML = '<option value="">Select Country First</option>';
+      billingProvinceField.disabled = true;
+      return;
+    }
+    
     billingProvinceField.disabled = true;
     const originalHTML = billingProvinceField.innerHTML;
     billingProvinceField.innerHTML = '<option value="">Loading...</option>';
@@ -2705,6 +2788,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
     
     this.ui.updatePaymentFormVisibility(target.value);
+    
+    // Note: For credit card payments, add_payment_info is tracked when card fields are complete (via CreditCardService)
+    // For express payments (PayPal, Apple Pay, Google Pay), it's tracked when the button is clicked (via ExpressCheckoutProcessor)
   }
 
   // Methods moved to CheckoutUIHelpers class - expandPaymentForm and collapsePaymentForm
@@ -2728,6 +2814,25 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       const cartStore = useCartStore.getState();
       cartStore.setShippingMethod(selectedMethod.id);
+      
+      // Track add_shipping_info event when shipping method is selected
+      if (!this.hasTrackedShippingInfo) {
+        try {
+          // Map shipping codes to tier names for GA4
+          const shippingTierMap: Record<string, string> = {
+            'standard': 'Standard',
+            'subscription': 'Subscription',
+            'overnight': 'Express'
+          };
+          
+          const shippingTier = shippingTierMap[selectedMethod.code] || selectedMethod.name;
+          nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
+          this.hasTrackedShippingInfo = true;
+          this.logger.info('Tracked add_shipping_info event', { shippingTier });
+        } catch (error) {
+          this.logger.warn('Failed to track add_shipping_info event:', error);
+        }
+      }
     }
   }
 
@@ -2770,6 +2875,121 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
+  /**
+   * Set up detection for browser autofill
+   */
+  private setupAutofillDetection(): void {
+    // Track the previous values of fields
+    const fieldValues = new Map<HTMLElement, string>();
+    
+    // Flag to temporarily disable autofill detection (e.g., during Google Places autocomplete)
+    let isAutofillDetectionPaused = false;
+    
+    // Listen for Google Places autocomplete events to pause detection
+    this.eventBus.on('address:autocomplete-filled', () => {
+      isAutofillDetectionPaused = true;
+      // Resume after 2 seconds (enough time for Google Places to finish)
+      setTimeout(() => {
+        isAutofillDetectionPaused = false;
+        // Update field values after Google Places fills them
+        [...this.fields.values()].forEach(field => {
+          if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) {
+            fieldValues.set(field, field.value);
+          }
+        });
+      }, 2000);
+    });
+    
+    // Initialize with current values
+    [...this.fields.values()].forEach(field => {
+      if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) {
+        fieldValues.set(field, field.value);
+      }
+    });
+    
+    // Check for autofill periodically
+    let checkCount = 0;
+    const maxChecks = 60; // Check for up to 30 seconds (60 * 500ms)
+    
+    const checkInterval = setInterval(() => {
+      checkCount++;
+      
+      // Skip if detection is paused (Google Places is filling fields)
+      if (isAutofillDetectionPaused) {
+        return;
+      }
+      
+      // Track if we found autofilled fields
+      let hasAutofill = false;
+      const autofilledFields: string[] = [];
+      
+      // Check each field for changes
+      [...this.fields.values()].forEach(field => {
+        if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) {
+          const oldValue = fieldValues.get(field) || '';
+          const newValue = field.value;
+          
+          // Skip address1 field as it's handled by Google Places
+          const fieldName = field.getAttribute('data-next-checkout-field') || 
+                          field.getAttribute('os-checkout-field') || 
+                          field.name;
+          if (fieldName === 'address1' || fieldName === 'address') {
+            fieldValues.set(field, newValue); // Update value but don't trigger events
+            return;
+          }
+          
+          // If value changed and field wasn't focused (likely autofill)
+          if (newValue !== oldValue && newValue !== '' && document.activeElement !== field) {
+            hasAutofill = true;
+            fieldValues.set(field, newValue);
+            
+            // Add field name to list
+            if (fieldName) {
+              autofilledFields.push(fieldName);
+            }
+            
+            // Don't dispatch change events for country field as it has side effects (loads states)
+            // The state management should handle keeping the autofilled state value
+            if (fieldName !== 'country' && fieldName !== 'billing-country') {
+              // Only dispatch change event (not input) to update store
+              field.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }
+        }
+      });
+      
+      // If we detected autofill, check for shipping info tracking
+      if (hasAutofill && autofilledFields.length > 0) {
+        this.logger.info('Browser autofill detected for fields:', autofilledFields);
+        
+        // Small delay to ensure store is updated
+        setTimeout(() => {
+          const checkoutStore = useCheckoutStore.getState();
+          if (!this.hasTrackedShippingInfo && checkoutStore.formData.city && checkoutStore.formData.province) {
+            try {
+              const shippingMethod = checkoutStore.shippingMethod;
+              const shippingTier = shippingMethod ? shippingMethod.name : 'Standard';
+              nextAnalytics.track(EcommerceEvents.createAddShippingInfoEvent(shippingTier));
+              this.hasTrackedShippingInfo = true;
+              this.logger.info('Tracked add_shipping_info event (browser autofill)', { shippingTier });
+            } catch (error) {
+              this.logger.warn('Failed to track add_shipping_info event after browser autofill:', error);
+            }
+          }
+        }, 100);
+      }
+      
+      // Stop checking after max attempts
+      if (checkCount >= maxChecks) {
+        clearInterval(checkInterval);
+        this.logger.debug('Stopped autofill detection after 30 seconds');
+      }
+    }, 500);
+    
+    // Store interval for cleanup
+    (this as any).autofillInterval = checkInterval;
+  }
+
   private setupEventHandlers(): void {
     this.submitHandler = this.handleFormSubmit.bind(this);
     this.form.addEventListener('submit', this.submitHandler);
@@ -2779,8 +2999,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
         field.addEventListener('change', this.changeHandler!);
         field.addEventListener('blur', this.changeHandler!);
+        
+        // Add input event listener for better autofill detection
+        field.addEventListener('input', this.changeHandler!);
       }
     });
+    
+    // Set up Chrome autofill detection
+    this.setupAutofillDetection();
     
     this.paymentMethodChangeHandler = this.handlePaymentMethodChange.bind(this);
     const paymentRadios = this.form.querySelectorAll([
@@ -3007,7 +3233,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       [...this.fields.values(), ...this.billingFields.values()].forEach(field => {
         field.removeEventListener('change', this.changeHandler!);
         field.removeEventListener('blur', this.changeHandler!);
+        field.removeEventListener('input', this.changeHandler!);
       });
+    }
+    
+    // Clear autofill detection interval
+    if ((this as any).autofillInterval) {
+      clearInterval((this as any).autofillInterval);
     }
     
     if (this.paymentMethodChangeHandler) {

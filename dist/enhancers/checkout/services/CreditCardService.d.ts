@@ -42,6 +42,7 @@ export declare class CreditCardService {
     private cvvField?;
     private monthField?;
     private yearField?;
+    private hasTrackedPaymentInfo;
     constructor(environmentKey: string);
     initialize(): Promise<void>;
     tokenizeCard(cardData: CreditCardData): Promise<string>;
@@ -73,6 +74,7 @@ export declare class CreditCardService {
     private setupSpreedlyEventListeners;
     private applySpreedlyConfig;
     private handleSpreedlyFieldEvent;
+    private checkAndTrackPaymentInfo;
     private handleFieldFocus;
     private handleFieldBlur;
     private showSpreedlyErrors;

@@ -50,7 +50,6 @@ export declare class AddressService {
     private hideLocationFields;
     private showLocationFields;
     private setupBasicFieldListeners;
-    private setupAutofillDetection;
     getCountries(): Country[];
     getCountryConfigs(): Map<string, CountryConfig>;
     getCurrentCountryConfig(): CountryConfig | undefined;

@@ -143,9 +143,6 @@ export class NextAnalytics {
         providers: Array.from(this.providers.keys()),
         mode: config.analytics.mode
       });
-
-      // Fire initial user data event
-      this.track(UserEvents.createUserDataEvent('dl_user_data'));
     } catch (error) {
       logger.error('Failed to initialize analytics:', error);
       throw error;

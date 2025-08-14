@@ -21,6 +21,8 @@ export declare class FacebookAdapter extends ProviderAdapter {
     private transformParameters;
     private buildViewContentParams;
     private buildAddToCartParams;
+    private buildShippingInfoParams;
+    private buildPaymentInfoParams;
     private buildCheckoutParams;
     private buildPurchaseParams;
     private buildSearchParams;

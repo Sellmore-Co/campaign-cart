@@ -226,9 +226,6 @@ export class AddressService {
       // Hide location fields initially
       this.hideLocationFields();
       
-      // Set up autofill detection
-      this.setupAutofillDetection();
-      
       // Set up lazy loading for Google Maps autocomplete
       this.setupLazyAutocompleteLoading();
       
@@ -1128,46 +1125,6 @@ export class AddressService {
     this.logger.debug('Basic field listeners set up');
   }
 
-  /**
-   * Set up autofill detection styles
-   */
-  private setupAutofillDetection(): void {
-    // Check if styles already exist
-    if (document.querySelector('#address-autofill-detection')) return;
-
-    const style = document.createElement('style');
-    style.id = 'address-autofill-detection';
-    style.textContent = `
-      input:-webkit-autofill {
-        animation-duration: 50ms;
-        animation-name: webkit-autofill;
-      }
-      @keyframes webkit-autofill {
-        from { background: transparent; }
-        to { background: transparent; }
-      }
-    `;
-    
-    document.head.appendChild(style);
-
-    // Listen for autofill detection
-    if (this.addressFields) {
-      [this.addressFields.shipping.address, this.addressFields.billing.address]
-        .filter(Boolean)
-        .forEach(field => {
-          field!.addEventListener('animationstart', (e) => {
-            if (e.animationName === 'webkit-autofill') {
-              // Small delay to allow autofill to complete
-              setTimeout(() => {
-                if (field!.value.length > 10) {
-                  this.showLocationFields();
-                }
-              }, 100);
-            }
-          });
-        });
-    }
-  }
 
   /**
    * Getters for accessing internal state
@@ -1201,12 +1158,6 @@ export class AddressService {
     this.addressFields = null;
     this.locationElements = null;
     this.fieldsShown = false;
-    
-    // Remove autofill detection styles
-    const style = document.querySelector('#address-autofill-detection');
-    if (style) {
-      style.remove();
-    }
     
     this.logger.debug('AddressService destroyed');
   }

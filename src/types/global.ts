@@ -62,7 +62,7 @@ export interface EventMap {
   // Upsell Events
   'upsell:initialized': { packageId: number; element: HTMLElement };
   'upsell:adding': { packageId: number };
-  'upsell:added': { packageId: number; quantity: number; order: any; value?: number };
+  'upsell:added': { packageId: number; quantity: number; order: any; value?: number; willRedirect?: boolean };
   'upsell:error': { packageId: number; error: string };
   
   // Accordion Events

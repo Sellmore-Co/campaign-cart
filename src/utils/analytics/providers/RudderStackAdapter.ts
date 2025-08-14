@@ -224,6 +224,8 @@ export class RudderStackAdapter extends ProviderAdapter {
       'dl_view_cart': 'Cart Viewed',
       'dl_cart_updated': 'Cart Viewed',
       'dl_begin_checkout': 'Checkout Started',
+      'dl_add_shipping_info': 'Shipping Info Added',
+      'dl_add_payment_info': 'Payment Info Added',
       'dl_purchase': 'Order Completed',
       
       // Standard names
@@ -233,6 +235,8 @@ export class RudderStackAdapter extends ProviderAdapter {
       'remove_from_cart': 'Product Removed',
       'view_cart': 'Cart Viewed',
       'begin_checkout': 'Checkout Started',
+      'add_shipping_info': 'Shipping Info Added',
+      'add_payment_info': 'Payment Info Added',
       'purchase': 'Order Completed',
       
       // Upsell events
@@ -282,6 +286,12 @@ export class RudderStackAdapter extends ProviderAdapter {
       
       case 'Checkout Started':
         return this.buildCheckoutStartedProps(data, baseProps);
+      
+      case 'Shipping Info Added':
+        return this.buildShippingInfoProps(data, baseProps);
+      
+      case 'Payment Info Added':
+        return this.buildPaymentInfoProps(data, baseProps);
       
       case 'Order Completed':
         return this.buildOrderCompletedProps(data, baseProps);
@@ -366,6 +376,40 @@ export class RudderStackAdapter extends ProviderAdapter {
       products: products,
       currency: data.currency || campaignData.campaignCurrency || 'USD',
       value: parseFloat(data.value) || 0,
+      ...baseProps
+    };
+  }
+
+  /**
+   * Build Shipping Info Added properties
+   */
+  private buildShippingInfoProps(data: any, baseProps: any): any {
+    const products = this.formatProducts(data.items || []);
+    const campaignData = this.getCampaignData(data);
+    
+    return {
+      checkout_id: `checkout-${Date.now()}`,
+      value: parseFloat(data.value) || 0,
+      currency: data.currency || campaignData.campaignCurrency || 'USD',
+      shipping_tier: data.shipping_tier || 'standard',
+      products: products,
+      ...baseProps
+    };
+  }
+
+  /**
+   * Build Payment Info Added properties
+   */
+  private buildPaymentInfoProps(data: any, baseProps: any): any {
+    const products = this.formatProducts(data.items || []);
+    const campaignData = this.getCampaignData(data);
+    
+    return {
+      checkout_id: `checkout-${Date.now()}`,
+      value: parseFloat(data.value) || 0,
+      currency: data.currency || campaignData.campaignCurrency || 'USD',
+      payment_type: data.payment_type || 'credit_card',
+      products: products,
       ...baseProps
     };
   }
