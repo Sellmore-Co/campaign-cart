@@ -44,7 +44,7 @@ export class EcommerceEvents {
       items: formattedItems
     };
 
-    return EventBuilder.createEvent('view_item_list', {
+    return EventBuilder.createEvent('dl_view_item_list', {
       ecommerce,
       event_category: 'ecommerce',
       event_label: listName || 'Product List'
@@ -66,7 +66,7 @@ export class EcommerceEvents {
       items: [formattedItem]
     };
 
-    return EventBuilder.createEvent('view_item', {
+    return EventBuilder.createEvent('dl_view_item', {
       ecommerce,
       event_category: 'ecommerce',
       event_label: formattedItem.item_name
@@ -99,7 +99,7 @@ export class EcommerceEvents {
       items: [formattedItem]
     };
 
-    return EventBuilder.createEvent('add_to_cart', {
+    return EventBuilder.createEvent('dl_add_to_cart', {
       ecommerce,
       event_category: 'ecommerce',
       event_label: formattedItem.item_name,
@@ -122,7 +122,7 @@ export class EcommerceEvents {
       items: [formattedItem]
     };
 
-    return EventBuilder.createEvent('remove_from_cart', {
+    return EventBuilder.createEvent('dl_remove_from_cart', {
       ecommerce,
       event_category: 'ecommerce',
       event_label: formattedItem.item_name
@@ -155,7 +155,7 @@ export class EcommerceEvents {
       items: [formattedItem]
     };
 
-    return EventBuilder.createEvent('select_item', {
+    return EventBuilder.createEvent('dl_select_item', {
       ecommerce,
       event_category: 'ecommerce',
       event_label: formattedItem.item_name,
@@ -186,7 +186,7 @@ export class EcommerceEvents {
       ecommerce.coupon = cartState.appliedCoupons[0].code;
     }
 
-    return EventBuilder.createEvent('begin_checkout', {
+    return EventBuilder.createEvent('dl_begin_checkout', {
       ecommerce,
       event_category: 'ecommerce',
       event_value: cartState.totals.total.value
@@ -257,7 +257,7 @@ export class EcommerceEvents {
     // Clear list attribution after purchase
     EventBuilder.clearListAttribution();
 
-    return EventBuilder.createEvent('purchase', {
+    return EventBuilder.createEvent('dl_purchase', {
       ecommerce,
       event_category: 'ecommerce',
       event_value: orderTotal
@@ -287,10 +287,76 @@ export class EcommerceEvents {
       ecommerce.coupon = cartState.appliedCoupons[0].code;
     }
 
-    return EventBuilder.createEvent('view_cart', {
+    return EventBuilder.createEvent('dl_view_cart', {
       ecommerce,
       event_category: 'ecommerce',
       event_value: cartState.totals.total.value
+    });
+  }
+
+  /**
+   * Create add_shipping_info event
+   * Fires when user enters or confirms shipping details
+   */
+  static createAddShippingInfoEvent(shippingTier?: string): DataLayerEvent {
+    const cartState = useCartStore.getState();
+    const currency = EventBuilder.getCurrency();
+    
+    // Format all cart items
+    const formattedItems = cartState.enrichedItems.map((item, index) => 
+      EventBuilder.formatEcommerceItem(item, index)
+    );
+
+    const ecommerce: EcommerceData = {
+      currency,
+      value: cartState.totals.total.value,
+      items: formattedItems,
+      ...(shippingTier && { shipping_tier: shippingTier })
+    };
+
+    // Add coupon if applied
+    if (cartState.appliedCoupons?.[0]?.code) {
+      ecommerce.coupon = cartState.appliedCoupons[0].code;
+    }
+
+    return EventBuilder.createEvent('dl_add_shipping_info', {
+      ecommerce,
+      event_category: 'ecommerce',
+      event_value: cartState.totals.total.value,
+      shipping_tier: shippingTier
+    });
+  }
+
+  /**
+   * Create add_payment_info event
+   * Fires when user enters or confirms payment method
+   */
+  static createAddPaymentInfoEvent(paymentType?: string): DataLayerEvent {
+    const cartState = useCartStore.getState();
+    const currency = EventBuilder.getCurrency();
+    
+    // Format all cart items
+    const formattedItems = cartState.enrichedItems.map((item, index) => 
+      EventBuilder.formatEcommerceItem(item, index)
+    );
+
+    const ecommerce: EcommerceData = {
+      currency,
+      value: cartState.totals.total.value,
+      items: formattedItems,
+      ...(paymentType && { payment_type: paymentType })
+    };
+
+    // Add coupon if applied
+    if (cartState.appliedCoupons?.[0]?.code) {
+      ecommerce.coupon = cartState.appliedCoupons[0].code;
+    }
+
+    return EventBuilder.createEvent('dl_add_payment_info', {
+      ecommerce,
+      event_category: 'ecommerce',
+      event_value: cartState.totals.total.value,
+      payment_type: paymentType
     });
   }
 }

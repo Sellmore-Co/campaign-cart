@@ -111,6 +111,16 @@ export class GTMAdapter extends ProviderAdapter {
       ecommerceObject.item_list_name = event.data.item_list_name;
       ecommerceObject.item_list_id = event.data.item_list_id;
     }
+    
+    // Add shipping_tier for add_shipping_info events
+    if (eventType === 'add_shipping_info' && (event.data?.shipping_tier || ecommerceData.shipping_tier)) {
+      ecommerceObject.shipping_tier = event.data?.shipping_tier || ecommerceData.shipping_tier;
+    }
+    
+    // Add payment_type for add_payment_info events
+    if (eventType === 'add_payment_info' && (event.data?.payment_type || ecommerceData.payment_type)) {
+      ecommerceObject.payment_type = event.data?.payment_type || ecommerceData.payment_type;
+    }
 
     return ecommerceObject;
   }

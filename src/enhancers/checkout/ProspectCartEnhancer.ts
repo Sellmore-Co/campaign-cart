@@ -8,6 +8,7 @@ import { useCartStore } from '@/stores/cartStore';
 import { useConfigStore } from '@/stores/configStore';
 import { ApiClient } from '@/api/client';
 import type { CartBase, Attribution, UserCreateCart } from '@/types/api';
+import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
 
 export interface ProspectCartConfig {
   autoCreate?: boolean;
@@ -40,6 +41,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   private prospectCart: ProspectCart | undefined;
   private emailField?: HTMLInputElement;
   private hasTriggered = false;
+  private hasTrackedBeginCheckout = false;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -186,6 +188,9 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         this.logger.info('Valid email detected, creating prospect cart');
         this.createProspectCart();
         this.hasTriggered = true;
+        
+        // Track begin_checkout event when user enters email
+        this.trackBeginCheckout();
       }
     });
 
@@ -197,6 +202,9 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         if (!this.hasTriggered && this.isValidEmail(this.emailField!.value)) {
           this.createProspectCart();
           this.hasTriggered = true;
+          
+          // Track begin_checkout event when user enters email
+          this.trackBeginCheckout();
         }
       }, 2000);
     });
@@ -426,8 +434,30 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     if (!this.hasTriggered && this.isValidEmail(email)) {
       this.createProspectCart();
       this.hasTriggered = true;
+      
+      // Track begin_checkout event when email is updated programmatically
+      this.trackBeginCheckout();
     } else if (this.prospectCart) {
       this.updateProspectCart();
+    }
+  }
+  
+  /**
+   * Track begin_checkout event when user starts checkout by entering email
+   */
+  private trackBeginCheckout(): void {
+    if (!this.hasTrackedBeginCheckout) {
+      try {
+        const cartStore = useCartStore.getState();
+        // Only track if cart has items
+        if (!cartStore.isEmpty && cartStore.items.length > 0) {
+          nextAnalytics.track(EcommerceEvents.createBeginCheckoutEvent());
+          this.hasTrackedBeginCheckout = true;
+          this.logger.info('Tracked begin_checkout event on email entry');
+        }
+      } catch (error) {
+        this.logger.warn('Failed to track begin_checkout event:', error);
+      }
     }
   }
 }

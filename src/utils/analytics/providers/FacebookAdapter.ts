@@ -20,6 +20,7 @@ export class FacebookAdapter extends ProviderAdapter {
     'dl_add_to_cart': 'AddToCart',
     'dl_remove_from_cart': 'RemoveFromCart',
     'dl_begin_checkout': 'InitiateCheckout',
+    'dl_add_shipping_info': 'AddShippingInfo',
     'dl_add_payment_info': 'AddPaymentInfo',
     'dl_purchase': 'Purchase',
     'dl_search': 'Search',
@@ -39,6 +40,7 @@ export class FacebookAdapter extends ProviderAdapter {
     'add_to_cart': 'AddToCart',
     'remove_from_cart': 'RemoveFromCart',
     'begin_checkout': 'InitiateCheckout',
+    'add_shipping_info': 'AddShippingInfo',
     'add_payment_info': 'AddPaymentInfo',
     'purchase': 'Purchase',
     'search': 'Search',
@@ -197,6 +199,12 @@ export class FacebookAdapter extends ProviderAdapter {
       case 'InitiateCheckout':
         return this.buildCheckoutParams(event);
       
+      case 'AddShippingInfo':
+        return this.buildShippingInfoParams(event);
+      
+      case 'AddPaymentInfo':
+        return this.buildPaymentInfoParams(event);
+      
       case 'Purchase':
         return this.buildPurchaseParams(event);
       
@@ -220,13 +228,13 @@ export class FacebookAdapter extends ProviderAdapter {
    * Build ViewContent parameters
    */
   private buildViewContentParams(event: DataLayerEvent): any {
-    const data = event.data || {};
-    const items = data.items || data.products || [];
+    const ecommerceData = this.extractEcommerceData(event);
+    const items = ecommerceData.items || [];
     
     const params: any = {
       content_type: 'product',
-      currency: data.currency || 'USD',
-      value: data.value || 0
+      currency: ecommerceData.currency || 'USD',
+      value: ecommerceData.value || 0
     };
 
     if (items.length > 0) {
@@ -249,13 +257,13 @@ export class FacebookAdapter extends ProviderAdapter {
    * Build AddToCart/RemoveFromCart parameters
    */
   private buildAddToCartParams(event: DataLayerEvent): any {
-    const data = event.data || {};
-    const items = data.items || data.products || [];
+    const ecommerceData = this.extractEcommerceData(event);
+    const items = ecommerceData.items || [];
     
     const params: any = {
       content_type: 'product',
-      currency: data.currency || 'USD',
-      value: data.value || 0
+      currency: ecommerceData.currency || 'USD',
+      value: ecommerceData.value || 0
     };
 
     if (items.length > 0) {
@@ -295,16 +303,16 @@ export class FacebookAdapter extends ProviderAdapter {
   }
 
   /**
-   * Build InitiateCheckout parameters
+   * Build AddShippingInfo parameters
    */
-  private buildCheckoutParams(event: DataLayerEvent): any {
-    const data = event.data || {};
-    const items = data.items || data.products || [];
+  private buildShippingInfoParams(event: DataLayerEvent): any {
+    const ecommerceData = this.extractEcommerceData(event);
+    const items = ecommerceData.items || [];
     
     const params: any = {
       content_type: 'product',
-      currency: data.currency || 'USD',
-      value: data.value || data.total || 0,
+      currency: ecommerceData.currency || 'USD',
+      value: ecommerceData.value || 0,
       num_items: items.length
     };
 
@@ -319,8 +327,75 @@ export class FacebookAdapter extends ProviderAdapter {
       }));
     }
 
-    if (data.coupon || data.discount_code) {
-      params.coupon = data.coupon || data.discount_code;
+    // Include shipping tier if available
+    if (ecommerceData.shipping_tier || event.data?.shipping_tier) {
+      params.shipping_tier = ecommerceData.shipping_tier || event.data?.shipping_tier;
+    }
+
+    return params;
+  }
+
+  /**
+   * Build AddPaymentInfo parameters
+   */
+  private buildPaymentInfoParams(event: DataLayerEvent): any {
+    const ecommerceData = this.extractEcommerceData(event);
+    const items = ecommerceData.items || [];
+    
+    const params: any = {
+      content_type: 'product',
+      currency: ecommerceData.currency || 'USD',
+      value: ecommerceData.value || 0,
+      num_items: items.length
+    };
+
+    if (items.length > 0) {
+      params.content_ids = items.map((item: any) => 
+        item.item_id || item.id || item.product_id || item.sku || item.external_id
+      );
+      params.contents = items.map((item: any) => ({
+        id: item.item_id || item.id || item.product_id || item.sku || item.external_id,
+        quantity: item.quantity || 1,
+        item_price: item.price || item.item_price || 0
+      }));
+    }
+
+    // Include payment type if available
+    if (ecommerceData.payment_type || event.data?.payment_type) {
+      params.payment_type = ecommerceData.payment_type || event.data?.payment_type;
+    }
+
+    return params;
+  }
+
+  /**
+   * Build InitiateCheckout parameters
+   */
+  private buildCheckoutParams(event: DataLayerEvent): any {
+    // Check for ecommerce data first (GA4 format), then fall back to data
+    const ecommerceData = event.ecommerce || event.data || {};
+    const items = ecommerceData.items || ecommerceData.products || [];
+    
+    const params: any = {
+      content_type: 'product',
+      currency: ecommerceData.currency || 'USD',
+      value: ecommerceData.value || ecommerceData.total || 0,
+      num_items: items.length
+    };
+
+    if (items.length > 0) {
+      params.content_ids = items.map((item: any) => 
+        item.item_id || item.id || item.product_id || item.sku || item.external_id
+      );
+      params.contents = items.map((item: any) => ({
+        id: item.item_id || item.id || item.product_id || item.sku || item.external_id,
+        quantity: item.quantity || 1,
+        item_price: item.price || item.item_price || 0
+      }));
+    }
+
+    if (ecommerceData.coupon || ecommerceData.discount_code || event.data?.coupon) {
+      params.coupon = ecommerceData.coupon || ecommerceData.discount_code || event.data?.coupon;
     }
 
     return params;
@@ -330,16 +405,16 @@ export class FacebookAdapter extends ProviderAdapter {
    * Build Purchase parameters
    */
   private buildPurchaseParams(event: DataLayerEvent): any {
-    const data = event.data || {};
-    const items = data.items || data.products || [];
+    const ecommerceData = this.extractEcommerceData(event);
+    const items = ecommerceData.items || [];
     
     const params: any = {
       content_type: 'product',
-      currency: data.currency || 'USD',
-      value: data.value || data.total || 0,
+      currency: ecommerceData.currency || 'USD',
+      value: ecommerceData.value || 0,
       num_items: items.length,
-      order_id: data.transaction_id || data.order_id,
-      order_number: data.order_number // Include order_number for eventID deduplication
+      order_id: ecommerceData.transaction_id || event.data?.order_id,
+      order_number: event.data?.order_number // Include order_number for eventID deduplication
     };
 
     if (items.length > 0) {

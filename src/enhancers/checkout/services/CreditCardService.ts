@@ -8,6 +8,7 @@ import { createLogger } from '@/utils/logger';
 import { FieldFinder } from '../utils/field-finder-utils';
 import type { Logger } from '@/utils/logger';
 import { useCheckoutStore } from '@/stores/checkoutStore';
+import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
 
 declare global {
   interface Window {
@@ -45,6 +46,9 @@ export class CreditCardService {
   private cvvField?: HTMLElement;
   private monthField?: HTMLElement;
   private yearField?: HTMLElement;
+  
+  // Track if we've fired the add_payment_info event
+  private hasTrackedPaymentInfo = false;
 
   constructor(environmentKey: string) {
     this.environmentKey = environmentKey;
@@ -391,6 +395,10 @@ export class CreditCardService {
                        FieldFinder.findField('exp-month');
     if (monthField) {
       this.monthField = monthField;
+      // Add event listener to check payment info when month changes
+      if (monthField instanceof HTMLSelectElement) {
+        monthField.addEventListener('change', () => this.checkAndTrackPaymentInfo());
+      }
     }
     
     // Find year field
@@ -398,6 +406,10 @@ export class CreditCardService {
                       FieldFinder.findField('exp-year');
     if (yearField) {
       this.yearField = yearField;
+      // Add event listener to check payment info when year changes
+      if (yearField instanceof HTMLSelectElement) {
+        yearField.addEventListener('change', () => this.checkAndTrackPaymentInfo());
+      }
     }
 
     this.logger.debug('Credit card fields found:', {
@@ -778,6 +790,39 @@ export class CreditCardService {
           const checkoutStore = useCheckoutStore.getState();
           checkoutStore.setError('cvv', 'Please enter a valid CVV');
         }
+      }
+      
+      // Check if both credit card fields are valid and track add_payment_info event
+      this.checkAndTrackPaymentInfo();
+    }
+  }
+  
+  /**
+   * Check if credit card fields are complete and track add_payment_info event
+   */
+  private checkAndTrackPaymentInfo(): void {
+    // Only track once per session
+    if (this.hasTrackedPaymentInfo) {
+      return;
+    }
+    
+    // Check if both Spreedly fields are valid
+    const spreedlyFieldsValid = this.validationState.number.isValid && 
+                                this.validationState.cvv.isValid;
+    
+    // Check if month and year are filled (basic check)
+    const monthValue = this.monthField instanceof HTMLSelectElement ? this.monthField.value : '';
+    const yearValue = this.yearField instanceof HTMLSelectElement ? this.yearField.value : '';
+    const expirationValid = monthValue && yearValue && monthValue !== '' && yearValue !== '';
+    
+    // If all credit card fields are valid/complete, track the event
+    if (spreedlyFieldsValid && expirationValid) {
+      try {
+        nextAnalytics.track(EcommerceEvents.createAddPaymentInfoEvent('Credit Card'));
+        this.hasTrackedPaymentInfo = true;
+        this.logger.info('Tracked add_payment_info event - credit card fields complete');
+      } catch (error) {
+        this.logger.warn('Failed to track add_payment_info event:', error);
       }
     }
   }

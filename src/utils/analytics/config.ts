@@ -75,6 +75,14 @@ export const EVENT_VALIDATION_RULES = {
     begin_checkout: ['ecommerce.value'],
     add_payment_info: ['ecommerce.value'],
     add_shipping_info: ['ecommerce.value'],
+    dl_purchase: ['ecommerce.transaction_id', 'ecommerce.value', 'ecommerce.items'],
+    dl_add_to_cart: ['ecommerce.items'],
+    dl_remove_from_cart: ['ecommerce.items'],
+    dl_view_item: ['ecommerce.items'],
+    dl_view_item_list: ['ecommerce.items'],
+    dl_begin_checkout: ['ecommerce.value'],
+    dl_add_payment_info: ['ecommerce.value'],
+    dl_add_shipping_info: ['ecommerce.value'],
   },
   
   // Field type validations
