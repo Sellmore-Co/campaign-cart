@@ -20,6 +20,7 @@ import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ExpressCheckoutProcessor } from './processors/ExpressCheckoutProcessor';
 import { OrderManager } from './managers/OrderManager';
 import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
+import { userDataStorage } from '@/utils/analytics/userDataStorage';
 
 // Consolidated constants
 const FIELD_SELECTORS = ['[data-next-checkout-field]', '[os-checkout-field]'] as const;
@@ -2669,6 +2670,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Update ProspectCartEnhancer when email changes
       if (fieldName === 'email' && this.prospectCartEnhancer) {
         this.prospectCartEnhancer.updateEmail(target.value);
+      }
+      
+      // Save user data to cookies for persistence
+      if (fieldName === 'email' || fieldName === 'fname' || fieldName === 'lname' || fieldName === 'phone') {
+        const updates: any = {};
+        if (fieldName === 'email') updates.email = target.value;
+        if (fieldName === 'fname') updates.firstName = target.value;
+        if (fieldName === 'lname') updates.lastName = target.value;
+        if (fieldName === 'phone') updates.phone = target.value;
+        
+        userDataStorage.updateUserData(updates);
+        this.logger.debug('Updated user data storage:', fieldName, target.value);
       }
     }
     
