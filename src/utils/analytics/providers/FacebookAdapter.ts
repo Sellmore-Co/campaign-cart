@@ -142,8 +142,13 @@ export class FacebookAdapter extends ProviderAdapter {
 
     try {
       if (window.fbq) {
+        // AddShippingInfo is not a standard FB event, use trackCustom
+        if (fbEventName === 'AddShippingInfo') {
+          window.fbq('trackCustom', fbEventName, parameters);
+          this.debug(`Custom event sent to Facebook: ${fbEventName}`, parameters);
+        }
         // For Purchase events, include eventID for deduplication if storeName is configured
-        if (fbEventName === 'Purchase' && this.storeName) {
+        else if (fbEventName === 'Purchase' && this.storeName) {
           // Use order_number if available, fallback to order_id (ref_id)
           const orderIdentifier = parameters.order_number || parameters.order_id;
           if (orderIdentifier) {
