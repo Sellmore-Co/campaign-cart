@@ -789,6 +789,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private async updateStateOptions(country: string, provinceField: HTMLSelectElement): Promise<void> {
+    // If country is empty, just clear the state field
+    if (!country || country.trim() === '') {
+      provinceField.innerHTML = '<option value="">Select Country First</option>';
+      provinceField.disabled = true;
+      return;
+    }
+    
     provinceField.disabled = true;
     const originalHTML = provinceField.innerHTML;
     provinceField.innerHTML = '<option value="">Loading...</option>';
@@ -842,17 +849,40 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         provinceField.removeAttribute('required');
       }
       
+      // Store the current value (might be from autofill)
+      const currentProvinceValue = provinceField.value;
+      
+      // Clear the form data but keep the field value if it exists
       this.updateFormData({ province: '' });
       this.clearError('province');
-      provinceField.value = '';
       
-      if (countryData.states.length > 0 && countryData.countryConfig.stateRequired) {
+      // Check if the current value is valid for the new country
+      let validStateFound = false;
+      if (currentProvinceValue) {
+        const isValidState = countryData.states.some((state: any) => state.code === currentProvinceValue);
+        if (isValidState) {
+          // Keep the autofilled value if it's valid
+          provinceField.value = currentProvinceValue;
+          this.updateFormData({ province: currentProvinceValue });
+          validStateFound = true;
+          this.logger.debug(`Kept autofilled state: ${currentProvinceValue}`);
+        } else {
+          // Clear invalid state
+          provinceField.value = '';
+        }
+      } else {
+        provinceField.value = '';
+      }
+      
+      // Only auto-select first state if no valid state was found and states are required
+      if (!validStateFound && countryData.states.length > 0 && countryData.countryConfig.stateRequired) {
         const firstState = countryData.states[0];
         if (firstState) {
           provinceField.value = firstState.code;
           this.updateFormData({ province: firstState.code });
           this.clearError('province');
           provinceField.dispatchEvent(new Event('change', { bubbles: true }));
+          this.logger.debug(`Auto-selected first state: ${firstState.name} (${firstState.code})`);
         }
       }
       
@@ -2650,6 +2680,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private async updateBillingStateOptions(country: string, billingProvinceField: HTMLSelectElement, shippingProvince?: string): Promise<void> {
+    // If country is empty, just clear the state field
+    if (!country || country.trim() === '') {
+      billingProvinceField.innerHTML = '<option value="">Select Country First</option>';
+      billingProvinceField.disabled = true;
+      return;
+    }
+    
     billingProvinceField.disabled = true;
     const originalHTML = billingProvinceField.innerHTML;
     billingProvinceField.innerHTML = '<option value="">Loading...</option>';
@@ -2900,9 +2937,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
               autofilledFields.push(fieldName);
             }
             
-            // Only dispatch change event (not input) to update store
-            // Input events can interfere with autocomplete
-            field.dispatchEvent(new Event('change', { bubbles: true }));
+            // Don't dispatch change events for country field as it has side effects (loads states)
+            // The state management should handle keeping the autofilled state value
+            if (fieldName !== 'country' && fieldName !== 'billing-country') {
+              // Only dispatch change event (not input) to update store
+              field.dispatchEvent(new Event('change', { bubbles: true }));
+            }
           }
         }
       });
