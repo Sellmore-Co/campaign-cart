@@ -90,6 +90,10 @@ export class OrderBuilder {
     cartItems: any[],
     paymentMethod: 'paypal' | 'apple_pay' | 'google_pay'
   ): CreateOrder {
+    // Get attribution from store
+    const attributionStore = useAttributionStore.getState();
+    const attribution = attributionStore.getAttributionForApi();
+    
     // Minimal order data - only required fields per API
     const orderData: CreateOrder = {
       lines: cartItems.map(item => ({
@@ -101,6 +105,7 @@ export class OrderBuilder {
         payment_method: paymentMethod
       },
       shipping_method: 1, // Default shipping method
+      attribution: attribution,
       success_url: getSuccessUrl(),
       payment_failed_url: getFailureUrl()
     };
