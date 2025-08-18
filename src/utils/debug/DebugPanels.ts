@@ -6,7 +6,6 @@
 import { useCartStore } from '../../stores/cartStore';
 import { useConfigStore } from '../../stores/configStore';
 import { useCampaignStore } from '../../stores/campaignStore';
-import { DebugEvent } from './DebugEventManager';
 
 export interface DebugPanel {
   id: string;

@@ -37,6 +37,7 @@ export class EventTimelinePanel implements DebugPanel {
   private events: TimelineEvent[] = [];
   private maxEvents = 1000;
   private isRecording = true;
+  private updateTimeout: NodeJS.Timeout | null = null;
   private filters: EventFilter = {
     types: new Set(['dataLayer', 'internal', 'dom']),
     sources: new Set(),
@@ -213,17 +214,23 @@ export class EventTimelinePanel implements DebugPanel {
       this.filters.sources.add(event.source);
     }
 
-    // Trigger content update only if this panel is active and user isn't interacting with inputs
+    // Trigger content update for real-time updates
     if (typeof document !== 'undefined') {
-      const activeElement = document.activeElement;
-      const isUserTyping = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT');
-      
-      if (!isUserTyping) {
-        // Only update if no form interaction is happening
-        setTimeout(() => {
-          document.dispatchEvent(new CustomEvent('debug:update-content'));
-        }, 100);
+      // Debounce updates to avoid too frequent re-renders
+      if (this.updateTimeout) {
+        clearTimeout(this.updateTimeout);
       }
+      
+      this.updateTimeout = setTimeout(() => {
+        // Dispatch event to update content
+        console.log('[EventTimelinePanel] Dispatching update for panel:', this.id);
+        document.dispatchEvent(new CustomEvent('debug:event-added', { 
+          detail: { 
+            panelId: this.id,
+            event: event 
+          } 
+        }));
+      }, 100); // Small delay to batch rapid events
     }
   }
 

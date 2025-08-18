@@ -1,4 +1,3 @@
-import { DebugEvent } from './DebugEventManager';
 export interface DebugPanel {
     id: string;
     title: string;
@@ -41,16 +40,6 @@ export declare class CampaignPanel implements DebugPanel {
     icon: string;
     getContent(): string;
     getActions(): PanelAction[];
-}
-export declare class EventsPanel implements DebugPanel {
-    private events;
-    id: string;
-    title: string;
-    icon: string;
-    constructor(events: DebugEvent[]);
-    getContent(): string;
-    getActions(): PanelAction[];
-    private exportEvents;
 }
 export declare class StoragePanel implements DebugPanel {
     id: string;

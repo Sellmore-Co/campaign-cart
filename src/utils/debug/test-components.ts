@@ -5,7 +5,7 @@
 
 import {
   CartPanel,
-  EventsPanel,
+  EventTimelinePanel,
   ConfigPanel,
   CheckoutPanel,
   StoragePanel,
@@ -18,7 +18,7 @@ export function testDebugComponents(): boolean {
 
     // Test that all panels can be instantiated
     const cartPanel = new CartPanel();
-    const eventsPanel = new EventsPanel([]);
+    const eventsPanel = new EventTimelinePanel();
     const configPanel = new ConfigPanel();
     const checkoutPanel = new CheckoutPanel();
     const storagePanel = new StoragePanel();
