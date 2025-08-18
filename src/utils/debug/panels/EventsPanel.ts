@@ -90,32 +90,36 @@ export class EventsPanel implements DebugPanel {
   }
 
   private getTimelineContent(): string {
-    const recentEvents = this.events.slice(0, 30);
+    const recentEvents = this.events.slice(0, 50);
     
     return `
-      <div class="enhanced-panel">
-        <div class="section">
-          <div class="events-timeline">
-            ${recentEvents.length === 0 ? `
-              <div class="empty-state">
-                <div class="empty-icon">📋</div>
-                <div class="empty-text">No events logged yet</div>
-              </div>
-            ` : recentEvents.map(event => `
-              <div class="timeline-event">
-                <div class="event-time">${event.timestamp.toLocaleTimeString()}</div>
-                <div class="event-content">
-                  <div class="event-header">
-                    <span class="event-type-badge">${event.type}</span>
-                    <span class="event-source">${event.source}</span>
-                  </div>
-                  <div class="event-data-preview">
-                    ${this.formatEventData(event.data)}
-                  </div>
+      <div style="display: flex; flex-direction: column; height: 100%;">
+        <div style="position: sticky; top: 0; padding: 12px 24px; background: #2a2a2a; border-bottom: 1px solid #444; z-index: 1;">
+          <strong style="color: #fff;">Total Events: ${this.events.length}</strong>
+          <span style="float: right; color: #888; font-size: 12px;">
+            Last update: ${new Date().toLocaleTimeString()}
+          </span>
+        </div>
+        <div style="flex: 1; background: #1a1a1a; padding: 0;">
+          ${recentEvents.length === 0 ? `
+            <div class="empty-state" style="padding: 40px;">
+              <div class="empty-icon">📋</div>
+              <div class="empty-text">No events logged yet</div>
+            </div>
+          ` : recentEvents.map(event => `
+            <div class="timeline-event" style="border-bottom: 1px solid #333; padding: 12px 24px;">
+              <div class="event-time">${event.timestamp.toLocaleTimeString()}</div>
+              <div class="event-content">
+                <div class="event-header">
+                  <span class="event-type-badge">${event.type}</span>
+                  <span class="event-source">${event.source}</span>
+                </div>
+                <div class="event-data-preview">
+                  ${this.formatEventData(event.data)}
                 </div>
               </div>
-            `).join('')}
-          </div>
+            </div>
+          `).join('')}
         </div>
       </div>
     `;

@@ -144,6 +144,10 @@
   color: #ccc;
 }
 
+.panel-content.no-padding {
+  padding: 0;
+}
+
 /* Fix margin issues when using horizontal tabs */
 .panel-content > .enhanced-panel {
   margin-top: 0;

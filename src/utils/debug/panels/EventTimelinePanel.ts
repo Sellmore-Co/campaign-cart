@@ -325,14 +325,16 @@ export class EventTimelinePanel implements DebugPanel {
     });
 
     return `
-      <div style="position: sticky; top: 0; padding: 10px; border-bottom: 1px solid #444; background: #2a2a2a; color: #fff; z-index: 1;">
-        <strong>Total Events: ${this.events.length}</strong>
-        <span style="float: right; color: #888; font-size: 12px;">
-          ${this.isRecording ? '🔴 Recording' : '⏸️ Paused'}
-        </span>
-      </div>
-      <div style="background: #1a1a1a;">
-        ${eventsHtml}
+      <div style="display: flex; flex-direction: column; height: 100%;">
+        <div style="position: sticky; top: 0; padding: 12px 24px; background: #2a2a2a; border-bottom: 1px solid #444; z-index: 1;">
+          <strong style="color: #fff;">Total Events: ${this.events.length}</strong>
+          <span style="float: right; color: #888; font-size: 12px;">
+            ${this.isRecording ? '🔴 Recording' : '⏸️ Paused'}
+          </span>
+        </div>
+        <div style="flex: 1; background: #1a1a1a;">
+          ${eventsHtml}
+        </div>
       </div>
     `;
   }
