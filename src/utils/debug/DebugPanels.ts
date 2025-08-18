@@ -183,69 +183,8 @@ export class CampaignPanel implements DebugPanel {
   }
 }
 
-// CheckoutPanel moved to panels/CheckoutPanel.ts for enhanced functionality
-// This simple version is kept for backward compatibility but shouldn't be used
-
-export class EventsPanel implements DebugPanel {
-  id = 'events';
-  title = 'Event Log';
-  icon = '📋';
-  
-  constructor(private events: DebugEvent[]) {}
-
-  getContent(): string {
-    const recentEvents = this.events.slice(0, 20);
-    
-    if (recentEvents.length === 0) {
-      return '<p style="color: #666; text-align: center; padding: 20px;">No events logged yet</p>';
-    }
-
-    return `
-      <div class="event-list">
-        ${recentEvents.map(event => `
-          <div class="event-item">
-            <div class="event-header">
-              <span class="event-type">${event.type}</span>
-              <span class="event-time">${event.timestamp.toLocaleTimeString()}</span>
-            </div>
-            <div class="event-source">${event.source}</div>
-            <div class="event-data">${JSON.stringify(event.data, null, 2)}</div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }
-
-  getActions(): PanelAction[] {
-    return [
-      {
-        label: 'Clear Log',
-        action: () => {
-          this.events.length = 0;
-          // Trigger update
-          document.dispatchEvent(new CustomEvent('debug:update-content'));
-        },
-        variant: 'danger'
-      },
-      {
-        label: 'Export Log',
-        action: this.exportEvents.bind(this),
-        variant: 'secondary'
-      }
-    ];
-  }
-
-  private exportEvents(): void {
-    const data = JSON.stringify(this.events, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `debug-events-${new Date().toISOString()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-}
+// EventsPanel moved to panels/EventTimelinePanel.ts for enhanced functionality
+// The EventTimelinePanel is now the primary events panel with dataLayer watching
 
 export class StoragePanel implements DebugPanel {
   id = 'storage';

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(find:*)",
       "Bash(mkdir:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

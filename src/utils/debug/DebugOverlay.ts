@@ -13,7 +13,6 @@ import { useConfigStore } from '../../stores/configStore';
 import { XrayManager } from './XrayStyles';
 import {
   CartPanel,
-  EventsPanel,
   EventTimelinePanel,
   ConfigPanel,
   CheckoutPanel,
@@ -165,13 +164,6 @@ export class DebugOverlay {
 
   private updateOverlay(): void {
     if (!this.container) return;
-    
-    // Update events panel with latest events
-    this.panels = this.panels.map(panel => 
-      panel.id === 'events' 
-        ? new EventsPanel(this.eventManager.getEvents()) 
-        : panel
-    );
     
     this.container.innerHTML = EnhancedDebugUI.createOverlayHTML(
       this.panels, 
