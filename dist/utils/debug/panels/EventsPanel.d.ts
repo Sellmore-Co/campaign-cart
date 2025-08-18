@@ -14,6 +14,7 @@ export declare class EventsPanel implements DebugPanel {
     getActions(): PanelAction[];
     private getEventsPerMinute;
     private getSourceStatistics;
+    private safeStringify;
     private formatEventData;
     private clearEvents;
     private exportEvents;

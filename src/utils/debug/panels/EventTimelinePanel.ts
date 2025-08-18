@@ -325,18 +325,13 @@ export class EventTimelinePanel implements DebugPanel {
     });
 
     return `
-      <div style="padding: 10px; border-bottom: 1px solid #444; background: #2a2a2a; color: #fff;">
+      <div style="position: sticky; top: 0; padding: 10px; border-bottom: 1px solid #444; background: #2a2a2a; color: #fff; z-index: 1;">
         <strong>Total Events: ${this.events.length}</strong>
-        <span style="float: right;">
-          <button onclick="this.closest('.debug-panel').dispatchEvent(new CustomEvent('timeline-action', {detail: 'toggle'}))" style="margin-right: 5px; background: #444; color: #fff; border: 1px solid #666; padding: 4px 8px; cursor: pointer;">
-            ${this.isRecording ? 'Pause' : 'Record'}
-          </button>
-          <button onclick="this.closest('.debug-panel').dispatchEvent(new CustomEvent('timeline-action', {detail: 'clear'}))" style="background: #444; color: #fff; border: 1px solid #666; padding: 4px 8px; cursor: pointer;">
-            Clear
-          </button>
+        <span style="float: right; color: #888; font-size: 12px;">
+          ${this.isRecording ? '🔴 Recording' : '⏸️ Paused'}
         </span>
       </div>
-      <div style="max-height: 300px; overflow-y: auto; background: #1a1a1a;">
+      <div style="background: #1a1a1a;">
         ${eventsHtml}
       </div>
     `;

@@ -196,15 +196,84 @@ export class EventsPanel implements DebugPanel {
     return stats;
   }
 
+  private safeStringify(obj: any, maxDepth = 2): string {
+    const seen = new WeakSet();
+    
+    const stringify = (value: any, depth = 0): any => {
+      if (depth > maxDepth) return '[Max Depth]';
+      
+      if (value === null) return 'null';
+      if (value === undefined) return 'undefined';
+      if (typeof value !== 'object') return value;
+      
+      if (seen.has(value)) return '[Circular]';
+      
+      if (value instanceof Date) return value.toISOString();
+      if (value instanceof RegExp) return value.toString();
+      if (value instanceof Error) return value.message;
+      
+      if (value instanceof HTMLElement) {
+        return `[HTMLElement: ${value.tagName}${value.id ? '#' + value.id : ''}]`;
+      }
+      
+      if (value instanceof Event) {
+        return `[Event: ${value.type}]`;
+      }
+      
+      seen.add(value);
+      
+      if (Array.isArray(value)) {
+        return value.slice(0, 3).map(v => stringify(v, depth + 1));
+      }
+      
+      const result: Record<string, any> = {};
+      const keys = Object.keys(value).slice(0, 5);
+      for (const key of keys) {
+        try {
+          result[key] = stringify(value[key], depth + 1);
+        } catch {
+          result[key] = '[Error Reading Property]';
+        }
+      }
+      
+      if (Object.keys(value).length > 5) {
+        result['...'] = `${Object.keys(value).length - 5} more properties`;
+      }
+      
+      return result;
+    };
+    
+    try {
+      const processed = stringify(obj);
+      return JSON.stringify(processed, null, 2);
+    } catch {
+      return '[Unable to stringify]';
+    }
+  }
+
   private formatEventData(data: any): string {
     if (typeof data === 'object' && data !== null) {
-      const keys = Object.keys(data);
-      if (keys.length === 0) return 'No data';
-      if (keys.length === 1) {
-        const firstKey = keys[0];
-        return firstKey ? `${firstKey}: ${data[firstKey] || 'undefined'}` : 'No data';
+      try {
+        const safeData = this.safeStringify(data);
+        const parsed = JSON.parse(safeData);
+        
+        if (typeof parsed === 'object' && parsed !== null) {
+          const keys = Object.keys(parsed);
+          if (keys.length === 0) return 'No data';
+          if (keys.length === 1) {
+            const firstKey = keys[0];
+            if (firstKey) {
+              const value = parsed[firstKey];
+              return `${firstKey}: ${typeof value === 'object' ? JSON.stringify(value) : value}`;
+            }
+            return 'No data';
+          }
+          return `${keys.slice(0, 2).join(', ')}${keys.length > 2 ? '...' : ''}`;
+        }
+        return safeData;
+      } catch {
+        return '[Complex Object]';
       }
-      return `${keys.slice(0, 2).join(', ')}${keys.length > 2 ? '...' : ''}`;
     }
     return String(data);
   }
