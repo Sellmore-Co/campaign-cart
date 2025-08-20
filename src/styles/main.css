@@ -243,7 +243,7 @@ select:-webkit-autofill,
 select:-webkit-autofill:hover, 
 select:-webkit-autofill:focus, 
 select:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px #fdf8f3 inset !important;
+  -webkit-box-shadow: 0 0 0 30px #fff inset !important;
   transition: background-color 5000s ease-in-out 0s !important;
 }
 
@@ -529,6 +529,57 @@ swiper-container {
 /* ===========================
    9. CHECKOUT STYLES
 =========================== */
+
+/* Success/Valid input styles */
+[next-no-error-style] input.no-error,
+[next-no-error-style] textarea.no-error {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 1px #10b981;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Select elements only need border color, not box-shadow to avoid double border */
+[next-no-error-style] select.no-error {
+  border-color: #10b981 !important;
+  transition: border-color 0.2s ease;
+}
+
+[next-no-error-style] input.no-error:focus,
+[next-no-error-style] textarea.no-error:focus {
+  outline: none;
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2), 0 0 0 1px #059669;
+}
+
+/* Select focus state without box-shadow */
+[next-no-error-style] select.no-error:focus {
+  outline: none;
+  border-color: #059669 !important;
+}
+
+/* Spreedly field transition effect */
+.spreedly-field-transition {
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Optional: Add a checkmark icon for valid fields */
+[next-no-error-style] .form-group.addTick:has(input.no-error:not(:placeholder-shown)),
+[next-no-error-style] .form-group.addTick:has(select.no-error:not([value=""])) {
+  position: relative;
+}
+
+[next-no-error-style] .form-group.addTick:has(input.no-error:not(:placeholder-shown))::after,
+[next-no-error-style] .form-group.addTick:has(select.no-error:not([value=""]))::after {
+  content: "✓";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #10b981;
+  font-weight: bold;
+  pointer-events: none;
+  font-size: 14px;
+}
 
 /* Preloader */
 .preloader {
@@ -821,3 +872,4 @@ swiper-container {
   flex-direction: column;
   gap: 0.5rem;
 }
+

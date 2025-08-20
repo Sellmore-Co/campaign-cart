@@ -450,15 +450,15 @@ export class CreditCardService {
       if (this.numberField) {
         this.numberField.id = 'spreedly-number';
         this.numberField.setAttribute('data-spreedly', 'number');
-        // Add transition for smooth focus effect
-        this.numberField.style.transition = 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out';
+        // Add class for transition effect instead of inline style
+        this.numberField.classList.add('spreedly-field-transition');
       }
       
       if (this.cvvField) {
         this.cvvField.id = 'spreedly-cvv';
         this.cvvField.setAttribute('data-spreedly', 'cvv');
-        // Add transition for smooth focus effect
-        this.cvvField.style.transition = 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out';
+        // Add class for transition effect instead of inline style
+        this.cvvField.classList.add('spreedly-field-transition');
       }
       
       // Initialize Spreedly
@@ -484,46 +484,8 @@ export class CreditCardService {
   }
 
   private addFocusStyles(): void {
-    // Add CSS for focus states if not already present
-    const styleId = 'spreedly-focus-styles';
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement('style');
-      style.id = styleId;
-      style.textContent = `
-        /* Spreedly field focus states */
-        #spreedly-number.next-focused,
-        #spreedly-number.has-focus,
-        #spreedly-cvv.next-focused,
-        #spreedly-cvv.has-focus {
-          border-color: #80bdff !important;
-          outline: 0 !important;
-          box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
-        }
-        
-        /* Bootstrap-style focus */
-        .form-control#spreedly-number.next-focused,
-        .form-control#spreedly-number.has-focus,
-        .form-control#spreedly-cvv.next-focused,
-        .form-control#spreedly-cvv.has-focus {
-          border-color: #80bdff !important;
-          box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
-        }
-        
-        /* Parent container focus states */
-        .frm-flds.next-focused,
-        .form-group.next-focused,
-        .field-group.next-focused {
-          /* Add any parent-level focus styles here if needed */
-        }
-        
-        /* Ensure smooth transitions */
-        #spreedly-number,
-        #spreedly-cvv {
-          transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        }
-      `;
-      document.head.appendChild(style);
-    }
+    // Focus styles are now handled via CSS classes only
+    // No inline styles or dynamic style injection
   }
 
   private setupFieldClickHandlers(): void {

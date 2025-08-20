@@ -490,8 +490,18 @@ export class CheckoutValidator {
     const field = this.findFormField(fieldName);
     if (!field) return;
 
+    // Only clear the error, don't mark as valid unless field actually has valid content
     this.errorManager.clearFieldError(field);
-    this.errorManager.showFieldValid(field);
+    
+    // Only show as valid if the field has been validated and is actually valid
+    // Don't automatically mark empty fields as valid
+    if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+      const hasValue = field.value && field.value.trim() !== '';
+      // Only mark as valid if it has a value and no error
+      if (hasValue && !this.errors.has(fieldName)) {
+        this.errorManager.showFieldValid(field);
+      }
+    }
   }
 
   private findFormField(fieldName: string): HTMLElement | null {
