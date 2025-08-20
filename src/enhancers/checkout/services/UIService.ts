@@ -438,10 +438,20 @@ export class UIService {
     // Use error manager to clear all errors in the payment form
     this.errorManager.clearAllErrors(paymentForm);
     
-    // Add 'no-error' class to fields (specific to payment form behavior)
+    // Remove validation classes from fields when clearing errors
+    // Don't add 'no-error' to empty fields - that should only happen after successful validation
     const fields = paymentForm.querySelectorAll('input, select, textarea');
     fields.forEach(field => {
-      field.classList.add('no-error');
+      field.classList.remove('no-error', 'has-error', 'next-error-field');
+      // Also remove validation icon classes from parent elements
+      const formGroup = field.closest('.form-group');
+      if (formGroup) {
+        formGroup.classList.remove('addTick', 'addErrorIcon', 'has-error');
+      }
+      const formInput = field.closest('.form-input');
+      if (formInput) {
+        formInput.classList.remove('addTick', 'addErrorIcon');
+      }
     });
     
     this.logger.debug('Cleared payment form errors');

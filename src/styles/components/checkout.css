@@ -161,9 +161,16 @@
   background-image: none !important;
 } */
 
-/* Success checkmark icon - only show when form has validation icons attribute AND no error */
-[next-show-validation-icons] .form-input.addTick:not(.addErrorIcon)::after,
-[next-show-validation-icons] .form-group.addTick:not(.has-error):not(.addErrorIcon) .form-input::after {
+/* Success checkmark icon - only show when:
+   1. Form has validation icons attribute
+   2. No error state
+   3. Input/select has actual value (not empty)
+   4. Not a checkbox field
+   5. For selects: not the first/default option selected */
+[next-show-validation-icons] .form-group.addTick:not(.has-error):not(.addErrorIcon):has(input:not([type="checkbox"]):not([type="radio"]):not(:placeholder-shown):not([value=""])) .form-input::after,
+[next-show-validation-icons] .form-group.addTick:not(.has-error):not(.addErrorIcon):has(select.no-error:not([value=""]):has(option:not(:first-child):checked)) .form-input::after,
+[next-show-validation-icons] .form-input.addTick:not(.addErrorIcon):has(input:not([type="checkbox"]):not([type="radio"]):not(:placeholder-shown):not([value=""]))::after,
+[next-show-validation-icons] .form-input.addTick:not(.addErrorIcon):has(select.no-error:not([value=""]):has(option:not(:first-child):checked))::after {
   --icon-color: var(--system-colors--success, #074d31);
   content: '';
   position: absolute;
