@@ -37,6 +37,7 @@ export class EventTimelinePanel implements DebugPanel {
   private events: TimelineEvent[] = [];
   private maxEvents = 1000;
   private isRecording = true;
+  private updateTimeout: NodeJS.Timeout | null = null;
   private filters: EventFilter = {
     types: new Set(['dataLayer', 'internal', 'dom']),
     sources: new Set(),
@@ -213,17 +214,23 @@ export class EventTimelinePanel implements DebugPanel {
       this.filters.sources.add(event.source);
     }
 
-    // Trigger content update only if this panel is active and user isn't interacting with inputs
+    // Trigger content update for real-time updates
     if (typeof document !== 'undefined') {
-      const activeElement = document.activeElement;
-      const isUserTyping = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT');
-      
-      if (!isUserTyping) {
-        // Only update if no form interaction is happening
-        setTimeout(() => {
-          document.dispatchEvent(new CustomEvent('debug:update-content'));
-        }, 100);
+      // Debounce updates to avoid too frequent re-renders
+      if (this.updateTimeout) {
+        clearTimeout(this.updateTimeout);
       }
+      
+      this.updateTimeout = setTimeout(() => {
+        // Dispatch event to update content
+        console.log('[EventTimelinePanel] Dispatching update for panel:', this.id);
+        document.dispatchEvent(new CustomEvent('debug:event-added', { 
+          detail: { 
+            panelId: this.id,
+            event: event 
+          } 
+        }));
+      }, 100); // Small delay to batch rapid events
     }
   }
 
@@ -325,19 +332,16 @@ export class EventTimelinePanel implements DebugPanel {
     });
 
     return `
-      <div style="padding: 10px; border-bottom: 1px solid #444; background: #2a2a2a; color: #fff;">
-        <strong>Total Events: ${this.events.length}</strong>
-        <span style="float: right;">
-          <button onclick="this.closest('.debug-panel').dispatchEvent(new CustomEvent('timeline-action', {detail: 'toggle'}))" style="margin-right: 5px; background: #444; color: #fff; border: 1px solid #666; padding: 4px 8px; cursor: pointer;">
-            ${this.isRecording ? 'Pause' : 'Record'}
-          </button>
-          <button onclick="this.closest('.debug-panel').dispatchEvent(new CustomEvent('timeline-action', {detail: 'clear'}))" style="background: #444; color: #fff; border: 1px solid #666; padding: 4px 8px; cursor: pointer;">
-            Clear
-          </button>
-        </span>
-      </div>
-      <div style="max-height: 300px; overflow-y: auto; background: #1a1a1a;">
-        ${eventsHtml}
+      <div style="display: flex; flex-direction: column; height: 100%;">
+        <div style="position: sticky; top: 0; padding: 12px 24px; background: #2a2a2a; border-bottom: 1px solid #444; z-index: 1;">
+          <strong style="color: #fff;">Total Events: ${this.events.length}</strong>
+          <span style="float: right; color: #888; font-size: 12px;">
+            ${this.isRecording ? '🔴 Recording' : '⏸️ Paused'}
+          </span>
+        </div>
+        <div style="flex: 1; background: #1a1a1a;">
+          ${eventsHtml}
+        </div>
       </div>
     `;
   }

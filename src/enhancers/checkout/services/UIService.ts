@@ -559,9 +559,16 @@ export class UIService {
     const label = this.floatingLabels.get(field);
     
     if (label) {
-      // Only float up if field has value (Shopify behavior)
-      if (this.hasValue(field)) {
-        this.floatLabelUp(label, field);
+      const behavior = field.getAttribute('data-label-behavior');
+      
+      if (behavior === 'placeholder') {
+        // Placeholder behavior: always float up on focus
+        this.floatLabelUp(label, field, 'focus');
+      } else {
+        // Default Shopify behavior: only float up if field has value
+        if (this.hasValue(field)) {
+          this.floatLabelUp(label, field);
+        }
       }
     }
   }
@@ -574,7 +581,17 @@ export class UIService {
     const label = this.floatingLabels.get(field);
     
     if (label) {
-      this.updateLabelState(field, label);
+      const behavior = field.getAttribute('data-label-behavior');
+      
+      if (behavior === 'placeholder') {
+        // Placeholder behavior: only keep floating if field has value
+        if (!this.hasValue(field)) {
+          this.floatLabelDown(label, field);
+        }
+      } else {
+        // Default behavior
+        this.updateLabelState(field, label);
+      }
     }
   }
 
@@ -600,10 +617,24 @@ export class UIService {
    * Update label state based on field value
    */
   private updateLabelState(field: HTMLInputElement | HTMLSelectElement, label: HTMLLabelElement): void {
-    if (this.hasValue(field)) {
-      this.floatLabelUp(label, field);
+    const behavior = field.getAttribute('data-label-behavior');
+    
+    // For placeholder behavior, check if field is currently focused
+    if (behavior === 'placeholder') {
+      const isFocused = document.activeElement === field;
+      
+      if (isFocused || this.hasValue(field)) {
+        this.floatLabelUp(label, field, isFocused ? 'focus' : 'value');
+      } else {
+        this.floatLabelDown(label, field);
+      }
     } else {
-      this.floatLabelDown(label, field);
+      // Default behavior
+      if (this.hasValue(field)) {
+        this.floatLabelUp(label, field);
+      } else {
+        this.floatLabelDown(label, field);
+      }
     }
   }
 
@@ -618,18 +649,36 @@ export class UIService {
   }
 
   /**
-   * Float label up (when field has value)
+   * Float label up (when field has value or on focus for placeholder behavior)
    */
-  private floatLabelUp(label: HTMLLabelElement, field: HTMLInputElement | HTMLSelectElement): void {
-    if (label.classList.contains('has-value')) return;
+  private floatLabelUp(label: HTMLLabelElement, field: HTMLInputElement | HTMLSelectElement, reason: 'value' | 'focus' = 'value'): void {
+    if (label.classList.contains('has-value')) {
+      // If already floating but now focused, add is-focused class
+      if (reason === 'focus' && !label.classList.contains('is-focused')) {
+        label.classList.add('is-focused');
+      }
+      return;
+    }
     
     // Add has-value class for CSS animation
     label.classList.add('has-value');
     
+    // Track if this is due to focus (for placeholder behavior)
+    if (reason === 'focus') {
+      label.classList.add('is-focused');
+    }
+    
     // Add padding-top to input field
     field.style.paddingTop = '14px';
     
-    this.logger.debug('Added has-value class for field:', field.getAttribute('data-next-checkout-field') || field.name);
+    // Hide placeholder when label is floating (for placeholder behavior)
+    const behavior = field.getAttribute('data-label-behavior');
+    if (behavior === 'placeholder' && field instanceof HTMLInputElement) {
+      field.setAttribute('data-original-placeholder', field.placeholder || '');
+      field.placeholder = '';
+    }
+    
+    this.logger.debug(`Added has-value class for field (${reason}):`, field.getAttribute('data-next-checkout-field') || field.name);
   }
 
   /**
@@ -638,11 +687,20 @@ export class UIService {
   private floatLabelDown(label: HTMLLabelElement, field: HTMLInputElement | HTMLSelectElement): void {
     if (!label.classList.contains('has-value')) return;
     
-    // Remove has-value class for CSS animation
-    label.classList.remove('has-value');
+    // Remove has-value and is-focused classes for CSS animation
+    label.classList.remove('has-value', 'is-focused');
     
     // Reset padding-top on input field
     field.style.paddingTop = '';
+    
+    // Restore placeholder when label floats down (for placeholder behavior)
+    const behavior = field.getAttribute('data-label-behavior');
+    if (behavior === 'placeholder' && field instanceof HTMLInputElement) {
+      const originalPlaceholder = field.getAttribute('data-original-placeholder');
+      if (originalPlaceholder !== null) {
+        field.placeholder = originalPlaceholder;
+      }
+    }
     
     this.logger.debug('Removed has-value class for field:', field.getAttribute('data-next-checkout-field') || field.name);
   }

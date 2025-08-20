@@ -159,7 +159,7 @@ export class EnhancedDebugUI {
             `).join('')}
           </div>
           
-          <div class="panel-content">
+          <div class="panel-content ${activePanel.id === 'events' || activePanel.id === 'event-timeline' ? 'no-padding' : ''}">
             ${activeTab ? activeTab.getContent() : ''}
           </div>
         </div>
@@ -184,7 +184,7 @@ export class EnhancedDebugUI {
             </div>
           ` : ''}
         </div>
-        <div class="panel-content">
+        <div class="panel-content ${activePanel.id === 'events' || activePanel.id === 'event-timeline' ? 'no-padding' : ''}">
           ${activePanel.getContent()}
         </div>
       </div>

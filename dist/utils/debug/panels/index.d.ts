@@ -1,5 +1,4 @@
 export { CartPanel } from './CartPanel';
-export { EventsPanel } from './EventsPanel';
 export { EventTimelinePanel } from './EventTimelinePanel';
 export { ConfigPanel } from './ConfigPanel';
 export { CheckoutPanel } from './CheckoutPanel';

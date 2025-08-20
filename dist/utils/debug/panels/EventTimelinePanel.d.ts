@@ -6,6 +6,7 @@ export declare class EventTimelinePanel implements DebugPanel {
     private events;
     private maxEvents;
     private isRecording;
+    private updateTimeout;
     private filters;
     private startTime;
     private eventBus;

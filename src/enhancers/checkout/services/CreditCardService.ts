@@ -450,15 +450,15 @@ export class CreditCardService {
       if (this.numberField) {
         this.numberField.id = 'spreedly-number';
         this.numberField.setAttribute('data-spreedly', 'number');
-        // Add transition for smooth focus effect
-        this.numberField.style.transition = 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out';
+        // Add class for transition effect instead of inline style
+        this.numberField.classList.add('spreedly-field-transition');
       }
       
       if (this.cvvField) {
         this.cvvField.id = 'spreedly-cvv';
         this.cvvField.setAttribute('data-spreedly', 'cvv');
-        // Add transition for smooth focus effect
-        this.cvvField.style.transition = 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out';
+        // Add class for transition effect instead of inline style
+        this.cvvField.classList.add('spreedly-field-transition');
       }
       
       // Initialize Spreedly
@@ -484,46 +484,8 @@ export class CreditCardService {
   }
 
   private addFocusStyles(): void {
-    // Add CSS for focus states if not already present
-    const styleId = 'spreedly-focus-styles';
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement('style');
-      style.id = styleId;
-      style.textContent = `
-        /* Spreedly field focus states */
-        #spreedly-number.next-focused,
-        #spreedly-number.has-focus,
-        #spreedly-cvv.next-focused,
-        #spreedly-cvv.has-focus {
-          border-color: #80bdff !important;
-          outline: 0 !important;
-          box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
-        }
-        
-        /* Bootstrap-style focus */
-        .form-control#spreedly-number.next-focused,
-        .form-control#spreedly-number.has-focus,
-        .form-control#spreedly-cvv.next-focused,
-        .form-control#spreedly-cvv.has-focus {
-          border-color: #80bdff !important;
-          box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
-        }
-        
-        /* Parent container focus states */
-        .frm-flds.next-focused,
-        .form-group.next-focused,
-        .field-group.next-focused {
-          /* Add any parent-level focus styles here if needed */
-        }
-        
-        /* Ensure smooth transitions */
-        #spreedly-number,
-        #spreedly-cvv {
-          transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        }
-      `;
-      document.head.appendChild(style);
-    }
+    // Focus styles are now handled via CSS classes only
+    // No inline styles or dynamic style injection
   }
 
   private setupFieldClickHandlers(): void {
@@ -729,66 +691,61 @@ export class CreditCardService {
     }
     
     // Handle input events for validation
-    if (type === 'input' && inputProperties) {
-      if (name === 'number' && inputProperties.validNumber !== undefined) {
-        const wasValid = this.validationState.number.isValid;
-        const hadError = this.validationState.number.hasError;
+    if (type === 'input') {
+      // Clear error display immediately when user starts typing in any field
+      if (name === 'number') {
+        // Clear error display immediately
+        this.clearCreditCardFieldError('number');
+        const checkoutStore = useCheckoutStore.getState();
+        checkoutStore.clearError('cc-number');
+        checkoutStore.clearError('card_number');
         
-        this.validationState.number.isValid = inputProperties.validNumber;
-        this.validationState.number.hasError = !inputProperties.validNumber;
-        
-        if (wasValid !== inputProperties.validNumber) {
-          this.logger.info(`[Spreedly] Card number validation changed: ${wasValid} -> ${inputProperties.validNumber}`);
+        // Update validation state if we have input properties
+        if (inputProperties && inputProperties.validNumber !== undefined) {
+          const wasValid = this.validationState.number.isValid;
+          this.validationState.number.isValid = inputProperties.validNumber;
+          this.validationState.number.hasError = !inputProperties.validNumber;
+          
+          // Add/remove no-error class based on validation state
+          if (this.numberField) {
+            if (inputProperties.validNumber) {
+              this.numberField.classList.add('no-error');
+              this.numberField.classList.remove('has-error', 'next-error-field');
+            } else {
+              this.numberField.classList.remove('no-error');
+            }
+          }
+          
+          if (wasValid !== inputProperties.validNumber) {
+            this.logger.info(`[Spreedly] Card number validation changed: ${wasValid} -> ${inputProperties.validNumber}`);
+          }
         }
+      } else if (name === 'cvv') {
+        // Clear error display immediately
+        this.clearCreditCardFieldError('cvv');
+        const checkoutStore = useCheckoutStore.getState();
+        checkoutStore.clearError('cvv');
+        checkoutStore.clearError('card_cvv');
         
-        // Handle validation state changes
-        if (inputProperties.validNumber && (hadError || wasValid !== inputProperties.validNumber)) {
-          // Field became valid - clear errors
-          this.logger.info('[Spreedly] Card number is now valid, clearing error');
-          this.clearCreditCardFieldError('number');
+        // Update validation state if we have input properties
+        if (inputProperties && inputProperties.validCvv !== undefined) {
+          const wasValid = this.validationState.cvv.isValid;
+          this.validationState.cvv.isValid = inputProperties.validCvv;
+          this.validationState.cvv.hasError = !inputProperties.validCvv;
           
-          // Also clear any general credit card errors from the checkout store
-          const checkoutStore = useCheckoutStore.getState();
-          checkoutStore.clearError('cc-number');
-          checkoutStore.clearError('card_number');
-        } else if (!inputProperties.validNumber && wasValid) {
-          // Field became invalid - show error
-          this.logger.info('[Spreedly] Card number is now invalid, showing error');
-          this.setCreditCardFieldError('number', 'Please enter a valid credit card number');
+          // Add/remove no-error class based on validation state
+          if (this.cvvField) {
+            if (inputProperties.validCvv) {
+              this.cvvField.classList.add('no-error');
+              this.cvvField.classList.remove('has-error', 'next-error-field');
+            } else {
+              this.cvvField.classList.remove('no-error');
+            }
+          }
           
-          // Also set error in checkout store
-          const checkoutStore = useCheckoutStore.getState();
-          checkoutStore.setError('cc-number', 'Please enter a valid credit card number');
-        }
-      } else if (name === 'cvv' && inputProperties.validCvv !== undefined) {
-        const wasValid = this.validationState.cvv.isValid;
-        const hadError = this.validationState.cvv.hasError;
-        
-        this.validationState.cvv.isValid = inputProperties.validCvv;
-        this.validationState.cvv.hasError = !inputProperties.validCvv;
-        
-        if (wasValid !== inputProperties.validCvv) {
-          this.logger.info(`[Spreedly] CVV validation changed: ${wasValid} -> ${inputProperties.validCvv}`);
-        }
-        
-        // Handle validation state changes
-        if (inputProperties.validCvv && (hadError || wasValid !== inputProperties.validCvv)) {
-          // Field became valid - clear errors
-          this.logger.info('[Spreedly] CVV is now valid, clearing error');
-          this.clearCreditCardFieldError('cvv');
-          
-          // Also clear any general credit card errors from the checkout store
-          const checkoutStore = useCheckoutStore.getState();
-          checkoutStore.clearError('cvv');
-          checkoutStore.clearError('card_cvv');
-        } else if (!inputProperties.validCvv && wasValid) {
-          // Field became invalid - show error
-          this.logger.info('[Spreedly] CVV is now invalid, showing error');
-          this.setCreditCardFieldError('cvv', 'Please enter a valid CVV');
-          
-          // Also set error in checkout store
-          const checkoutStore = useCheckoutStore.getState();
-          checkoutStore.setError('cvv', 'Please enter a valid CVV');
+          if (wasValid !== inputProperties.validCvv) {
+            this.logger.info(`[Spreedly] CVV validation changed: ${wasValid} -> ${inputProperties.validCvv}`);
+          }
         }
       }
       

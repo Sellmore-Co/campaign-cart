@@ -21,6 +21,9 @@
    13. COMPONENT IMPORTS
 =========================== */
 
+/* Component styles */
+@import './components/checkout.css';
+
 /* Tooltip styles are injected dynamically by TooltipEnhancer */
 
 /* ===========================
@@ -235,15 +238,16 @@ input#billing_field_intl::placeholder {
 }
 
 /* Webkit autofill styling */
-input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
-input:-webkit-autofill:active,
-select:-webkit-autofill,
-select:-webkit-autofill:hover, 
-select:-webkit-autofill:focus, 
-select:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px #fdf8f3 inset !important;
+/* General autofill styles - but not for validated fields */
+input:-webkit-autofill:not(.no-error):not(.has-error):not(.next-error-field),
+input:-webkit-autofill:hover:not(.no-error):not(.has-error):not(.next-error-field), 
+input:-webkit-autofill:focus:not(.no-error):not(.has-error):not(.next-error-field), 
+input:-webkit-autofill:active:not(.no-error):not(.has-error):not(.next-error-field),
+select:-webkit-autofill:not(.no-error):not(.has-error):not(.next-error-field),
+select:-webkit-autofill:hover:not(.no-error):not(.has-error):not(.next-error-field), 
+select:-webkit-autofill:focus:not(.no-error):not(.has-error):not(.next-error-field), 
+select:-webkit-autofill:active:not(.no-error):not(.has-error):not(.next-error-field) {
+  -webkit-box-shadow: 0 0 0 30px #fff inset !important;
   transition: background-color 5000s ease-in-out 0s !important;
 }
 
@@ -280,6 +284,34 @@ html.wf-design-mode [data-next-accordion-panel] {
 html.wf-design-mode .swiper-slide.is-thumb {
   max-height: 4rem;
   max-width: 4rem;
+}
+
+/* Accordion animations */
+[data-next-accordion-panel],
+.accordion__panel {
+  transition: height 0.3s ease-out !important;
+  overflow: hidden;
+}
+
+/* Ensure transition works even with inline styles */
+[data-next-accordion-panel] {
+  transition-property: height !important;
+  transition-duration: 0.3s !important;
+  transition-timing-function: ease-out !important;
+}
+
+/* Optional: Add transition for the accordion trigger icon */
+[data-next-accordion-trigger] img,
+[data-next-accordion-trigger] svg,
+.limos-summary-icon {
+  transition: transform 0.3s ease-out;
+}
+
+/* Rotate icon when accordion is expanded */
+.next-expanded [data-next-accordion-trigger] img,
+.next-expanded [data-next-accordion-trigger] svg,
+.next-expanded .limos-summary-icon {
+  transform: rotate(180deg);
 }
 
 /* ===========================
@@ -501,6 +533,103 @@ swiper-container {
 /* ===========================
    9. CHECKOUT STYLES
 =========================== */
+
+/* Success/Valid input styles */
+[next-no-error-style] input.no-error,
+[next-no-error-style] textarea.no-error {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 1px #10b981;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Select elements with box-shadow like inputs */
+[next-no-error-style] select.no-error {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 1px #10b981;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+[next-no-error-style] input.no-error:focus,
+[next-no-error-style] textarea.no-error:focus {
+  outline: none;
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2), 0 0 0 1px #059669;
+}
+
+/* Select focus state with box-shadow */
+[next-no-error-style] select.no-error:focus {
+  outline: none;
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2), 0 0 0 1px #059669;
+}
+
+/* Autofilled fields with no-error class - green border with white background */
+[next-no-error-style] input.no-error:-webkit-autofill,
+[next-no-error-style] input.no-error:-webkit-autofill:hover,
+[next-no-error-style] input.no-error:-webkit-autofill:focus,
+[next-no-error-style] input.no-error:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #fff inset, 0 0 0 1px transparent !important;
+  border-color: var(--system-colors--success) !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Autofilled SELECT fields with no-error class - green border with white background */
+[next-no-error-style] select.no-error:-webkit-autofill,
+[next-no-error-style] select.no-error:-webkit-autofill:hover,
+[next-no-error-style] select.no-error:-webkit-autofill:focus,
+[next-no-error-style] select.no-error:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #fff inset, 0 0 0 1px transparent !important;
+  border-color: var(--system-colors--success) !important;
+  background-color: #fff !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Autofilled fields with error - red border with white background */
+[next-no-error-style] input.has-error:-webkit-autofill,
+[next-no-error-style] input.has-error:-webkit-autofill:hover,
+[next-no-error-style] input.has-error:-webkit-autofill:focus,
+[next-no-error-style] input.has-error:-webkit-autofill:active,
+[next-no-error-style] input.next-error-field:-webkit-autofill,
+[next-no-error-style] input.next-error-field:-webkit-autofill:hover,
+[next-no-error-style] input.next-error-field:-webkit-autofill:focus,
+[next-no-error-style] input.next-error-field:-webkit-autofill:active,
+[next-no-error-style] select.has-error:-webkit-autofill,
+[next-no-error-style] select.has-error:-webkit-autofill:hover,
+[next-no-error-style] select.has-error:-webkit-autofill:focus,
+[next-no-error-style] select.has-error:-webkit-autofill:active,
+[next-no-error-style] select.next-error-field:-webkit-autofill,
+[next-no-error-style] select.next-error-field:-webkit-autofill:hover,
+[next-no-error-style] select.next-error-field:-webkit-autofill:focus,
+[next-no-error-style] select.next-error-field:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #fff inset, 0 0 0 1px transparent !important;
+  border-color: var(--system-colors--destructive) !important;
+  background-color: #fff !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Spreedly field transition effect */
+.spreedly-field-transition {
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Optional: Add a checkmark icon for valid fields */
+[next-no-error-style] .form-group.addTick:has(input.no-error:not(:placeholder-shown)),
+[next-no-error-style] .form-group.addTick:has(select.no-error:not([value=""])) {
+  position: relative;
+}
+
+[next-no-error-style] .form-group.addTick:has(input.no-error:not(:placeholder-shown))::after,
+[next-no-error-style] .form-group.addTick:has(select.no-error:not([value=""]))::after {
+  content: "✓";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #10b981;
+  font-weight: bold;
+  pointer-events: none;
+  font-size: 14px;
+}
 
 /* Preloader */
 .preloader {
@@ -793,3 +922,4 @@ swiper-container {
   flex-direction: column;
   gap: 0.5rem;
 }
+

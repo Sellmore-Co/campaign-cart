@@ -100,3 +100,126 @@
   border-color: rgba(255, 255, 255, 0.3);
   border-top-color: #ffffff;
 }
+
+/* Form Input Validation Icons */
+.form-input {
+  position: relative;
+}
+
+.form-input input,
+.form-input select {
+  padding-right: 35px; /* Make room for icon */
+}
+
+/* Hide existing form icons when validation icons are shown - both error and success */
+[next-show-validation-icons] .form-group.addErrorIcon .form-input-icon,
+[next-show-validation-icons] .form-group.addTick .form-input-icon,
+[next-show-validation-icons] .form-input.addErrorIcon .form-input-icon,
+[next-show-validation-icons] .form-input.addTick .form-input-icon {
+  display: none !important;
+}
+
+/* Hide select dropdown arrows/chevrons when validation icons are shown */
+[next-show-validation-icons] .form-group.addErrorIcon select,
+[next-show-validation-icons] .form-group.addTick select,
+[next-show-validation-icons] .form-input.addErrorIcon select,
+[next-show-validation-icons] .form-input.addTick select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+}
+
+/* Also hide any custom select icons or arrows */
+[next-show-validation-icons] .form-group.addErrorIcon .select-icon,
+[next-show-validation-icons] .form-group.addTick .select-icon,
+[next-show-validation-icons] .form-group.addErrorIcon .select-arrow,
+[next-show-validation-icons] .form-group.addTick .select-arrow,
+[next-show-validation-icons] .form-input.addErrorIcon .select-icon,
+[next-show-validation-icons] .form-input.addTick .select-icon,
+[next-show-validation-icons] .form-input.addErrorIcon .select-arrow,
+[next-show-validation-icons] .form-input.addTick .select-arrow {
+  display: none !important;
+}
+
+/* Hide any pseudo-element arrows on selects */
+[next-show-validation-icons] .form-group.addTick select::after,
+[next-show-validation-icons] .form-group.addErrorIcon select::after,
+[next-show-validation-icons] .form-input.addTick select::after,
+[next-show-validation-icons] .form-input.addErrorIcon select::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Alternative: Just hide on error, keep on success */
+/* [next-show-validation-icons] .form-group.addErrorIcon .form-input-icon,
+[next-show-validation-icons] .form-group.addErrorIcon select {
+  display: none;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+} */
+
+/* Success checkmark icon - only show when form has validation icons attribute AND no error */
+[next-show-validation-icons] .form-input.addTick:not(.addErrorIcon)::after,
+[next-show-validation-icons] .form-group.addTick:not(.has-error):not(.addErrorIcon) .form-input::after {
+  --icon-color: var(--system-colors--success, #074d31);
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  /* Using mask to allow color customization via background-color - thin stroke version */
+  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg>');
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg>');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  background-color: var(--icon-color);
+  pointer-events: none;
+  animation: fadeIn 0.2s ease;
+}
+
+/* Error icon - only show when form has validation icons attribute */
+[next-show-validation-icons] .form-input.addErrorIcon::after,
+[next-show-validation-icons] .form-group.addErrorIcon .form-input::after {
+  --icon-color: var(--system-colors--destructive, #c51a00);
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  /* Using mask to allow color customization via background-color - thin stroke version */
+  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="black" stroke-width="1.5"/><path stroke="black" stroke-width="1.5" stroke-linecap="round" d="M12 8v4M12 16h.01"/></svg>');
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="black" stroke-width="1.5"/><path stroke="black" stroke-width="1.5" stroke-linecap="round" d="M12 8v4M12 16h.01"/></svg>');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  background-color: var(--icon-color);
+  pointer-events: none;
+  animation: fadeIn 0.2s ease;
+}
+
+
+/* Animation for icons appearing */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}

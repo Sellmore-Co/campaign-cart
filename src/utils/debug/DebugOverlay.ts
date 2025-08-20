@@ -13,7 +13,6 @@ import { useConfigStore } from '../../stores/configStore';
 import { XrayManager } from './XrayStyles';
 import {
   CartPanel,
-  EventsPanel,
   EventTimelinePanel,
   ConfigPanel,
   CheckoutPanel,
@@ -72,6 +71,23 @@ export class DebugOverlay {
     // Listen for content updates
     document.addEventListener('debug:update-content', () => {
       this.updateContent();
+    });
+    
+    // Listen for new events being added
+    document.addEventListener('debug:event-added', (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { panelId } = customEvent.detail;
+      
+      // Debug logging
+      console.log('[Debug] Event added:', panelId, 'Active panel:', this.activePanel, 'Expanded:', this.isExpanded);
+      
+      // Only update if the event panel is currently active
+      if (this.activePanel === panelId && this.isExpanded) {
+        // For the events panel, always update regardless of input focus
+        // since it's read-only content and won't disrupt user input
+        console.log('[Debug] Updating content for events panel (forced update)');
+        this.updateContent();
+      }
     });
   }
 
@@ -166,13 +182,6 @@ export class DebugOverlay {
   private updateOverlay(): void {
     if (!this.container) return;
     
-    // Update events panel with latest events
-    this.panels = this.panels.map(panel => 
-      panel.id === 'events' 
-        ? new EventsPanel(this.eventManager.getEvents()) 
-        : panel
-    );
-    
     this.container.innerHTML = EnhancedDebugUI.createOverlayHTML(
       this.panels, 
       this.activePanel, 
@@ -225,6 +234,7 @@ export class DebugOverlay {
     
     // Handle main debug actions
     if (action) {
+      console.log('[Debug] Action clicked:', action);
       switch (action) {
         case 'toggle-expand':
           this.isExpanded = !this.isExpanded;
@@ -256,6 +266,7 @@ export class DebugOverlay {
     const panelTab = target.closest('.debug-panel-tab') as HTMLElement;
     if (panelTab) {
       const panelId = panelTab.getAttribute('data-panel');
+      console.log('[Debug] Panel switch:', this.activePanel, '->', panelId);
       if (panelId && panelId !== this.activePanel) {
         this.activePanel = panelId;
         this.activePanelTab = undefined; // Reset horizontal tab when switching panels
@@ -268,6 +279,7 @@ export class DebugOverlay {
     const horizontalTab = target.closest('.horizontal-tab') as HTMLElement;
     if (horizontalTab) {
       const tabId = horizontalTab.getAttribute('data-panel-tab');
+      console.log('[Debug] Horizontal tab switch:', this.activePanelTab, '->', tabId, 'in panel:', this.activePanel);
       if (tabId && tabId !== this.activePanelTab) {
         this.activePanelTab = tabId;
         this.updateOverlay();

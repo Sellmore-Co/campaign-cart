@@ -2683,10 +2683,94 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
     }
     
-    // Clear visual error for this field when user starts typing/changing value
-    if (target.value && target.value.trim() !== '') {
-      // Use validator to clear the error
-      this.validator.clearError(fieldName);
+    // Handle validation differently based on event type
+    if (event.type === 'blur') {
+      // On blur, always handle the field state
+      const field = this.getFieldByName(fieldName);
+      if (!field) return;
+      
+      const wrapper = field.closest('.form-group, .form-input');
+      
+      // Check if field is empty (works for both input and select elements)
+      const isEmpty = !target.value || (typeof target.value === 'string' && target.value.trim() === '');
+      
+      if (isEmpty) {
+        // Field is empty - remove both error and success classes
+        field.classList.remove('has-error', 'next-error-field', 'no-error');
+        
+        if (wrapper) {
+          wrapper.classList.remove('addErrorIcon', 'addTick');
+          const errorLabel = wrapper.querySelector('.next-error-label');
+          if (errorLabel) {
+            errorLabel.remove();
+          }
+        }
+        
+        // For required fields, we might want to show an error
+        // Don't show required error on blur for better UX - only on submit
+        // Just leave the field in neutral state
+      } else {
+        // Field has value - validate it
+        const validationResult = this.validator.validateField(fieldName, target.value);
+        
+        if (validationResult.isValid) {
+          // Field is valid, add the no-error class
+          field.classList.remove('has-error', 'next-error-field');
+          field.classList.add('no-error');
+          
+          // Remove error message if exists
+          if (wrapper) {
+            wrapper.classList.remove('addErrorIcon');
+            wrapper.classList.add('addTick');
+            const errorLabel = wrapper.querySelector('.next-error-label');
+            if (errorLabel) {
+              errorLabel.remove();
+            }
+          }
+        } else if (validationResult.message) {
+          // Field is invalid, show error
+          field.classList.remove('no-error'); // Ensure no-error is removed
+          this.validator.showError(fieldName, validationResult.message);
+        }
+      }
+    } else if (event.type === 'input') {
+      // On input events, clear the error display as soon as user starts typing
+      const field = this.getFieldByName(fieldName);
+      if (field) {
+        // Just remove error classes without adding success classes
+        field.classList.remove('has-error', 'next-error-field');
+        
+        // Remove error message if exists - check both wrapper and parent form-group
+        const wrapper = field.closest('.form-group, .form-input');
+        if (wrapper) {
+          // First check inside the wrapper
+          let errorLabel = wrapper.querySelector('.next-error-label');
+          if (errorLabel) {
+            errorLabel.remove();
+          }
+          
+          // Also check if wrapper is form-input inside a form-group
+          const formGroup = wrapper.closest('.form-group');
+          if (formGroup) {
+            errorLabel = formGroup.querySelector('.next-error-label');
+            if (errorLabel) {
+              errorLabel.remove();
+            }
+          }
+        }
+        
+        // Also check parent element in case structure is different
+        const parentGroup = field.closest('.form-group');
+        if (parentGroup) {
+          const errorLabel = parentGroup.querySelector('.next-error-label');
+          if (errorLabel) {
+            errorLabel.remove();
+          }
+        }
+      }
+    } else if (event.type === 'change') {
+      // On change events, don't clear errors - let validation handle it
+      // This prevents the issue where change event fires after blur and clears the error
     }
   }
 
@@ -2751,6 +2835,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (element instanceof HTMLInputElement || element instanceof HTMLSelectElement) {
       if (element.name) return element.name;
     }
+    
+    return null;
+  }
+
+  private getFieldByName(fieldName: string): HTMLElement | null {
+    // Check shipping fields first
+    const shippingField = this.fields.get(fieldName);
+    if (shippingField) return shippingField;
+    
+    // Check billing fields
+    const billingField = this.billingFields.get(fieldName);
+    if (billingField) return billingField;
     
     return null;
   }
@@ -3136,10 +3232,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       Object.entries(state.errors).forEach(([fieldName, message]) => {
         this.validator.setError(fieldName, message as string);
       });
-    } else {
-      // Clear all errors when state has no errors
-      this.validator.clearAllErrors();
     }
+    // Note: We do NOT call clearAllErrors when state has no errors
+    // because that would mark all fields as valid prematurely.
+    // Errors should only be cleared field-by-field as they're fixed.
     
     // Check if address1 was updated and show location fields if needed
     if (state.formData?.address1 && state.formData.address1.trim().length > 0) {
