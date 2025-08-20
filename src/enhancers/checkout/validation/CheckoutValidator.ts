@@ -459,7 +459,8 @@ export class CheckoutValidator {
 
   public clearError(fieldName: string): void {
     this.errors.delete(fieldName);
-    this.hideError(fieldName);
+    // Only hide the error display, don't mark as valid
+    this.hideErrorOnly(fieldName);
   }
 
   public clearAllErrors(): void {
@@ -469,7 +470,8 @@ export class CheckoutValidator {
     fields.forEach(field => {
       const fieldName = field.getAttribute('data-next-checkout-field') || field.getAttribute('os-checkout-field');
       if (fieldName) {
-        this.hideError(fieldName);
+        // Use hideErrorOnly to avoid marking fields as valid
+        this.hideErrorOnly(fieldName);
       }
     });
     
@@ -481,8 +483,12 @@ export class CheckoutValidator {
 
   public showError(fieldName: string, message: string): void {
     const field = this.findFormField(fieldName);
-    if (!field) return;
+    if (!field) {
+      this.logger.warn(`Field not found for error display: ${fieldName}`);
+      return;
+    }
 
+    this.logger.debug(`Showing error for field ${fieldName}:`, { field, message });
     this.errorManager.showFieldError(field, message);
   }
 
@@ -502,6 +508,14 @@ export class CheckoutValidator {
         this.errorManager.showFieldValid(field);
       }
     }
+  }
+
+  private hideErrorOnly(fieldName: string): void {
+    const field = this.findFormField(fieldName);
+    if (!field) return;
+
+    // Only clear the error display, never add success styling
+    this.errorManager.clearFieldError(field);
   }
 
   private findFormField(fieldName: string): HTMLElement | null {
