@@ -91,6 +91,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private handleFieldChange;
     private updateBillingStateOptions;
     private getFieldNameFromElement;
+    private getFieldByName;
     private handleBillingFieldChange;
     private handlePaymentMethodChange;
     private handleShippingMethodChange;

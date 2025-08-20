@@ -45,7 +45,7 @@ export declare class CheckoutValidator {
     clearError(fieldName: string): void;
     clearAllErrors(): void;
     showError(fieldName: string, message: string): void;
-    private hideError;
+    private hideErrorOnly;
     private findFormField;
     focusFirstErrorField(firstErrorField?: string): void;
     private focusCreditCardErrorField;
