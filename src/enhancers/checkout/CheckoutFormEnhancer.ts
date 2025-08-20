@@ -2691,8 +2691,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       const wrapper = field.closest('.form-group, .form-input');
       
-      // Check if field is empty
-      if (!target.value || target.value.trim() === '') {
+      // Check if field is empty (works for both input and select elements)
+      const isEmpty = !target.value || (typeof target.value === 'string' && target.value.trim() === '');
+      
+      if (isEmpty) {
         // Field is empty - remove both error and success classes
         field.classList.remove('has-error', 'next-error-field', 'no-error');
         
@@ -2703,6 +2705,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             errorLabel.remove();
           }
         }
+        
+        // For required fields, we might want to show an error
+        const isRequired = field.hasAttribute('required') || 
+                          field.getAttribute('os-checkout-validate') === 'required';
+        
+        // Don't show required error on blur for better UX - only on submit
+        // Just leave the field in neutral state
       } else {
         // Field has value - validate it
         const validationResult = this.validator.validateField(fieldName, target.value);
@@ -2728,20 +2737,37 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       }
     } else if (event.type === 'input') {
-      // On input events, only clear the error display without marking as valid
-      if (target.value && target.value.trim() !== '') {
-        const field = this.getFieldByName(fieldName);
-        if (field) {
-          // Just remove error classes without adding success classes
-          field.classList.remove('has-error', 'next-error-field');
+      // On input events, clear the error display as soon as user starts typing
+      const field = this.getFieldByName(fieldName);
+      if (field) {
+        // Just remove error classes without adding success classes
+        field.classList.remove('has-error', 'next-error-field');
+        
+        // Remove error message if exists - check both wrapper and parent form-group
+        const wrapper = field.closest('.form-group, .form-input');
+        if (wrapper) {
+          // First check inside the wrapper
+          let errorLabel = wrapper.querySelector('.next-error-label');
+          if (errorLabel) {
+            errorLabel.remove();
+          }
           
-          // Remove error message if exists
-          const wrapper = field.closest('.form-group, .form-input');
-          if (wrapper) {
-            const errorLabel = wrapper.querySelector('.next-error-label');
+          // Also check if wrapper is form-input inside a form-group
+          const formGroup = wrapper.closest('.form-group');
+          if (formGroup) {
+            errorLabel = formGroup.querySelector('.next-error-label');
             if (errorLabel) {
               errorLabel.remove();
             }
+          }
+        }
+        
+        // Also check parent element in case structure is different
+        const parentGroup = field.closest('.form-group');
+        if (parentGroup) {
+          const errorLabel = parentGroup.querySelector('.next-error-label');
+          if (errorLabel) {
+            errorLabel.remove();
           }
         }
       }

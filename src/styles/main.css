@@ -235,14 +235,15 @@ input#billing_field_intl::placeholder {
 }
 
 /* Webkit autofill styling */
-input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
-input:-webkit-autofill:active,
-select:-webkit-autofill,
-select:-webkit-autofill:hover, 
-select:-webkit-autofill:focus, 
-select:-webkit-autofill:active {
+/* General autofill styles - but not for validated fields */
+input:-webkit-autofill:not(.no-error):not(.has-error):not(.next-error-field),
+input:-webkit-autofill:hover:not(.no-error):not(.has-error):not(.next-error-field), 
+input:-webkit-autofill:focus:not(.no-error):not(.has-error):not(.next-error-field), 
+input:-webkit-autofill:active:not(.no-error):not(.has-error):not(.next-error-field),
+select:-webkit-autofill:not(.no-error):not(.has-error):not(.next-error-field),
+select:-webkit-autofill:hover:not(.no-error):not(.has-error):not(.next-error-field), 
+select:-webkit-autofill:focus:not(.no-error):not(.has-error):not(.next-error-field), 
+select:-webkit-autofill:active:not(.no-error):not(.has-error):not(.next-error-field) {
   -webkit-box-shadow: 0 0 0 30px #fff inset !important;
   transition: background-color 5000s ease-in-out 0s !important;
 }
@@ -538,10 +539,11 @@ swiper-container {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Select elements only need border color, not box-shadow to avoid double border */
+/* Select elements with box-shadow like inputs */
 [next-no-error-style] select.no-error {
   border-color: #10b981 !important;
-  transition: border-color 0.2s ease;
+  box-shadow: 0 0 0 1px #10b981;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 [next-no-error-style] input.no-error:focus,
@@ -551,10 +553,55 @@ swiper-container {
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2), 0 0 0 1px #059669;
 }
 
-/* Select focus state without box-shadow */
+/* Select focus state with box-shadow */
 [next-no-error-style] select.no-error:focus {
   outline: none;
   border-color: #059669 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2), 0 0 0 1px #059669;
+}
+
+/* Autofilled fields with no-error class - green border with white background */
+[next-no-error-style] input.no-error:-webkit-autofill,
+[next-no-error-style] input.no-error:-webkit-autofill:hover,
+[next-no-error-style] input.no-error:-webkit-autofill:focus,
+[next-no-error-style] input.no-error:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #fff inset, 0 0 0 1px #10b981 !important;
+  border-color: #10b981 !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Autofilled SELECT fields with no-error class - green border with white background */
+[next-no-error-style] select.no-error:-webkit-autofill,
+[next-no-error-style] select.no-error:-webkit-autofill:hover,
+[next-no-error-style] select.no-error:-webkit-autofill:focus,
+[next-no-error-style] select.no-error:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #fff inset, 0 0 0 1px #10b981 !important;
+  border-color: #10b981 !important;
+  background-color: #fff !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Autofilled fields with error - red border with white background */
+[next-no-error-style] input.has-error:-webkit-autofill,
+[next-no-error-style] input.has-error:-webkit-autofill:hover,
+[next-no-error-style] input.has-error:-webkit-autofill:focus,
+[next-no-error-style] input.has-error:-webkit-autofill:active,
+[next-no-error-style] input.next-error-field:-webkit-autofill,
+[next-no-error-style] input.next-error-field:-webkit-autofill:hover,
+[next-no-error-style] input.next-error-field:-webkit-autofill:focus,
+[next-no-error-style] input.next-error-field:-webkit-autofill:active,
+[next-no-error-style] select.has-error:-webkit-autofill,
+[next-no-error-style] select.has-error:-webkit-autofill:hover,
+[next-no-error-style] select.has-error:-webkit-autofill:focus,
+[next-no-error-style] select.has-error:-webkit-autofill:active,
+[next-no-error-style] select.next-error-field:-webkit-autofill,
+[next-no-error-style] select.next-error-field:-webkit-autofill:hover,
+[next-no-error-style] select.next-error-field:-webkit-autofill:focus,
+[next-no-error-style] select.next-error-field:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #fff inset, 0 0 0 1px #ef4444 !important;
+  border-color: #ef4444 !important;
+  background-color: #fff !important;
+  transition: background-color 5000s ease-in-out 0s !important;
 }
 
 /* Spreedly field transition effect */
