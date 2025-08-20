@@ -127,28 +127,33 @@ export class AccordionEnhancer extends BaseEnhancer {
     
     // Handle smooth height animation for panels
     instance.panels.forEach(panel => {
-      // Get the natural height
-      const currentHeight = panel.style.height;
+      // First, ensure we're starting from the current height (likely 0px)
+      const currentHeight = panel.offsetHeight;
+      panel.style.height = currentHeight + 'px';
+      
+      // Calculate the target height
       panel.style.height = 'auto';
       const autoHeight = panel.offsetHeight;
-      panel.style.height = currentHeight;
+      panel.style.height = currentHeight + 'px';
       
-      // Force a reflow
-      panel.offsetHeight;
+      // Force a reflow to ensure the browser registers the starting height
+      void panel.offsetHeight;
       
-      // Animate to auto height
-      panel.style.height = autoHeight + 'px';
-      
-      // Add expanded class after a brief delay to allow height transition
-      setTimeout(() => {
+      // Use requestAnimationFrame to ensure the browser has painted the initial state
+      requestAnimationFrame(() => {
+        // Now animate to the target height
+        panel.style.height = autoHeight + 'px';
+        
+        // Add expanded class
         panel.classList.add(instance.config.toggleClass!);
-        // Set height to auto after transition for responsive behavior
+        
+        // Set height to auto after transition completes for responsive behavior
         setTimeout(() => {
           if (instance.isOpen) { // Check if still open
             panel.style.height = 'auto';
           }
-        }, instance.config.animationDuration || 300);
-      }, 10);
+        }, (instance.config.animationDuration || 300) + 50); // Add buffer to ensure transition completes
+      });
     });
     
     // Update container class immediately

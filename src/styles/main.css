@@ -282,6 +282,34 @@ html.wf-design-mode .swiper-slide.is-thumb {
   max-width: 4rem;
 }
 
+/* Accordion animations */
+[data-next-accordion-panel],
+.accordion__panel {
+  transition: height 0.3s ease-out !important;
+  overflow: hidden;
+}
+
+/* Ensure transition works even with inline styles */
+[data-next-accordion-panel] {
+  transition-property: height !important;
+  transition-duration: 0.3s !important;
+  transition-timing-function: ease-out !important;
+}
+
+/* Optional: Add transition for the accordion trigger icon */
+[data-next-accordion-trigger] img,
+[data-next-accordion-trigger] svg,
+.limos-summary-icon {
+  transition: transform 0.3s ease-out;
+}
+
+/* Rotate icon when accordion is expanded */
+.next-expanded [data-next-accordion-trigger] img,
+.next-expanded [data-next-accordion-trigger] svg,
+.next-expanded .limos-summary-icon {
+  transform: rotate(180deg);
+}
+
 /* ===========================
    5. VISIBILITY UTILITIES
 =========================== */
