@@ -21,6 +21,9 @@
    13. COMPONENT IMPORTS
 =========================== */
 
+/* Component styles */
+@import './components/checkout.css';
+
 /* Tooltip styles are injected dynamically by TooltipEnhancer */
 
 /* ===========================

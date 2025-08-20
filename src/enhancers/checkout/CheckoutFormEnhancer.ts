@@ -2707,9 +2707,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
         
         // For required fields, we might want to show an error
-        const isRequired = field.hasAttribute('required') || 
-                          field.getAttribute('os-checkout-validate') === 'required';
-        
         // Don't show required error on blur for better UX - only on submit
         // Just leave the field in neutral state
       } else {

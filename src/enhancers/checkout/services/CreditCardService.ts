@@ -691,66 +691,61 @@ export class CreditCardService {
     }
     
     // Handle input events for validation
-    if (type === 'input' && inputProperties) {
-      if (name === 'number' && inputProperties.validNumber !== undefined) {
-        const wasValid = this.validationState.number.isValid;
-        const hadError = this.validationState.number.hasError;
+    if (type === 'input') {
+      // Clear error display immediately when user starts typing in any field
+      if (name === 'number') {
+        // Clear error display immediately
+        this.clearCreditCardFieldError('number');
+        const checkoutStore = useCheckoutStore.getState();
+        checkoutStore.clearError('cc-number');
+        checkoutStore.clearError('card_number');
         
-        this.validationState.number.isValid = inputProperties.validNumber;
-        this.validationState.number.hasError = !inputProperties.validNumber;
-        
-        if (wasValid !== inputProperties.validNumber) {
-          this.logger.info(`[Spreedly] Card number validation changed: ${wasValid} -> ${inputProperties.validNumber}`);
+        // Update validation state if we have input properties
+        if (inputProperties && inputProperties.validNumber !== undefined) {
+          const wasValid = this.validationState.number.isValid;
+          this.validationState.number.isValid = inputProperties.validNumber;
+          this.validationState.number.hasError = !inputProperties.validNumber;
+          
+          // Add/remove no-error class based on validation state
+          if (this.numberField) {
+            if (inputProperties.validNumber) {
+              this.numberField.classList.add('no-error');
+              this.numberField.classList.remove('has-error', 'next-error-field');
+            } else {
+              this.numberField.classList.remove('no-error');
+            }
+          }
+          
+          if (wasValid !== inputProperties.validNumber) {
+            this.logger.info(`[Spreedly] Card number validation changed: ${wasValid} -> ${inputProperties.validNumber}`);
+          }
         }
+      } else if (name === 'cvv') {
+        // Clear error display immediately
+        this.clearCreditCardFieldError('cvv');
+        const checkoutStore = useCheckoutStore.getState();
+        checkoutStore.clearError('cvv');
+        checkoutStore.clearError('card_cvv');
         
-        // Handle validation state changes
-        if (inputProperties.validNumber && (hadError || wasValid !== inputProperties.validNumber)) {
-          // Field became valid - clear errors
-          this.logger.info('[Spreedly] Card number is now valid, clearing error');
-          this.clearCreditCardFieldError('number');
+        // Update validation state if we have input properties
+        if (inputProperties && inputProperties.validCvv !== undefined) {
+          const wasValid = this.validationState.cvv.isValid;
+          this.validationState.cvv.isValid = inputProperties.validCvv;
+          this.validationState.cvv.hasError = !inputProperties.validCvv;
           
-          // Also clear any general credit card errors from the checkout store
-          const checkoutStore = useCheckoutStore.getState();
-          checkoutStore.clearError('cc-number');
-          checkoutStore.clearError('card_number');
-        } else if (!inputProperties.validNumber && wasValid) {
-          // Field became invalid - show error
-          this.logger.info('[Spreedly] Card number is now invalid, showing error');
-          this.setCreditCardFieldError('number', 'Please enter a valid credit card number');
+          // Add/remove no-error class based on validation state
+          if (this.cvvField) {
+            if (inputProperties.validCvv) {
+              this.cvvField.classList.add('no-error');
+              this.cvvField.classList.remove('has-error', 'next-error-field');
+            } else {
+              this.cvvField.classList.remove('no-error');
+            }
+          }
           
-          // Also set error in checkout store
-          const checkoutStore = useCheckoutStore.getState();
-          checkoutStore.setError('cc-number', 'Please enter a valid credit card number');
-        }
-      } else if (name === 'cvv' && inputProperties.validCvv !== undefined) {
-        const wasValid = this.validationState.cvv.isValid;
-        const hadError = this.validationState.cvv.hasError;
-        
-        this.validationState.cvv.isValid = inputProperties.validCvv;
-        this.validationState.cvv.hasError = !inputProperties.validCvv;
-        
-        if (wasValid !== inputProperties.validCvv) {
-          this.logger.info(`[Spreedly] CVV validation changed: ${wasValid} -> ${inputProperties.validCvv}`);
-        }
-        
-        // Handle validation state changes
-        if (inputProperties.validCvv && (hadError || wasValid !== inputProperties.validCvv)) {
-          // Field became valid - clear errors
-          this.logger.info('[Spreedly] CVV is now valid, clearing error');
-          this.clearCreditCardFieldError('cvv');
-          
-          // Also clear any general credit card errors from the checkout store
-          const checkoutStore = useCheckoutStore.getState();
-          checkoutStore.clearError('cvv');
-          checkoutStore.clearError('card_cvv');
-        } else if (!inputProperties.validCvv && wasValid) {
-          // Field became invalid - show error
-          this.logger.info('[Spreedly] CVV is now invalid, showing error');
-          this.setCreditCardFieldError('cvv', 'Please enter a valid CVV');
-          
-          // Also set error in checkout store
-          const checkoutStore = useCheckoutStore.getState();
-          checkoutStore.setError('cvv', 'Please enter a valid CVV');
+          if (wasValid !== inputProperties.validCvv) {
+            this.logger.info(`[Spreedly] CVV validation changed: ${wasValid} -> ${inputProperties.validCvv}`);
+          }
         }
       }
       

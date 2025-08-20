@@ -492,23 +492,6 @@ export class CheckoutValidator {
     this.errorManager.showFieldError(field, message);
   }
 
-  private hideError(fieldName: string): void {
-    const field = this.findFormField(fieldName);
-    if (!field) return;
-
-    // Only clear the error, don't mark as valid unless field actually has valid content
-    this.errorManager.clearFieldError(field);
-    
-    // Only show as valid if the field has been validated and is actually valid
-    // Don't automatically mark empty fields as valid
-    if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
-      const hasValue = field.value && field.value.trim() !== '';
-      // Only mark as valid if it has a value and no error
-      if (hasValue && !this.errors.has(fieldName)) {
-        this.errorManager.showFieldValid(field);
-      }
-    }
-  }
 
   private hideErrorOnly(fieldName: string): void {
     const field = this.findFormField(fieldName);
