@@ -1764,6 +1764,25 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         this.handleTokenizedPayment(token, pmData);
       });
       
+      // Set up floating label callbacks for Spreedly fields
+      if (this.ui) {
+        this.creditCardService.setFloatingLabelCallbacks(
+          // Focus callback
+          (fieldName: 'number' | 'cvv') => {
+            this.ui.handleSpreedlyFieldFocus(fieldName);
+          },
+          // Blur callback
+          (fieldName: 'number' | 'cvv', hasValue: boolean) => {
+            this.ui.handleSpreedlyFieldBlur(fieldName, hasValue);
+          },
+          // Input callback
+          (fieldName: 'number' | 'cvv', hasValue: boolean) => {
+            this.ui.handleSpreedlyFieldInput(fieldName, hasValue);
+          }
+        );
+        this.logger.debug('[Spreedly] Connected floating label callbacks');
+      }
+      
       await this.creditCardService.initialize();
       
       // Connect credit card service to validator

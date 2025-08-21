@@ -49,6 +49,14 @@ export class CreditCardService {
   
   // Track if we've fired the add_payment_info event
   private hasTrackedPaymentInfo = false;
+  
+  // Floating label callbacks
+  private onFieldFocusCallback?: (fieldName: 'number' | 'cvv') => void;
+  private onFieldBlurCallback?: (fieldName: 'number' | 'cvv', hasValue: boolean) => void;
+  private onFieldInputCallback?: (fieldName: 'number' | 'cvv', hasValue: boolean) => void;
+  
+  // Track field value states for floating labels
+  private fieldHasValue: { number: boolean; cvv: boolean } = { number: false, cvv: false };
 
   constructor(environmentKey: string) {
     this.environmentKey = environmentKey;
@@ -345,6 +353,19 @@ export class CreditCardService {
 
   public setOnToken(callback: (token: string, pmData: any) => void): void {
     this.onTokenCallback = callback;
+  }
+
+  /**
+   * Set floating label callbacks
+   */
+  public setFloatingLabelCallbacks(
+    onFocus: (fieldName: 'number' | 'cvv') => void,
+    onBlur: (fieldName: 'number' | 'cvv', hasValue: boolean) => void,
+    onInput: (fieldName: 'number' | 'cvv', hasValue: boolean) => void
+  ): void {
+    this.onFieldFocusCallback = onFocus;
+    this.onFieldBlurCallback = onBlur;
+    this.onFieldInputCallback = onInput;
   }
 
   /**
@@ -686,8 +707,17 @@ export class CreditCardService {
     // Handle focus/blur events for visual feedback
     if (type === 'focus') {
       this.handleFieldFocus(name);
+      // Trigger floating label focus callback
+      if (this.onFieldFocusCallback && (name === 'number' || name === 'cvv')) {
+        this.onFieldFocusCallback(name as 'number' | 'cvv');
+      }
     } else if (type === 'blur') {
       this.handleFieldBlur(name);
+      // Trigger floating label blur callback
+      if (this.onFieldBlurCallback && (name === 'number' || name === 'cvv')) {
+        const hasValue = name === 'number' ? this.fieldHasValue.number : this.fieldHasValue.cvv;
+        this.onFieldBlurCallback(name as 'number' | 'cvv', hasValue);
+      }
     }
     
     // Handle input events for validation
@@ -701,23 +731,34 @@ export class CreditCardService {
         checkoutStore.clearError('card_number');
         
         // Update validation state if we have input properties
-        if (inputProperties && inputProperties.validNumber !== undefined) {
-          const wasValid = this.validationState.number.isValid;
-          this.validationState.number.isValid = inputProperties.validNumber;
-          this.validationState.number.hasError = !inputProperties.validNumber;
+        if (inputProperties) {
+          // Track if field has value based on length
+          const hasValue = inputProperties.numberLength > 0;
+          this.fieldHasValue.number = hasValue;
           
-          // Add/remove no-error class based on validation state
-          if (this.numberField) {
-            if (inputProperties.validNumber) {
-              this.numberField.classList.add('no-error');
-              this.numberField.classList.remove('has-error', 'next-error-field');
-            } else {
-              this.numberField.classList.remove('no-error');
-            }
+          // Trigger floating label input callback
+          if (this.onFieldInputCallback) {
+            this.onFieldInputCallback('number', hasValue);
           }
           
-          if (wasValid !== inputProperties.validNumber) {
-            this.logger.info(`[Spreedly] Card number validation changed: ${wasValid} -> ${inputProperties.validNumber}`);
+          if (inputProperties.validNumber !== undefined) {
+            const wasValid = this.validationState.number.isValid;
+            this.validationState.number.isValid = inputProperties.validNumber;
+            this.validationState.number.hasError = !inputProperties.validNumber;
+            
+            // Add/remove no-error class based on validation state
+            if (this.numberField) {
+              if (inputProperties.validNumber) {
+                this.numberField.classList.add('no-error');
+                this.numberField.classList.remove('has-error', 'next-error-field');
+              } else {
+                this.numberField.classList.remove('no-error');
+              }
+            }
+            
+            if (wasValid !== inputProperties.validNumber) {
+              this.logger.info(`[Spreedly] Card number validation changed: ${wasValid} -> ${inputProperties.validNumber}`);
+            }
           }
         }
       } else if (name === 'cvv') {
@@ -728,23 +769,34 @@ export class CreditCardService {
         checkoutStore.clearError('card_cvv');
         
         // Update validation state if we have input properties
-        if (inputProperties && inputProperties.validCvv !== undefined) {
-          const wasValid = this.validationState.cvv.isValid;
-          this.validationState.cvv.isValid = inputProperties.validCvv;
-          this.validationState.cvv.hasError = !inputProperties.validCvv;
+        if (inputProperties) {
+          // Track if field has value based on length
+          const hasValue = inputProperties.cvvLength > 0;
+          this.fieldHasValue.cvv = hasValue;
           
-          // Add/remove no-error class based on validation state
-          if (this.cvvField) {
-            if (inputProperties.validCvv) {
-              this.cvvField.classList.add('no-error');
-              this.cvvField.classList.remove('has-error', 'next-error-field');
-            } else {
-              this.cvvField.classList.remove('no-error');
-            }
+          // Trigger floating label input callback
+          if (this.onFieldInputCallback) {
+            this.onFieldInputCallback('cvv', hasValue);
           }
           
-          if (wasValid !== inputProperties.validCvv) {
-            this.logger.info(`[Spreedly] CVV validation changed: ${wasValid} -> ${inputProperties.validCvv}`);
+          if (inputProperties.validCvv !== undefined) {
+            const wasValid = this.validationState.cvv.isValid;
+            this.validationState.cvv.isValid = inputProperties.validCvv;
+            this.validationState.cvv.hasError = !inputProperties.validCvv;
+            
+            // Add/remove no-error class based on validation state
+            if (this.cvvField) {
+              if (inputProperties.validCvv) {
+                this.cvvField.classList.add('no-error');
+                this.cvvField.classList.remove('has-error', 'next-error-field');
+              } else {
+                this.cvvField.classList.remove('no-error');
+              }
+            }
+            
+            if (wasValid !== inputProperties.validCvv) {
+              this.logger.info(`[Spreedly] CVV validation changed: ${wasValid} -> ${inputProperties.validCvv}`);
+            }
           }
         }
       }

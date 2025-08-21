@@ -480,10 +480,155 @@ export class UIService {
       
     });
     
+    // Also setup Spreedly fields (credit card and CVV)
+    this.setupSpreedlyFloatingLabels();
+    
     this.logger.debug(`Initialized ${this.floatingLabels.size} floating labels`);
     
     // Start periodic check for autocomplete detection
     this.startPeriodicCheck();
+  }
+
+  /**
+   * Setup floating labels for Spreedly iframe fields
+   */
+  private setupSpreedlyFloatingLabels(): void {
+    // Setup credit card number field
+    const ccNumberContainer = this.form.querySelector('[data-next-checkout-field="cc-number"], #spreedly-number') as HTMLElement;
+    if (ccNumberContainer) {
+      const label = ccNumberContainer.parentElement?.querySelector('.label-checkout');
+      if (label instanceof HTMLLabelElement) {
+        this.floatingLabels.set(ccNumberContainer, label);
+        this.setupLabelStyles(label);
+        
+        // Check if it has placeholder behavior
+        const behavior = ccNumberContainer.getAttribute('data-label-behavior');
+        if (behavior === 'placeholder') {
+          // Initially float down (will be handled by Spreedly events)
+          this.floatLabelDown(label, ccNumberContainer);
+        }
+        
+        this.logger.debug('Set up Spreedly floating label for credit card number');
+      }
+    }
+    
+    // Setup CVV field
+    const cvvContainer = this.form.querySelector('[data-next-checkout-field="cvv"], #spreedly-cvv') as HTMLElement;
+    if (cvvContainer) {
+      const label = cvvContainer.parentElement?.querySelector('.label-checkout');
+      if (label instanceof HTMLLabelElement) {
+        this.floatingLabels.set(cvvContainer, label);
+        this.setupLabelStyles(label);
+        
+        // Check if it has placeholder behavior
+        const behavior = cvvContainer.getAttribute('data-label-behavior');
+        if (behavior === 'placeholder') {
+          // Initially float down (will be handled by Spreedly events)
+          this.floatLabelDown(label, cvvContainer);
+        }
+        
+        this.logger.debug('Set up Spreedly floating label for CVV');
+      }
+    }
+  }
+
+  /**
+   * Handle Spreedly field focus event
+   */
+  public handleSpreedlyFieldFocus(fieldName: 'number' | 'cvv'): void {
+    const fieldId = fieldName === 'number' ? 'spreedly-number' : 'spreedly-cvv';
+    const field = document.getElementById(fieldId) || 
+                  this.form.querySelector(`[data-next-checkout-field="${fieldName === 'number' ? 'cc-number' : 'cvv'}"]`) as HTMLElement;
+    
+    if (!field) {
+      this.logger.warn(`Spreedly field not found: ${fieldName}`);
+      return;
+    }
+    
+    const label = this.floatingLabels.get(field);
+    if (label) {
+      const behavior = field.getAttribute('data-label-behavior');
+      
+      if (behavior === 'placeholder') {
+        // Placeholder behavior: always float up on focus
+        this.floatLabelUp(label, field, 'focus');
+      }
+      
+      this.logger.debug(`Spreedly field focused: ${fieldName}`);
+    }
+  }
+
+  /**
+   * Handle Spreedly field blur event
+   */
+  public handleSpreedlyFieldBlur(fieldName: 'number' | 'cvv', hasValue: boolean): void {
+    const fieldId = fieldName === 'number' ? 'spreedly-number' : 'spreedly-cvv';
+    const field = document.getElementById(fieldId) || 
+                  this.form.querySelector(`[data-next-checkout-field="${fieldName === 'number' ? 'cc-number' : 'cvv'}"]`) as HTMLElement;
+    
+    if (!field) {
+      this.logger.warn(`Spreedly field not found: ${fieldName}`);
+      return;
+    }
+    
+    const label = this.floatingLabels.get(field);
+    if (label) {
+      const behavior = field.getAttribute('data-label-behavior');
+      
+      if (behavior === 'placeholder') {
+        // Placeholder behavior: only keep floating if field has value
+        if (!hasValue) {
+          this.floatLabelDown(label, field);
+        }
+      } else {
+        // Default behavior
+        if (hasValue) {
+          this.floatLabelUp(label, field);
+        } else {
+          this.floatLabelDown(label, field);
+        }
+      }
+      
+      this.logger.debug(`Spreedly field blurred: ${fieldName}, hasValue: ${hasValue}`);
+    }
+  }
+
+  /**
+   * Handle Spreedly field input event
+   */
+  public handleSpreedlyFieldInput(fieldName: 'number' | 'cvv', hasValue: boolean): void {
+    const fieldId = fieldName === 'number' ? 'spreedly-number' : 'spreedly-cvv';
+    const field = document.getElementById(fieldId) || 
+                  this.form.querySelector(`[data-next-checkout-field="${fieldName === 'number' ? 'cc-number' : 'cvv'}"]`) as HTMLElement;
+    
+    if (!field) {
+      this.logger.warn(`Spreedly field not found: ${fieldName}`);
+      return;
+    }
+    
+    const label = this.floatingLabels.get(field);
+    if (label) {
+      const behavior = field.getAttribute('data-label-behavior');
+      const isFocused = field.classList.contains('next-focused') || field.classList.contains('has-focus');
+      
+      if (behavior === 'placeholder') {
+        // For placeholder behavior, keep floating if focused or has value
+        if (isFocused || hasValue) {
+          this.floatLabelUp(label, field, isFocused ? 'focus' : 'value');
+        } else {
+          this.floatLabelDown(label, field);
+        }
+      } else {
+        // Default behavior
+        if (hasValue) {
+          this.floatLabelUp(label, field);
+        } else {
+          this.floatLabelDown(label, field);
+        }
+      }
+      
+      this.logger.debug(`Spreedly field input: ${fieldName}, hasValue: ${hasValue}`);
+    }
   }
 
   /**
