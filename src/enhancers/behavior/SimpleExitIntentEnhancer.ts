@@ -17,6 +17,8 @@ export class ExitIntentEnhancer extends BaseEnhancer {
   private overlayElement: HTMLElement | null = null;
   private mouseLeaveHandler: ((e: MouseEvent) => void) | null = null;
   private scrollHandler: ((e: Event) => void) | null = null;
+  private disableOnMobile = true; // Default to desktop-only like the reference code
+  private mobileScrollTrigger = false; // Explicitly enable mobile scroll trigger
 
   constructor() {
     super(document.body);
@@ -41,9 +43,23 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     }
   }
 
-  public setup(options: { image: string; action?: () => void | Promise<void> }): void {
+  public setup(options: { 
+    image: string; 
+    action?: () => void | Promise<void>;
+    disableOnMobile?: boolean;
+    mobileScrollTrigger?: boolean; // Enable scroll trigger on mobile
+  }): void {
     this.imageUrl = options.image;
     this.action = options.action || null;
+    this.disableOnMobile = options.disableOnMobile !== undefined ? options.disableOnMobile : true; // Default true
+    this.mobileScrollTrigger = options.mobileScrollTrigger || false;
+    
+    // Check if we should enable based on device
+    if (this.disableOnMobile && this.isMobileDevice()) {
+      this.logger.debug('Exit intent disabled on mobile device');
+      return;
+    }
+    
     this.isEnabled = true;
     this.setupEventListeners();
     this.logger.debug('Simple exit intent setup complete');
@@ -56,24 +72,43 @@ export class ExitIntentEnhancer extends BaseEnhancer {
   }
 
   private setupEventListeners(): void {
-    // Desktop: mouse leave detection
-    this.mouseLeaveHandler = (e: MouseEvent) => {
-      if (this.shouldTrigger() && e.clientY <= 10) {
-        this.triggerExitIntent();
-      }
-    };
-    document.addEventListener('mouseleave', this.mouseLeaveHandler);
-
-    // Mobile: scroll detection  
-    this.scrollHandler = () => {
-      if (this.shouldTrigger()) {
-        const scrollPercent = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
-        if (scrollPercent >= 50) {
+    // Desktop: mouse leave detection (always enabled on desktop)
+    if (!this.isMobileDevice()) {
+      this.mouseLeaveHandler = (e: MouseEvent) => {
+        if (this.shouldTrigger() && e.clientY <= 10) {
           this.triggerExitIntent();
         }
-      }
-    };
-    window.addEventListener('scroll', this.scrollHandler, { passive: true });
+      };
+      document.addEventListener('mouseleave', this.mouseLeaveHandler);
+    }
+
+    // Mobile: scroll detection (only if explicitly enabled)
+    if (this.isMobileDevice() && this.mobileScrollTrigger) {
+      this.scrollHandler = () => {
+        if (this.shouldTrigger()) {
+          const scrollPercent = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+          if (scrollPercent >= 50) {
+            this.triggerExitIntent();
+          }
+        }
+      };
+      window.addEventListener('scroll', this.scrollHandler, { passive: true });
+    }
+  }
+
+  private isMobileDevice(): boolean {
+    // Check for touch capability
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    // Check viewport width (mobile typically < 768px)
+    const isMobileWidth = window.innerWidth < 768;
+    
+    // Check user agent for mobile devices
+    const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+    const isMobileUA = mobileRegex.test(navigator.userAgent);
+    
+    // Consider it mobile if it has touch AND (mobile width OR mobile UA)
+    return hasTouch && (isMobileWidth || isMobileUA);
   }
 
   private shouldTrigger(): boolean {
@@ -81,6 +116,10 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     if (this.popupElement) return false; // Already showing
     if (this.triggerCount >= this.maxTriggers) return false;
     if (Date.now() - this.lastTriggerTime < this.cooldownPeriod) return false;
+    
+    // Additional check for mobile even if not disabled globally
+    if (this.disableOnMobile && this.isMobileDevice()) return false;
+    
     return true;
   }
 
