@@ -307,6 +307,56 @@ export class UIService {
   // ============================================================================
 
   /**
+   * Initialize payment forms based on their current state in the DOM
+   */
+  public initializePaymentForms(): void {
+    this.logger.debug('Initializing payment forms');
+    
+    const paymentMethods = this.form.querySelectorAll('[data-next-payment-method]');
+    
+    paymentMethods.forEach(paymentMethodElement => {
+      if (paymentMethodElement instanceof HTMLElement) {
+        const radio = paymentMethodElement.querySelector('input[type="radio"]');
+        const paymentForm = paymentMethodElement.querySelector('[data-next-payment-form]');
+        
+        if (!(radio instanceof HTMLInputElement) || !(paymentForm instanceof HTMLElement)) {
+          return;
+        }
+        
+        // Check the current state from HTML
+        const isExpanded = paymentForm.getAttribute('data-next-payment-state') === 'expanded' ||
+                          paymentForm.classList.contains('payment-method__form--expanded');
+        const isChecked = radio.checked;
+        
+        // Sync the state
+        if (isChecked || isExpanded) {
+          // Ensure it's properly expanded
+          paymentMethodElement.classList.add('next-selected');
+          paymentForm.setAttribute('data-next-payment-state', 'expanded');
+          paymentForm.classList.add('payment-method__form--expanded');
+          paymentForm.classList.remove('payment-method__form--collapsed');
+          paymentForm.classList.remove('payment-method__form--collapsing');
+          paymentForm.classList.remove('payment-method__form--expanding');
+          paymentForm.style.height = '';
+          paymentForm.style.overflow = '';
+          paymentForm.style.transition = '';
+        } else {
+          // Ensure it's properly collapsed
+          paymentMethodElement.classList.remove('next-selected');
+          paymentForm.setAttribute('data-next-payment-state', 'collapsed');
+          paymentForm.classList.add('payment-method__form--collapsed');
+          paymentForm.classList.remove('payment-method__form--expanded');
+          paymentForm.classList.remove('payment-method__form--expanding');
+          paymentForm.classList.remove('payment-method__form--collapsing');
+          paymentForm.style.height = '0px';
+          paymentForm.style.overflow = 'hidden';
+          paymentForm.style.transition = '';
+        }
+      }
+    });
+  }
+
+  /**
    * Update payment form visibility based on selected payment method
    */
   public updatePaymentFormVisibility(paymentMethod: string): void {
@@ -369,34 +419,43 @@ export class UIService {
       return;
     }
     
-    // Remove collapsed class and add expanded class
-    paymentForm.classList.remove('payment-method__form--collapsed');
-    paymentForm.classList.add('payment-method__form--expanded');
+    // Ensure overflow is hidden for animation
+    paymentForm.style.overflow = 'hidden';
     
     // Get current height (should be 0 from collapsed state)
     const startHeight = paymentForm.offsetHeight;
     
-    // Temporarily set to auto to measure natural height
-    const currentOverflow = paymentForm.style.overflow;
+    // Remove collapsed class and add expanding class for animation
+    paymentForm.classList.remove('payment-method__form--collapsed');
+    paymentForm.classList.add('payment-method__form--expanding');
     
-    paymentForm.style.overflow = 'hidden';
+    // Calculate target height
     paymentForm.style.height = 'auto';
     const targetHeight = paymentForm.scrollHeight;
     
-    // Start from current height (likely 0)
+    // Reset to start height
     paymentForm.style.height = startHeight + 'px';
     
-    // Force a reflow
-    paymentForm.offsetHeight;
+    // Force a reflow to ensure browser registers the starting state
+    void paymentForm.offsetHeight;
     
-    // Animate to target height
-    paymentForm.style.height = targetHeight + 'px';
-    
-    // Clean up after animation completes
-    setTimeout(() => {
-      paymentForm.style.height = '';
-      paymentForm.style.overflow = currentOverflow;
-    }, 300); // Match your CSS transition duration
+    // Use requestAnimationFrame to ensure smooth animation in production
+    requestAnimationFrame(() => {
+      // Set transition
+      paymentForm.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      
+      // Animate to target height
+      paymentForm.style.height = targetHeight + 'px';
+      
+      // Clean up after animation completes
+      setTimeout(() => {
+        paymentForm.classList.remove('payment-method__form--expanding');
+        paymentForm.classList.add('payment-method__form--expanded');
+        paymentForm.style.height = '';
+        paymentForm.style.transition = '';
+        paymentForm.style.overflow = '';
+      }, 300); // Match transition duration
+    });
     
     this.logger.debug('Expanded payment form');
   }
@@ -410,23 +469,37 @@ export class UIService {
       return;
     }
     
+    // Ensure overflow is hidden for animation
+    paymentForm.style.overflow = 'hidden';
+    
     // Get current height for animation
     const currentHeight = paymentForm.scrollHeight;
     
-    paymentForm.style.overflow = 'hidden';
+    // Remove expanded class and add collapsing class for animation
+    paymentForm.classList.remove('payment-method__form--expanded');
+    paymentForm.classList.add('payment-method__form--collapsing');
+    
+    // Set explicit height for starting point
     paymentForm.style.height = currentHeight + 'px';
     
-    // Force a reflow
-    paymentForm.offsetHeight;
+    // Force a reflow to ensure browser registers the starting state
+    void paymentForm.offsetHeight;
     
-    // Animate to 0 height
-    paymentForm.style.height = '0px';
-    
-    // Add collapsed class and remove expanded class after animation completes
-    setTimeout(() => {
-      paymentForm.classList.add('payment-method__form--collapsed');
-      paymentForm.classList.remove('payment-method__form--expanded');
-    }, 300);
+    // Use requestAnimationFrame to ensure smooth animation in production
+    requestAnimationFrame(() => {
+      // Set transition
+      paymentForm.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      
+      // Animate to 0 height
+      paymentForm.style.height = '0px';
+      
+      // Clean up after animation completes
+      setTimeout(() => {
+        paymentForm.classList.remove('payment-method__form--collapsing');
+        paymentForm.classList.add('payment-method__form--collapsed');
+        paymentForm.style.transition = '';
+      }, 300); // Match transition duration
+    });
     
     this.logger.debug('Collapsed payment form');
   }

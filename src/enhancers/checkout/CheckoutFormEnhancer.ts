@@ -175,6 +175,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     );
     this.ui.initialize();
     
+    // Initialize payment forms to sync with DOM state
+    this.ui.initializePaymentForms();
+    
     // Initialize credit card service
     if (config.spreedlyEnvironmentKey) {
       await this.initializeCreditCard(config.spreedlyEnvironmentKey, config.debug);
