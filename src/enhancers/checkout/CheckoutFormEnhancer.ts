@@ -98,7 +98,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   
   // Location field visibility management
   private locationElements: NodeListOf<Element> | null = null;
+  private billingLocationElements: NodeListOf<Element> | null = null;
   private locationFieldsShown: boolean = false;
+  private billingLocationFieldsShown: boolean = false;
   
   // Event handlers
   private submitHandler?: (event: Event) => void;
@@ -431,18 +433,56 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const billingFormContainer = billingContainer.querySelector(BILLING_FORM_CONTAINER_SELECTOR);
     if (!billingFormContainer) return false;
 
-    // Find all elements with data-next-component="shipping-field-row" within the shipping form
-    const shippingFieldRows = shippingForm.querySelectorAll('[data-next-component="shipping-field-row"]');
-    
     // Clear the billing form container
     billingFormContainer.innerHTML = '';
     
-    // Clone each shipping field row and append to billing form container
-    shippingFieldRows.forEach(row => {
-      const clonedRow = row.cloneNode(true) as HTMLElement;
-      this.convertShippingFieldsToBilling(clonedRow);
-      billingFormContainer.appendChild(clonedRow);
+    // Clone ALL shipping field rows (including basic fields like name, country, address1)
+    const allShippingFieldRows = shippingForm.querySelectorAll('[data-next-component="shipping-field-row"]');
+    
+    // First clone the non-location field rows (name, country, address1)
+    allShippingFieldRows.forEach(row => {
+      // Check if this row is inside a location container
+      const isInsideLocation = row.closest('[data-next-component="location"]');
+      
+      if (!isInsideLocation) {
+        // This is a basic field row (name, country, address1), clone it
+        const clonedRow = row.cloneNode(true) as HTMLElement;
+        this.convertShippingFieldsToBilling(clonedRow);
+        billingFormContainer.appendChild(clonedRow);
+      }
     });
+    
+    // Then check if there's a location container with additional fields
+    const locationContainer = shippingForm.querySelector('[data-next-component="location"]');
+    
+    if (locationContainer) {
+      // Clone the entire location container with all its field rows
+      const clonedLocation = locationContainer.cloneNode(true) as HTMLElement;
+      
+      // Mark it as billing location
+      clonedLocation.setAttribute('data-next-component', 'billing-location');
+      
+      // Convert all fields inside to billing fields
+      this.convertShippingFieldsToBilling(clonedLocation);
+      
+      // Initially hide the billing location fields (they'll be shown when billing address1 is filled)
+      clonedLocation.classList.add('next-hidden', 'next-location-hidden');
+      clonedLocation.style.display = 'none';
+      
+      billingFormContainer.appendChild(clonedLocation);
+    } else {
+      // Fallback: If no location container, clone any remaining field rows
+      allShippingFieldRows.forEach(row => {
+        const isInsideLocation = row.closest('[data-next-component="location"]');
+        
+        if (isInsideLocation) {
+          // These are location fields without a container, clone them
+          const clonedRow = row.cloneNode(true) as HTMLElement;
+          this.convertShippingFieldsToBilling(clonedRow);
+          billingFormContainer.appendChild(clonedRow);
+        }
+      });
+    }
     
     this.setInitialBillingFormState();
     return true;
@@ -519,7 +559,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     billingSection.style.transition = 'height 0.3s ease-in-out, padding 0.3s ease-in-out, margin-top 0.3s ease-in-out';
     billingSection.style.height = `${fullHeight}px`;
     billingSection.style.padding = '20px 2px';
-    billingSection.style.marginTop = '20px';
     billingSection.style.overflow = 'visible';
     
     setTimeout(() => {
@@ -1491,15 +1530,22 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Find all location elements - check both possible attributes
     this.locationElements = this.form.querySelectorAll('[data-next-component="location"], [data-next-component-location="location"]');
     
+    // Also find billing location elements
+    this.billingLocationElements = this.form.querySelectorAll('[data-next-component="billing-location"]');
+    
     if (!this.locationElements || this.locationElements.length === 0) {
-      this.logger.debug('No location elements found');
-      return;
+      this.logger.debug('No shipping location elements found');
+    }
+    
+    if (!this.billingLocationElements || this.billingLocationElements.length === 0) {
+      this.logger.debug('No billing location elements found');
     }
     
     // Hide location fields initially
     this.hideLocationFields();
+    this.hideBillingLocationFields();
     
-    // Set up address field listeners for shipping only
+    // Set up address field listeners for shipping
     const addressField = this.fields.get('address1');
     if (addressField instanceof HTMLInputElement) {
       // Listen for changes on address1 field
@@ -1513,10 +1559,26 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
     }
     
+    // Set up address field listeners for billing
+    const billingAddressField = this.billingFields?.get('billing-address1');
+    if (billingAddressField instanceof HTMLInputElement) {
+      // Listen for changes on billing address1 field
+      billingAddressField.addEventListener('input', this.handleBillingAddressInput.bind(this));
+      billingAddressField.addEventListener('change', this.handleBillingAddressInput.bind(this));
+      billingAddressField.addEventListener('blur', this.handleBillingAddressInput.bind(this));
+      
+      // Check initial state
+      if (billingAddressField.value && billingAddressField.value.trim().length > 0) {
+        this.showBillingLocationFields();
+      }
+    }
+    
     // Listen for autocomplete fill events
     this.eventBus.on('address:autocomplete-filled', (event: any) => {
       if (event.type === 'shipping') {
         this.showLocationFields();
+      } else if (event.type === 'billing') {
+        this.showBillingLocationFields();
       }
     });
     
@@ -1525,9 +1587,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (checkoutStore.formData.address1 && checkoutStore.formData.address1.trim().length > 0) {
       this.showLocationFields();
     }
+    if (checkoutStore.billingData?.['billing-address1'] && checkoutStore.billingData['billing-address1'].trim().length > 0) {
+      this.showBillingLocationFields();
+    }
     
     this.logger.debug('Location field visibility initialized', {
-      locationElementsCount: this.locationElements.length
+      shippingLocationElementsCount: this.locationElements?.length || 0,
+      billingLocationElementsCount: this.billingLocationElements?.length || 0
     });
   }
   
@@ -1535,6 +1601,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const field = event.target as HTMLInputElement;
     if (field.value && field.value.trim().length > 0) {
       this.showLocationFields();
+    }
+  }
+  
+  private handleBillingAddressInput(event: Event): void {
+    const field = event.target as HTMLInputElement;
+    if (field.value && field.value.trim().length > 0) {
+      this.showBillingLocationFields();
     }
   }
   
@@ -1569,6 +1642,39 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.form.dispatchEvent(new CustomEvent('checkout:location-fields-shown'));
     
     this.logger.debug('Location fields shown');
+  }
+  
+  private hideBillingLocationFields(): void {
+    if (!this.billingLocationElements) return;
+    
+    this.billingLocationElements.forEach(el => {
+      if (el instanceof HTMLElement) {
+        el.style.display = 'none';
+        el.classList.add('next-location-hidden');
+      }
+    });
+    
+    this.billingLocationFieldsShown = false;
+    this.logger.debug('Billing location fields hidden');
+  }
+  
+  private showBillingLocationFields(): void {
+    if (this.billingLocationFieldsShown || !this.billingLocationElements) return;
+    
+    this.billingLocationElements.forEach(el => {
+      if (el instanceof HTMLElement) {
+        el.style.display = 'flex';
+        el.classList.remove('next-location-hidden');
+      }
+    });
+    
+    this.billingLocationFieldsShown = true;
+    
+    // Emit event for other components
+    this.eventBus.emit('checkout:billing-location-fields-shown', {});
+    this.form.dispatchEvent(new CustomEvent('checkout:billing-location-fields-shown'));
+    
+    this.logger.debug('Billing location fields shown');
   }
 
   // ============================================================================
