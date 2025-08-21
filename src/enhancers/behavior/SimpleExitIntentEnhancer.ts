@@ -98,6 +98,8 @@ export class ExitIntentEnhancer extends BaseEnhancer {
   private createPopupElements(): void {
     // Create overlay
     this.overlayElement = document.createElement('div');
+    this.overlayElement.className = 'exit-intent-overlay';
+    this.overlayElement.setAttribute('data-exit-intent', 'overlay');
     this.overlayElement.style.cssText = `
       position: fixed;
       top: 0;
@@ -111,6 +113,8 @@ export class ExitIntentEnhancer extends BaseEnhancer {
 
     // Create popup
     this.popupElement = document.createElement('div');
+    this.popupElement.className = 'exit-intent-popup';
+    this.popupElement.setAttribute('data-exit-intent', 'popup');
     this.popupElement.style.cssText = `
       position: fixed;
       top: 50%;
@@ -119,15 +123,20 @@ export class ExitIntentEnhancer extends BaseEnhancer {
       z-index: 1000000;
       cursor: pointer;
       max-width: 90vw;
-      max-height: 90vh;
+      max-height: 50vh;
     `;
 
     // Create image
     const image = document.createElement('img');
+    image.className = 'exit-intent-image';
+    image.setAttribute('data-exit-intent', 'image');
     image.src = this.imageUrl;
     image.style.cssText = `
       max-width: 100%;
+      max-height: 50vh;
+      width: auto;
       height: auto;
+      object-fit: contain;
       border-radius: 8px;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
     `;
