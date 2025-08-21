@@ -57,6 +57,10 @@ export class CreditCardService {
   
   // Track field value states for floating labels
   private fieldHasValue: { number: boolean; cvv: boolean } = { number: false, cvv: false };
+  
+  // Store original placeholders for restoration
+  private originalPlaceholders: { number: string; cvv: string } = { number: 'Card Number', cvv: 'CVV *' };
+  private labelBehavior: { number: string | null; cvv: string | null } = { number: null, cvv: null };
 
   constructor(environmentKey: string) {
     this.environmentKey = environmentKey;
@@ -402,6 +406,8 @@ export class CreditCardService {
                         document.getElementById('spreedly-number');
     if (numberField) {
       this.numberField = numberField;
+      // Check label behavior for floating label placeholder mode
+      this.labelBehavior.number = numberField.getAttribute('data-label-behavior');
     }
     
     // Find CVV field
@@ -409,6 +415,8 @@ export class CreditCardService {
                      document.getElementById('spreedly-cvv');
     if (cvvField) {
       this.cvvField = cvvField;
+      // Check label behavior for floating label placeholder mode
+      this.labelBehavior.cvv = cvvField.getAttribute('data-label-behavior');
     }
     
     // Find month field
@@ -684,9 +692,11 @@ export class CreditCardService {
       window.Spreedly.setFieldType('cvv', 'text');
       window.Spreedly.setNumberFormat('prettyFormat');
       
-      // Set placeholders
-      window.Spreedly.setPlaceholder('number', 'Card Number');
-      window.Spreedly.setPlaceholder('cvv', 'CVV *');
+      // Set placeholders (store them for restoration)
+      this.originalPlaceholders.number = 'Card Number';
+      this.originalPlaceholders.cvv = 'CVV *';
+      window.Spreedly.setPlaceholder('number', this.originalPlaceholders.number);
+      window.Spreedly.setPlaceholder('cvv', this.originalPlaceholders.cvv);
       
       // Set styling
       const fieldStyle = 'color: #212529; font-size: .925rem; font-weight: 400; width: 100%; height:100%; font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";';
@@ -707,12 +717,37 @@ export class CreditCardService {
     // Handle focus/blur events for visual feedback
     if (type === 'focus') {
       this.handleFieldFocus(name);
+      
+      // Clear placeholder if using placeholder label behavior
+      if ((name === 'number' || name === 'cvv') && window.Spreedly && this.isReady) {
+        const behavior = this.labelBehavior[name as 'number' | 'cvv'];
+        if (behavior === 'placeholder') {
+          // Clear the placeholder when field is focused and label floats up
+          window.Spreedly.setPlaceholder(name, '');
+          this.logger.debug(`Cleared placeholder for ${name} field (label floating up)`);
+        }
+      }
+      
       // Trigger floating label focus callback
       if (this.onFieldFocusCallback && (name === 'number' || name === 'cvv')) {
         this.onFieldFocusCallback(name as 'number' | 'cvv');
       }
     } else if (type === 'blur') {
       this.handleFieldBlur(name);
+      
+      // Restore placeholder if field is empty and using placeholder label behavior
+      if ((name === 'number' || name === 'cvv') && window.Spreedly && this.isReady) {
+        const hasValue = name === 'number' ? this.fieldHasValue.number : this.fieldHasValue.cvv;
+        const behavior = this.labelBehavior[name as 'number' | 'cvv'];
+        
+        if (behavior === 'placeholder' && !hasValue) {
+          // Restore the placeholder when field is empty and label floats down
+          const originalPlaceholder = this.originalPlaceholders[name as 'number' | 'cvv'];
+          window.Spreedly.setPlaceholder(name, originalPlaceholder);
+          this.logger.debug(`Restored placeholder for ${name} field (label floating down)`);
+        }
+      }
+      
       // Trigger floating label blur callback
       if (this.onFieldBlurCallback && (name === 'number' || name === 'cvv')) {
         const hasValue = name === 'number' ? this.fieldHasValue.number : this.fieldHasValue.cvv;
@@ -735,6 +770,19 @@ export class CreditCardService {
           // Track if field has value based on length
           const hasValue = inputProperties.numberLength > 0;
           this.fieldHasValue.number = hasValue;
+          
+          // Handle placeholder visibility based on value
+          if (window.Spreedly && this.isReady && this.labelBehavior.number === 'placeholder') {
+            if (hasValue) {
+              // Clear placeholder when field has value
+              window.Spreedly.setPlaceholder('number', '');
+            } else {
+              // Only restore if not focused
+              if (!this.numberField?.classList.contains('next-focused')) {
+                window.Spreedly.setPlaceholder('number', this.originalPlaceholders.number);
+              }
+            }
+          }
           
           // Trigger floating label input callback
           if (this.onFieldInputCallback) {
@@ -773,6 +821,19 @@ export class CreditCardService {
           // Track if field has value based on length
           const hasValue = inputProperties.cvvLength > 0;
           this.fieldHasValue.cvv = hasValue;
+          
+          // Handle placeholder visibility based on value
+          if (window.Spreedly && this.isReady && this.labelBehavior.cvv === 'placeholder') {
+            if (hasValue) {
+              // Clear placeholder when field has value
+              window.Spreedly.setPlaceholder('cvv', '');
+            } else {
+              // Only restore if not focused
+              if (!this.cvvField?.classList.contains('next-focused')) {
+                window.Spreedly.setPlaceholder('cvv', this.originalPlaceholders.cvv);
+              }
+            }
+          }
           
           // Trigger floating label input callback
           if (this.onFieldInputCallback) {
