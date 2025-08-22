@@ -132,6 +132,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.apiClient = new ApiClient(config.apiKey);
     this.countryService = CountryService.getInstance();
     
+    // Re-initialize attribution to ensure we have current page data
+    const attributionStore = useAttributionStore.getState();
+    await attributionStore.initialize();
+    
     // Initialize OrderManager and ExpressCheckoutProcessor
     this.orderManager = new OrderManager(
       this.apiClient,

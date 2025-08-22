@@ -28,6 +28,8 @@ export declare class ProspectCartEnhancer extends BaseEnhancer {
     private findEmailField;
     private setupTriggers;
     private setupFormStartTrigger;
+    private emailInputTimeout?;
+    private emailBlurTimeout?;
     private setupEmailEntryTrigger;
     private checkExistingProspectCart;
     private createProspectCart;
@@ -41,7 +43,9 @@ export declare class ProspectCartEnhancer extends BaseEnhancer {
     getCurrentProspectCart(): ProspectCart | null;
     abandonCart(): Promise<void>;
     convertCart(): Promise<void>;
+    private updateEmailTimeout?;
     updateEmail(email: string): void;
+    checkAndCreateCart(): void;
     private trackBeginCheckout;
 }
 //# sourceMappingURL=ProspectCartEnhancer.d.ts.map

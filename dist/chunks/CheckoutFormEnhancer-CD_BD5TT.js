@@ -1,5 +1,5 @@
 import { B as BaseEnhancer } from "./BaseEnhancer-CjYmv-nR.js";
-import { c as createLogger, F as FieldFinder, d as useCheckoutStore, n as nextAnalytics, i as EcommerceEvents, j as ErrorDisplayManager, k as EventHandlerManager, e as configStore, u as useCartStore, C as CountryService, b as useAttributionStore, l as userDataStorage } from "./utils-DvbmkmqB.js";
+import { c as createLogger, F as FieldFinder, d as useCheckoutStore, n as nextAnalytics, i as EcommerceEvents, j as ErrorDisplayManager, k as EventHandlerManager, e as configStore, u as useCartStore, b as useAttributionStore, C as CountryService, l as userDataStorage } from "./utils-DvbmkmqB.js";
 import { ApiClient } from "./api-DOrxTwpa.js";
 import { G as GeneralModal } from "./GeneralModal-Cuk4sJCc.js";
 import { L as LoadingOverlay } from "./LoadingOverlay-DOjYiQnB.js";
@@ -2028,23 +2028,7 @@ class ProspectCartEnhancer extends BaseEnhancer {
     this.logger.debug("Setting up email entry trigger on field:", this.emailField);
     this.emailField.addEventListener("blur", () => {
       this.logger.debug("Email blur event triggered, value:", this.emailField.value);
-      if (!this.hasTriggered && this.isValidEmail(this.emailField.value)) {
-        this.logger.info("Valid email detected, creating prospect cart");
-        this.createProspectCart();
-        this.hasTriggered = true;
-        this.trackBeginCheckout();
-      }
-    });
-    let emailTimeout;
-    this.emailField.addEventListener("input", () => {
-      clearTimeout(emailTimeout);
-      emailTimeout = window.setTimeout(() => {
-        if (!this.hasTriggered && this.isValidEmail(this.emailField.value)) {
-          this.createProspectCart();
-          this.hasTriggered = true;
-          this.trackBeginCheckout();
-        }
-      }, 2e3);
+      this.checkAndCreateCart();
     });
   }
   checkExistingProspectCart() {
@@ -2086,10 +2070,31 @@ class ProspectCartEnhancer extends BaseEnhancer {
       }
       const firstName = this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]')?.value || "";
       const lastName = this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]')?.value || "";
-      const attribution = this.config.includeUtmData ? {
-        ...this.collectUtmData(),
-        ...cartState.attribution
-      } : cartState.attribution || {};
+      const phone = this.element.querySelector('[data-next-checkout-field="phone"], [os-checkout-field="phone"], input[name="phone"]')?.value || "";
+      const address1 = this.element.querySelector('[data-next-checkout-field="address1"], [os-checkout-field="address1"], input[name="address1"]')?.value || "";
+      const address2 = this.element.querySelector('[data-next-checkout-field="address2"], [os-checkout-field="address2"], input[name="address2"]')?.value || "";
+      const city = this.element.querySelector('[data-next-checkout-field="city"], [os-checkout-field="city"], input[name="city"]')?.value || "";
+      const state = this.element.querySelector('[data-next-checkout-field="province"], [os-checkout-field="province"], select[name="province"]')?.value || "";
+      const postal = this.element.querySelector('[data-next-checkout-field="postal"], [os-checkout-field="postal"], input[name="postal"]')?.value || "";
+      const country = this.element.querySelector('[data-next-checkout-field="country"], [os-checkout-field="country"], select[name="country"]')?.value || "";
+      const attributionStore = useAttributionStore.getState();
+      const attribution = attributionStore.getAttributionForApi();
+      if (attribution.metadata) {
+        attribution.metadata.landing_page = window.location.href;
+        if (!attribution.metadata.referrer) {
+          attribution.metadata.referrer = document.referrer || "";
+        }
+        if (!attribution.metadata.domain) {
+          attribution.metadata.domain = window.location.hostname;
+        }
+        if (!attribution.metadata.device) {
+          attribution.metadata.device = navigator.userAgent || "";
+        }
+        attribution.metadata.timestamp = Date.now();
+      }
+      if (!attribution.funnel || attribution.funnel === "") {
+        attribution.funnel = "CH01";
+      }
       const user = {
         first_name: firstName,
         last_name: lastName,
@@ -2099,6 +2104,9 @@ class ProspectCartEnhancer extends BaseEnhancer {
       if (email) {
         user.email = email;
       }
+      if (phone) {
+        user.phone_number = phone;
+      }
       const cartData = {
         lines: cartState.items.map((item) => ({
           package_id: item.packageId,
@@ -2107,14 +2115,68 @@ class ProspectCartEnhancer extends BaseEnhancer {
         })),
         user
       };
-      if (Object.keys(attribution).length > 0) {
+      if (firstName && lastName && address1 && city && country) {
+        const addressData = {
+          first_name: firstName,
+          last_name: lastName,
+          line1: address1,
+          line4: city,
+          // API expects city in line4
+          country
+        };
+        if (address2) addressData.line2 = address2;
+        if (state) addressData.state = state;
+        if (postal) addressData.postcode = postal;
+        if (phone) addressData.phone_number = phone;
+        cartData.address = addressData;
+      }
+      if (attribution && Object.keys(attribution).length > 0) {
         cartData.attribution = attribution;
       }
-      const cart = await this.apiClient.createCart(cartData);
+      this.logger.debug("Creating prospect cart with data:", {
+        hasAddress: !!cartData.address,
+        hasAttribution: !!cartData.attribution,
+        attribution,
+        userData: cartData.user,
+        itemCount: cartData.lines.length,
+        addressData: cartData.address
+      });
+      let cart;
+      try {
+        cart = await this.apiClient.createCart(cartData);
+      } catch (initialError) {
+        this.logger.warn("Initial prospect cart creation failed, retrying with minimal data:", initialError);
+        if (!this.isValidEmail(email)) {
+          throw initialError;
+        }
+        const minimalCartData = {
+          lines: cartState.items.map((item) => ({
+            package_id: item.packageId,
+            quantity: item.quantity
+          })),
+          user: {
+            email,
+            first_name: "",
+            // Required field, but empty for minimal cart
+            last_name: "",
+            // Required field, but empty for minimal cart
+            language: "en"
+            // Default to English
+          }
+        };
+        this.logger.info("Retrying prospect cart creation with minimal data (email only)");
+        try {
+          cart = await this.apiClient.createCart(minimalCartData);
+          this.logger.info("Successfully created prospect cart with minimal data");
+        } catch (retryError) {
+          this.logger.error("Failed to create prospect cart even with minimal data:", retryError);
+          throw retryError;
+        }
+      }
       this.prospectCart = {
-        id: cart.checkout_url,
+        id: cart.checkout_url || "",
         // Use checkout URL as ID
-        prospect_id: cart.checkout_url,
+        prospect_id: cart.checkout_url || "",
         created_at: (/* @__PURE__ */ new Date()).toISOString(),
         expires_at: new Date(Date.now() + (this.config.sessionTimeout || 30) * 60 * 1e3).toISOString(),
         utm_data: this.collectUtmData(),
@@ -2203,12 +2265,34 @@ class ProspectCartEnhancer extends BaseEnhancer {
     if (this.emailField) {
       this.emailField.value = email;
     }
-    if (!this.hasTriggered && this.isValidEmail(email)) {
+    this.checkAndCreateCart();
+  }
+  /**
+   * Check if we have enough data to create prospect cart and create it immediately
+   */
+  checkAndCreateCart() {
+    if (this.hasTriggered) {
+      return;
+    }
+    const email = this.element.querySelector('[data-next-checkout-field="email"], [os-checkout-field="email"], input[type="email"]')?.value || "";
+    const firstName = this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]')?.value || "";
+    const lastName = this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]')?.value || "";
+    if (this.isValidEmail(email) && firstName.trim() !== "" && lastName.trim() !== "") {
+      clearTimeout(this.updateEmailTimeout);
+      clearTimeout(this.emailBlurTimeout);
+      clearTimeout(this.emailInputTimeout);
+      this.logger.info("All required fields filled (email, fname, lname), creating prospect cart immediately");
       this.createProspectCart();
       this.hasTriggered = true;
       this.trackBeginCheckout();
-    } else if (this.prospectCart) {
-      this.updateProspectCart();
+    } else if (this.isValidEmail(email) && !this.updateEmailTimeout) {
+      this.updateEmailTimeout = window.setTimeout(() => {
+        this.logger.info("Creating prospect cart after timeout (only email available)");
+        this.createProspectCart();
+        this.hasTriggered = true;
+        this.trackBeginCheckout();
+      }, 5e3);
+      this.logger.debug(`Waiting for more data. Has email: ${!!email}, fname: ${!!firstName}, lname: ${!!lastName}`);
     }
   }
   /**
@@ -2291,6 +2375,8 @@ class CheckoutFormEnhancer extends BaseEnhancer {
     const config = configStore.getState();
     this.apiClient = new ApiClient(config.apiKey);
     this.countryService = CountryService.getInstance();
+    const attributionStore = useAttributionStore.getState();
+    await attributionStore.initialize();
     this.orderManager = new OrderManager(
       this.apiClient,
       this.logger,
@@ -4226,17 +4312,22 @@ class CheckoutFormEnhancer extends BaseEnhancer {
           }
         }
       }
-      if (fieldName === "email" && this.prospectCartEnhancer) {
-        this.prospectCartEnhancer.updateEmail(target.value);
-      }
-      if (fieldName === "email" || fieldName === "fname" || fieldName === "lname" || fieldName === "phone") {
-        const updates = {};
-        if (fieldName === "email") updates.email = target.value;
-        if (fieldName === "fname") updates.firstName = target.value;
-        if (fieldName === "lname") updates.lastName = target.value;
-        if (fieldName === "phone") updates.phone = target.value;
-        userDataStorage.updateUserData(updates);
-        this.logger.debug("Updated user data storage:", fieldName, target.value);
+      if (event.type === "blur" || event.type === "change") {
+        if (fieldName === "email" && this.prospectCartEnhancer) {
+          this.prospectCartEnhancer.updateEmail(target.value);
+        }
+        if (fieldName === "email" || fieldName === "fname" || fieldName === "lname" || fieldName === "phone") {
+          const updates = {};
+          if (fieldName === "email") updates.email = target.value;
+          if (fieldName === "fname") updates.firstName = target.value;
+          if (fieldName === "lname") updates.lastName = target.value;
+          if (fieldName === "phone") updates.phone = target.value;
+          userDataStorage.updateUserData(updates);
+          this.logger.debug("Updated user data storage:", fieldName, target.value);
+        }
+        if (this.prospectCartEnhancer && ["email", "fname", "lname"].includes(fieldName)) {
+          this.prospectCartEnhancer.checkAndCreateCart();
+        }
       }
     }
     if (event.type === "blur") {
@@ -4245,10 +4336,15 @@ class CheckoutFormEnhancer extends BaseEnhancer {
       const wrapper = field.closest(".form-group, .form-input");
       const isEmpty = !target.value || typeof target.value === "string" && target.value.trim() === "";
       if (isEmpty) {
-        const errorLabel = wrapper?.querySelector(".next-error-label");
+        const formGroup = field.closest(".form-group");
+        const errorLabel = wrapper?.querySelector(".next-error-label") || formGroup?.querySelector(".next-error-label");
         if (errorLabel) {
           field.classList.add("has-error", "next-error-field");
           field.classList.remove("no-error");
+          if (wrapper) {
+            wrapper.classList.add("addErrorIcon");
+            wrapper.classList.remove("addTick");
+          }
         } else {
           field.classList.remove("has-error", "next-error-field", "no-error");
           if (wrapper) {
@@ -4299,7 +4395,27 @@ class CheckoutFormEnhancer extends BaseEnhancer {
           }
         }
       }
-    } else ;
+    } else if (event.type === "change") {
+      const field = this.getFieldByName(fieldName);
+      if (field && target.value && target.value.trim() !== "") {
+        const validationResult = this.validator.validateField(fieldName, target.value);
+        if (validationResult.isValid) {
+          field.classList.remove("has-error", "next-error-field");
+          field.classList.add("no-error");
+          const wrapper = field.closest(".form-group, .form-input");
+          if (wrapper) {
+            wrapper.classList.remove("addErrorIcon");
+            wrapper.classList.add("addTick");
+            const errorLabel = wrapper.querySelector(".next-error-label");
+            if (errorLabel) {
+              errorLabel.remove();
+            }
+          }
+          const checkoutStore2 = useCheckoutStore.getState();
+          checkoutStore2.clearError(fieldName);
+        }
+      }
+    }
   }
   async updateBillingStateOptions(country, billingProvinceField, shippingProvince) {
     if (!country || country.trim() === "") {

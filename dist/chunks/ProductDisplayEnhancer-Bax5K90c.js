@@ -1,5 +1,5 @@
-import { B as BaseDisplayEnhancer, a as getPropertyMapping, D as DisplayFormatter, P as PropertyResolver } from "./DisplayEnhancerCore-DMyqEDGx.js";
-import { A as AttributeParser } from "./index-l9Z_Zq1W.js";
+import { B as BaseDisplayEnhancer, a as getPropertyMapping, D as DisplayFormatter, P as PropertyResolver } from "./DisplayEnhancerCore-DCFFtdIZ.js";
+import { A as AttributeParser } from "./index-DyFo1KPp.js";
 import { a as useCampaignStore, u as useCartStore, P as PackageContextResolver, h as PriceCalculator } from "./utils-DvbmkmqB.js";
 const _DisplayContextProvider = class _DisplayContextProvider {
   /**

@@ -1,6 +1,6 @@
 import { B as BaseEnhancer } from "./BaseEnhancer-CjYmv-nR.js";
 import { u as useCartStore, a as useCampaignStore, T as TemplateRenderer, h as PriceCalculator } from "./utils-DvbmkmqB.js";
-import { D as DisplayFormatter } from "./DisplayEnhancerCore-DMyqEDGx.js";
+import { D as DisplayFormatter } from "./DisplayEnhancerCore-DCFFtdIZ.js";
 class CartItemListEnhancer extends BaseEnhancer {
   async initialize() {
     this.validateElement();

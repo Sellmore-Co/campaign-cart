@@ -8,7 +8,7 @@ import { useCartStore } from '@/stores/cartStore';
 import { useConfigStore } from '@/stores/configStore';
 import { useAttributionStore } from '@/stores/attributionStore';
 import { ApiClient } from '@/api/client';
-import type { CartBase, Attribution, UserCreateCart } from '@/types/api';
+import type { CartBase, UserCreateCart, AddressCart } from '@/types/api';
 import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
 
 export interface ProspectCartConfig {
@@ -261,6 +261,35 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       const attributionStore = useAttributionStore.getState();
       const attribution = attributionStore.getAttributionForApi();
       
+      // Update metadata with current page information since we're on the checkout page
+      if (attribution.metadata) {
+        // Update landing_page to current URL 
+        attribution.metadata.landing_page = window.location.href;
+        
+        // Update referrer if it's empty
+        if (!attribution.metadata.referrer) {
+          attribution.metadata.referrer = document.referrer || '';
+        }
+        
+        // Update domain if it's empty
+        if (!attribution.metadata.domain) {
+          attribution.metadata.domain = window.location.hostname;
+        }
+        
+        // Update device if it's empty
+        if (!attribution.metadata.device) {
+          attribution.metadata.device = navigator.userAgent || '';
+        }
+        
+        // Update timestamp to current time
+        attribution.metadata.timestamp = Date.now();
+      }
+      
+      // Ensure funnel is set to CH01 for checkout
+      if (!attribution.funnel || attribution.funnel === '') {
+        attribution.funnel = 'CH01';
+      }
+      
       // Build user data
       const user: UserCreateCart = {
         first_name: firstName,
@@ -289,23 +318,24 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         user
       };
       
-      // Only add address data if we have the required fields (first_name, last_name, line1, and line4/city)
+      // Only add address data if we have the required fields (first_name, last_name, line1, line4/city, and country)
       // The API requires these fields to be non-empty if address object is included
-      if (firstName && lastName && address1 && city) {
-        cartData.address = {
+      if (firstName && lastName && address1 && city && country) {
+        const addressData: AddressCart = {
           first_name: firstName,
           last_name: lastName,
           line1: address1,
-          line2: address2 || undefined,
-          line3: undefined, // Not collected in typical checkouts
           line4: city, // API expects city in line4
-          city: city || undefined,
-          state: state || undefined,
-          postcode: postal || undefined,
-          country: country || undefined,
-          phone_number: phone || undefined,
-          notes: undefined
+          country: country
         };
+        
+        // Only add optional fields if they have values
+        if (address2) addressData.line2 = address2;
+        if (state) addressData.state = state;
+        if (postal) addressData.postcode = postal;
+        if (phone) addressData.phone_number = phone;
+        
+        cartData.address = addressData;
       }
       
       // Add attribution if it has data
@@ -323,12 +353,48 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       });
 
       // Create cart using standard API
-      const cart = await this.apiClient.createCart(cartData);
+      let cart;
+      try {
+        cart = await this.apiClient.createCart(cartData);
+      } catch (initialError) {
+        // If the initial request fails, try with just email
+        this.logger.warn('Initial prospect cart creation failed, retrying with minimal data:', initialError);
+        
+        // Only retry if we have a valid email
+        if (!this.isValidEmail(email)) {
+          throw initialError;
+        }
+        
+        // Create minimal cart data with just email and cart items
+        const minimalCartData: CartBase = {
+          lines: cartState.items.map((item: any) => ({
+            package_id: item.packageId,
+            quantity: item.quantity
+          })),
+          user: {
+            email: email,
+            first_name: '',  // Required field, but empty for minimal cart
+            last_name: '',   // Required field, but empty for minimal cart
+            language: 'en'   // Default to English
+          }
+        };
+        
+        // Don't include attribution or address in the retry
+        this.logger.info('Retrying prospect cart creation with minimal data (email only)');
+        
+        try {
+          cart = await this.apiClient.createCart(minimalCartData);
+          this.logger.info('Successfully created prospect cart with minimal data');
+        } catch (retryError) {
+          this.logger.error('Failed to create prospect cart even with minimal data:', retryError);
+          throw retryError;
+        }
+      }
       
       // Store cart info as prospect cart
       this.prospectCart = {
-        id: cart.checkout_url, // Use checkout URL as ID
-        prospect_id: cart.checkout_url,
+        id: cart.checkout_url || '', // Use checkout URL as ID
+        prospect_id: cart.checkout_url || '',
         created_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + (this.config.sessionTimeout || 30) * 60 * 1000).toISOString(),
         utm_data: this.collectUtmData(),
