@@ -3,6 +3,7 @@
  * Core data layer management following Elevar's pattern
  */
 
+import { useAttributionStore } from '@/stores/attributionStore';
 import type { 
   DataLayerEvent, 
   DataLayerConfig, 
@@ -246,10 +247,34 @@ export class DataLayerManager {
       version: '0.2.0',
     };
 
+    // Get attribution data
+    let attribution: any = {};
+    try {
+      // Get attribution from store
+      const attributionStore = useAttributionStore.getState();
+      const attributionData = attributionStore.getAttributionForApi();
+      
+      // Only include attribution if it has data
+      if (attributionData && Object.keys(attributionData).length > 0) {
+        attribution = attributionData;
+        this.debug('Attribution data added to event:', attribution);
+      } else {
+        this.debug('Attribution store exists but has no data yet');
+      }
+    } catch (error) {
+      // Attribution store may not be initialized yet
+      this.debug('Could not get attribution data:', error);
+    }
+
     const enrichedEvent: DataLayerEvent = {
       ...event,
       _metadata: metadata,
     };
+    
+    // Only add attribution if it has data
+    if (attribution && Object.keys(attribution).length > 0) {
+      enrichedEvent.attribution = attribution;
+    }
 
     // Add context if enrichment is enabled
     if (this.config.enrichContext) {

@@ -27,7 +27,9 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private autocompleteInstances;
     private enableAutocomplete;
     private locationElements;
+    private billingLocationElements;
     private locationFieldsShown;
+    private billingLocationFieldsShown;
     private submitHandler?;
     private changeHandler?;
     private paymentMethodChangeHandler?;
@@ -67,8 +69,11 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private setupAutocompleteCountryChangeListeners;
     private initializeLocationFieldVisibility;
     private handleAddressInput;
+    private handleBillingAddressInput;
     private hideLocationFields;
     private showLocationFields;
+    private hideBillingLocationFields;
+    private showBillingLocationFields;
     private initializeProspectCart;
     private initializePhoneInputs;
     private initializePhoneInput;

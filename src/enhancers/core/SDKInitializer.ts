@@ -210,6 +210,20 @@ export class SDKInitializer {
       // Initialize attribution data collection
       await attributionStore.initialize();
       
+      // Add SDK version to metadata
+      const sdkVersion = typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__ 
+        ? window.__NEXT_SDK_VERSION__ 
+        : 'unknown';
+      
+      attributionStore.updateAttribution({
+        metadata: {
+          ...attributionStore.metadata,
+          sdk_version: sdkVersion
+        }
+      });
+      
+      this.logger.debug(`Added SDK version to attribution metadata: ${sdkVersion}`);
+      
       // Set up event listeners for attribution updates
       this.setupAttributionListeners();
       

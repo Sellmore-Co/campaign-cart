@@ -50,7 +50,7 @@ const initialState: CartState = {
   enrichedItems: [],
   totals: {
     subtotal: { value: 0, formatted: '$0.00' },
-    shipping: { value: 0, formatted: '$0.00' },
+    shipping: { value: 0, formatted: 'FREE' },
     tax: { value: 0, formatted: '$0.00' },
     discounts: { value: 0, formatted: '$0.00' },
     total: { value: 0, formatted: '$0.00' },
@@ -288,7 +288,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
         
         const totals: CartTotals = {
           subtotal: { value: subtotal, formatted: formatCurrency(subtotal) },
-          shipping: { value: shipping, formatted: formatCurrency(shipping) },
+          shipping: { value: shipping, formatted: shipping === 0 ? 'FREE' : formatCurrency(shipping) },
           tax: { value: tax, formatted: formatCurrency(tax) },
           discounts: { value: totalDiscounts, formatted: formatCurrency(totalDiscounts) },
           total: { value: total, formatted: formatCurrency(total) },
@@ -327,7 +327,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
             isEmpty: true,
             totals: {
               subtotal: { value: 0, formatted: '$0.00' },
-              shipping: { value: 0, formatted: '$0.00' },
+              shipping: { value: 0, formatted: 'FREE' },
               tax: { value: 0, formatted: '$0.00' },
               discounts: { value: 0, formatted: '$0.00' },
               total: { value: 0, formatted: '$0.00' },

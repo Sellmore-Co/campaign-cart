@@ -49,6 +49,18 @@ export class CreditCardService {
   
   // Track if we've fired the add_payment_info event
   private hasTrackedPaymentInfo = false;
+  
+  // Floating label callbacks
+  private onFieldFocusCallback?: (fieldName: 'number' | 'cvv') => void;
+  private onFieldBlurCallback?: (fieldName: 'number' | 'cvv', hasValue: boolean) => void;
+  private onFieldInputCallback?: (fieldName: 'number' | 'cvv', hasValue: boolean) => void;
+  
+  // Track field value states for floating labels
+  private fieldHasValue: { number: boolean; cvv: boolean } = { number: false, cvv: false };
+  
+  // Store original placeholders for restoration
+  private originalPlaceholders: { number: string; cvv: string } = { number: 'Card Number', cvv: 'CVV *' };
+  private labelBehavior: { number: string | null; cvv: string | null } = { number: null, cvv: null };
 
   constructor(environmentKey: string) {
     this.environmentKey = environmentKey;
@@ -348,6 +360,19 @@ export class CreditCardService {
   }
 
   /**
+   * Set floating label callbacks
+   */
+  public setFloatingLabelCallbacks(
+    onFocus: (fieldName: 'number' | 'cvv') => void,
+    onBlur: (fieldName: 'number' | 'cvv', hasValue: boolean) => void,
+    onInput: (fieldName: 'number' | 'cvv', hasValue: boolean) => void
+  ): void {
+    this.onFieldFocusCallback = onFocus;
+    this.onFieldBlurCallback = onBlur;
+    this.onFieldInputCallback = onInput;
+  }
+
+  /**
    * Check if service is ready
    */
   public get ready(): boolean {
@@ -381,6 +406,8 @@ export class CreditCardService {
                         document.getElementById('spreedly-number');
     if (numberField) {
       this.numberField = numberField;
+      // Check label behavior for floating label placeholder mode
+      this.labelBehavior.number = numberField.getAttribute('data-label-behavior');
     }
     
     // Find CVV field
@@ -388,6 +415,8 @@ export class CreditCardService {
                      document.getElementById('spreedly-cvv');
     if (cvvField) {
       this.cvvField = cvvField;
+      // Check label behavior for floating label placeholder mode
+      this.labelBehavior.cvv = cvvField.getAttribute('data-label-behavior');
     }
     
     // Find month field
@@ -663,9 +692,11 @@ export class CreditCardService {
       window.Spreedly.setFieldType('cvv', 'text');
       window.Spreedly.setNumberFormat('prettyFormat');
       
-      // Set placeholders
-      window.Spreedly.setPlaceholder('number', 'Card Number');
-      window.Spreedly.setPlaceholder('cvv', 'CVV *');
+      // Set placeholders (store them for restoration)
+      this.originalPlaceholders.number = 'Card Number';
+      this.originalPlaceholders.cvv = 'CVV *';
+      window.Spreedly.setPlaceholder('number', this.originalPlaceholders.number);
+      window.Spreedly.setPlaceholder('cvv', this.originalPlaceholders.cvv);
       
       // Set styling
       const fieldStyle = 'color: #212529; font-size: .925rem; font-weight: 400; width: 100%; height:100%; font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";';
@@ -686,8 +717,42 @@ export class CreditCardService {
     // Handle focus/blur events for visual feedback
     if (type === 'focus') {
       this.handleFieldFocus(name);
+      
+      // Clear placeholder if using placeholder label behavior
+      if ((name === 'number' || name === 'cvv') && window.Spreedly && this.isReady) {
+        const behavior = this.labelBehavior[name as 'number' | 'cvv'];
+        if (behavior === 'placeholder') {
+          // Clear the placeholder when field is focused and label floats up
+          window.Spreedly.setPlaceholder(name, '');
+          this.logger.debug(`Cleared placeholder for ${name} field (label floating up)`);
+        }
+      }
+      
+      // Trigger floating label focus callback
+      if (this.onFieldFocusCallback && (name === 'number' || name === 'cvv')) {
+        this.onFieldFocusCallback(name as 'number' | 'cvv');
+      }
     } else if (type === 'blur') {
       this.handleFieldBlur(name);
+      
+      // Restore placeholder if field is empty and using placeholder label behavior
+      if ((name === 'number' || name === 'cvv') && window.Spreedly && this.isReady) {
+        const hasValue = name === 'number' ? this.fieldHasValue.number : this.fieldHasValue.cvv;
+        const behavior = this.labelBehavior[name as 'number' | 'cvv'];
+        
+        if (behavior === 'placeholder' && !hasValue) {
+          // Restore the placeholder when field is empty and label floats down
+          const originalPlaceholder = this.originalPlaceholders[name as 'number' | 'cvv'];
+          window.Spreedly.setPlaceholder(name, originalPlaceholder);
+          this.logger.debug(`Restored placeholder for ${name} field (label floating down)`);
+        }
+      }
+      
+      // Trigger floating label blur callback
+      if (this.onFieldBlurCallback && (name === 'number' || name === 'cvv')) {
+        const hasValue = name === 'number' ? this.fieldHasValue.number : this.fieldHasValue.cvv;
+        this.onFieldBlurCallback(name as 'number' | 'cvv', hasValue);
+      }
     }
     
     // Handle input events for validation
@@ -701,23 +766,47 @@ export class CreditCardService {
         checkoutStore.clearError('card_number');
         
         // Update validation state if we have input properties
-        if (inputProperties && inputProperties.validNumber !== undefined) {
-          const wasValid = this.validationState.number.isValid;
-          this.validationState.number.isValid = inputProperties.validNumber;
-          this.validationState.number.hasError = !inputProperties.validNumber;
+        if (inputProperties) {
+          // Track if field has value based on length
+          const hasValue = inputProperties.numberLength > 0;
+          this.fieldHasValue.number = hasValue;
           
-          // Add/remove no-error class based on validation state
-          if (this.numberField) {
-            if (inputProperties.validNumber) {
-              this.numberField.classList.add('no-error');
-              this.numberField.classList.remove('has-error', 'next-error-field');
+          // Handle placeholder visibility based on value
+          if (window.Spreedly && this.isReady && this.labelBehavior.number === 'placeholder') {
+            if (hasValue) {
+              // Clear placeholder when field has value
+              window.Spreedly.setPlaceholder('number', '');
             } else {
-              this.numberField.classList.remove('no-error');
+              // Only restore if not focused
+              if (!this.numberField?.classList.contains('next-focused')) {
+                window.Spreedly.setPlaceholder('number', this.originalPlaceholders.number);
+              }
             }
           }
           
-          if (wasValid !== inputProperties.validNumber) {
-            this.logger.info(`[Spreedly] Card number validation changed: ${wasValid} -> ${inputProperties.validNumber}`);
+          // Trigger floating label input callback
+          if (this.onFieldInputCallback) {
+            this.onFieldInputCallback('number', hasValue);
+          }
+          
+          if (inputProperties.validNumber !== undefined) {
+            const wasValid = this.validationState.number.isValid;
+            this.validationState.number.isValid = inputProperties.validNumber;
+            this.validationState.number.hasError = !inputProperties.validNumber;
+            
+            // Add/remove no-error class based on validation state
+            if (this.numberField) {
+              if (inputProperties.validNumber) {
+                this.numberField.classList.add('no-error');
+                this.numberField.classList.remove('has-error', 'next-error-field');
+              } else {
+                this.numberField.classList.remove('no-error');
+              }
+            }
+            
+            if (wasValid !== inputProperties.validNumber) {
+              this.logger.info(`[Spreedly] Card number validation changed: ${wasValid} -> ${inputProperties.validNumber}`);
+            }
           }
         }
       } else if (name === 'cvv') {
@@ -728,23 +817,47 @@ export class CreditCardService {
         checkoutStore.clearError('card_cvv');
         
         // Update validation state if we have input properties
-        if (inputProperties && inputProperties.validCvv !== undefined) {
-          const wasValid = this.validationState.cvv.isValid;
-          this.validationState.cvv.isValid = inputProperties.validCvv;
-          this.validationState.cvv.hasError = !inputProperties.validCvv;
+        if (inputProperties) {
+          // Track if field has value based on length
+          const hasValue = inputProperties.cvvLength > 0;
+          this.fieldHasValue.cvv = hasValue;
           
-          // Add/remove no-error class based on validation state
-          if (this.cvvField) {
-            if (inputProperties.validCvv) {
-              this.cvvField.classList.add('no-error');
-              this.cvvField.classList.remove('has-error', 'next-error-field');
+          // Handle placeholder visibility based on value
+          if (window.Spreedly && this.isReady && this.labelBehavior.cvv === 'placeholder') {
+            if (hasValue) {
+              // Clear placeholder when field has value
+              window.Spreedly.setPlaceholder('cvv', '');
             } else {
-              this.cvvField.classList.remove('no-error');
+              // Only restore if not focused
+              if (!this.cvvField?.classList.contains('next-focused')) {
+                window.Spreedly.setPlaceholder('cvv', this.originalPlaceholders.cvv);
+              }
             }
           }
           
-          if (wasValid !== inputProperties.validCvv) {
-            this.logger.info(`[Spreedly] CVV validation changed: ${wasValid} -> ${inputProperties.validCvv}`);
+          // Trigger floating label input callback
+          if (this.onFieldInputCallback) {
+            this.onFieldInputCallback('cvv', hasValue);
+          }
+          
+          if (inputProperties.validCvv !== undefined) {
+            const wasValid = this.validationState.cvv.isValid;
+            this.validationState.cvv.isValid = inputProperties.validCvv;
+            this.validationState.cvv.hasError = !inputProperties.validCvv;
+            
+            // Add/remove no-error class based on validation state
+            if (this.cvvField) {
+              if (inputProperties.validCvv) {
+                this.cvvField.classList.add('no-error');
+                this.cvvField.classList.remove('has-error', 'next-error-field');
+              } else {
+                this.cvvField.classList.remove('no-error');
+              }
+            }
+            
+            if (wasValid !== inputProperties.validCvv) {
+              this.logger.info(`[Spreedly] CVV validation changed: ${wasValid} -> ${inputProperties.validCvv}`);
+            }
           }
         }
       }

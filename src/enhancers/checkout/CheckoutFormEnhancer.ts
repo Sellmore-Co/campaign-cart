@@ -98,7 +98,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   
   // Location field visibility management
   private locationElements: NodeListOf<Element> | null = null;
+  private billingLocationElements: NodeListOf<Element> | null = null;
   private locationFieldsShown: boolean = false;
+  private billingLocationFieldsShown: boolean = false;
   
   // Event handlers
   private submitHandler?: (event: Event) => void;
@@ -129,6 +131,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const config = useConfigStore.getState();
     this.apiClient = new ApiClient(config.apiKey);
     this.countryService = CountryService.getInstance();
+    
+    // Re-initialize attribution to ensure we have current page data
+    const attributionStore = useAttributionStore.getState();
+    await attributionStore.initialize();
     
     // Initialize OrderManager and ExpressCheckoutProcessor
     this.orderManager = new OrderManager(
@@ -172,6 +178,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.billingFields
     );
     this.ui.initialize();
+    
+    // Initialize payment forms to sync with DOM state
+    this.ui.initializePaymentForms();
     
     // Initialize credit card service
     if (config.spreedlyEnvironmentKey) {
@@ -431,18 +440,56 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const billingFormContainer = billingContainer.querySelector(BILLING_FORM_CONTAINER_SELECTOR);
     if (!billingFormContainer) return false;
 
-    // Find all elements with data-next-component="shipping-field-row" within the shipping form
-    const shippingFieldRows = shippingForm.querySelectorAll('[data-next-component="shipping-field-row"]');
-    
     // Clear the billing form container
     billingFormContainer.innerHTML = '';
     
-    // Clone each shipping field row and append to billing form container
-    shippingFieldRows.forEach(row => {
-      const clonedRow = row.cloneNode(true) as HTMLElement;
-      this.convertShippingFieldsToBilling(clonedRow);
-      billingFormContainer.appendChild(clonedRow);
+    // Clone ALL shipping field rows (including basic fields like name, country, address1)
+    const allShippingFieldRows = shippingForm.querySelectorAll('[data-next-component="shipping-field-row"]');
+    
+    // First clone the non-location field rows (name, country, address1)
+    allShippingFieldRows.forEach(row => {
+      // Check if this row is inside a location container
+      const isInsideLocation = row.closest('[data-next-component="location"]');
+      
+      if (!isInsideLocation) {
+        // This is a basic field row (name, country, address1), clone it
+        const clonedRow = row.cloneNode(true) as HTMLElement;
+        this.convertShippingFieldsToBilling(clonedRow);
+        billingFormContainer.appendChild(clonedRow);
+      }
     });
+    
+    // Then check if there's a location container with additional fields
+    const locationContainer = shippingForm.querySelector('[data-next-component="location"]');
+    
+    if (locationContainer) {
+      // Clone the entire location container with all its field rows
+      const clonedLocation = locationContainer.cloneNode(true) as HTMLElement;
+      
+      // Mark it as billing location
+      clonedLocation.setAttribute('data-next-component', 'billing-location');
+      
+      // Convert all fields inside to billing fields
+      this.convertShippingFieldsToBilling(clonedLocation);
+      
+      // Initially hide the billing location fields (they'll be shown when billing address1 is filled)
+      clonedLocation.classList.add('next-hidden', 'next-location-hidden');
+      clonedLocation.style.display = 'none';
+      
+      billingFormContainer.appendChild(clonedLocation);
+    } else {
+      // Fallback: If no location container, clone any remaining field rows
+      allShippingFieldRows.forEach(row => {
+        const isInsideLocation = row.closest('[data-next-component="location"]');
+        
+        if (isInsideLocation) {
+          // These are location fields without a container, clone them
+          const clonedRow = row.cloneNode(true) as HTMLElement;
+          this.convertShippingFieldsToBilling(clonedRow);
+          billingFormContainer.appendChild(clonedRow);
+        }
+      });
+    }
     
     this.setInitialBillingFormState();
     return true;
@@ -509,41 +556,58 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private expandBillingForm(billingSection: HTMLElement): void {
-    billingSection.style.transition = 'none';
-    billingSection.style.height = 'auto';
-    const fullHeight = billingSection.offsetHeight;
-    
-    billingSection.style.height = '0';
-    billingSection.offsetHeight;
-    
-    billingSection.style.transition = 'height 0.3s ease-in-out, padding 0.3s ease-in-out, margin-top 0.3s ease-in-out';
-    billingSection.style.height = `${fullHeight}px`;
-    billingSection.style.padding = '20px 2px';
-    billingSection.style.marginTop = '20px';
-    billingSection.style.overflow = 'visible';
-    
-    setTimeout(() => {
+    // Use requestAnimationFrame for smoother animation
+    requestAnimationFrame(() => {
+      // First, measure the full height
+      billingSection.style.transition = 'none';
       billingSection.style.height = 'auto';
-    }, 300);
-    
-    billingSection.classList.add('billing-form-expanded');
-    billingSection.classList.remove('billing-form-collapsed');
+      const fullHeight = billingSection.scrollHeight;
+      
+      // Set initial state
+      billingSection.style.height = '0px';
+      billingSection.style.overflow = 'hidden';
+      
+      // Force reflow to ensure initial state is applied
+      billingSection.offsetHeight;
+      
+      // Now animate to full height using cubic-bezier for smoother motion
+      billingSection.style.transition = 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+      billingSection.style.height = `${fullHeight}px`;
+      
+      // After animation completes, set to auto for dynamic content
+      const handleTransitionEnd = () => {
+        billingSection.style.height = 'auto';
+        billingSection.style.overflow = 'visible';
+        billingSection.removeEventListener('transitionend', handleTransitionEnd);
+      };
+      
+      billingSection.addEventListener('transitionend', handleTransitionEnd);
+      
+      billingSection.classList.add('billing-form-expanded');
+      billingSection.classList.remove('billing-form-collapsed');
+    });
   }
 
   private collapseBillingForm(billingSection: HTMLElement): void {
-    const currentHeight = billingSection.offsetHeight;
-    
-    billingSection.style.height = `${currentHeight}px`;
-    billingSection.style.overflow = 'hidden';
-    billingSection.offsetHeight;
-    
-    billingSection.style.transition = 'height 0.3s ease-in-out, padding 0.3s ease-in-out, margin-top 0.3s ease-in-out';
-    billingSection.style.height = '0';
-    billingSection.style.padding = '2px';
-    billingSection.style.marginTop = '0';
-    
-    billingSection.classList.add('billing-form-collapsed');
-    billingSection.classList.remove('billing-form-expanded');
+    // Use requestAnimationFrame for smoother animation
+    requestAnimationFrame(() => {
+      // Get current height before collapsing
+      const currentHeight = billingSection.scrollHeight;
+      
+      // Set explicit height to enable transition from auto
+      billingSection.style.height = `${currentHeight}px`;
+      billingSection.style.overflow = 'hidden';
+      
+      // Force reflow
+      billingSection.offsetHeight;
+      
+      // Animate to collapsed state using cubic-bezier for smoother motion
+      billingSection.style.transition = 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+      billingSection.style.height = '0px';
+      
+      billingSection.classList.add('billing-form-collapsed');
+      billingSection.classList.remove('billing-form-expanded');
+    });
   }
 
 
@@ -1491,15 +1555,22 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Find all location elements - check both possible attributes
     this.locationElements = this.form.querySelectorAll('[data-next-component="location"], [data-next-component-location="location"]');
     
+    // Also find billing location elements
+    this.billingLocationElements = this.form.querySelectorAll('[data-next-component="billing-location"]');
+    
     if (!this.locationElements || this.locationElements.length === 0) {
-      this.logger.debug('No location elements found');
-      return;
+      this.logger.debug('No shipping location elements found');
+    }
+    
+    if (!this.billingLocationElements || this.billingLocationElements.length === 0) {
+      this.logger.debug('No billing location elements found');
     }
     
     // Hide location fields initially
     this.hideLocationFields();
+    this.hideBillingLocationFields();
     
-    // Set up address field listeners for shipping only
+    // Set up address field listeners for shipping
     const addressField = this.fields.get('address1');
     if (addressField instanceof HTMLInputElement) {
       // Listen for changes on address1 field
@@ -1513,10 +1584,26 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
     }
     
+    // Set up address field listeners for billing
+    const billingAddressField = this.billingFields?.get('billing-address1');
+    if (billingAddressField instanceof HTMLInputElement) {
+      // Listen for changes on billing address1 field
+      billingAddressField.addEventListener('input', this.handleBillingAddressInput.bind(this));
+      billingAddressField.addEventListener('change', this.handleBillingAddressInput.bind(this));
+      billingAddressField.addEventListener('blur', this.handleBillingAddressInput.bind(this));
+      
+      // Check initial state
+      if (billingAddressField.value && billingAddressField.value.trim().length > 0) {
+        this.showBillingLocationFields();
+      }
+    }
+    
     // Listen for autocomplete fill events
     this.eventBus.on('address:autocomplete-filled', (event: any) => {
       if (event.type === 'shipping') {
         this.showLocationFields();
+      } else if (event.type === 'billing') {
+        this.showBillingLocationFields();
       }
     });
     
@@ -1525,9 +1612,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (checkoutStore.formData.address1 && checkoutStore.formData.address1.trim().length > 0) {
       this.showLocationFields();
     }
+    if (checkoutStore.formData['billing-address1'] && checkoutStore.formData['billing-address1'].trim().length > 0) {
+      this.showBillingLocationFields();
+    }
     
     this.logger.debug('Location field visibility initialized', {
-      locationElementsCount: this.locationElements.length
+      shippingLocationElementsCount: this.locationElements?.length || 0,
+      billingLocationElementsCount: this.billingLocationElements?.length || 0
     });
   }
   
@@ -1535,6 +1626,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const field = event.target as HTMLInputElement;
     if (field.value && field.value.trim().length > 0) {
       this.showLocationFields();
+    }
+  }
+  
+  private handleBillingAddressInput(event: Event): void {
+    const field = event.target as HTMLInputElement;
+    if (field.value && field.value.trim().length > 0) {
+      this.showBillingLocationFields();
     }
   }
   
@@ -1569,6 +1667,39 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.form.dispatchEvent(new CustomEvent('checkout:location-fields-shown'));
     
     this.logger.debug('Location fields shown');
+  }
+  
+  private hideBillingLocationFields(): void {
+    if (!this.billingLocationElements) return;
+    
+    this.billingLocationElements.forEach(el => {
+      if (el instanceof HTMLElement) {
+        el.style.display = 'none';
+        el.classList.add('next-location-hidden');
+      }
+    });
+    
+    this.billingLocationFieldsShown = false;
+    this.logger.debug('Billing location fields hidden');
+  }
+  
+  private showBillingLocationFields(): void {
+    if (this.billingLocationFieldsShown || !this.billingLocationElements) return;
+    
+    this.billingLocationElements.forEach(el => {
+      if (el instanceof HTMLElement) {
+        el.style.display = 'flex';
+        el.classList.remove('next-location-hidden');
+      }
+    });
+    
+    this.billingLocationFieldsShown = true;
+    
+    // Emit event for other components
+    this.eventBus.emit('checkout:billing-location-fields-shown', {});
+    this.form.dispatchEvent(new CustomEvent('checkout:billing-location-fields-shown'));
+    
+    this.logger.debug('Billing location fields shown');
   }
 
   // ============================================================================
@@ -1763,6 +1894,25 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         this.logger.info('[Spreedly] Payment token received:', { token, pmData });
         this.handleTokenizedPayment(token, pmData);
       });
+      
+      // Set up floating label callbacks for Spreedly fields
+      if (this.ui) {
+        this.creditCardService.setFloatingLabelCallbacks(
+          // Focus callback
+          (fieldName: 'number' | 'cvv') => {
+            this.ui.handleSpreedlyFieldFocus(fieldName);
+          },
+          // Blur callback
+          (fieldName: 'number' | 'cvv', hasValue: boolean) => {
+            this.ui.handleSpreedlyFieldBlur(fieldName, hasValue);
+          },
+          // Input callback
+          (fieldName: 'number' | 'cvv', hasValue: boolean) => {
+            this.ui.handleSpreedlyFieldInput(fieldName, hasValue);
+          }
+        );
+        this.logger.debug('[Spreedly] Connected floating label callbacks');
+      }
       
       await this.creditCardService.initialize();
       
@@ -2665,21 +2815,29 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       }
       
-      // Update ProspectCartEnhancer when email changes
-      if (fieldName === 'email' && this.prospectCartEnhancer) {
-        this.prospectCartEnhancer.updateEmail(target.value);
-      }
-      
-      // Save user data to cookies for persistence
-      if (fieldName === 'email' || fieldName === 'fname' || fieldName === 'lname' || fieldName === 'phone') {
-        const updates: any = {};
-        if (fieldName === 'email') updates.email = target.value;
-        if (fieldName === 'fname') updates.firstName = target.value;
-        if (fieldName === 'lname') updates.lastName = target.value;
-        if (fieldName === 'phone') updates.phone = target.value;
+      // Only update prospect cart and storage on blur/change events, not on every input
+      if (event.type === 'blur' || event.type === 'change') {
+        // Update ProspectCartEnhancer when email changes
+        if (fieldName === 'email' && this.prospectCartEnhancer) {
+          this.prospectCartEnhancer.updateEmail(target.value);
+        }
         
-        userDataStorage.updateUserData(updates);
-        this.logger.debug('Updated user data storage:', fieldName, target.value);
+        // Save user data to cookies for persistence
+        if (fieldName === 'email' || fieldName === 'fname' || fieldName === 'lname' || fieldName === 'phone') {
+          const updates: any = {};
+          if (fieldName === 'email') updates.email = target.value;
+          if (fieldName === 'fname') updates.firstName = target.value;
+          if (fieldName === 'lname') updates.lastName = target.value;
+          if (fieldName === 'phone') updates.phone = target.value;
+          
+          userDataStorage.updateUserData(updates);
+          this.logger.debug('Updated user data storage:', fieldName, target.value);
+        }
+        
+        // Check if we have enough data to create prospect cart
+        if (this.prospectCartEnhancer && ['email', 'fname', 'lname'].includes(fieldName)) {
+          this.prospectCartEnhancer.checkAndCreateCart();
+        }
       }
     }
     
@@ -2695,14 +2853,28 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const isEmpty = !target.value || (typeof target.value === 'string' && target.value.trim() === '');
       
       if (isEmpty) {
-        // Field is empty - remove both error and success classes
-        field.classList.remove('has-error', 'next-error-field', 'no-error');
+        // Field is empty - check if there's an error label present
+        // Check both in wrapper and form-group (error label can be in either)
+        const formGroup = field.closest('.form-group');
+        const errorLabel = wrapper?.querySelector('.next-error-label') || formGroup?.querySelector('.next-error-label');
         
-        if (wrapper) {
-          wrapper.classList.remove('addErrorIcon', 'addTick');
-          const errorLabel = wrapper.querySelector('.next-error-label');
-          if (errorLabel) {
-            errorLabel.remove();
+        if (errorLabel) {
+          // There's an error label present, so maintain the error state on the field
+          // Re-add error classes to the field to keep them consistent with the error label
+          field.classList.add('has-error', 'next-error-field');
+          field.classList.remove('no-error');
+          
+          // Also ensure wrapper has error icon class if there's an error
+          if (wrapper) {
+            wrapper.classList.add('addErrorIcon');
+            wrapper.classList.remove('addTick');
+          }
+        } else {
+          // No error label - remove both error and success classes
+          field.classList.remove('has-error', 'next-error-field', 'no-error');
+          
+          if (wrapper) {
+            wrapper.classList.remove('addErrorIcon', 'addTick');
           }
         }
         
@@ -2769,8 +2941,32 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       }
     } else if (event.type === 'change') {
-      // On change events, don't clear errors - let validation handle it
-      // This prevents the issue where change event fires after blur and clears the error
+      // On change events (e.g., from Google Autocomplete), validate and clear errors if field is now valid
+      const field = this.getFieldByName(fieldName);
+      if (field && target.value && target.value.trim() !== '') {
+        // Field has value - validate it and clear error if valid
+        const validationResult = this.validator.validateField(fieldName, target.value);
+        
+        if (validationResult.isValid) {
+          // Field is valid, remove error classes and messages
+          field.classList.remove('has-error', 'next-error-field');
+          field.classList.add('no-error');
+          
+          const wrapper = field.closest('.form-group, .form-input');
+          if (wrapper) {
+            wrapper.classList.remove('addErrorIcon');
+            wrapper.classList.add('addTick');
+            const errorLabel = wrapper.querySelector('.next-error-label');
+            if (errorLabel) {
+              errorLabel.remove();
+            }
+          }
+          
+          // Also clear error from store
+          const checkoutStore = useCheckoutStore.getState();
+          checkoutStore.clearError(fieldName);
+        }
+      }
     }
   }
 

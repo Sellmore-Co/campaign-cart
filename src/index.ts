@@ -29,8 +29,16 @@ export { EventBus } from './utils/events';
 // API client export
 export { ApiClient } from './api/client';
 
-// Version
-export const VERSION = '__VERSION__';
+// Version - use runtime detected version from loader, fallback to build-time version
+declare global {
+  interface Window {
+    __NEXT_SDK_VERSION__?: string;
+  }
+}
+
+export const VERSION = typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__ 
+  ? window.__NEXT_SDK_VERSION__ 
+  : '__VERSION__';
 
 // Auto-initialization
 import { SDKInitializer } from './enhancers/core/SDKInitializer';

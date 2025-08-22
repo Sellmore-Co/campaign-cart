@@ -47,6 +47,7 @@ export class PaymentService {
   private phoneInputs: Map<string, IntlTelInputInstance> = new Map();
   private paymentButtons: Map<string, HTMLElement> = new Map();
   private isIntlTelInputAvailable = false;
+  private uiService: any | undefined; // Reference to UIService for floating labels
   
   // Utility managers
   // eventManager removed - unused
@@ -131,6 +132,9 @@ export class PaymentService {
       // Initialize the service
       await this.creditCardService.initialize();
       
+      // Connect floating label callbacks if UIService is available
+      this.connectFloatingLabelCallbacks();
+      
       this.logger.debug('Credit card service initialized successfully');
       
     } catch (error) {
@@ -138,6 +142,38 @@ export class PaymentService {
       this.removeClassCallback('next-loading-spreedly');
       throw error;
     }
+  }
+  
+  /**
+   * Connect floating label callbacks between CreditCardService and UIService
+   */
+  private connectFloatingLabelCallbacks(): void {
+    if (!this.creditCardService || !this.uiService) {
+      return;
+    }
+    
+    this.creditCardService.setFloatingLabelCallbacks(
+      // Focus callback
+      (fieldName: 'number' | 'cvv') => {
+        if (this.uiService?.handleSpreedlyFieldFocus) {
+          this.uiService.handleSpreedlyFieldFocus(fieldName);
+        }
+      },
+      // Blur callback
+      (fieldName: 'number' | 'cvv', hasValue: boolean) => {
+        if (this.uiService?.handleSpreedlyFieldBlur) {
+          this.uiService.handleSpreedlyFieldBlur(fieldName, hasValue);
+        }
+      },
+      // Input callback
+      (fieldName: 'number' | 'cvv', hasValue: boolean) => {
+        if (this.uiService?.handleSpreedlyFieldInput) {
+          this.uiService.handleSpreedlyFieldInput(fieldName, hasValue);
+        }
+      }
+    );
+    
+    this.logger.debug('Connected floating label callbacks between CreditCardService and UIService');
   }
 
   /**
@@ -709,6 +745,17 @@ export class PaymentService {
    */
   public getCreditCardService(): CreditCardService | undefined {
     return this.creditCardService;
+  }
+  
+  /**
+   * Set UIService reference for floating label integration
+   */
+  public setUIService(uiService: any): void {
+    this.uiService = uiService;
+    // If credit card service is already initialized, connect the callbacks
+    if (this.creditCardService) {
+      this.connectFloatingLabelCallbacks();
+    }
   }
 
   /**

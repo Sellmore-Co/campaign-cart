@@ -6,8 +6,9 @@
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
 import { useConfigStore } from '@/stores/configStore';
+import { useAttributionStore } from '@/stores/attributionStore';
 import { ApiClient } from '@/api/client';
-import type { CartBase, Attribution, UserCreateCart } from '@/types/api';
+import type { CartBase, UserCreateCart, AddressCart } from '@/types/api';
 import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
 
 export interface ProspectCartConfig {
@@ -173,6 +174,10 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     });
   }
 
+  // Store timeouts at class level to coordinate between blur and updateEmail
+  private emailInputTimeout?: number;
+  private emailBlurTimeout?: number;
+
   private setupEmailEntryTrigger(): void {
     if (!this.emailField) {
       this.logger.warn('Cannot setup email entry trigger - email field not found');
@@ -181,33 +186,14 @@ export class ProspectCartEnhancer extends BaseEnhancer {
 
     this.logger.debug('Setting up email entry trigger on field:', this.emailField);
 
-    // Trigger when email is entered and appears valid
+    // Trigger when email is entered - check immediately for all required fields
     this.emailField.addEventListener('blur', () => {
       this.logger.debug('Email blur event triggered, value:', this.emailField!.value);
-      if (!this.hasTriggered && this.isValidEmail(this.emailField!.value)) {
-        this.logger.info('Valid email detected, creating prospect cart');
-        this.createProspectCart();
-        this.hasTriggered = true;
-        
-        // Track begin_checkout event when user enters email
-        this.trackBeginCheckout();
-      }
+      // Check if we have enough data to create cart immediately
+      this.checkAndCreateCart();
     });
 
-    // Also trigger on input after reasonable delay
-    let emailTimeout: number;
-    this.emailField.addEventListener('input', () => {
-      clearTimeout(emailTimeout);
-      emailTimeout = window.setTimeout(() => {
-        if (!this.hasTriggered && this.isValidEmail(this.emailField!.value)) {
-          this.createProspectCart();
-          this.hasTriggered = true;
-          
-          // Track begin_checkout event when user enters email
-          this.trackBeginCheckout();
-        }
-      }, 2000);
-    });
+    // Don't need input handler anymore since we check on blur/change
   }
 
   private checkExistingProspectCart(): void {
@@ -258,15 +244,51 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         return;
       }
       
-      // Get first name and last name from form fields
+      // Get all available form data
       const firstName = (this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]') as HTMLInputElement)?.value || '';
       const lastName = (this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]') as HTMLInputElement)?.value || '';
+      const phone = (this.element.querySelector('[data-next-checkout-field="phone"], [os-checkout-field="phone"], input[name="phone"]') as HTMLInputElement)?.value || '';
       
-      // Build attribution data
-      const attribution: Attribution = this.config.includeUtmData ? {
-        ...this.collectUtmData(),
-        ...(cartState as any).attribution
-      } : (cartState as any).attribution || {};
+      // Get address data if available
+      const address1 = (this.element.querySelector('[data-next-checkout-field="address1"], [os-checkout-field="address1"], input[name="address1"]') as HTMLInputElement)?.value || '';
+      const address2 = (this.element.querySelector('[data-next-checkout-field="address2"], [os-checkout-field="address2"], input[name="address2"]') as HTMLInputElement)?.value || '';
+      const city = (this.element.querySelector('[data-next-checkout-field="city"], [os-checkout-field="city"], input[name="city"]') as HTMLInputElement)?.value || '';
+      const state = (this.element.querySelector('[data-next-checkout-field="province"], [os-checkout-field="province"], select[name="province"]') as HTMLInputElement)?.value || '';
+      const postal = (this.element.querySelector('[data-next-checkout-field="postal"], [os-checkout-field="postal"], input[name="postal"]') as HTMLInputElement)?.value || '';
+      const country = (this.element.querySelector('[data-next-checkout-field="country"], [os-checkout-field="country"], select[name="country"]') as HTMLSelectElement)?.value || '';
+      
+      // Get attribution from the attribution store (this has all the tracking data)
+      const attributionStore = useAttributionStore.getState();
+      const attribution = attributionStore.getAttributionForApi();
+      
+      // Update metadata with current page information since we're on the checkout page
+      if (attribution.metadata) {
+        // Update landing_page to current URL 
+        attribution.metadata.landing_page = window.location.href;
+        
+        // Update referrer if it's empty
+        if (!attribution.metadata.referrer) {
+          attribution.metadata.referrer = document.referrer || '';
+        }
+        
+        // Update domain if it's empty
+        if (!attribution.metadata.domain) {
+          attribution.metadata.domain = window.location.hostname;
+        }
+        
+        // Update device if it's empty
+        if (!attribution.metadata.device) {
+          attribution.metadata.device = navigator.userAgent || '';
+        }
+        
+        // Update timestamp to current time
+        attribution.metadata.timestamp = Date.now();
+      }
+      
+      // Ensure funnel is set to CH01 for checkout
+      if (!attribution.funnel || attribution.funnel === '') {
+        attribution.funnel = 'CH01';
+      }
       
       // Build user data
       const user: UserCreateCart = {
@@ -281,6 +303,11 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         user.email = email;
       }
       
+      // Add phone if it exists
+      if (phone) {
+        user.phone_number = phone;
+      }
+      
       // Build cart data according to CartBase interface
       const cartData: CartBase = {
         lines: cartState.items.map(item => ({
@@ -291,18 +318,83 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         user
       };
       
-      // Add attribution only if it has data
-      if (Object.keys(attribution).length > 0) {
+      // Only add address data if we have the required fields (first_name, last_name, line1, line4/city, and country)
+      // The API requires these fields to be non-empty if address object is included
+      if (firstName && lastName && address1 && city && country) {
+        const addressData: AddressCart = {
+          first_name: firstName,
+          last_name: lastName,
+          line1: address1,
+          line4: city, // API expects city in line4
+          country: country
+        };
+        
+        // Only add optional fields if they have values
+        if (address2) addressData.line2 = address2;
+        if (state) addressData.state = state;
+        if (postal) addressData.postcode = postal;
+        if (phone) addressData.phone_number = phone;
+        
+        cartData.address = addressData;
+      }
+      
+      // Add attribution if it has data
+      if (attribution && Object.keys(attribution).length > 0) {
         cartData.attribution = attribution;
       }
 
+      this.logger.debug('Creating prospect cart with data:', {
+        hasAddress: !!cartData.address,
+        hasAttribution: !!cartData.attribution,
+        attribution: attribution,
+        userData: cartData.user,
+        itemCount: cartData.lines.length,
+        addressData: cartData.address
+      });
+
       // Create cart using standard API
-      const cart = await this.apiClient.createCart(cartData);
+      let cart;
+      try {
+        cart = await this.apiClient.createCart(cartData);
+      } catch (initialError) {
+        // If the initial request fails, try with just email
+        this.logger.warn('Initial prospect cart creation failed, retrying with minimal data:', initialError);
+        
+        // Only retry if we have a valid email
+        if (!this.isValidEmail(email)) {
+          throw initialError;
+        }
+        
+        // Create minimal cart data with just email and cart items
+        const minimalCartData: CartBase = {
+          lines: cartState.items.map((item: any) => ({
+            package_id: item.packageId,
+            quantity: item.quantity
+          })),
+          user: {
+            email: email,
+            first_name: '',  // Required field, but empty for minimal cart
+            last_name: '',   // Required field, but empty for minimal cart
+            language: 'en'   // Default to English
+          }
+        };
+        
+        // Don't include attribution or address in the retry
+        this.logger.info('Retrying prospect cart creation with minimal data (email only)');
+        
+        try {
+          cart = await this.apiClient.createCart(minimalCartData);
+          this.logger.info('Successfully created prospect cart with minimal data');
+        } catch (retryError) {
+          this.logger.error('Failed to create prospect cart even with minimal data:', retryError);
+          throw retryError;
+        }
+      }
       
       // Store cart info as prospect cart
       this.prospectCart = {
-        id: cart.checkout_url, // Use checkout URL as ID
-        prospect_id: cart.checkout_url,
+        id: cart.checkout_url || '', // Use checkout URL as ID
+        prospect_id: cart.checkout_url || '',
         created_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + (this.config.sessionTimeout || 30) * 60 * 1000).toISOString(),
         utm_data: this.collectUtmData(),
@@ -426,19 +518,53 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     this.logger.info('Prospect cart converted to order');
   }
 
+  private updateEmailTimeout?: number;
+  
   public updateEmail(email: string): void {
     if (this.emailField) {
       this.emailField.value = email;
     }
     
-    if (!this.hasTriggered && this.isValidEmail(email)) {
+    // Don't set a timer, just check if we have enough data
+    this.checkAndCreateCart();
+  }
+  
+  /**
+   * Check if we have enough data to create prospect cart and create it immediately
+   */
+  public checkAndCreateCart(): void {
+    if (this.hasTriggered) {
+      return;
+    }
+    
+    // Get current form values
+    const email = (this.element.querySelector('[data-next-checkout-field="email"], [os-checkout-field="email"], input[type="email"]') as HTMLInputElement)?.value || '';
+    const firstName = (this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]') as HTMLInputElement)?.value || '';
+    const lastName = (this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]') as HTMLInputElement)?.value || '';
+    
+    // Create cart immediately if we have valid email + first name + last name
+    if (this.isValidEmail(email) && firstName.trim() !== '' && lastName.trim() !== '') {
+      // Clear any pending timeouts
+      clearTimeout(this.updateEmailTimeout);
+      clearTimeout(this.emailBlurTimeout);
+      clearTimeout(this.emailInputTimeout);
+      
+      this.logger.info('All required fields filled (email, fname, lname), creating prospect cart immediately');
       this.createProspectCart();
       this.hasTriggered = true;
       
-      // Track begin_checkout event when email is updated programmatically
+      // Track begin_checkout event
       this.trackBeginCheckout();
-    } else if (this.prospectCart) {
-      this.updateProspectCart();
+    } else if (this.isValidEmail(email) && !this.updateEmailTimeout) {
+      // If we only have email, set a timeout to wait for more data
+      this.updateEmailTimeout = window.setTimeout(() => {
+        this.logger.info('Creating prospect cart after timeout (only email available)');
+        this.createProspectCart();
+        this.hasTriggered = true;
+        this.trackBeginCheckout();
+      }, 5000);
+      
+      this.logger.debug(`Waiting for more data. Has email: ${!!email}, fname: ${!!firstName}, lname: ${!!lastName}`);
     }
   }
   

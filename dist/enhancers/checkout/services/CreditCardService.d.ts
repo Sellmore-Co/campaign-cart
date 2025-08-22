@@ -43,6 +43,12 @@ export declare class CreditCardService {
     private monthField?;
     private yearField?;
     private hasTrackedPaymentInfo;
+    private onFieldFocusCallback?;
+    private onFieldBlurCallback?;
+    private onFieldInputCallback?;
+    private fieldHasValue;
+    private originalPlaceholders;
+    private labelBehavior;
     constructor(environmentKey: string);
     initialize(): Promise<void>;
     tokenizeCard(cardData: CreditCardData): Promise<string>;
@@ -63,6 +69,7 @@ export declare class CreditCardService {
     setOnReady(callback: () => void): void;
     setOnError(callback: (errors: string[]) => void): void;
     setOnToken(callback: (token: string, pmData: any) => void): void;
+    setFloatingLabelCallbacks(onFocus: (fieldName: 'number' | 'cvv') => void, onBlur: (fieldName: 'number' | 'cvv', hasValue: boolean) => void, onInput: (fieldName: 'number' | 'cvv', hasValue: boolean) => void): void;
     get ready(): boolean;
     focusField(field: 'number' | 'cvv'): void;
     private initializeValidationState;

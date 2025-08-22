@@ -307,6 +307,56 @@ export class UIService {
   // ============================================================================
 
   /**
+   * Initialize payment forms based on their current state in the DOM
+   */
+  public initializePaymentForms(): void {
+    this.logger.debug('Initializing payment forms');
+    
+    const paymentMethods = this.form.querySelectorAll('[data-next-payment-method]');
+    
+    paymentMethods.forEach(paymentMethodElement => {
+      if (paymentMethodElement instanceof HTMLElement) {
+        const radio = paymentMethodElement.querySelector('input[type="radio"]');
+        const paymentForm = paymentMethodElement.querySelector('[data-next-payment-form]');
+        
+        if (!(radio instanceof HTMLInputElement) || !(paymentForm instanceof HTMLElement)) {
+          return;
+        }
+        
+        // Check the current state from HTML
+        const isExpanded = paymentForm.getAttribute('data-next-payment-state') === 'expanded' ||
+                          paymentForm.classList.contains('payment-method__form--expanded');
+        const isChecked = radio.checked;
+        
+        // Sync the state
+        if (isChecked || isExpanded) {
+          // Ensure it's properly expanded
+          paymentMethodElement.classList.add('next-selected');
+          paymentForm.setAttribute('data-next-payment-state', 'expanded');
+          paymentForm.classList.add('payment-method__form--expanded');
+          paymentForm.classList.remove('payment-method__form--collapsed');
+          paymentForm.classList.remove('payment-method__form--collapsing');
+          paymentForm.classList.remove('payment-method__form--expanding');
+          paymentForm.style.height = '';
+          paymentForm.style.overflow = '';
+          paymentForm.style.transition = '';
+        } else {
+          // Ensure it's properly collapsed
+          paymentMethodElement.classList.remove('next-selected');
+          paymentForm.setAttribute('data-next-payment-state', 'collapsed');
+          paymentForm.classList.add('payment-method__form--collapsed');
+          paymentForm.classList.remove('payment-method__form--expanded');
+          paymentForm.classList.remove('payment-method__form--expanding');
+          paymentForm.classList.remove('payment-method__form--collapsing');
+          paymentForm.style.height = '0px';
+          paymentForm.style.overflow = 'hidden';
+          paymentForm.style.transition = '';
+        }
+      }
+    });
+  }
+
+  /**
    * Update payment form visibility based on selected payment method
    */
   public updatePaymentFormVisibility(paymentMethod: string): void {
@@ -369,34 +419,43 @@ export class UIService {
       return;
     }
     
-    // Remove collapsed class and add expanded class
-    paymentForm.classList.remove('payment-method__form--collapsed');
-    paymentForm.classList.add('payment-method__form--expanded');
+    // Ensure overflow is hidden for animation
+    paymentForm.style.overflow = 'hidden';
     
     // Get current height (should be 0 from collapsed state)
     const startHeight = paymentForm.offsetHeight;
     
-    // Temporarily set to auto to measure natural height
-    const currentOverflow = paymentForm.style.overflow;
+    // Remove collapsed class and add expanding class for animation
+    paymentForm.classList.remove('payment-method__form--collapsed');
+    paymentForm.classList.add('payment-method__form--expanding');
     
-    paymentForm.style.overflow = 'hidden';
+    // Calculate target height
     paymentForm.style.height = 'auto';
     const targetHeight = paymentForm.scrollHeight;
     
-    // Start from current height (likely 0)
+    // Reset to start height
     paymentForm.style.height = startHeight + 'px';
     
-    // Force a reflow
-    paymentForm.offsetHeight;
+    // Force a reflow to ensure browser registers the starting state
+    void paymentForm.offsetHeight;
     
-    // Animate to target height
-    paymentForm.style.height = targetHeight + 'px';
-    
-    // Clean up after animation completes
-    setTimeout(() => {
-      paymentForm.style.height = '';
-      paymentForm.style.overflow = currentOverflow;
-    }, 300); // Match your CSS transition duration
+    // Use requestAnimationFrame to ensure smooth animation in production
+    requestAnimationFrame(() => {
+      // Set transition
+      paymentForm.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      
+      // Animate to target height
+      paymentForm.style.height = targetHeight + 'px';
+      
+      // Clean up after animation completes
+      setTimeout(() => {
+        paymentForm.classList.remove('payment-method__form--expanding');
+        paymentForm.classList.add('payment-method__form--expanded');
+        paymentForm.style.height = '';
+        paymentForm.style.transition = '';
+        paymentForm.style.overflow = '';
+      }, 300); // Match transition duration
+    });
     
     this.logger.debug('Expanded payment form');
   }
@@ -410,23 +469,37 @@ export class UIService {
       return;
     }
     
+    // Ensure overflow is hidden for animation
+    paymentForm.style.overflow = 'hidden';
+    
     // Get current height for animation
     const currentHeight = paymentForm.scrollHeight;
     
-    paymentForm.style.overflow = 'hidden';
+    // Remove expanded class and add collapsing class for animation
+    paymentForm.classList.remove('payment-method__form--expanded');
+    paymentForm.classList.add('payment-method__form--collapsing');
+    
+    // Set explicit height for starting point
     paymentForm.style.height = currentHeight + 'px';
     
-    // Force a reflow
-    paymentForm.offsetHeight;
+    // Force a reflow to ensure browser registers the starting state
+    void paymentForm.offsetHeight;
     
-    // Animate to 0 height
-    paymentForm.style.height = '0px';
-    
-    // Add collapsed class and remove expanded class after animation completes
-    setTimeout(() => {
-      paymentForm.classList.add('payment-method__form--collapsed');
-      paymentForm.classList.remove('payment-method__form--expanded');
-    }, 300);
+    // Use requestAnimationFrame to ensure smooth animation in production
+    requestAnimationFrame(() => {
+      // Set transition
+      paymentForm.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      
+      // Animate to 0 height
+      paymentForm.style.height = '0px';
+      
+      // Clean up after animation completes
+      setTimeout(() => {
+        paymentForm.classList.remove('payment-method__form--collapsing');
+        paymentForm.classList.add('payment-method__form--collapsed');
+        paymentForm.style.transition = '';
+      }, 300); // Match transition duration
+    });
     
     this.logger.debug('Collapsed payment form');
   }
@@ -480,10 +553,155 @@ export class UIService {
       
     });
     
+    // Also setup Spreedly fields (credit card and CVV)
+    this.setupSpreedlyFloatingLabels();
+    
     this.logger.debug(`Initialized ${this.floatingLabels.size} floating labels`);
     
     // Start periodic check for autocomplete detection
     this.startPeriodicCheck();
+  }
+
+  /**
+   * Setup floating labels for Spreedly iframe fields
+   */
+  private setupSpreedlyFloatingLabels(): void {
+    // Setup credit card number field
+    const ccNumberContainer = this.form.querySelector('[data-next-checkout-field="cc-number"], #spreedly-number') as HTMLElement;
+    if (ccNumberContainer) {
+      const label = ccNumberContainer.parentElement?.querySelector('.label-checkout');
+      if (label instanceof HTMLLabelElement) {
+        this.floatingLabels.set(ccNumberContainer, label);
+        this.setupLabelStyles(label);
+        
+        // Check if it has placeholder behavior
+        const behavior = ccNumberContainer.getAttribute('data-label-behavior');
+        if (behavior === 'placeholder') {
+          // Initially float down (will be handled by Spreedly events)
+          this.floatLabelDown(label, ccNumberContainer as HTMLInputElement);
+        }
+        
+        this.logger.debug('Set up Spreedly floating label for credit card number');
+      }
+    }
+    
+    // Setup CVV field
+    const cvvContainer = this.form.querySelector('[data-next-checkout-field="cvv"], #spreedly-cvv') as HTMLElement;
+    if (cvvContainer) {
+      const label = cvvContainer.parentElement?.querySelector('.label-checkout');
+      if (label instanceof HTMLLabelElement) {
+        this.floatingLabels.set(cvvContainer, label);
+        this.setupLabelStyles(label);
+        
+        // Check if it has placeholder behavior
+        const behavior = cvvContainer.getAttribute('data-label-behavior');
+        if (behavior === 'placeholder') {
+          // Initially float down (will be handled by Spreedly events)
+          this.floatLabelDown(label, cvvContainer as HTMLInputElement);
+        }
+        
+        this.logger.debug('Set up Spreedly floating label for CVV');
+      }
+    }
+  }
+
+  /**
+   * Handle Spreedly field focus event
+   */
+  public handleSpreedlyFieldFocus(fieldName: 'number' | 'cvv'): void {
+    const fieldId = fieldName === 'number' ? 'spreedly-number' : 'spreedly-cvv';
+    const field = document.getElementById(fieldId) || 
+                  this.form.querySelector(`[data-next-checkout-field="${fieldName === 'number' ? 'cc-number' : 'cvv'}"]`) as HTMLElement;
+    
+    if (!field) {
+      this.logger.warn(`Spreedly field not found: ${fieldName}`);
+      return;
+    }
+    
+    const label = this.floatingLabels.get(field);
+    if (label) {
+      const behavior = field.getAttribute('data-label-behavior');
+      
+      if (behavior === 'placeholder') {
+        // Placeholder behavior: always float up on focus
+        this.floatLabelUp(label, field as HTMLInputElement, 'focus');
+      }
+      
+      this.logger.debug(`Spreedly field focused: ${fieldName}`);
+    }
+  }
+
+  /**
+   * Handle Spreedly field blur event
+   */
+  public handleSpreedlyFieldBlur(fieldName: 'number' | 'cvv', hasValue: boolean): void {
+    const fieldId = fieldName === 'number' ? 'spreedly-number' : 'spreedly-cvv';
+    const field = document.getElementById(fieldId) || 
+                  this.form.querySelector(`[data-next-checkout-field="${fieldName === 'number' ? 'cc-number' : 'cvv'}"]`) as HTMLElement;
+    
+    if (!field) {
+      this.logger.warn(`Spreedly field not found: ${fieldName}`);
+      return;
+    }
+    
+    const label = this.floatingLabels.get(field);
+    if (label) {
+      const behavior = field.getAttribute('data-label-behavior');
+      
+      if (behavior === 'placeholder') {
+        // Placeholder behavior: only keep floating if field has value
+        if (!hasValue) {
+          this.floatLabelDown(label, field as HTMLInputElement);
+        }
+      } else {
+        // Default behavior
+        if (hasValue) {
+          this.floatLabelUp(label, field as HTMLInputElement);
+        } else {
+          this.floatLabelDown(label, field as HTMLInputElement);
+        }
+      }
+      
+      this.logger.debug(`Spreedly field blurred: ${fieldName}, hasValue: ${hasValue}`);
+    }
+  }
+
+  /**
+   * Handle Spreedly field input event
+   */
+  public handleSpreedlyFieldInput(fieldName: 'number' | 'cvv', hasValue: boolean): void {
+    const fieldId = fieldName === 'number' ? 'spreedly-number' : 'spreedly-cvv';
+    const field = document.getElementById(fieldId) || 
+                  this.form.querySelector(`[data-next-checkout-field="${fieldName === 'number' ? 'cc-number' : 'cvv'}"]`) as HTMLElement;
+    
+    if (!field) {
+      this.logger.warn(`Spreedly field not found: ${fieldName}`);
+      return;
+    }
+    
+    const label = this.floatingLabels.get(field);
+    if (label) {
+      const behavior = field.getAttribute('data-label-behavior');
+      const isFocused = field.classList.contains('next-focused') || field.classList.contains('has-focus');
+      
+      if (behavior === 'placeholder') {
+        // For placeholder behavior, keep floating if focused or has value
+        if (isFocused || hasValue) {
+          this.floatLabelUp(label, field as HTMLInputElement, isFocused ? 'focus' : 'value');
+        } else {
+          this.floatLabelDown(label, field as HTMLInputElement);
+        }
+      } else {
+        // Default behavior
+        if (hasValue) {
+          this.floatLabelUp(label, field as HTMLInputElement);
+        } else {
+          this.floatLabelDown(label, field as HTMLInputElement);
+        }
+      }
+      
+      this.logger.debug(`Spreedly field input: ${fieldName}, hasValue: ${hasValue}`);
+    }
   }
 
   /**
@@ -573,7 +791,7 @@ export class UIService {
       
       if (behavior === 'placeholder') {
         // Placeholder behavior: always float up on focus
-        this.floatLabelUp(label, field, 'focus');
+        this.floatLabelUp(label, field as HTMLInputElement, 'focus');
       } else {
         // Default Shopify behavior: only float up if field has value
         if (this.hasValue(field)) {

@@ -3,6 +3,12 @@
  * This is the public interface for advanced users who need direct access to SDK functionality
  */
 
+declare global {
+  interface Window {
+    __NEXT_SDK_VERSION__?: string;
+  }
+}
+
 import type { 
   CartTotals, 
   Campaign, 
@@ -406,6 +412,14 @@ export class NextCommerce {
   }
 
   // Utility methods
+  public getVersion(): string {
+    // Return the runtime detected version from loader, or fallback to build version
+    if (typeof window !== 'undefined' && window.__NEXT_SDK_VERSION__) {
+      return window.__NEXT_SDK_VERSION__;
+    }
+    return '__VERSION__'; // Will be replaced at build time
+  }
+
   public formatPrice(amount: number, currency?: string): string {
     const campaignStore = useCampaignStore.getState();
     const useCurrency = currency ?? campaignStore.data?.currency ?? 'USD';

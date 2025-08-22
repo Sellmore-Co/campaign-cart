@@ -1,4 +1,9 @@
 import { CartTotals, Campaign, CallbackType, CallbackData, EventMap, AppliedCoupon, DiscountDefinition } from '../types/global';
+declare global {
+    interface Window {
+        __NEXT_SDK_VERSION__?: string;
+    }
+}
 export declare class NextCommerce {
     private static instance;
     private logger;
@@ -62,6 +67,7 @@ export declare class NextCommerce {
         code: string;
     } | null;
     setShippingMethod(methodId: number): Promise<void>;
+    getVersion(): string;
     formatPrice(amount: number, currency?: string): string;
     validateCheckout(): {
         valid: boolean;
