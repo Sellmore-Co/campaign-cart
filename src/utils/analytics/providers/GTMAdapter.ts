@@ -57,19 +57,52 @@ export class GTMAdapter extends ProviderAdapter {
       event_id: event.id
     };
 
+    // Get attribution data if present
+    const attribution = (event as any).attribution;
+
     // Handle ecommerce events specially
     if (this.isEcommerceEvent(event.event)) {
-      return {
+      const gtmEvent: any = {
         ...baseEvent,
         ecommerce: this.buildEcommerceObject(event)
       };
+      
+      // Add attribution at root level for easy GTM access
+      if (attribution && Object.keys(attribution).length > 0) {
+        gtmEvent.attribution = attribution;
+        
+        // Also spread key attribution fields at root for convenience
+        if (attribution.utm_source) gtmEvent.utm_source = attribution.utm_source;
+        if (attribution.utm_medium) gtmEvent.utm_medium = attribution.utm_medium;
+        if (attribution.utm_campaign) gtmEvent.utm_campaign = attribution.utm_campaign;
+        if (attribution.funnel) gtmEvent.funnel = attribution.funnel;
+        if (attribution.affiliate) gtmEvent.affiliate = attribution.affiliate;
+        if (attribution.gclid) gtmEvent.gclid = attribution.gclid;
+      }
+      
+      return gtmEvent;
     }
 
-    // For non-ecommerce events, spread the data
-    return {
+    // For non-ecommerce events
+    const gtmEvent: any = {
       ...baseEvent,
       ...event.data
     };
+    
+    // Add attribution for non-ecommerce events too
+    if (attribution && Object.keys(attribution).length > 0) {
+      gtmEvent.attribution = attribution;
+      
+      // Also spread key attribution fields at root for convenience
+      if (attribution.utm_source) gtmEvent.utm_source = attribution.utm_source;
+      if (attribution.utm_medium) gtmEvent.utm_medium = attribution.utm_medium;
+      if (attribution.utm_campaign) gtmEvent.utm_campaign = attribution.utm_campaign;
+      if (attribution.funnel) gtmEvent.funnel = attribution.funnel;
+      if (attribution.affiliate) gtmEvent.affiliate = attribution.affiliate;
+      if (attribution.gclid) gtmEvent.gclid = attribution.gclid;
+    }
+    
+    return gtmEvent;
   }
 
   /**

@@ -14,6 +14,7 @@ export interface AttributionMetadata {
   domain: string;
   timestamp: number;
   conversion_timestamp?: number;
+  sdk_version?: string;  // SDK version detected at runtime
   
   // Facebook tracking
   fb_fbp?: string;
@@ -175,23 +176,23 @@ export const useAttributionStore = create<AttributionState & AttributionActions>
       getAttributionForApi: (): Attribution => {
         const state = get();
         
-        // Return only the fields needed for API
+        // Return only the fields needed for API (exclude empty strings)
         const attribution: Attribution = {};
         
-        if (state.affiliate !== undefined) attribution.affiliate = state.affiliate;
-        if (state.funnel !== undefined) attribution.funnel = state.funnel;
-        if (state.gclid !== undefined) attribution.gclid = state.gclid;
+        if (state.affiliate && state.affiliate !== '') attribution.affiliate = state.affiliate;
+        if (state.funnel && state.funnel !== '') attribution.funnel = state.funnel;
+        if (state.gclid && state.gclid !== '') attribution.gclid = state.gclid;
         if (state.metadata !== undefined) attribution.metadata = state.metadata;
-        if (state.utm_source !== undefined) attribution.utm_source = state.utm_source;
-        if (state.utm_medium !== undefined) attribution.utm_medium = state.utm_medium;
-        if (state.utm_campaign !== undefined) attribution.utm_campaign = state.utm_campaign;
-        if (state.utm_content !== undefined) attribution.utm_content = state.utm_content;
-        if (state.utm_term !== undefined) attribution.utm_term = state.utm_term;
-        if (state.subaffiliate1 !== undefined) attribution.subaffiliate1 = state.subaffiliate1;
-        if (state.subaffiliate2 !== undefined) attribution.subaffiliate2 = state.subaffiliate2;
-        if (state.subaffiliate3 !== undefined) attribution.subaffiliate3 = state.subaffiliate3;
-        if (state.subaffiliate4 !== undefined) attribution.subaffiliate4 = state.subaffiliate4;
-        if (state.subaffiliate5 !== undefined) attribution.subaffiliate5 = state.subaffiliate5;
+        if (state.utm_source && state.utm_source !== '') attribution.utm_source = state.utm_source;
+        if (state.utm_medium && state.utm_medium !== '') attribution.utm_medium = state.utm_medium;
+        if (state.utm_campaign && state.utm_campaign !== '') attribution.utm_campaign = state.utm_campaign;
+        if (state.utm_content && state.utm_content !== '') attribution.utm_content = state.utm_content;
+        if (state.utm_term && state.utm_term !== '') attribution.utm_term = state.utm_term;
+        if (state.subaffiliate1 && state.subaffiliate1 !== '') attribution.subaffiliate1 = state.subaffiliate1;
+        if (state.subaffiliate2 && state.subaffiliate2 !== '') attribution.subaffiliate2 = state.subaffiliate2;
+        if (state.subaffiliate3 && state.subaffiliate3 !== '') attribution.subaffiliate3 = state.subaffiliate3;
+        if (state.subaffiliate4 && state.subaffiliate4 !== '') attribution.subaffiliate4 = state.subaffiliate4;
+        if (state.subaffiliate5 && state.subaffiliate5 !== '') attribution.subaffiliate5 = state.subaffiliate5;
         
         // Include everflow_transaction_id at root level if it exists
         if (state.metadata.everflow_transaction_id) {
@@ -243,6 +244,7 @@ export const useAttributionStore = create<AttributionState & AttributionActions>
         
         // Metadata
         console.log('\n📋 Metadata:');
+        console.log('- SDK Version:', state.metadata.sdk_version || '(not set)');
         console.log('- Landing Page:', state.metadata.landing_page);
         console.log('- Referrer:', state.metadata.referrer || '(direct)');
         console.log('- Domain:', state.metadata.domain);
