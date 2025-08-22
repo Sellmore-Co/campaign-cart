@@ -2811,21 +2811,29 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       }
       
-      // Update ProspectCartEnhancer when email changes
-      if (fieldName === 'email' && this.prospectCartEnhancer) {
-        this.prospectCartEnhancer.updateEmail(target.value);
-      }
-      
-      // Save user data to cookies for persistence
-      if (fieldName === 'email' || fieldName === 'fname' || fieldName === 'lname' || fieldName === 'phone') {
-        const updates: any = {};
-        if (fieldName === 'email') updates.email = target.value;
-        if (fieldName === 'fname') updates.firstName = target.value;
-        if (fieldName === 'lname') updates.lastName = target.value;
-        if (fieldName === 'phone') updates.phone = target.value;
+      // Only update prospect cart and storage on blur/change events, not on every input
+      if (event.type === 'blur' || event.type === 'change') {
+        // Update ProspectCartEnhancer when email changes
+        if (fieldName === 'email' && this.prospectCartEnhancer) {
+          this.prospectCartEnhancer.updateEmail(target.value);
+        }
         
-        userDataStorage.updateUserData(updates);
-        this.logger.debug('Updated user data storage:', fieldName, target.value);
+        // Save user data to cookies for persistence
+        if (fieldName === 'email' || fieldName === 'fname' || fieldName === 'lname' || fieldName === 'phone') {
+          const updates: any = {};
+          if (fieldName === 'email') updates.email = target.value;
+          if (fieldName === 'fname') updates.firstName = target.value;
+          if (fieldName === 'lname') updates.lastName = target.value;
+          if (fieldName === 'phone') updates.phone = target.value;
+          
+          userDataStorage.updateUserData(updates);
+          this.logger.debug('Updated user data storage:', fieldName, target.value);
+        }
+        
+        // Check if we have enough data to create prospect cart
+        if (this.prospectCartEnhancer && ['email', 'fname', 'lname'].includes(fieldName)) {
+          this.prospectCartEnhancer.checkAndCreateCart();
+        }
       }
     }
     

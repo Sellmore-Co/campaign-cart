@@ -174,6 +174,10 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     });
   }
 
+  // Store timeouts at class level to coordinate between blur and updateEmail
+  private emailInputTimeout?: number;
+  private emailBlurTimeout?: number;
+
   private setupEmailEntryTrigger(): void {
     if (!this.emailField) {
       this.logger.warn('Cannot setup email entry trigger - email field not found');
@@ -182,40 +186,14 @@ export class ProspectCartEnhancer extends BaseEnhancer {
 
     this.logger.debug('Setting up email entry trigger on field:', this.emailField);
 
-    let emailTimeout: number;
-    let blurTimeout: number;
-
-    // Trigger when email is entered and appears valid
+    // Trigger when email is entered - check immediately for all required fields
     this.emailField.addEventListener('blur', () => {
       this.logger.debug('Email blur event triggered, value:', this.emailField!.value);
-      if (!this.hasTriggered && this.isValidEmail(this.emailField!.value)) {
-        // Wait 5 seconds after blur to allow autocomplete to fill other fields
-        clearTimeout(blurTimeout);
-        blurTimeout = window.setTimeout(() => {
-          this.logger.info('Valid email detected after delay, creating prospect cart');
-          this.createProspectCart();
-          this.hasTriggered = true;
-          
-          // Track begin_checkout event when user enters email
-          this.trackBeginCheckout();
-        }, 5000); // Wait 5 seconds to collect more data from autocomplete
-      }
+      // Check if we have enough data to create cart immediately
+      this.checkAndCreateCart();
     });
 
-    // Also trigger on input after longer delay
-    this.emailField.addEventListener('input', () => {
-      clearTimeout(emailTimeout);
-      clearTimeout(blurTimeout); // Cancel blur timeout if user is still typing
-      emailTimeout = window.setTimeout(() => {
-        if (!this.hasTriggered && this.isValidEmail(this.emailField!.value)) {
-          this.createProspectCart();
-          this.hasTriggered = true;
-          
-          // Track begin_checkout event when user enters email
-          this.trackBeginCheckout();
-        }
-      }, 8000); // Wait 8 seconds of inactivity before creating cart
-    });
+    // Don't need input handler anymore since we check on blur/change
   }
 
   private checkExistingProspectCart(): void {
@@ -481,24 +459,46 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       this.emailField.value = email;
     }
     
-    if (!this.hasTriggered && this.isValidEmail(email)) {
-      // Clear any existing timeout
-      if (this.updateEmailTimeout) {
-        clearTimeout(this.updateEmailTimeout);
-      }
+    // Don't set a timer, just check if we have enough data
+    this.checkAndCreateCart();
+  }
+  
+  /**
+   * Check if we have enough data to create prospect cart and create it immediately
+   */
+  public checkAndCreateCart(): void {
+    if (this.hasTriggered) {
+      return;
+    }
+    
+    // Get current form values
+    const email = (this.element.querySelector('[data-next-checkout-field="email"], [os-checkout-field="email"], input[type="email"]') as HTMLInputElement)?.value || '';
+    const firstName = (this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]') as HTMLInputElement)?.value || '';
+    const lastName = (this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]') as HTMLInputElement)?.value || '';
+    
+    // Create cart immediately if we have valid email + first name + last name
+    if (this.isValidEmail(email) && firstName.trim() !== '' && lastName.trim() !== '') {
+      // Clear any pending timeouts
+      clearTimeout(this.updateEmailTimeout);
+      clearTimeout(this.emailBlurTimeout);
+      clearTimeout(this.emailInputTimeout);
       
-      // Wait 5 seconds before creating prospect cart to allow autocomplete to fill other fields
+      this.logger.info('All required fields filled (email, fname, lname), creating prospect cart immediately');
+      this.createProspectCart();
+      this.hasTriggered = true;
+      
+      // Track begin_checkout event
+      this.trackBeginCheckout();
+    } else if (this.isValidEmail(email) && !this.updateEmailTimeout) {
+      // If we only have email, set a timeout to wait for more data
       this.updateEmailTimeout = window.setTimeout(() => {
+        this.logger.info('Creating prospect cart after timeout (only email available)');
         this.createProspectCart();
         this.hasTriggered = true;
-        
-        // Track begin_checkout event when email is updated
         this.trackBeginCheckout();
       }, 5000);
       
-      this.logger.debug('Email updated, waiting 5 seconds before creating prospect cart');
-    } else if (this.prospectCart) {
-      this.updateProspectCart();
+      this.logger.debug(`Waiting for more data. Has email: ${!!email}, fname: ${!!firstName}, lname: ${!!lastName}`);
     }
   }
   
