@@ -2929,8 +2929,32 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       }
     } else if (event.type === 'change') {
-      // On change events, don't clear errors - let validation handle it
-      // This prevents the issue where change event fires after blur and clears the error
+      // On change events (e.g., from Google Autocomplete), validate and clear errors if field is now valid
+      const field = this.getFieldByName(fieldName);
+      if (field && target.value && target.value.trim() !== '') {
+        // Field has value - validate it and clear error if valid
+        const validationResult = this.validator.validateField(fieldName, target.value);
+        
+        if (validationResult.isValid) {
+          // Field is valid, remove error classes and messages
+          field.classList.remove('has-error', 'next-error-field');
+          field.classList.add('no-error');
+          
+          const wrapper = field.closest('.form-group, .form-input');
+          if (wrapper) {
+            wrapper.classList.remove('addErrorIcon');
+            wrapper.classList.add('addTick');
+            const errorLabel = wrapper.querySelector('.next-error-label');
+            if (errorLabel) {
+              errorLabel.remove();
+            }
+          }
+          
+          // Also clear error from store
+          const checkoutStore = useCheckoutStore.getState();
+          checkoutStore.clearError(fieldName);
+        }
+      }
     }
   }
 
