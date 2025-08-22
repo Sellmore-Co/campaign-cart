@@ -21,11 +21,16 @@ export declare class UIService {
     updateFieldState(fieldName: string, state: 'valid' | 'invalid' | 'neutral'): void;
     handleCheckoutUpdate(state: any, displayErrors: (errors: Record<string, string>) => void): void;
     handleCartUpdate(cartState: CartState): void;
+    initializePaymentForms(): void;
     updatePaymentFormVisibility(paymentMethod: string): void;
     private expandPaymentForm;
     private collapsePaymentForm;
     private clearPaymentFormErrors;
     private initializeFloatingLabels;
+    private setupSpreedlyFloatingLabels;
+    handleSpreedlyFieldFocus(fieldName: 'number' | 'cvv'): void;
+    handleSpreedlyFieldBlur(fieldName: 'number' | 'cvv', hasValue: boolean): void;
+    handleSpreedlyFieldInput(fieldName: 'number' | 'cvv', hasValue: boolean): void;
     setupFloatingLabel(field: HTMLInputElement | HTMLSelectElement, label?: HTMLLabelElement): void;
     private setupLabelStyles;
     private setupFieldStyles;

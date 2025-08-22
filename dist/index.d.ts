@@ -9,5 +9,10 @@ export type * from './types/global';
 export { Logger } from './utils/logger';
 export { EventBus } from './utils/events';
 export { ApiClient } from './api/client';
-export declare const VERSION = "__VERSION__";
+declare global {
+    interface Window {
+        __NEXT_SDK_VERSION__?: string;
+    }
+}
+export declare const VERSION: string;
 //# sourceMappingURL=index.d.ts.map

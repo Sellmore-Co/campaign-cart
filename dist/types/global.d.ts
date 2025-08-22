@@ -154,6 +154,7 @@ export interface EventMap {
     };
     'address:location-fields-shown': {};
     'checkout:location-fields-shown': {};
+    'checkout:billing-location-fields-shown': {};
     'upsell:initialized': {
         packageId: number;
         element: HTMLElement;

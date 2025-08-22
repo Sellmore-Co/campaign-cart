@@ -578,7 +578,7 @@ export class UIService {
         const behavior = ccNumberContainer.getAttribute('data-label-behavior');
         if (behavior === 'placeholder') {
           // Initially float down (will be handled by Spreedly events)
-          this.floatLabelDown(label, ccNumberContainer);
+          this.floatLabelDown(label, ccNumberContainer as HTMLInputElement);
         }
         
         this.logger.debug('Set up Spreedly floating label for credit card number');
@@ -597,7 +597,7 @@ export class UIService {
         const behavior = cvvContainer.getAttribute('data-label-behavior');
         if (behavior === 'placeholder') {
           // Initially float down (will be handled by Spreedly events)
-          this.floatLabelDown(label, cvvContainer);
+          this.floatLabelDown(label, cvvContainer as HTMLInputElement);
         }
         
         this.logger.debug('Set up Spreedly floating label for CVV');
@@ -624,7 +624,7 @@ export class UIService {
       
       if (behavior === 'placeholder') {
         // Placeholder behavior: always float up on focus
-        this.floatLabelUp(label, field, 'focus');
+        this.floatLabelUp(label, field as HTMLInputElement, 'focus');
       }
       
       this.logger.debug(`Spreedly field focused: ${fieldName}`);
@@ -651,14 +651,14 @@ export class UIService {
       if (behavior === 'placeholder') {
         // Placeholder behavior: only keep floating if field has value
         if (!hasValue) {
-          this.floatLabelDown(label, field);
+          this.floatLabelDown(label, field as HTMLInputElement);
         }
       } else {
         // Default behavior
         if (hasValue) {
-          this.floatLabelUp(label, field);
+          this.floatLabelUp(label, field as HTMLInputElement);
         } else {
-          this.floatLabelDown(label, field);
+          this.floatLabelDown(label, field as HTMLInputElement);
         }
       }
       
@@ -687,16 +687,16 @@ export class UIService {
       if (behavior === 'placeholder') {
         // For placeholder behavior, keep floating if focused or has value
         if (isFocused || hasValue) {
-          this.floatLabelUp(label, field, isFocused ? 'focus' : 'value');
+          this.floatLabelUp(label, field as HTMLInputElement, isFocused ? 'focus' : 'value');
         } else {
-          this.floatLabelDown(label, field);
+          this.floatLabelDown(label, field as HTMLInputElement);
         }
       } else {
         // Default behavior
         if (hasValue) {
-          this.floatLabelUp(label, field);
+          this.floatLabelUp(label, field as HTMLInputElement);
         } else {
-          this.floatLabelDown(label, field);
+          this.floatLabelDown(label, field as HTMLInputElement);
         }
       }
       
@@ -791,7 +791,7 @@ export class UIService {
       
       if (behavior === 'placeholder') {
         // Placeholder behavior: always float up on focus
-        this.floatLabelUp(label, field, 'focus');
+        this.floatLabelUp(label, field as HTMLInputElement, 'focus');
       } else {
         // Default Shopify behavior: only float up if field has value
         if (this.hasValue(field)) {

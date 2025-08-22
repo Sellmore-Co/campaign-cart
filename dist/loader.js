@@ -12,22 +12,38 @@
   const isDebug = qs.get('debug') === 'true';
   
   // Configuration
-  const SDK_VERSION = '0.2.0'; // Update this with each release
   const DEV_HOST = 'http://localhost:3000';
   
   // Auto-detect the host from the loader's own URL
   const loaderScript = document.currentScript || document.querySelector('script[src*="loader.js"]');
   const loaderUrl = loaderScript?.src || '';
   
+  // Extract version from the loader URL if available (e.g., @v0.2.10)
+  let detectedVersion = 'unknown';
+  const versionMatch = loaderUrl.match(/@v([0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9]+)?)/);
+  if (versionMatch) {
+    detectedVersion = versionMatch[1];
+  } else if (loaderUrl.includes('localhost') || loaderUrl.includes('127.0.0.1')) {
+    // For local development, check for version in query params or use 'dev'
+    const urlParams = new URL(loaderUrl).searchParams;
+    detectedVersion = urlParams.get('version') || 'dev';
+  }
+  
   // Extract the base path from loader URL (everything before /loader.js)
   let PROD_HOST;
   if (loaderUrl.includes('jsdelivr.net')) {
     // We're loaded from jsDelivr - use the same path as the loader
     PROD_HOST = loaderUrl.substring(0, loaderUrl.lastIndexOf('/loader.js'));
+  } else if (loaderUrl.includes('localhost') || loaderUrl.includes('127.0.0.1') || loaderUrl.includes('file://')) {
+    // For local testing, use the local build
+    PROD_HOST = loaderUrl.substring(0, loaderUrl.lastIndexOf('/public/loader.js')) + '/dist';
   } else {
     // Fallback to versioned URL
-    PROD_HOST = `https://cdn.jsdelivr.net/gh/sellmore-co/campaign-cart@v${SDK_VERSION}/dist`;
+    PROD_HOST = `https://cdn.jsdelivr.net/gh/sellmore-co/campaign-cart@v${detectedVersion}/dist`;
   }
+  
+  // Store the detected version globally for SDK to use
+  window.__NEXT_SDK_VERSION__ = detectedVersion;
   
   const DEV_ENTRY_PATH = '/src/index.ts';
   const PROD_ENTRY_PATH = '/index.js';
@@ -107,18 +123,18 @@
             .then(m => m.useCampaignStore.getState())
         };
         
-        console.log('Next Commerce Campaign-Cart SDK v${SDK_VERSION} — DEV build loaded');
+        console.log('Next Commerce Campaign-Cart SDK v${detectedVersion} — DEV build loaded');
         console.log(\`Load time: \${loadTime.toFixed(2)}ms\`);
         console.log('Try nextDebug.cartStore() or nextDebug.orderStore()');
       } else {
-        console.log('Next Commerce Campaign-Cart SDK v${SDK_VERSION} — Production loaded');
+        console.log('Next Commerce Campaign-Cart SDK v${detectedVersion} — Production loaded');
       }
       
       // Emit ready event
       window.dispatchEvent(new CustomEvent('next:ready', {
         detail: {
           loadTime,
-          version: '${SDK_VERSION}',
+          version: '${detectedVersion}',
           mode: ${isDebug} ? 'development' : 'production'
         }
       }));
@@ -134,11 +150,11 @@
         const fallback = document.createElement('script');
         fallback.src = '${PROD_HOST}/index.umd.js';
         fallback.onload = function() {
-          console.log('Next Commerce Campaign-Cart SDK v${SDK_VERSION} — UMD fallback loaded');
+          console.log('Next Commerce Campaign-Cart SDK v${detectedVersion} — UMD fallback loaded');
           window.dispatchEvent(new CustomEvent('next:ready', {
             detail: {
               fallback: true,
-              version: '${SDK_VERSION}'
+              version: '${detectedVersion}'
             }
           }));
         };
@@ -157,11 +173,11 @@
     script.src = '${PROD_HOST}/index.umd.js';
     script.async = true;
     script.onload = function() {
-      console.log('Next Commerce Campaign-Cart SDK v${SDK_VERSION} — Legacy browser support');
+      console.log('Next Commerce Campaign-Cart SDK v${detectedVersion} — Legacy browser support');
       window.dispatchEvent(new CustomEvent('next:ready', {
         detail: {
           fallback: true,
-          version: '${SDK_VERSION}',
+          version: '${detectedVersion}',
           legacy: true
         }
       }));

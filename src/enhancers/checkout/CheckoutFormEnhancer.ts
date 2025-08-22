@@ -1608,7 +1608,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (checkoutStore.formData.address1 && checkoutStore.formData.address1.trim().length > 0) {
       this.showLocationFields();
     }
-    if (checkoutStore.billingData?.['billing-address1'] && checkoutStore.billingData['billing-address1'].trim().length > 0) {
+    if (checkoutStore.formData['billing-address1'] && checkoutStore.formData['billing-address1'].trim().length > 0) {
       this.showBillingLocationFields();
     }
     
@@ -2841,14 +2841,28 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const isEmpty = !target.value || (typeof target.value === 'string' && target.value.trim() === '');
       
       if (isEmpty) {
-        // Field is empty - remove both error and success classes
-        field.classList.remove('has-error', 'next-error-field', 'no-error');
+        // Field is empty - check if there's an error label present
+        // Check both in wrapper and form-group (error label can be in either)
+        const formGroup = field.closest('.form-group');
+        const errorLabel = wrapper?.querySelector('.next-error-label') || formGroup?.querySelector('.next-error-label');
         
-        if (wrapper) {
-          wrapper.classList.remove('addErrorIcon', 'addTick');
-          const errorLabel = wrapper.querySelector('.next-error-label');
-          if (errorLabel) {
-            errorLabel.remove();
+        if (errorLabel) {
+          // There's an error label present, so maintain the error state on the field
+          // Re-add error classes to the field to keep them consistent with the error label
+          field.classList.add('has-error', 'next-error-field');
+          field.classList.remove('no-error');
+          
+          // Also ensure wrapper has error icon class if there's an error
+          if (wrapper) {
+            wrapper.classList.add('addErrorIcon');
+            wrapper.classList.remove('addTick');
+          }
+        } else {
+          // No error label - remove both error and success classes
+          field.classList.remove('has-error', 'next-error-field', 'no-error');
+          
+          if (wrapper) {
+            wrapper.classList.remove('addErrorIcon', 'addTick');
           }
         }
         

@@ -58,6 +58,7 @@ export interface EventMap {
   'address:autocomplete-filled': { type: 'shipping' | 'billing'; components: Record<string, { long: string; short: string }> };
   'address:location-fields-shown': {};
   'checkout:location-fields-shown': {};
+  'checkout:billing-location-fields-shown': {};
   
   // Upsell Events
   'upsell:initialized': { packageId: number; element: HTMLElement };

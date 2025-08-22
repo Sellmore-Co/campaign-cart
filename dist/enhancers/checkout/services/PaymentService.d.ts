@@ -27,11 +27,13 @@ export declare class PaymentService {
     private phoneInputs;
     private paymentButtons;
     private isIntlTelInputAvailable;
+    private uiService;
     private paymentMethodChangeHandler?;
     private expressCheckoutHandlers;
     constructor(form: HTMLFormElement, logger: Logger, addClassCallback: (className: string) => void, removeClassCallback: (className: string) => void, emitCallback: (event: string, data: any) => void);
     initialize(spreedlyEnvironmentKey?: string, debug?: boolean): Promise<void>;
     private initializeCreditCardService;
+    private connectFloatingLabelCallbacks;
     private checkIntlTelInputAvailability;
     private scanPaymentButtons;
     private extractPaymentMethod;
@@ -55,6 +57,7 @@ export declare class PaymentService {
     private getUtilsScriptPath;
     isCreditCardReady(): boolean;
     getCreditCardService(): CreditCardService | undefined;
+    setUIService(uiService: any): void;
     handleConfigUpdate(configState: any): Promise<void>;
     update(): void;
     destroy(): void;

@@ -7,6 +7,8 @@ export declare class CartToggleEnhancer extends BaseEnhancer {
     private stateContainer?;
     private isUpsell;
     private clickHandler?;
+    private isInitialized;
+    private isAutoAdding;
     initialize(): Promise<void>;
     private findStateContainer;
     private resolvePackageIdentifier;
