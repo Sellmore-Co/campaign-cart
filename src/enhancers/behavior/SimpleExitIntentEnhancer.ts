@@ -9,7 +9,7 @@ export class ExitIntentEnhancer extends BaseEnhancer {
   private isEnabled = false;
   private triggerCount = 0;
   private lastTriggerTime = 0;
-  private maxTriggers = 3;
+  private maxTriggers = 1; // Default to 1 trigger
   private cooldownPeriod = 30000; // 30 seconds
   private imageUrl = '';
   private action: (() => void | Promise<void>) | null = null;
@@ -19,6 +19,8 @@ export class ExitIntentEnhancer extends BaseEnhancer {
   private scrollHandler: ((e: Event) => void) | null = null;
   private disableOnMobile = true; // Default to desktop-only like the reference code
   private mobileScrollTrigger = false; // Explicitly enable mobile scroll trigger
+  private sessionStorageKey = 'exit-intent-dismissed';
+  private useSessionStorage = true; // Enable session storage by default
 
   constructor() {
     super(document.body);
@@ -30,6 +32,20 @@ export class ExitIntentEnhancer extends BaseEnhancer {
       await new Promise<void>(resolve => {
         document.addEventListener('DOMContentLoaded', () => resolve());
       });
+    }
+    
+    // Load trigger count from session storage if available
+    if (this.useSessionStorage && typeof window !== 'undefined' && window.sessionStorage) {
+      try {
+        const storedData = sessionStorage.getItem(this.sessionStorageKey);
+        if (storedData) {
+          const data = JSON.parse(storedData);
+          this.triggerCount = data.triggerCount || 0;
+          this.lastTriggerTime = data.lastTriggerTime || 0;
+        }
+      } catch (error) {
+        this.logger.debug('Failed to load session storage data:', error);
+      }
     }
   }
 
@@ -48,11 +64,19 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     action?: () => void | Promise<void>;
     disableOnMobile?: boolean;
     mobileScrollTrigger?: boolean; // Enable scroll trigger on mobile
+    maxTriggers?: number; // Configure max triggers
+    useSessionStorage?: boolean; // Enable/disable session storage
+    sessionStorageKey?: string; // Custom session storage key
   }): void {
     this.imageUrl = options.image;
     this.action = options.action || null;
     this.disableOnMobile = options.disableOnMobile !== undefined ? options.disableOnMobile : true; // Default true
     this.mobileScrollTrigger = options.mobileScrollTrigger || false;
+    this.maxTriggers = options.maxTriggers !== undefined ? options.maxTriggers : 1; // Default to 1
+    this.useSessionStorage = options.useSessionStorage !== undefined ? options.useSessionStorage : true;
+    if (options.sessionStorageKey) {
+      this.sessionStorageKey = options.sessionStorageKey;
+    }
     
     // Check if we should enable based on device
     if (this.disableOnMobile && this.isMobileDevice()) {
@@ -69,6 +93,20 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     this.isEnabled = false;
     this.cleanupEventListeners();
     this.hidePopup();
+  }
+  
+  public reset(): void {
+    // Reset the trigger count and clear session storage
+    this.triggerCount = 0;
+    this.lastTriggerTime = 0;
+    
+    if (this.useSessionStorage && typeof window !== 'undefined' && window.sessionStorage) {
+      try {
+        sessionStorage.removeItem(this.sessionStorageKey);
+      } catch (error) {
+        this.logger.debug('Failed to clear session storage:', error);
+      }
+    }
   }
 
   private setupEventListeners(): void {
@@ -126,7 +164,26 @@ export class ExitIntentEnhancer extends BaseEnhancer {
   private triggerExitIntent(): void {
     this.triggerCount++;
     this.lastTriggerTime = Date.now();
+    
+    // Save to session storage
+    this.saveToSessionStorage();
+    
     this.showPopup();
+  }
+  
+  private saveToSessionStorage(): void {
+    if (this.useSessionStorage && typeof window !== 'undefined' && window.sessionStorage) {
+      try {
+        const data = {
+          triggerCount: this.triggerCount,
+          lastTriggerTime: this.lastTriggerTime,
+          timestamp: Date.now()
+        };
+        sessionStorage.setItem(this.sessionStorageKey, JSON.stringify(data));
+      } catch (error) {
+        this.logger.debug('Failed to save to session storage:', error);
+      }
+    }
   }
 
   private showPopup(): void {
@@ -191,6 +248,8 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     this.overlayElement.addEventListener('click', () => {
       this.hidePopup();
       this.emit('exit-intent:dismissed', { imageUrl: this.imageUrl });
+      // Mark as dismissed in session storage
+      this.saveToSessionStorage();
     });
 
     this.popupElement.addEventListener('click', async (e) => {
@@ -206,6 +265,8 @@ export class ExitIntentEnhancer extends BaseEnhancer {
         }
       }
       
+      // Mark as clicked in session storage
+      this.saveToSessionStorage();
       this.hidePopup();
     });
 
@@ -214,6 +275,8 @@ export class ExitIntentEnhancer extends BaseEnhancer {
       if (e.key === 'Escape') {
         this.hidePopup();
         this.emit('exit-intent:dismissed', { imageUrl: this.imageUrl });
+        // Mark as dismissed in session storage
+        this.saveToSessionStorage();
         document.removeEventListener('keydown', keyHandler);
       }
     };
