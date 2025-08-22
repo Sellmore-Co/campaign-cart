@@ -42,6 +42,16 @@ import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import type { CartState } from '@/types/global';
 
+// Global tracking of auto-added packages to prevent duplicates
+const autoAddedPackages = new Set<number>();
+
+// Reset tracker when navigating away (for SPAs)
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    autoAddedPackages.clear();
+  });
+}
+
 export class CartToggleEnhancer extends BaseEnhancer {
   // Core properties
   private packageId?: number;
@@ -57,12 +67,30 @@ export class CartToggleEnhancer extends BaseEnhancer {
   
   // Event handling
   private clickHandler?: (event: Event) => void;
+  
+  // Initialization guard
+  private isInitialized: boolean = false;
+  private isAutoAdding: boolean = false;
 
   public async initialize(): Promise<void> {
     this.validateElement();
     
+    // Prevent double initialization
+    if (this.isInitialized) {
+      this.logger.warn('CartToggleEnhancer already initialized, skipping');
+      return;
+    }
+    
+    // Mark element as being initialized to prevent race conditions
+    if (this.element.hasAttribute('data-toggle-initializing')) {
+      this.logger.warn('CartToggleEnhancer initialization already in progress, skipping');
+      return;
+    }
+    this.element.setAttribute('data-toggle-initializing', 'true');
+    
     // Require data-next-toggle attribute
     if (!this.hasAttribute('data-next-toggle')) {
+      this.element.removeAttribute('data-toggle-initializing');
       throw new Error('data-next-toggle attribute is required');
     }
     
@@ -91,6 +119,11 @@ export class CartToggleEnhancer extends BaseEnhancer {
     
     // 8. Check for auto-add on page load
     await this.checkAutoAdd();
+    
+    // Mark as fully initialized
+    this.isInitialized = true;
+    this.element.removeAttribute('data-toggle-initializing');
+    this.element.setAttribute('data-toggle-initialized', 'true');
     
     this.logger.debug('Toggle initialized:', {
       packageId: this.packageId,
@@ -198,8 +231,8 @@ export class CartToggleEnhancer extends BaseEnhancer {
     // Check various upsell indicators
     this.isUpsell = 
       this.getAttribute('data-next-is-upsell') === 'true' ||
-      this.stateContainer?.hasAttribute('data-next-upsell') === true ||
-      this.stateContainer?.hasAttribute('data-next-bump') === true ||
+      this.stateContainer?.hasAttribute('data-next-upsell') ||
+      this.stateContainer?.hasAttribute('data-next-bump') ||
       this.element.closest('[data-next-upsell-section]') !== null ||
       this.element.closest('[data-next-bump-section]') !== null;
   }
@@ -210,14 +243,33 @@ export class CartToggleEnhancer extends BaseEnhancer {
                       this.stateContainer?.getAttribute('data-next-selected') === 'true';
     
     if (isSelected && this.packageId) {
+      // Check global tracker to prevent duplicate auto-adds for same package
+      if (autoAddedPackages.has(this.packageId)) {
+        this.logger.debug('Package already auto-added by another element, skipping:', {
+          packageId: this.packageId
+        });
+        return;
+      }
+      
+      // Prevent concurrent auto-adds
+      if (this.isAutoAdding) {
+        this.logger.debug('Auto-add already in progress, skipping');
+        return;
+      }
+      
       const cartState = useCartStore.getState();
       const isInCart = this.isInCart(cartState);
       
       if (!isInCart) {
+        // Mark this package as being auto-added globally
+        autoAddedPackages.add(this.packageId);
+        
         this.logger.debug('Auto-adding item on page load:', {
           packageId: this.packageId,
           quantity: this.quantity
         });
+        
+        this.isAutoAdding = true;
         
         try {
           // Update quantity from sync if needed
@@ -228,6 +280,10 @@ export class CartToggleEnhancer extends BaseEnhancer {
           await this.addToCart();
         } catch (error) {
           this.logger.error('Failed to auto-add item:', error);
+          // Remove from global tracker on error
+          autoAddedPackages.delete(this.packageId);
+        } finally {
+          this.isAutoAdding = false;
         }
       }
     }
