@@ -16,6 +16,9 @@ export interface AttributionMetadata {
   conversion_timestamp?: number;
   sdk_version?: string;  // SDK version detected at runtime
   
+  // Generic click tracking
+  clickid?: string;
+  
   // Facebook tracking
   fb_fbp?: string;
   fb_fbc?: string;
@@ -241,6 +244,10 @@ export const useAttributionStore = create<AttributionState & AttributionActions>
         console.log('- fb_fbp:', state.metadata.fb_fbp || '(not set)');
         console.log('- fb_fbc:', state.metadata.fb_fbc || '(not set)');
         console.log('- fb_pixel_id:', state.metadata.fb_pixel_id || '(not set)');
+        
+        // Generic Click ID
+        console.log('\n🔗 Click Tracking:');
+        console.log('- Click ID (metadata):', state.metadata.clickid || '(not set)');
         
         // Metadata
         console.log('\n📋 Metadata:');

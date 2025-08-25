@@ -96,11 +96,11 @@ export class SDKInitializer {
     const debugMode = urlParams.get('debugger') === 'true';
     const forcePackageId = urlParams.get('forcePackageId');
     
-    // Load from meta tags first
-    configStore.loadFromMeta();
-    
-    // Load from window.nextConfig if available
+    // Load from window.nextConfig first (as defaults)
     configStore.loadFromWindow();
+    
+    // Load from meta tags second (will override window.nextConfig if metatags exist)
+    configStore.loadFromMeta();
     
     // Override debug mode from URL if present
     if (debugMode) {
@@ -114,7 +114,7 @@ export class SDKInitializer {
       (window as any)._nextForcePackageId = forcePackageId;
     }
     
-    this.logger.debug('Configuration loaded:', configStore);
+    this.logger.debug('Configuration loaded (metatags have priority):', configStore);
   }
 
   private static async loadCampaignData(): Promise<void> {
