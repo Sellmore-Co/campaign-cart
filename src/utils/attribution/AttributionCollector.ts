@@ -67,6 +67,12 @@ export class AttributionCollector {
       metadata.fbclid = fbclid;
     }
     
+    // Add generic clickid if exists (for various tracking platforms)
+    const clickid = this.getStoredValue('clickid');
+    if (clickid) {
+      metadata.clickid = clickid;
+    }
+    
     // Handle Everflow tracking
     this.handleEverflowClickId(metadata);
     
