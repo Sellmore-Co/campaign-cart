@@ -179,8 +179,13 @@ export class OrderManager {
         throw new Error('Cannot create express order with empty cart');
       }
       
+      // Get vouchers from cart store
+      const { useCartStore } = await import('@/stores/cartStore');
+      const cartStore = useCartStore.getState();
+      const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
+      
       // Build minimal order data for express checkout
-      const orderData = this.orderBuilder.buildExpressOrder(cartItems, paymentMethod);
+      const orderData = this.orderBuilder.buildExpressOrder(cartItems, paymentMethod, vouchers);
       
       this.logger.debug('Creating express order with minimal data:', orderData);
       this.logger.info('Express order data built');
@@ -221,8 +226,13 @@ export class OrderManager {
     });
     
     try {
+      // Get vouchers from cart store
+      const { useCartStore } = await import('@/stores/cartStore');
+      const cartStore = useCartStore.getState();
+      const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
+      
       // Build test order data
-      const testOrderData = this.orderBuilder.buildTestOrder(cartItems);
+      const testOrderData = this.orderBuilder.buildTestOrder(cartItems, vouchers);
       
       this.logger.debug('Creating test order with data:', testOrderData);
       console.log('🟢 [OrderManager] Test order data built');
