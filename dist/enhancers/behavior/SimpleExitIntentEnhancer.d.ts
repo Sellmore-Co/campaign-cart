@@ -6,6 +6,8 @@ export declare class ExitIntentEnhancer extends BaseEnhancer {
     private maxTriggers;
     private cooldownPeriod;
     private imageUrl;
+    private templateName;
+    private templateElement;
     private action;
     private popupElement;
     private overlayElement;
@@ -15,17 +17,22 @@ export declare class ExitIntentEnhancer extends BaseEnhancer {
     private mobileScrollTrigger;
     private sessionStorageKey;
     private useSessionStorage;
+    private overlayClosable;
+    private showCloseButton;
     constructor();
     initialize(): Promise<void>;
     update(data?: any): Promise<void>;
     setup(options: {
-        image: string;
+        image?: string;
+        template?: string;
         action?: () => void | Promise<void>;
         disableOnMobile?: boolean;
         mobileScrollTrigger?: boolean;
         maxTriggers?: number;
         useSessionStorage?: boolean;
         sessionStorageKey?: string;
+        overlayClosable?: boolean;
+        showCloseButton?: boolean;
     }): void;
     disable(): void;
     reset(): void;
@@ -35,7 +42,9 @@ export declare class ExitIntentEnhancer extends BaseEnhancer {
     private triggerExitIntent;
     private saveToSessionStorage;
     private showPopup;
-    private createPopupElements;
+    private createTemplatePopup;
+    private processTemplateActions;
+    private createImagePopup;
     hidePopup(): void;
     protected cleanupEventListeners(): void;
     destroy(): void;

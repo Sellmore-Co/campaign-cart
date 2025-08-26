@@ -74,9 +74,11 @@ export interface EventMap {
   'upsell:viewed': { packageId?: number; pagePath?: string; orderId?: string };
   
   // Exit Intent Events (simplified)
-  'exit-intent:shown': { imageUrl: string };
-  'exit-intent:clicked': { imageUrl: string };
-  'exit-intent:dismissed': { imageUrl: string };
+  'exit-intent:shown': { imageUrl?: string; template?: string };
+  'exit-intent:clicked': { imageUrl?: string; template?: string };
+  'exit-intent:dismissed': { imageUrl?: string; template?: string };
+  'exit-intent:closed': { imageUrl?: string; template?: string };
+  'exit-intent:action': { action: string; couponCode?: string };
   
   // FOMO Events
   'fomo:shown': { customer: string; product: string; image: string };

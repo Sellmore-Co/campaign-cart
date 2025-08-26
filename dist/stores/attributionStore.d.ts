@@ -8,6 +8,7 @@ export interface AttributionMetadata {
     timestamp: number;
     conversion_timestamp?: number;
     sdk_version?: string;
+    clickid?: string;
     fb_fbp?: string;
     fb_fbc?: string;
     fb_pixel_id?: string;
