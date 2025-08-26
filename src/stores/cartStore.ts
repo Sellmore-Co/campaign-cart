@@ -54,6 +54,7 @@ const initialState: CartState = {
     tax: { value: 0, formatted: '$0.00' },
     discounts: { value: 0, formatted: '$0.00' },
     total: { value: 0, formatted: '$0.00' },
+    totalExclShipping: { value: 0, formatted: '$0.00' },
     count: 0,
     isEmpty: true,
     savings: { value: 0, formatted: '$0.00' },
@@ -280,6 +281,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
         }
         
         const total = subtotal + shipping + tax - totalDiscounts;
+        const totalExclShipping = subtotal + tax - totalDiscounts; // Total without shipping
         
         // Calculate total savings (retail savings + discount coupons)
         const totalSavings = savings + totalDiscounts;
@@ -292,6 +294,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
           tax: { value: tax, formatted: formatCurrency(tax) },
           discounts: { value: totalDiscounts, formatted: formatCurrency(totalDiscounts) },
           total: { value: total, formatted: formatCurrency(total) },
+          totalExclShipping: { value: totalExclShipping, formatted: formatCurrency(totalExclShipping) },
           count: totalQuantity,
           isEmpty,
           savings: { value: savings, formatted: formatCurrency(savings) },

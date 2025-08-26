@@ -138,6 +138,7 @@ export interface CartTotals {
   tax: { value: number; formatted: string };
   discounts: { value: number; formatted: string };
   total: { value: number; formatted: string };
+  totalExclShipping: { value: number; formatted: string };
   count: number;
   isEmpty: boolean;
   savings: { value: number; formatted: string };

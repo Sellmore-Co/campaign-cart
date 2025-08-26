@@ -20,6 +20,7 @@ Display cart totals, quantities, and calculated values. Updates automatically wh
 ```html
 <span data-next-display="cart.subtotal">Cart subtotal (formatted)</span>
 <span data-next-display="cart.total">Cart total (formatted)</span>
+<span data-next-display="cart.totalExclShipping">Cart total excluding shipping (formatted)</span>
 <span data-next-display="cart.shipping">Shipping cost (formatted)</span>
 <span data-next-display="cart.discounts">Discount amount (formatted)</span>
 <span data-next-display="cart.savingsAmount">Total savings (formatted - exclude discounts)</span>
@@ -78,6 +79,11 @@ Display cart totals, quantities, and calculated values. Updates automatically wh
       <div class="line-item total">
         <span>Total:</span>
         <span data-next-display="cart.total">$0.00</span>
+      </div>
+      
+      <div class="line-item subtotal-excl-shipping">
+        <span>Total (excl. shipping):</span>
+        <span data-next-display="cart.totalExclShipping">$0.00</span>
       </div>
     </div>
     
@@ -315,6 +321,15 @@ Templates can be specified in multiple ways (in priority order):
 <div data-next-show="cart.total.raw > 0">
   <p>10% tip would be: $<span data-next-display="cart.total.raw * 0.1">0</span></p>
 </div>
+
+<!-- Access raw numeric values -->
+<span data-next-display="cart.subtotal.raw">Raw subtotal value</span>
+<span data-next-display="cart.total.raw">Raw total value</span>
+<span data-next-display="cart.totalExclShipping.raw">Raw total excluding shipping</span>
+<span data-next-display="cart.shipping.raw">Raw shipping cost</span>
+<span data-next-display="cart.discounts.raw">Raw discount amount</span>
+<span data-next-display="cart.savingsAmount.raw">Raw savings amount</span>
+<span data-next-display="cart.compareTotal.raw">Raw compare total</span>
 ```
 
 ## Best Practices
