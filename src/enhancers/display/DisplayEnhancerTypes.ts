@@ -224,6 +224,13 @@ export const PROPERTY_MAPPINGS: Record<string, PropertyMap> = {
     hasDiscount: '_calculated.hasDiscount',
     finalPrice: { path: '_calculated.finalPrice', format: 'currency' },
     finalPriceTotal: { path: '_calculated.finalPriceTotal', format: 'currency' },
+    
+    // Total savings including both retail savings and discounts
+    totalSavingsAmount: { path: '_calculated.totalSavingsAmount', format: 'currency' },
+    totalSavingsPercentage: { path: '_calculated.totalSavingsPercentage', format: 'percentage' },
+    totalSavingsWithDiscounts: { path: '_calculated.totalSavingsWithDiscounts', format: 'currency' },
+    totalSavingsPercentageWithDiscounts: { path: '_calculated.totalSavingsPercentageWithDiscounts', format: 'percentage' },
+    hasTotalSavings: '_calculated.hasTotalSavings',
   },
   
   // Selection properties (for package selectors)

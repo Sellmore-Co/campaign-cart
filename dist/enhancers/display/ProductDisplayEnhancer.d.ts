@@ -27,6 +27,11 @@ export declare class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     private calculateDiscountedPriceTotal;
     private calculateFinalPrice;
     private calculateFinalPriceTotal;
+    private calculateTotalSavingsAmount;
+    private calculateTotalSavingsAmountRaw;
+    private calculateTotalSavingsPercentage;
+    private calculateTotalSavingsPercentageRaw;
+    private calculateHasTotalSavings;
     private getPackageValue;
     private getCampaignProperty;
     getPackageProperty(property: string): any;
