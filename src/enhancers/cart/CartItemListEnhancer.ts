@@ -147,7 +147,9 @@ export class CartItemListEnhancer extends BaseEnhancer {
         <div class="cart-item-details">
           <h4 class="cart-item-name">{item.name}</h4>
           <div class="cart-item-pricing">
-            <div class="current-price">{item.price} each</div>
+            <div class="original-price {item.showOriginalPrice}" style="text-decoration: line-through; color: #999;">{item.price} each</div>
+            <div class="current-price">{item.finalPrice} each</div>
+            <div class="discount-badge {item.showDiscount}" style="color: #e74c3c; font-weight: bold;">-{item.discountAmount} coupon discount</div>
             <div class="compare-price {item.showCompare}" style="text-decoration: line-through; color: #999;">{item.comparePrice}</div>
             <div class="savings {item.showSavings}" style="color: #0d7519; font-weight: bold;">Save {item.savingsAmount} ({item.savingsPct})</div>
             <div class="frequency">{item.frequency}</div>
@@ -160,7 +162,8 @@ export class CartItemListEnhancer extends BaseEnhancer {
           <button class="quantity-btn" data-next-quantity="increase" data-package-id="{item.packageId}">+</button>
         </div>
         <div class="cart-item-total">
-          <div class="line-total">{item.lineTotal}</div>
+          <div class="line-total-original {item.showOriginalPrice}" style="text-decoration: line-through; color: #999; font-size: 0.9em;">{item.lineTotal}</div>
+          <div class="line-total">{item.finalLineTotal}</div>
           <div class="line-compare {item.showCompare}" style="text-decoration: line-through; color: #999; font-size: 0.9em;">{item.lineCompare}</div>
         </div>
         <button class="remove-btn" data-next-remove-item data-package-id="{item.packageId}" data-confirm="true" data-confirm-message="Remove this item from your cart?">Remove</button>
@@ -220,6 +223,46 @@ export class CartItemListEnhancer extends BaseEnhancer {
     const packageRetailTotal = parseFloat(packageData.price_retail_total || '0');
     const packageQty = packageData.qty || 1;
     
+    // Calculate item-specific discount if any coupons apply to this package
+    const cartState = useCartStore.getState();
+    let itemDiscount = 0;
+    let hasDiscount = false;
+    
+    if (cartState.appliedCoupons && cartState.appliedCoupons.length > 0) {
+      for (const coupon of cartState.appliedCoupons) {
+        if (coupon.definition.scope === 'package' && 
+            coupon.definition.packageIds?.includes(item.packageId)) {
+          // This coupon applies to this specific item
+          if (coupon.definition.type === 'percentage') {
+            itemDiscount += lineTotal * (coupon.definition.value / 100);
+            if (coupon.definition.maxDiscount) {
+              itemDiscount = Math.min(itemDiscount, coupon.definition.maxDiscount);
+            }
+          } else {
+            // For fixed discounts, distribute proportionally if multiple items
+            const eligibleTotal = cartState.items
+              .filter(cartItem => coupon.definition.packageIds?.includes(cartItem.packageId))
+              .reduce((sum, cartItem) => sum + (cartItem.price * cartItem.quantity), 0);
+            const proportion = lineTotal / eligibleTotal;
+            itemDiscount += coupon.definition.value * proportion;
+          }
+          hasDiscount = true;
+        } else if (coupon.definition.scope === 'order') {
+          // For order-level discounts, distribute proportionally
+          const proportion = lineTotal / cartState.subtotal;
+          if (coupon.definition.type === 'percentage') {
+            itemDiscount += lineTotal * (coupon.definition.value / 100);
+          } else {
+            itemDiscount += coupon.definition.value * proportion;
+          }
+          hasDiscount = true;
+        }
+      }
+    }
+    
+    const discountedLineTotal = lineTotal - itemDiscount;
+    const discountedPackagePrice = packageCurrentPrice - (itemDiscount / item.quantity);
+    
     // Use PriceCalculator for all price metrics
     const metrics = PriceCalculator.calculatePackageMetrics({
       price: packagePrice,
@@ -278,6 +321,14 @@ export class CartItemListEnhancer extends BaseEnhancer {
       savingsAmount: lineSavings > 0 ? lineSavings : 0,
       unitSavings: metrics.unitSavings, // Per-unit savings
       
+      // Discount-specific fields
+      discountAmount: itemDiscount,
+      discountedPrice: discountedPackagePrice,
+      discountedLineTotal: discountedLineTotal,
+      hasDiscount: hasDiscount,
+      finalPrice: hasDiscount ? discountedPackagePrice : packageCurrentPrice,
+      finalLineTotal: hasDiscount ? discountedLineTotal : lineTotal,
+      
       // Package-level pricing
       packagePrice: packagePrice,
       packagePriceTotal: metrics.totalPrice,
@@ -317,6 +368,11 @@ export class CartItemListEnhancer extends BaseEnhancer {
       'recurringTotal.raw': recurringTotal,
       'savingsPct.raw': Math.round(metrics.totalSavingsPercentage),
       'packageSavingsPct.raw': Math.round(metrics.totalSavingsPercentage),
+      'discountAmount.raw': itemDiscount,
+      'discountedPrice.raw': discountedPackagePrice,
+      'discountedLineTotal.raw': discountedLineTotal,
+      'finalPrice.raw': hasDiscount ? discountedPackagePrice : packageCurrentPrice,
+      'finalLineTotal.raw': hasDiscount ? discountedLineTotal : lineTotal,
       
       // Conditional display helpers
       showCompare: metrics.hasSavings ? 'show' : 'hide',
@@ -327,7 +383,9 @@ export class CartItemListEnhancer extends BaseEnhancer {
       showRecurring: hasRecurring ? 'show' : 'hide',
       showPackageSavings: metrics.totalSavings > 0 ? 'show' : 'hide',
       showPackageTotal: metrics.totalPrice > 0 ? 'show' : 'hide',
-      showRecurringTotal: hasRecurring && recurringTotal > 0 ? 'show' : 'hide'
+      showRecurringTotal: hasRecurring && recurringTotal > 0 ? 'show' : 'hide',
+      showDiscount: hasDiscount ? 'show' : 'hide',
+      showOriginalPrice: hasDiscount ? 'show' : 'hide'
     };
   }
 

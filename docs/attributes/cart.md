@@ -206,11 +206,19 @@ Templates can be specified in multiple ways (in priority order):
 - `{item.recurringPrice}` - Recurring price (if subscription)
 
 #### Savings Variables
-- `{item.savingsAmount}` - Total savings amount
+- `{item.savingsAmount}` - Total savings amount (retail discount only)
 - `{item.unitSavings}` - Per-unit savings
 - `{item.savingsPct}` - Savings percentage (e.g., "50%")
 - `{item.packageSavings}` - Package-level savings
 - `{item.packageSavingsPct}` - Package savings percentage
+
+#### Coupon Discount Variables (New)
+- `{item.discountAmount}` - Coupon discount amount for this item
+- `{item.discountedPrice}` - Package price after coupon discount
+- `{item.discountedLineTotal}` - Line total after coupon discount
+- `{item.hasDiscount}` - Whether item has a coupon discount applied
+- `{item.finalPrice}` - Final price to display (with discount if applicable)
+- `{item.finalLineTotal}` - Final line total (with discount if applicable)
 
 #### Package Details
 - `{item.packagePrice}` - Base package price
@@ -224,6 +232,8 @@ Templates can be specified in multiple ways (in priority order):
 - `{item.showSavings}` - "show" or "hide" if has savings
 - `{item.showRecurring}` - "show" or "hide" if recurring
 - `{item.showUnitPrice}` - "show" or "hide" for multi-unit packages
+- `{item.showDiscount}` - "show" or "hide" if has coupon discount
+- `{item.showOriginalPrice}` - "show" or "hide" if price is discounted
 - `{item.hasSavings}` - "true" or "false"
 - `{item.isRecurring}` - "true" or "false"
 
@@ -233,6 +243,11 @@ Templates can be specified in multiple ways (in priority order):
 - `{item.lineTotal.raw}` - Numeric line total
 - `{item.savingsAmount.raw}` - Numeric savings
 - `{item.savingsPct.raw}` - Numeric percentage
+- `{item.discountAmount.raw}` - Numeric discount amount
+- `{item.discountedPrice.raw}` - Numeric discounted price
+- `{item.discountedLineTotal.raw}` - Numeric discounted line total
+- `{item.finalPrice.raw}` - Numeric final price
+- `{item.finalLineTotal.raw}` - Numeric final line total
 
 ### Complete Example
 
@@ -250,8 +265,18 @@ Templates can be specified in multiple ways (in priority order):
       <div class="cart-item__frequency">{item.frequency}</div>
       
       <div class="cart-item__pricing">
-        <div class="price-current">{item.unitPrice}</div>
-        <div class="price-compare {item.showCompare}">{item.unitComparePrice}</div>
+        <!-- Show original price if discounted -->
+        <div class="price-original {item.showOriginalPrice}" style="text-decoration: line-through;">
+          {item.price}
+        </div>
+        <!-- Always show final price (discounted or regular) -->
+        <div class="price-current">{item.finalPrice}</div>
+        <!-- Show discount badge if applicable -->
+        <div class="discount-badge {item.showDiscount}" style="color: #e74c3c;">
+          -{item.discountAmount} off
+        </div>
+        <!-- Show retail comparison if has savings -->
+        <div class="price-compare {item.showCompare}">{item.comparePrice}</div>
         <div class="savings {item.showSavings}">
           Save {item.savingsAmount} ({item.savingsPct})
         </div>
@@ -265,7 +290,12 @@ Templates can be specified in multiple ways (in priority order):
     </div>
     
     <div class="cart-item__total">
-      <div class="line-total">{item.lineTotal}</div>
+      <!-- Show original line total if discounted -->
+      <div class="line-original {item.showOriginalPrice}" style="text-decoration: line-through;">
+        {item.lineTotal}
+      </div>
+      <!-- Always show final line total -->
+      <div class="line-total">{item.finalLineTotal}</div>
       <button data-next-remove-item data-package-id="{item.packageId}">Remove</button>
     </div>
   </div>
