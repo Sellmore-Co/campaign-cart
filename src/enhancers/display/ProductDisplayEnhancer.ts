@@ -316,6 +316,16 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
           return this.calculateFinalPrice();
         case 'finalPriceTotal':
           return this.calculateFinalPriceTotal();
+        case 'totalSavingsAmount':
+          return this.calculateTotalSavingsAmount();
+        case 'totalSavingsPercentage':
+          return this.calculateTotalSavingsPercentage();
+        case 'totalSavingsWithDiscounts':
+          return this.calculateTotalSavingsAmount(); // Alias
+        case 'totalSavingsPercentageWithDiscounts':
+          return this.calculateTotalSavingsPercentage(); // Alias
+        case 'hasTotalSavings':
+          return this.calculateHasTotalSavings();
       }
     }
 
@@ -387,6 +397,27 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
       
       case 'finalPriceTotal':
         return this.calculateFinalPriceTotal();
+      
+      // Total savings (retail + discounts)
+      case 'totalSavingsAmount':
+      case 'totalSavingsWithDiscounts':
+        return this.calculateTotalSavingsAmount();
+      
+      case 'totalSavingsPercentage':
+      case 'totalSavingsPercentageWithDiscounts':
+        return this.calculateTotalSavingsPercentage();
+      
+      case 'hasTotalSavings':
+        return this.calculateHasTotalSavings();
+      
+      // Raw values for total savings
+      case 'totalSavingsAmount.raw':
+      case 'totalSavingsWithDiscounts.raw':
+        return this.calculateTotalSavingsAmountRaw();
+      
+      case 'totalSavingsPercentage.raw':
+      case 'totalSavingsPercentageWithDiscounts.raw':
+        return this.calculateTotalSavingsPercentageRaw();
       
       default:
         return undefined;
@@ -468,6 +499,64 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     return this.calculateDiscountedPriceTotal();
   }
 
+  private calculateTotalSavingsAmount(): number {
+    if (!this.packageData) return 0;
+    
+    // Get retail savings (vs retail price)
+    const calculatorInput = {
+      price: parseFloat(this.packageData.price || '0'),
+      retailPrice: parseFloat(this.packageData.price_retail || '0'),
+      quantity: this.packageData.qty || 1,
+      priceTotal: parseFloat(this.packageData.price_total || '0'),
+      retailPriceTotal: parseFloat(this.packageData.price_retail_total || '0')
+    };
+    
+    const metrics = PriceCalculator.calculatePackageMetrics(calculatorInput);
+    const retailSavings = metrics.totalSavings || 0;
+    
+    // Get discount amount from cart coupons
+    const discountAmount = this.calculatePackageDiscountAmount();
+    
+    // Total savings = retail savings + discount amount
+    return retailSavings + discountAmount;
+  }
+  
+  private calculateTotalSavingsAmountRaw(): number {
+    // Return unformatted value
+    return this.calculateTotalSavingsAmount();
+  }
+
+  private calculateTotalSavingsPercentage(): number {
+    if (!this.packageData) return 0;
+    
+    // Get the original retail price (or regular price if no retail)
+    const retailTotal = parseFloat(this.packageData.price_retail_total || '0') || 
+                       parseFloat(this.packageData.price_total || '0');
+    
+    if (retailTotal <= 0) return 0;
+    
+    // Final price after all discounts
+    const finalPrice = this.calculateFinalPriceTotal();
+    
+    // Calculate percentage saved from original retail price
+    const totalSavings = retailTotal - finalPrice;
+    const percentage = (totalSavings / retailTotal) * 100;
+    
+    return Math.min(100, Math.max(0, percentage));
+  }
+  
+  private calculateTotalSavingsPercentageRaw(): number {
+    // Return unformatted value
+    return this.calculateTotalSavingsPercentage();
+  }
+
+  private calculateHasTotalSavings(): boolean {
+    if (!this.packageData) return false;
+    
+    // Check if there's any savings (retail or discount)
+    const totalSavings = this.calculateTotalSavingsAmount();
+    return totalSavings > 0;
+  }
 
   private getPackageValue(packageData: Package, property: string): any {
     // Check for mapped properties
