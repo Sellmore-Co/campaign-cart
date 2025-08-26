@@ -113,6 +113,9 @@ export class CheckoutOrderManager {
   public async createExpressOrder(paymentMethod: 'paypal' | 'apple_pay' | 'google_pay'): Promise<any> {
     const cartStore = useCartStore.getState();
     
+    // Extract coupon codes from cart's appliedCoupons
+    const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
+    
     // Minimal order data - only required fields per API
     const orderData: CreateOrder = {
       lines: cartStore.items.map(item => ({
@@ -124,6 +127,7 @@ export class CheckoutOrderManager {
         payment_method: paymentMethod
       },
       shipping_method: 1, // Default shipping method
+      vouchers: vouchers,
       success_url: this.redirectHandler.getSuccessUrl(),
       payment_failed_url: this.redirectHandler.getFailureUrl()
     };

@@ -88,7 +88,8 @@ export class OrderBuilder {
 
   public buildExpressOrder(
     cartItems: any[],
-    paymentMethod: 'paypal' | 'apple_pay' | 'google_pay'
+    paymentMethod: 'paypal' | 'apple_pay' | 'google_pay',
+    vouchers: string[] = []
   ): CreateOrder {
     // Get attribution from store
     const attributionStore = useAttributionStore.getState();
@@ -105,6 +106,7 @@ export class OrderBuilder {
         payment_method: paymentMethod
       },
       shipping_method: 1, // Default shipping method
+      vouchers: vouchers,
       attribution: attribution,
       success_url: getSuccessUrl(),
       payment_failed_url: getFailureUrl()
@@ -113,7 +115,7 @@ export class OrderBuilder {
     return orderData;
   }
 
-  public buildTestOrder(cartItems: any[]): any {
+  public buildTestOrder(cartItems: any[], vouchers: string[] = []): any {
     // Build test order data (similar to createOrder but with test card token)
     const testOrderData: any = {
       lines: cartItems.length > 0 
@@ -153,7 +155,7 @@ export class OrderBuilder {
         accepts_marketing: false
       },
       
-      vouchers: [],
+      vouchers: vouchers,
       attribution: this.getTestAttribution(),
       success_url: getSuccessUrl(),
       payment_failed_url: getFailureUrl()

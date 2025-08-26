@@ -20,6 +20,7 @@ Display cart totals, quantities, and calculated values. Updates automatically wh
 ```html
 <span data-next-display="cart.subtotal">Cart subtotal (formatted)</span>
 <span data-next-display="cart.total">Cart total (formatted)</span>
+<span data-next-display="cart.totalExclShipping">Cart total excluding shipping (formatted)</span>
 <span data-next-display="cart.shipping">Shipping cost (formatted)</span>
 <span data-next-display="cart.discounts">Discount amount (formatted)</span>
 <span data-next-display="cart.savingsAmount">Total savings (formatted - exclude discounts)</span>
@@ -78,6 +79,11 @@ Display cart totals, quantities, and calculated values. Updates automatically wh
       <div class="line-item total">
         <span>Total:</span>
         <span data-next-display="cart.total">$0.00</span>
+      </div>
+      
+      <div class="line-item subtotal-excl-shipping">
+        <span>Total (excl. shipping):</span>
+        <span data-next-display="cart.totalExclShipping">$0.00</span>
       </div>
     </div>
     
@@ -200,11 +206,19 @@ Templates can be specified in multiple ways (in priority order):
 - `{item.recurringPrice}` - Recurring price (if subscription)
 
 #### Savings Variables
-- `{item.savingsAmount}` - Total savings amount
+- `{item.savingsAmount}` - Total savings amount (retail discount only)
 - `{item.unitSavings}` - Per-unit savings
 - `{item.savingsPct}` - Savings percentage (e.g., "50%")
 - `{item.packageSavings}` - Package-level savings
 - `{item.packageSavingsPct}` - Package savings percentage
+
+#### Coupon Discount Variables (New)
+- `{item.discountAmount}` - Coupon discount amount for this item
+- `{item.discountedPrice}` - Package price after coupon discount
+- `{item.discountedLineTotal}` - Line total after coupon discount
+- `{item.hasDiscount}` - Whether item has a coupon discount applied
+- `{item.finalPrice}` - Final price to display (with discount if applicable)
+- `{item.finalLineTotal}` - Final line total (with discount if applicable)
 
 #### Package Details
 - `{item.packagePrice}` - Base package price
@@ -218,6 +232,8 @@ Templates can be specified in multiple ways (in priority order):
 - `{item.showSavings}` - "show" or "hide" if has savings
 - `{item.showRecurring}` - "show" or "hide" if recurring
 - `{item.showUnitPrice}` - "show" or "hide" for multi-unit packages
+- `{item.showDiscount}` - "show" or "hide" if has coupon discount
+- `{item.showOriginalPrice}` - "show" or "hide" if price is discounted
 - `{item.hasSavings}` - "true" or "false"
 - `{item.isRecurring}` - "true" or "false"
 
@@ -227,6 +243,11 @@ Templates can be specified in multiple ways (in priority order):
 - `{item.lineTotal.raw}` - Numeric line total
 - `{item.savingsAmount.raw}` - Numeric savings
 - `{item.savingsPct.raw}` - Numeric percentage
+- `{item.discountAmount.raw}` - Numeric discount amount
+- `{item.discountedPrice.raw}` - Numeric discounted price
+- `{item.discountedLineTotal.raw}` - Numeric discounted line total
+- `{item.finalPrice.raw}` - Numeric final price
+- `{item.finalLineTotal.raw}` - Numeric final line total
 
 ### Complete Example
 
@@ -244,8 +265,18 @@ Templates can be specified in multiple ways (in priority order):
       <div class="cart-item__frequency">{item.frequency}</div>
       
       <div class="cart-item__pricing">
-        <div class="price-current">{item.unitPrice}</div>
-        <div class="price-compare {item.showCompare}">{item.unitComparePrice}</div>
+        <!-- Show original price if discounted -->
+        <div class="price-original {item.showOriginalPrice}" style="text-decoration: line-through;">
+          {item.price}
+        </div>
+        <!-- Always show final price (discounted or regular) -->
+        <div class="price-current">{item.finalPrice}</div>
+        <!-- Show discount badge if applicable -->
+        <div class="discount-badge {item.showDiscount}" style="color: #e74c3c;">
+          -{item.discountAmount} off
+        </div>
+        <!-- Show retail comparison if has savings -->
+        <div class="price-compare {item.showCompare}">{item.comparePrice}</div>
         <div class="savings {item.showSavings}">
           Save {item.savingsAmount} ({item.savingsPct})
         </div>
@@ -259,7 +290,12 @@ Templates can be specified in multiple ways (in priority order):
     </div>
     
     <div class="cart-item__total">
-      <div class="line-total">{item.lineTotal}</div>
+      <!-- Show original line total if discounted -->
+      <div class="line-original {item.showOriginalPrice}" style="text-decoration: line-through;">
+        {item.lineTotal}
+      </div>
+      <!-- Always show final line total -->
+      <div class="line-total">{item.finalLineTotal}</div>
       <button data-next-remove-item data-package-id="{item.packageId}">Remove</button>
     </div>
   </div>
@@ -315,6 +351,15 @@ Templates can be specified in multiple ways (in priority order):
 <div data-next-show="cart.total.raw > 0">
   <p>10% tip would be: $<span data-next-display="cart.total.raw * 0.1">0</span></p>
 </div>
+
+<!-- Access raw numeric values -->
+<span data-next-display="cart.subtotal.raw">Raw subtotal value</span>
+<span data-next-display="cart.total.raw">Raw total value</span>
+<span data-next-display="cart.totalExclShipping.raw">Raw total excluding shipping</span>
+<span data-next-display="cart.shipping.raw">Raw shipping cost</span>
+<span data-next-display="cart.discounts.raw">Raw discount amount</span>
+<span data-next-display="cart.savingsAmount.raw">Raw savings amount</span>
+<span data-next-display="cart.compareTotal.raw">Raw compare total</span>
 ```
 
 ## Best Practices

@@ -2110,6 +2110,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const attributionStore = useAttributionStore.getState();
     const attribution = attributionStore.getAttributionForApi();
     
+    // Extract coupon codes from cart's appliedCoupons
+    const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
+    
     return {
       lines: cartStore.items.map((item: any) => ({
         package_id: item.packageId,
@@ -2129,7 +2132,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         phone_number: checkoutStore.formData.phone,
         accepts_marketing: checkoutStore.formData.accepts_marketing || false
       },
-      vouchers: checkoutStore.vouchers || [],
+      vouchers: vouchers,
       attribution: attribution,
       success_url: this.getSuccessUrl(),
       payment_failed_url: this.getFailureUrl()
@@ -2258,6 +2261,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const cartStore = useCartStore.getState();
     
     try {
+      // Extract coupon codes from cart's appliedCoupons
+      const vouchers = (cartStore.appliedCoupons || []).map((coupon: any) => coupon.code);
+      
       const testOrderData = {
         lines: cartStore.items.length > 0 
           ? cartStore.items.map((item: any) => ({
@@ -2296,7 +2302,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           accepts_marketing: false
         },
         
-        vouchers: [],
+        vouchers: vouchers,
         attribution: this.getTestAttribution(),
         success_url: this.getSuccessUrl(),
         payment_failed_url: this.getFailureUrl()

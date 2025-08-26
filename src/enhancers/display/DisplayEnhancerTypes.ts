@@ -133,6 +133,7 @@ export const PROPERTY_MAPPINGS: Record<string, PropertyMap> = {
     // Pre-formatted financial values from store
     subtotal: { path: 'totals.subtotal.formatted', preformatted: true },
     total: { path: 'totals.total.formatted', preformatted: true },
+    totalExclShipping: { path: 'totals.totalExclShipping.formatted', preformatted: true },
     shipping: { path: 'totals.shipping.formatted', preformatted: true },
     tax: { path: 'totals.tax.formatted', preformatted: true },
     discounts: { path: 'totals.discounts.formatted', preformatted: true },
@@ -145,6 +146,7 @@ export const PROPERTY_MAPPINGS: Record<string, PropertyMap> = {
     // Raw numeric values that need formatting
     'subtotal.raw': { path: 'totals.subtotal.value', format: 'currency' },
     'total.raw': { path: 'totals.total.value', format: 'currency' },
+    'totalExclShipping.raw': { path: 'totals.totalExclShipping.value', format: 'currency' },
     'shipping.raw': { path: 'totals.shipping.value', format: 'currency' },
     'tax.raw': { path: 'totals.tax.value', format: 'currency' },
     'discounts.raw': { path: 'totals.discounts.value', format: 'currency' },

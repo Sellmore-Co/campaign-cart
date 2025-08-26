@@ -12,6 +12,8 @@ export class ExitIntentEnhancer extends BaseEnhancer {
   private maxTriggers = 1; // Default to 1 trigger
   private cooldownPeriod = 30000; // 30 seconds
   private imageUrl = '';
+  private templateName = ''; // Name for template (e.g., 'exit-intent')
+  private templateElement: HTMLTemplateElement | null = null; // Reference to template element
   private action: (() => void | Promise<void>) | null = null;
   private popupElement: HTMLElement | null = null;
   private overlayElement: HTMLElement | null = null;
@@ -21,6 +23,8 @@ export class ExitIntentEnhancer extends BaseEnhancer {
   private mobileScrollTrigger = false; // Explicitly enable mobile scroll trigger
   private sessionStorageKey = 'exit-intent-dismissed';
   private useSessionStorage = true; // Enable session storage by default
+  private overlayClosable = true; // Allow overlay click to close
+  private showCloseButton = false; // Show close button on modal
 
   constructor() {
     super(document.body);
@@ -60,22 +64,44 @@ export class ExitIntentEnhancer extends BaseEnhancer {
   }
 
   public setup(options: { 
-    image: string; 
+    image?: string; // Now optional - use either image or template
+    template?: string; // Name of the template to use (e.g., 'exit-intent')
     action?: () => void | Promise<void>;
     disableOnMobile?: boolean;
     mobileScrollTrigger?: boolean; // Enable scroll trigger on mobile
     maxTriggers?: number; // Configure max triggers
     useSessionStorage?: boolean; // Enable/disable session storage
     sessionStorageKey?: string; // Custom session storage key
+    overlayClosable?: boolean; // Allow overlay click to close
+    showCloseButton?: boolean; // Show close button on modal
   }): void {
-    this.imageUrl = options.image;
+    // Validate that either image or template is provided
+    if (!options.image && !options.template) {
+      this.logger.error('Exit intent requires either an image URL or a template name');
+      return;
+    }
+    
+    this.imageUrl = options.image || '';
+    this.templateName = options.template || '';
     this.action = options.action || null;
     this.disableOnMobile = options.disableOnMobile !== undefined ? options.disableOnMobile : true; // Default true
     this.mobileScrollTrigger = options.mobileScrollTrigger || false;
     this.maxTriggers = options.maxTriggers !== undefined ? options.maxTriggers : 1; // Default to 1
     this.useSessionStorage = options.useSessionStorage !== undefined ? options.useSessionStorage : true;
+    this.overlayClosable = options.overlayClosable !== undefined ? options.overlayClosable : true;
+    this.showCloseButton = options.showCloseButton || false;
     if (options.sessionStorageKey) {
       this.sessionStorageKey = options.sessionStorageKey;
+    }
+    
+    // Find template element if template name is provided
+    if (this.templateName) {
+      // Look for <template data-template="name">
+      this.templateElement = document.querySelector(`template[data-template="${this.templateName}"]`) as HTMLTemplateElement;
+      if (!this.templateElement) {
+        this.logger.error(`Exit intent template not found: <template data-template="${this.templateName}">`);
+        return;
+      }
     }
     
     // Check if we should enable based on device
@@ -187,11 +213,177 @@ export class ExitIntentEnhancer extends BaseEnhancer {
   }
 
   private showPopup(): void {
-    this.createPopupElements();
-    this.emit('exit-intent:shown', { imageUrl: this.imageUrl });
+    if (this.templateElement) {
+      this.createTemplatePopup();
+    } else {
+      this.createImagePopup();
+    }
+    this.emit('exit-intent:shown', { 
+      imageUrl: this.imageUrl,
+      template: this.templateName
+    });
   }
 
-  private createPopupElements(): void {
+  private createTemplatePopup(): void {
+    // Create overlay
+    this.overlayElement = document.createElement('div');
+    this.overlayElement.className = 'exit-intent-overlay';
+    this.overlayElement.setAttribute('data-exit-intent', 'overlay');
+    this.overlayElement.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 999999;
+      cursor: ${this.overlayClosable ? 'pointer' : 'default'};
+    `;
+
+    // Create popup container
+    this.popupElement = document.createElement('div');
+    this.popupElement.className = 'exit-intent-popup exit-intent-template-popup';
+    this.popupElement.setAttribute('data-exit-intent', 'popup');
+    this.popupElement.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000000;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow: auto;
+    `;
+
+    // Clone and show the template content
+    if (this.templateElement) {
+      // Use the template's content property to get a document fragment
+      const templateContent = this.templateElement.content.cloneNode(true) as DocumentFragment;
+      
+      // Append the cloned content to the popup
+      this.popupElement.appendChild(templateContent);
+      
+      // Process any data-next attributes in the popup element
+      this.processTemplateActions(this.popupElement);
+    }
+
+    // Add close button if enabled
+    if (this.showCloseButton) {
+      const closeButton = document.createElement('button');
+      closeButton.className = 'exit-intent-close';
+      closeButton.setAttribute('data-exit-intent', 'close');
+      closeButton.innerHTML = '&times;';
+      closeButton.style.cssText = `
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: transparent;
+        border: none;
+        font-size: 30px;
+        cursor: pointer;
+        z-index: 1000001;
+        color: #666;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        line-height: 1;
+      `;
+      closeButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.hidePopup();
+        this.emit('exit-intent:closed', { template: this.templateName });
+      });
+      this.popupElement.appendChild(closeButton);
+    }
+
+    // Click handlers
+    if (this.overlayClosable) {
+      this.overlayElement.addEventListener('click', () => {
+        this.hidePopup();
+        this.emit('exit-intent:dismissed', { template: this.templateName });
+        this.saveToSessionStorage();
+      });
+    }
+
+    // Prevent popup clicks from closing when clicking inside
+    this.popupElement.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    // Escape key
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        this.hidePopup();
+        this.emit('exit-intent:dismissed', { template: this.templateName });
+        this.saveToSessionStorage();
+        document.removeEventListener('keydown', keyHandler);
+      }
+    };
+    document.addEventListener('keydown', keyHandler);
+
+    // Add to DOM with animation
+    document.body.appendChild(this.overlayElement);
+    document.body.appendChild(this.popupElement);
+
+    requestAnimationFrame(() => {
+      if (this.overlayElement) this.overlayElement.style.opacity = '1';
+      if (this.popupElement) {
+        this.popupElement.style.opacity = '0';
+        this.popupElement.style.transform = 'translate(-50%, -50%) scale(0.8)';
+        this.popupElement.style.transition = 'all 0.3s ease';
+        requestAnimationFrame(() => {
+          if (this.popupElement) {
+            this.popupElement.style.opacity = '1';
+            this.popupElement.style.transform = 'translate(-50%, -50%) scale(1)';
+          }
+        });
+      }
+    });
+  }
+
+  private processTemplateActions(templateElement: HTMLElement): void {
+    // Find elements with data-exit-intent-action attributes
+    const actionElements = templateElement.querySelectorAll('[data-exit-intent-action]');
+    
+    actionElements.forEach(element => {
+      const actionType = element.getAttribute('data-exit-intent-action');
+      
+      switch(actionType) {
+        case 'close':
+          element.addEventListener('click', () => {
+            this.hidePopup();
+            this.emit('exit-intent:action', { action: 'close' });
+          });
+          break;
+        
+        case 'apply-coupon':
+          const couponCode = element.getAttribute('data-coupon-code');
+          if (couponCode) {
+            element.addEventListener('click', async () => {
+              this.emit('exit-intent:action', { action: 'apply-coupon', couponCode });
+              // Apply the coupon through cart store
+              const { useCartStore } = await import('@/stores/cartStore');
+              const cartStore = useCartStore.getState();
+              await cartStore.applyCoupon(couponCode);
+              this.hidePopup();
+            });
+          }
+          break;
+        
+        case 'custom':
+          element.addEventListener('click', async () => {
+            if (this.action) {
+              await this.action();
+            }
+            this.emit('exit-intent:action', { action: 'custom' });
+            this.hidePopup();
+          });
+          break;
+      }
+    });
+  }
+
+  private createImagePopup(): void {
     // Create overlay
     this.overlayElement = document.createElement('div');
     this.overlayElement.className = 'exit-intent-overlay';
