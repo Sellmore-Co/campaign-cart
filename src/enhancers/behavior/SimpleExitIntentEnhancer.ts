@@ -291,7 +291,7 @@ export class ExitIntentEnhancer extends BaseEnhancer {
       closeButton.addEventListener('click', (e) => {
         e.stopPropagation();
         this.hidePopup();
-        this.emit('exit-intent:closed', { template: this.templateName });
+        this.emit('exit-intent:closed', { imageUrl: this.imageUrl, template: this.templateName });
       });
       this.popupElement.appendChild(closeButton);
     }
@@ -300,7 +300,7 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     if (this.overlayClosable) {
       this.overlayElement.addEventListener('click', () => {
         this.hidePopup();
-        this.emit('exit-intent:dismissed', { template: this.templateName });
+        this.emit('exit-intent:dismissed', { imageUrl: this.imageUrl, template: this.templateName });
         this.saveToSessionStorage();
       });
     }
@@ -314,7 +314,7 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     const keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         this.hidePopup();
-        this.emit('exit-intent:dismissed', { template: this.templateName });
+        this.emit('exit-intent:dismissed', { imageUrl: this.imageUrl, template: this.templateName });
         this.saveToSessionStorage();
         document.removeEventListener('keydown', keyHandler);
       }

@@ -334,6 +334,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
               tax: { value: 0, formatted: '$0.00' },
               discounts: { value: 0, formatted: '$0.00' },
               total: { value: 0, formatted: '$0.00' },
+              totalExclShipping: { value: 0, formatted: '$0.00' },
               count: 0,
               isEmpty: true,
               savings: { value: 0, formatted: '$0.00' },

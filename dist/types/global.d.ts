@@ -196,13 +196,24 @@ export interface EventMap {
         orderId?: string;
     };
     'exit-intent:shown': {
-        imageUrl: string;
+        imageUrl?: string;
+        template?: string;
     };
     'exit-intent:clicked': {
-        imageUrl: string;
+        imageUrl?: string;
+        template?: string;
     };
     'exit-intent:dismissed': {
-        imageUrl: string;
+        imageUrl?: string;
+        template?: string;
+    };
+    'exit-intent:closed': {
+        imageUrl?: string;
+        template?: string;
+    };
+    'exit-intent:action': {
+        action: string;
+        couponCode?: string;
     };
     'fomo:shown': {
         customer: string;
@@ -272,6 +283,10 @@ export interface CartTotals {
         formatted: string;
     };
     total: {
+        value: number;
+        formatted: string;
+    };
+    totalExclShipping: {
         value: number;
         formatted: string;
     };
