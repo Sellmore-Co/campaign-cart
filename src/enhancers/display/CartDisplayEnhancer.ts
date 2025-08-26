@@ -12,6 +12,14 @@ import type { CartState } from '@/types/global';
 
 export class CartDisplayEnhancer extends BaseDisplayEnhancer {
   private cartState?: CartState;
+  private includeDiscounts: boolean = false;
+
+  override async initialize(): Promise<void> {
+    // Check for include discounts attribute early
+    this.includeDiscounts = this.element.hasAttribute('data-include-discounts');
+    
+    await super.initialize();
+  }
 
   protected setupStoreSubscriptions(): void {
     // Subscribe to cart store updates
@@ -33,6 +41,29 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
 
   protected getPropertyValue(): any {
     if (!this.cartState || !this.property) return undefined;
+
+    // Special handling for subtotal with discounts
+    if (this.includeDiscounts && this.property === 'subtotal') {
+      // Calculate subtotal minus discounts
+      const subtotalValue = this.cartState.totals?.subtotal?.value || 0;
+      const discountsValue = this.cartState.totals?.discounts?.value || 0;
+      const discountedSubtotal = subtotalValue - discountsValue;
+      
+      // Return formatted value to match expected format
+      const formatted = new Intl.NumberFormat('en-US', { 
+        style: 'currency', 
+        currency: 'USD' 
+      }).format(discountedSubtotal);
+      
+      return { _preformatted: true, value: formatted };
+    }
+    
+    // Special handling for raw subtotal with discounts
+    if (this.includeDiscounts && this.property === 'subtotal.raw') {
+      const subtotalValue = this.cartState.totals?.subtotal?.value || 0;
+      const discountsValue = this.cartState.totals?.discounts?.value || 0;
+      return subtotalValue - discountsValue;
+    }
 
     // Get property configuration - single source of truth
     const config = getPropertyConfig('cart', this.property);

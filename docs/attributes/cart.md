@@ -19,6 +19,7 @@ Display cart totals, quantities, and calculated values. Updates automatically wh
 
 ```html
 <span data-next-display="cart.subtotal">Cart subtotal (formatted)</span>
+<span data-next-display="cart.subtotal" data-include-discounts>Cart subtotal with discounts applied (formatted)</span>
 <span data-next-display="cart.total">Cart total (formatted)</span>
 <span data-next-display="cart.totalExclShipping">Cart total excluding shipping (formatted)</span>
 <span data-next-display="cart.shipping">Shipping cost (formatted)</span>
@@ -28,6 +29,22 @@ Display cart totals, quantities, and calculated values. Updates automatically wh
 <span data-next-display="cart.totalSavingsAmount">Total savings (formatted - include discounts)</span>
 <span data-next-display="cart.totalSavingsPercentage">Total savings percentage (formatted - include discounts)</span>
 <span data-next-display="cart.compareTotal">Compare-at total (formatted)</span>
+```
+
+### Including Discounts in Subtotal
+
+Use the `data-include-discounts` attribute to display the subtotal with applied discount codes:
+
+```html
+<!-- Regular subtotal (without discounts) -->
+<span data-next-display="cart.subtotal">$100.00</span>
+
+<!-- Subtotal with discounts applied -->
+<span data-next-display="cart.subtotal" data-include-discounts>$90.00</span>
+
+<!-- Raw values for calculations -->
+<span data-next-display="cart.subtotal.raw">100</span>
+<span data-next-display="cart.subtotal.raw" data-include-discounts>90</span>
 ```
 
 ## Cart Conditionals

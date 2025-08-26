@@ -684,6 +684,13 @@ const cartStoreInstance = create<CartState & CartActions>()(
           sessionStorageManager.remove(name);
         },
       },
+      onRehydrateStorage: () => (state) => {
+        // Recalculate totals after rehydration to ensure discounts are properly calculated
+        if (state) {
+          logger.debug('Cart store rehydrated, recalculating totals...');
+          state.calculateTotals();
+        }
+      },
       partialize: (state) => ({
         items: state.items,
         appliedCoupons: state.appliedCoupons,
