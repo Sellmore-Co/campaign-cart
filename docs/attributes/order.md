@@ -503,6 +503,14 @@ Templates can be specified in multiple ways (in priority order):
 - `{item.lineTotalExclTax}` - Line total excluding tax
 - `{item.lineTax}` - Total tax for line
 
+#### Original Pricing Before Discounts (formatted)
+- `{item.priceExclDiscounts}` - Original unit price before discounts (including tax)
+- `{item.priceExclTaxExclDiscounts}` - Original unit price before discounts and tax
+- `{item.lineTotalExclDiscounts}` - Original line total before discounts (including tax)
+- `{item.lineTotalExclTaxExclDiscounts}` - Original line total before discounts and tax
+- `{item.unitDiscount}` - Discount amount per unit
+- `{item.lineDiscount}` - Total discount amount for the line
+
 #### Status Flags
 - `{item.isUpsell}` - "true" or "false" if item is an upsell
 - `{item.upsellBadge}` - "UPSELL" text or empty
@@ -510,6 +518,7 @@ Templates can be specified in multiple ways (in priority order):
 - `{item.hasDescription}` - "true" or "false"
 - `{item.hasVariant}` - "true" or "false"
 - `{item.hasTax}` - "true" or "false"
+- `{item.hasDiscount}` - "true" or "false" if item has a discount
 
 #### Conditional Display Classes
 - `{item.showUpsell}` - "show" or "hide" for upsell badge
@@ -517,6 +526,7 @@ Templates can be specified in multiple ways (in priority order):
 - `{item.showDescription}` - "show" or "hide" if has description
 - `{item.showVariant}` - "show" or "hide" if has variant
 - `{item.showTax}` - "show" or "hide" if has tax
+- `{item.showDiscount}` - "show" or "hide" if item has a discount
 
 ### Complete Example
 
@@ -543,9 +553,16 @@ Templates can be specified in multiple ways (in priority order):
     </div>
     
     <div class="order-item__pricing">
-      <div class="unit-price">{item.price} each</div>
+      <!-- Shopify-like pricing with strike-through for discounts -->
+      <div class="unit-price">
+        <span class="original-price {item.showDiscount}" style="text-decoration: line-through; color: #999;">
+          {item.priceExclTaxExclDiscounts}
+        </span>
+        <span class="sale-price">{item.priceExclTax} each</span>
+      </div>
       <div class="line-total">{item.lineTotal}</div>
       <div class="tax-info {item.showTax}">Tax: {item.lineTax}</div>
+      <div class="discount-info {item.showDiscount}">You saved: {item.lineDiscount}</div>
     </div>
   </div>
 </template>

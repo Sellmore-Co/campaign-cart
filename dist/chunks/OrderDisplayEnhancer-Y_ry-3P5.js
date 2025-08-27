@@ -1,5 +1,5 @@
-import { B as BaseDisplayEnhancer, a as getPropertyMapping, P as PropertyResolver, D as DisplayFormatter } from "./DisplayEnhancerCore-BHAbb5y5.js";
-import { u as useOrderStore, A as AttributeParser } from "./index-Bwy-ipcG.js";
+import { B as BaseDisplayEnhancer, a as getPropertyMapping, P as PropertyResolver, D as DisplayFormatter } from "./DisplayEnhancerCore-BVegnqR8.js";
+import { u as useOrderStore, A as AttributeParser } from "./index-CUA39B_m.js";
 import { e as configStore } from "./utils-65_XgUQi.js";
 import { ApiClient } from "./api-DVuuWxu1.js";
 class OrderDisplayEnhancer extends BaseDisplayEnhancer {
