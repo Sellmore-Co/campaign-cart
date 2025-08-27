@@ -391,6 +391,20 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
 
   private getCalculatedProperty(order: Order, property: string): any {
     switch (property) {
+      // Subtotal (line items only, excluding shipping and tax)
+      case 'subtotal':
+      case 'subtotalExclShipping':
+        // Calculate subtotal from line items only (excludes shipping)
+        if (order.lines && order.lines.length > 0) {
+          return order.lines.reduce((sum: number, line: OrderLine) => {
+            return sum + parseFloat(line.price_excl_tax || '0');
+          }, 0);
+        }
+        // Fallback: subtract shipping from total_excl_tax
+        const totalExclTax = parseFloat(order.total_excl_tax || '0');
+        const shippingExclTax = parseFloat(order.shipping_excl_tax || '0');
+        return totalExclTax - shippingExclTax;
+      
       // Savings calculations
       case 'savings':
       case 'savingsAmount':

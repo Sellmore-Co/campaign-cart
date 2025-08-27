@@ -33,10 +33,11 @@ Display order confirmation data. Requires order ID in URL (?ref_id=ORDER_ID) or 
 
 ```html
 <!-- Main totals -->
-<span data-next-display="order.total_incl_tax">Total including tax (snake_case)</span>
-<span data-next-display="order.total">Total including tax (alias)</span>
-<span data-next-display="order.total_excl_tax">Subtotal excluding tax (snake_case)</span>
-<span data-next-display="order.subtotal">Subtotal excluding tax (alias)</span>
+<span data-next-display="order.total_incl_tax">Grand total including tax and shipping</span>
+<span data-next-display="order.total">Grand total (alias for total_incl_tax)</span>
+<span data-next-display="order.subtotal">Line items only (excludes shipping and tax)</span>
+<span data-next-display="order.subtotalExclShipping">Line items only (alias for subtotal)</span>
+<span data-next-display="order.total_excl_tax">Total excl tax but INCLUDES shipping</span>
 
 <!-- Tax & Shipping -->
 <span data-next-display="order.total_tax">Tax amount (snake_case)</span>
@@ -256,6 +257,42 @@ When using order status URL on `<a>` tags, the href is automatically set:
 ```html
 <!-- This link's href will be automatically set to the order status URL -->
 <a data-next-display="order.statusUrl">View Order Status</a>
+```
+
+## Important: Order Total Breakdown
+
+### Understanding Order Totals
+
+When displaying order totals, it's important to understand what each attribute includes:
+
+- **`order.subtotal`** - Line items only (excludes shipping and tax) 
+  - Example: $53.99 (just the products)
+  
+- **`order.total_excl_tax`** - Total excluding tax but INCLUDING shipping
+  - Example: $63.98 (products $53.99 + shipping $9.99)
+  
+- **`order.total`** or **`order.total_incl_tax`** - Grand total (includes everything)
+  - Example: $69.10 (products + shipping + all taxes)
+
+### Shopify-like Order Summary Example
+
+```html
+<!-- Line items subtotal -->
+<div>Subtotal: <span data-next-display="order.subtotal">$0.00</span></div>
+
+<!-- Shipping -->
+<div>Shipping: <span data-next-display="order.shipping">$0.00</span></div>
+
+<!-- Tax -->
+<div>Tax: <span data-next-display="order.tax">$0.00</span></div>
+
+<!-- Discounts (if any) -->
+<div data-next-show="order.hasDiscounts">
+  Discount: -<span data-next-display="order.discounts">$0.00</span>
+</div>
+
+<!-- Grand total -->
+<div>Total: <span data-next-display="order.total">$0.00</span></div>
 ```
 
 ## Complete Order Confirmation Example

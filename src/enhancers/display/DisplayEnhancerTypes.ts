@@ -323,7 +323,9 @@ export const PROPERTY_MAPPINGS: Record<string, PropertyMap> = {
     testBadge: { path: 'order.is_test', format: 'text' }, // Will need custom formatting
     
     // Financial properties (check if these come pre-formatted from API)
-    subtotal: { path: 'order.total_excl_tax', format: 'currency' },
+    subtotal: { path: '_calculated.subtotal', format: 'currency' }, // Line items only, excludes shipping and tax
+    subtotalExclShipping: { path: '_calculated.subtotalExclShipping', format: 'currency' }, // Alias for subtotal
+    total_excl_tax: { path: 'order.total_excl_tax', format: 'currency' }, // Total excluding tax but INCLUDING shipping
     tax: { path: 'order.total_tax', format: 'currency' },
     shipping: { path: 'order.shipping_incl_tax', format: 'currency' },
     shippingExclTax: { path: 'order.shipping_excl_tax', format: 'currency' },

@@ -1,5 +1,5 @@
-import { B as BaseDisplayEnhancer, g as getPropertyConfig, P as PropertyResolver } from "./DisplayEnhancerCore-BVegnqR8.js";
-import { A as AttributeParser } from "./index-CUA39B_m.js";
+import { B as BaseDisplayEnhancer, g as getPropertyConfig, P as PropertyResolver } from "./DisplayEnhancerCore-D0dR6zBi.js";
+import { A as AttributeParser } from "./index-o5aeN2n2.js";
 import { u as useCartStore, P as PackageContextResolver } from "./utils-65_XgUQi.js";
 class CartDisplayEnhancer extends BaseDisplayEnhancer {
   constructor() {

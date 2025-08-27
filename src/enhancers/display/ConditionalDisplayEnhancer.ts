@@ -1163,7 +1163,14 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
         return parseFloat(order.total_incl_tax || '0');
       
       case 'subtotal':
-        return parseFloat(order.total_excl_tax || '0');
+        // Calculate subtotal from line items only (excludes shipping)
+        if (order.lines && order.lines.length > 0) {
+          return order.lines.reduce((sum: number, line: any) => {
+            return sum + parseFloat(line.price_excl_tax || '0');
+          }, 0);
+        }
+        // Fallback: subtract shipping from total_excl_tax
+        return parseFloat(order.total_excl_tax || '0') - parseFloat(order.shipping_excl_tax || '0');
       
       case 'tax':
         return parseFloat(order.total_tax || '0');
