@@ -1,8 +1,8 @@
 import { B as BaseEnhancer } from "./BaseEnhancer-B9ZNHQFE.js";
-import { u as useOrderStore } from "./index-Bwy-ipcG.js";
+import { u as useOrderStore } from "./index-o5aeN2n2.js";
 import { e as configStore, T as TemplateRenderer } from "./utils-65_XgUQi.js";
 import { ApiClient } from "./api-DVuuWxu1.js";
-import { D as DisplayFormatter } from "./DisplayEnhancerCore-BHAbb5y5.js";
+import { D as DisplayFormatter } from "./DisplayEnhancerCore-D0dR6zBi.js";
 class OrderItemListEnhancer extends BaseEnhancer {
   async initialize() {
     this.validateElement();
@@ -156,10 +156,17 @@ class OrderItemListEnhancer extends BaseEnhancer {
     const lineTotal = parseFloat(line.price_incl_tax || "0");
     const lineTotalExclTax = parseFloat(line.price_excl_tax || "0");
     const quantity = line.quantity || 1;
+    const lineTotalExclDiscounts = parseFloat(line.price_incl_tax_excl_discounts || line.price_incl_tax || "0");
+    const lineTotalExclTaxExclDiscounts = parseFloat(line.price_excl_tax_excl_discounts || line.price_excl_tax || "0");
     const unitPrice = quantity > 0 ? lineTotal / quantity : lineTotal;
     const unitPriceExclTax = quantity > 0 ? lineTotalExclTax / quantity : lineTotalExclTax;
+    const unitPriceExclDiscounts = quantity > 0 ? lineTotalExclDiscounts / quantity : lineTotalExclDiscounts;
+    const unitPriceExclTaxExclDiscounts = quantity > 0 ? lineTotalExclTaxExclDiscounts / quantity : lineTotalExclTaxExclDiscounts;
     const unitTax = unitPrice - unitPriceExclTax;
     const lineTax = lineTotal - lineTotalExclTax;
+    const unitDiscount = unitPriceExclDiscounts - unitPrice;
+    const lineDiscount = lineTotalExclDiscounts - lineTotal;
+    const hasDiscount = unitDiscount > 0.01;
     const upsellBadge = line.is_upsell ? "UPSELL" : "";
     return {
       // Basic item data
@@ -168,13 +175,21 @@ class OrderItemListEnhancer extends BaseEnhancer {
       name: line.product_title || "Unknown Product",
       sku: line.product_sku || "",
       quantity: String(quantity),
-      // Pricing - will be formatted by TemplateRenderer
+      // Current pricing - will be formatted by TemplateRenderer
       price: unitPrice,
       priceExclTax: unitPriceExclTax,
       unitTax,
       lineTotal,
       lineTotalExclTax,
       lineTax,
+      // Original pricing before discounts
+      priceExclDiscounts: unitPriceExclDiscounts,
+      priceExclTaxExclDiscounts: unitPriceExclTaxExclDiscounts,
+      lineTotalExclDiscounts,
+      lineTotalExclTaxExclDiscounts,
+      // Discount amounts
+      unitDiscount,
+      lineDiscount,
       // Product data
       image: line.image || "",
       description: line.product_description || "",
@@ -186,12 +201,14 @@ class OrderItemListEnhancer extends BaseEnhancer {
       hasDescription: line.product_description ? "true" : "false",
       hasVariant: line.variant_title ? "true" : "false",
       hasTax: unitTax > 0 ? "true" : "false",
+      hasDiscount: hasDiscount ? "true" : "false",
       // Conditional display helpers
       showUpsell: line.is_upsell ? "show" : "hide",
       showImage: line.image ? "show" : "hide",
       showDescription: line.product_description ? "show" : "hide",
       showVariant: line.variant_title ? "show" : "hide",
-      showTax: unitTax > 0 ? "show" : "hide"
+      showTax: unitTax > 0 ? "show" : "hide",
+      showDiscount: hasDiscount ? "show" : "hide"
     };
   }
   getItemCount() {

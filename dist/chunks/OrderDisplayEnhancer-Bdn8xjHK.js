@@ -1,5 +1,5 @@
-import { B as BaseDisplayEnhancer, a as getPropertyMapping, P as PropertyResolver, D as DisplayFormatter } from "./DisplayEnhancerCore-BHAbb5y5.js";
-import { u as useOrderStore, A as AttributeParser } from "./index-Bwy-ipcG.js";
+import { B as BaseDisplayEnhancer, a as getPropertyMapping, P as PropertyResolver, D as DisplayFormatter } from "./DisplayEnhancerCore-D0dR6zBi.js";
+import { u as useOrderStore, A as AttributeParser } from "./index-o5aeN2n2.js";
 import { e as configStore } from "./utils-65_XgUQi.js";
 import { ApiClient } from "./api-DVuuWxu1.js";
 class OrderDisplayEnhancer extends BaseDisplayEnhancer {
@@ -327,6 +327,17 @@ class OrderDisplayEnhancer extends BaseDisplayEnhancer {
   }
   getCalculatedProperty(order, property) {
     switch (property) {
+      // Subtotal (line items only, excluding shipping and tax)
+      case "subtotal":
+      case "subtotalExclShipping":
+        if (order.lines && order.lines.length > 0) {
+          return order.lines.reduce((sum, line) => {
+            return sum + parseFloat(line.price_excl_tax || "0");
+          }, 0);
+        }
+        const totalExclTax = parseFloat(order.total_excl_tax || "0");
+        const shippingExclTax = parseFloat(order.shipping_excl_tax || "0");
+        return totalExclTax - shippingExclTax;
       // Savings calculations
       case "savings":
       case "savingsAmount":

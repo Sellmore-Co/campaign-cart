@@ -1,6 +1,6 @@
 import { B as BaseEnhancer } from "./BaseEnhancer-B9ZNHQFE.js";
-import { A as AttributeParser, u as useOrderStore } from "./index-Bwy-ipcG.js";
-import { g as getPropertyConfig, P as PropertyResolver } from "./DisplayEnhancerCore-BHAbb5y5.js";
+import { A as AttributeParser, u as useOrderStore } from "./index-o5aeN2n2.js";
+import { g as getPropertyConfig, P as PropertyResolver } from "./DisplayEnhancerCore-D0dR6zBi.js";
 import { P as PackageContextResolver, u as useCartStore, a as useCampaignStore, h as PriceCalculator } from "./utils-65_XgUQi.js";
 class ConditionalDisplayEnhancer extends BaseEnhancer {
   constructor() {
@@ -895,7 +895,12 @@ class ConditionalDisplayEnhancer extends BaseEnhancer {
       case "total":
         return parseFloat(order.total_incl_tax || "0");
       case "subtotal":
-        return parseFloat(order.total_excl_tax || "0");
+        if (order.lines && order.lines.length > 0) {
+          return order.lines.reduce((sum, line) => {
+            return sum + parseFloat(line.price_excl_tax || "0");
+          }, 0);
+        }
+        return parseFloat(order.total_excl_tax || "0") - parseFloat(order.shipping_excl_tax || "0");
       case "tax":
         return parseFloat(order.total_tax || "0");
       case "shipping":
