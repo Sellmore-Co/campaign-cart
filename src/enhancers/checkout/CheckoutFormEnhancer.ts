@@ -114,6 +114,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // Animation state management
   private billingAnimationInProgress = false;
   private billingAnimationDebounceTimer?: NodeJS.Timeout;
+  private billingAnimationTimeouts: Set<NodeJS.Timeout> = new Set();
   
   // Track if analytics events have been fired
   private hasTrackedShippingInfo = false;
@@ -550,6 +551,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const billingToggle = this.form.querySelector('input[name="use_shipping_address"]') as HTMLInputElement;
     const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR) as HTMLElement;
     
+    this.logger.info('[Billing] Setting initial state', {
+      toggleFound: !!billingToggle,
+      sectionFound: !!billingSection,
+      toggleChecked: billingToggle?.checked,
+      currentHeight: billingSection?.style.height,
+      currentOverflow: billingSection?.style.overflow,
+      currentClasses: billingSection?.className
+    });
+    
     if (billingToggle && billingSection) {
       // Clear any existing inline styles first
       billingSection.style.removeProperty('height');
@@ -562,19 +572,32 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         billingSection.style.overflow = 'hidden';
         billingSection.classList.add('billing-form-collapsed');
         billingSection.classList.remove('billing-form-expanded');
+        this.logger.info('[Billing] Initial state: COLLAPSED (checkbox checked)');
       } else {
         // Set expanded state immediately without animation
         billingSection.style.height = 'auto';
         billingSection.style.overflow = 'visible';
         billingSection.classList.add('billing-form-expanded');
         billingSection.classList.remove('billing-form-collapsed');
+        this.logger.info('[Billing] Initial state: EXPANDED (checkbox unchecked)');
       }
+    } else {
+      this.logger.warn('[Billing] Could not set initial state - missing elements');
     }
   }
 
   private expandBillingForm(billingSection: HTMLElement): void {
+    // Clear any existing animation timeouts
+    this.billingAnimationTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.billingAnimationTimeouts.clear();
+    
     // Mark animation as in progress
     this.billingAnimationInProgress = true;
+    
+    this.logger.debug('[Billing] Starting expand animation', {
+      startHeight: billingSection.offsetHeight,
+      startOverflow: billingSection.style.overflow
+    });
     
     // Use requestAnimationFrame for smoother animation
     requestAnimationFrame(() => {
@@ -582,6 +605,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       billingSection.style.transition = 'none';
       billingSection.style.height = 'auto';
       const fullHeight = billingSection.scrollHeight;
+      
+      this.logger.debug('[Billing] Measured full height:', fullHeight);
       
       // Set back to 0 for animation
       billingSection.style.height = '0px';
@@ -594,6 +619,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       billingSection.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
       billingSection.style.height = `${fullHeight}px`;
       
+      this.logger.debug('[Billing] Expand animation started', {
+        fromHeight: '0px',
+        toHeight: fullHeight
+      });
+      
       // Clean up after animation
       const handleTransitionEnd = () => {
         // Set to auto and remove transition
@@ -602,19 +632,29 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         billingSection.style.overflow = 'visible';
         billingSection.removeEventListener('transitionend', handleTransitionEnd);
         this.billingAnimationInProgress = false;
+        
+        this.logger.info('[Billing] Expand complete', {
+          finalHeight: billingSection.style.height,
+          finalOverflow: billingSection.style.overflow,
+          finalTransition: billingSection.style.transition
+        });
       };
       
       billingSection.addEventListener('transitionend', handleTransitionEnd);
       
       // Fallback cleanup
-      setTimeout(() => {
-        if (this.billingAnimationInProgress) {
+      const fallbackTimeout = setTimeout(() => {
+        if (this.billingAnimationInProgress && billingSection.classList.contains('billing-form-expanded')) {
+          this.logger.warn('[Billing] Expand fallback triggered - forcing completion');
           billingSection.style.transition = 'none';
           billingSection.style.height = 'auto';
           billingSection.style.overflow = 'visible';
           this.billingAnimationInProgress = false;
         }
+        this.billingAnimationTimeouts.delete(fallbackTimeout);
       }, 350);
+      
+      this.billingAnimationTimeouts.add(fallbackTimeout);
       
       billingSection.classList.add('billing-form-expanded');
       billingSection.classList.remove('billing-form-collapsed');
@@ -622,8 +662,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private collapseBillingForm(billingSection: HTMLElement): void {
+    // Clear any existing animation timeouts
+    this.billingAnimationTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.billingAnimationTimeouts.clear();
+    
     // Mark animation as in progress
     this.billingAnimationInProgress = true;
+    
+    this.logger.debug('[Billing] Starting collapse animation', {
+      startHeight: billingSection.offsetHeight,
+      scrollHeight: billingSection.scrollHeight
+    });
     
     // Use requestAnimationFrame for smoother animation
     requestAnimationFrame(() => {
@@ -641,6 +690,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       billingSection.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
       billingSection.style.height = '0px';
       
+      this.logger.debug('[Billing] Collapse animation started', {
+        fromHeight: currentHeight,
+        toHeight: '0px'
+      });
+      
       // Clean up after animation
       const handleTransitionEnd = () => {
         // Keep it collapsed but remove transition
@@ -649,19 +703,29 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         billingSection.style.overflow = 'hidden';
         billingSection.removeEventListener('transitionend', handleTransitionEnd);
         this.billingAnimationInProgress = false;
+        
+        this.logger.info('[Billing] Collapse complete', {
+          finalHeight: billingSection.style.height,
+          finalOverflow: billingSection.style.overflow,
+          finalTransition: billingSection.style.transition
+        });
       };
       
       billingSection.addEventListener('transitionend', handleTransitionEnd);
       
       // Fallback cleanup
-      setTimeout(() => {
-        if (this.billingAnimationInProgress) {
+      const fallbackTimeout = setTimeout(() => {
+        if (this.billingAnimationInProgress && billingSection.classList.contains('billing-form-collapsed')) {
+          this.logger.warn('[Billing] Collapse fallback triggered - forcing completion');
           billingSection.style.transition = 'none';
           billingSection.style.height = '0px';
           billingSection.style.overflow = 'hidden';
           this.billingAnimationInProgress = false;
         }
+        this.billingAnimationTimeouts.delete(fallbackTimeout);
       }, 350);
+      
+      this.billingAnimationTimeouts.add(fallbackTimeout);
       
       billingSection.classList.add('billing-form-collapsed');
       billingSection.classList.remove('billing-form-expanded');
@@ -3195,11 +3259,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private handleBillingAddressToggle(event: Event): void {
     const target = event.target as HTMLInputElement;
     
+    this.logger.info('[Billing] Toggle clicked', {
+      checked: target.checked,
+      animationInProgress: this.billingAnimationInProgress
+    });
+    
     // Prevent rapid clicks during animation
     if (this.billingAnimationInProgress) {
       event.preventDefault();
       // Revert checkbox state
       target.checked = !target.checked;
+      this.logger.warn('[Billing] Click blocked - animation in progress');
       return;
     }
     
@@ -3214,16 +3284,26 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR);
       
       if (!billingSection || !(billingSection instanceof HTMLElement)) {
-        this.logger.warn('Billing section not found');
+        this.logger.error('[Billing] CRITICAL: Billing section not found!');
         return;
       }
+      
+      this.logger.info('[Billing] Processing toggle', {
+        targetChecked: target.checked,
+        currentHeight: billingSection.style.height,
+        currentOverflow: billingSection.style.overflow,
+        currentTransition: billingSection.style.transition,
+        classes: billingSection.className
+      });
       
       // Update store state
       checkoutStore.setSameAsShipping(target.checked);
       
       if (target.checked) {
+        this.logger.info('[Billing] Collapsing form...');
         this.collapseBillingForm(billingSection);
       } else {
+        this.logger.info('[Billing] Expanding form...');
         this.expandBillingForm(billingSection);
         
         // Populate billing fields after expansion
@@ -3235,6 +3315,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           if (shippingCountry && billingCountryField instanceof HTMLSelectElement) {
             billingCountryField.value = shippingCountry;
             billingCountryField.dispatchEvent(new Event('change', { bubbles: true }));
+            this.logger.debug('[Billing] Set country to:', shippingCountry);
           }
           
           // Clear the billing address in the store (except country)
@@ -3703,6 +3784,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     if (this.billingAnimationDebounceTimer) {
       clearTimeout(this.billingAnimationDebounceTimer);
     }
+    
+    // Clear all animation timeouts
+    this.billingAnimationTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.billingAnimationTimeouts.clear();
     
     if (this.validator) {
       this.validator.destroy();

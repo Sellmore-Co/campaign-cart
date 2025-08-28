@@ -1,5 +1,5 @@
 import { B as BaseEnhancer } from "./BaseEnhancer-DGhWiEnS.js";
-import { A as AttributeParser } from "./index-DMgM1lCA.js";
+import { A as AttributeParser } from "./index-BNWKjHid.js";
 import { L as Logger, D as DisplayValueValidator } from "./utils-CZw3O5q7.js";
 const PROPERTY_MAPPINGS = {
   // Cart properties

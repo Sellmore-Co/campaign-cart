@@ -2362,6 +2362,7 @@ class CheckoutFormEnhancer extends BaseEnhancer {
     this.locationFieldsShown = false;
     this.billingLocationFieldsShown = false;
     this.billingAnimationInProgress = false;
+    this.billingAnimationTimeouts = /* @__PURE__ */ new Set();
     this.hasTrackedShippingInfo = false;
     this.loadingOverlay = new LoadingOverlay();
   }
@@ -2651,6 +2652,14 @@ class CheckoutFormEnhancer extends BaseEnhancer {
   setInitialBillingFormState() {
     const billingToggle = this.form.querySelector('input[name="use_shipping_address"]');
     const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR);
+    this.logger.info("[Billing] Setting initial state", {
+      toggleFound: !!billingToggle,
+      sectionFound: !!billingSection,
+      toggleChecked: billingToggle?.checked,
+      currentHeight: billingSection?.style.height,
+      currentOverflow: billingSection?.style.overflow,
+      currentClasses: billingSection?.className
+    });
     if (billingToggle && billingSection) {
       billingSection.style.removeProperty("height");
       billingSection.style.removeProperty("overflow");
@@ -2660,68 +2669,109 @@ class CheckoutFormEnhancer extends BaseEnhancer {
         billingSection.style.overflow = "hidden";
         billingSection.classList.add("billing-form-collapsed");
         billingSection.classList.remove("billing-form-expanded");
+        this.logger.info("[Billing] Initial state: COLLAPSED (checkbox checked)");
       } else {
         billingSection.style.height = "auto";
         billingSection.style.overflow = "visible";
         billingSection.classList.add("billing-form-expanded");
         billingSection.classList.remove("billing-form-collapsed");
+        this.logger.info("[Billing] Initial state: EXPANDED (checkbox unchecked)");
       }
+    } else {
+      this.logger.warn("[Billing] Could not set initial state - missing elements");
     }
   }
   expandBillingForm(billingSection) {
+    this.billingAnimationTimeouts.forEach((timeout) => clearTimeout(timeout));
+    this.billingAnimationTimeouts.clear();
     this.billingAnimationInProgress = true;
+    this.logger.debug("[Billing] Starting expand animation", {
+      startHeight: billingSection.offsetHeight,
+      startOverflow: billingSection.style.overflow
+    });
     requestAnimationFrame(() => {
       billingSection.style.transition = "none";
       billingSection.style.height = "auto";
       const fullHeight = billingSection.scrollHeight;
+      this.logger.debug("[Billing] Measured full height:", fullHeight);
       billingSection.style.height = "0px";
       billingSection.style.overflow = "hidden";
       billingSection.style.transition = "height 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
       billingSection.style.height = `${fullHeight}px`;
+      this.logger.debug("[Billing] Expand animation started", {
+        fromHeight: "0px",
+        toHeight: fullHeight
+      });
       const handleTransitionEnd = () => {
         billingSection.style.transition = "none";
         billingSection.style.height = "auto";
         billingSection.style.overflow = "visible";
         billingSection.removeEventListener("transitionend", handleTransitionEnd);
         this.billingAnimationInProgress = false;
+        this.logger.info("[Billing] Expand complete", {
+          finalHeight: billingSection.style.height,
+          finalOverflow: billingSection.style.overflow,
+          finalTransition: billingSection.style.transition
+        });
       };
       billingSection.addEventListener("transitionend", handleTransitionEnd);
-      setTimeout(() => {
-        if (this.billingAnimationInProgress) {
+      const fallbackTimeout = setTimeout(() => {
+        if (this.billingAnimationInProgress && billingSection.classList.contains("billing-form-expanded")) {
+          this.logger.warn("[Billing] Expand fallback triggered - forcing completion");
           billingSection.style.transition = "none";
           billingSection.style.height = "auto";
           billingSection.style.overflow = "visible";
           this.billingAnimationInProgress = false;
         }
+        this.billingAnimationTimeouts.delete(fallbackTimeout);
       }, 350);
+      this.billingAnimationTimeouts.add(fallbackTimeout);
       billingSection.classList.add("billing-form-expanded");
       billingSection.classList.remove("billing-form-collapsed");
     });
   }
   collapseBillingForm(billingSection) {
+    this.billingAnimationTimeouts.forEach((timeout) => clearTimeout(timeout));
+    this.billingAnimationTimeouts.clear();
     this.billingAnimationInProgress = true;
+    this.logger.debug("[Billing] Starting collapse animation", {
+      startHeight: billingSection.offsetHeight,
+      scrollHeight: billingSection.scrollHeight
+    });
     requestAnimationFrame(() => {
       const currentHeight = billingSection.scrollHeight;
       billingSection.style.height = `${currentHeight}px`;
       billingSection.style.overflow = "hidden";
       billingSection.style.transition = "height 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
       billingSection.style.height = "0px";
+      this.logger.debug("[Billing] Collapse animation started", {
+        fromHeight: currentHeight,
+        toHeight: "0px"
+      });
       const handleTransitionEnd = () => {
         billingSection.style.transition = "none";
         billingSection.style.height = "0px";
         billingSection.style.overflow = "hidden";
         billingSection.removeEventListener("transitionend", handleTransitionEnd);
         this.billingAnimationInProgress = false;
+        this.logger.info("[Billing] Collapse complete", {
+          finalHeight: billingSection.style.height,
+          finalOverflow: billingSection.style.overflow,
+          finalTransition: billingSection.style.transition
+        });
       };
       billingSection.addEventListener("transitionend", handleTransitionEnd);
-      setTimeout(() => {
-        if (this.billingAnimationInProgress) {
+      const fallbackTimeout = setTimeout(() => {
+        if (this.billingAnimationInProgress && billingSection.classList.contains("billing-form-collapsed")) {
+          this.logger.warn("[Billing] Collapse fallback triggered - forcing completion");
           billingSection.style.transition = "none";
           billingSection.style.height = "0px";
           billingSection.style.overflow = "hidden";
           this.billingAnimationInProgress = false;
         }
+        this.billingAnimationTimeouts.delete(fallbackTimeout);
       }, 350);
+      this.billingAnimationTimeouts.add(fallbackTimeout);
       billingSection.classList.add("billing-form-collapsed");
       billingSection.classList.remove("billing-form-expanded");
     });
@@ -4580,9 +4630,14 @@ class CheckoutFormEnhancer extends BaseEnhancer {
   }
   handleBillingAddressToggle(event) {
     const target = event.target;
+    this.logger.info("[Billing] Toggle clicked", {
+      checked: target.checked,
+      animationInProgress: this.billingAnimationInProgress
+    });
     if (this.billingAnimationInProgress) {
       event.preventDefault();
       target.checked = !target.checked;
+      this.logger.warn("[Billing] Click blocked - animation in progress");
       return;
     }
     if (this.billingAnimationDebounceTimer) {
@@ -4592,13 +4647,22 @@ class CheckoutFormEnhancer extends BaseEnhancer {
       const checkoutStore = useCheckoutStore.getState();
       const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR);
       if (!billingSection || !(billingSection instanceof HTMLElement)) {
-        this.logger.warn("Billing section not found");
+        this.logger.error("[Billing] CRITICAL: Billing section not found!");
         return;
       }
+      this.logger.info("[Billing] Processing toggle", {
+        targetChecked: target.checked,
+        currentHeight: billingSection.style.height,
+        currentOverflow: billingSection.style.overflow,
+        currentTransition: billingSection.style.transition,
+        classes: billingSection.className
+      });
       checkoutStore.setSameAsShipping(target.checked);
       if (target.checked) {
+        this.logger.info("[Billing] Collapsing form...");
         this.collapseBillingForm(billingSection);
       } else {
+        this.logger.info("[Billing] Expanding form...");
         this.expandBillingForm(billingSection);
         setTimeout(() => {
           const shippingCountry = checkoutStore.formData.country;
@@ -4606,6 +4670,7 @@ class CheckoutFormEnhancer extends BaseEnhancer {
           if (shippingCountry && billingCountryField instanceof HTMLSelectElement) {
             billingCountryField.value = shippingCountry;
             billingCountryField.dispatchEvent(new Event("change", { bubbles: true }));
+            this.logger.debug("[Billing] Set country to:", shippingCountry);
           }
           checkoutStore.setBillingAddress({
             first_name: "",
@@ -4955,6 +5020,8 @@ class CheckoutFormEnhancer extends BaseEnhancer {
     if (this.billingAnimationDebounceTimer) {
       clearTimeout(this.billingAnimationDebounceTimer);
     }
+    this.billingAnimationTimeouts.forEach((timeout) => clearTimeout(timeout));
+    this.billingAnimationTimeouts.clear();
     if (this.validator) {
       this.validator.destroy();
     }
