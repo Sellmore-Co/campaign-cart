@@ -111,6 +111,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private boundHandleTestDataFilled?: EventListener;
   private boundHandleKonamiActivation?: EventListener;
   
+  // Animation state management
+  private billingAnimationInProgress = false;
+  private billingAnimationDebounceTimer?: NodeJS.Timeout;
+  
   // Track if analytics events have been fired
   private hasTrackedShippingInfo = false;
 
@@ -556,6 +560,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private expandBillingForm(billingSection: HTMLElement): void {
+    // Mark animation as in progress
+    this.billingAnimationInProgress = true;
+    
     // Use requestAnimationFrame for smoother animation
     requestAnimationFrame(() => {
       // First, measure the full height
@@ -579,9 +586,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         billingSection.style.height = 'auto';
         billingSection.style.overflow = 'visible';
         billingSection.removeEventListener('transitionend', handleTransitionEnd);
+        // Mark animation as complete
+        this.billingAnimationInProgress = false;
       };
       
       billingSection.addEventListener('transitionend', handleTransitionEnd);
+      
+      // Also set a fallback timer in case transitionend doesn't fire
+      setTimeout(() => {
+        this.billingAnimationInProgress = false;
+      }, 400);
       
       billingSection.classList.add('billing-form-expanded');
       billingSection.classList.remove('billing-form-collapsed');
@@ -589,6 +603,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private collapseBillingForm(billingSection: HTMLElement): void {
+    // Mark animation as in progress
+    this.billingAnimationInProgress = true;
+    
     // Use requestAnimationFrame for smoother animation
     requestAnimationFrame(() => {
       // Get current height before collapsing
@@ -604,6 +621,19 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Animate to collapsed state using cubic-bezier for smoother motion
       billingSection.style.transition = 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
       billingSection.style.height = '0px';
+      
+      // Mark animation as complete after transition duration
+      const handleTransitionEnd = () => {
+        billingSection.removeEventListener('transitionend', handleTransitionEnd);
+        this.billingAnimationInProgress = false;
+      };
+      
+      billingSection.addEventListener('transitionend', handleTransitionEnd);
+      
+      // Also set a fallback timer in case transitionend doesn't fire
+      setTimeout(() => {
+        this.billingAnimationInProgress = false;
+      }, 400);
       
       billingSection.classList.add('billing-form-collapsed');
       billingSection.classList.remove('billing-form-expanded');
@@ -3136,16 +3166,56 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private handleBillingAddressToggle(event: Event): void {
     const target = event.target as HTMLInputElement;
-    const checkoutStore = useCheckoutStore.getState();
     
-    checkoutStore.setSameAsShipping(target.checked);
+    // Prevent rapid clicks during animation
+    if (this.billingAnimationInProgress) {
+      event.preventDefault();
+      // Revert checkbox state
+      target.checked = !target.checked;
+      return;
+    }
     
-    const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR);
-    if (billingSection instanceof HTMLElement) {
+    // Clear any existing debounce timer
+    if (this.billingAnimationDebounceTimer) {
+      clearTimeout(this.billingAnimationDebounceTimer);
+    }
+    
+    // Add a small debounce to prevent double-clicks
+    this.billingAnimationDebounceTimer = setTimeout(() => {
+      const checkoutStore = useCheckoutStore.getState();
+      const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR);
+      
+      if (!billingSection || !(billingSection instanceof HTMLElement)) {
+        this.logger.warn('Billing section not found');
+        return;
+      }
+      
+      // Update store state
+      checkoutStore.setSameAsShipping(target.checked);
+      
+      // Remove any inline styles that might be interfering
       if (target.checked) {
+        // Clear any stuck inline styles before collapsing
+        billingSection.style.removeProperty('height');
+        billingSection.style.removeProperty('overflow');
+        billingSection.style.removeProperty('transition');
+        
+        // Force reflow to reset state
+        billingSection.offsetHeight;
+        
         this.collapseBillingForm(billingSection);
       } else {
+        // Clear any stuck inline styles before expanding
+        billingSection.style.removeProperty('height');
+        billingSection.style.removeProperty('overflow');
+        billingSection.style.removeProperty('transition');
+        
+        // Force reflow to reset state
+        billingSection.offsetHeight;
+        
         this.expandBillingForm(billingSection);
+        
+        // Populate billing fields after expansion
         setTimeout(() => {
           // Only set the country and trigger state loading
           const shippingCountry = checkoutStore.formData.country;
@@ -3170,7 +3240,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           });
         }, 50);
       }
-    }
+    }, 50); // Small debounce delay
   }
 
   /**
@@ -3618,6 +3688,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
+    // Clear any pending animation timers
+    if (this.billingAnimationDebounceTimer) {
+      clearTimeout(this.billingAnimationDebounceTimer);
+    }
+    
     if (this.validator) {
       this.validator.destroy();
     }
