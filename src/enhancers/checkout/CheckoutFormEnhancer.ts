@@ -111,6 +111,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private boundHandleTestDataFilled?: EventListener;
   private boundHandleKonamiActivation?: EventListener;
   
+  // Animation state management
+  private billingAnimationInProgress = false;
+  private billingAnimationDebounceTimer?: NodeJS.Timeout;
+  private billingAnimationTimeouts: Set<NodeJS.Timeout> = new Set();
+  
   // Track if analytics events have been fired
   private hasTrackedShippingInfo = false;
 
@@ -546,51 +551,167 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const billingToggle = this.form.querySelector('input[name="use_shipping_address"]') as HTMLInputElement;
     const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR) as HTMLElement;
     
+    // Production logging that won't be stripped
+    console.log('%c[PROD] Setting initial billing state', 'color: #4CAF50; font-weight: bold', {
+      toggleFound: !!billingToggle,
+      sectionFound: !!billingSection,
+      toggleChecked: billingToggle?.checked,
+      currentHeight: billingSection?.style.height,
+      currentOverflow: billingSection?.style.overflow,
+      currentClasses: billingSection?.className
+    });
+    
+    this.logger.info('[Billing] Setting initial state', {
+      toggleFound: !!billingToggle,
+      sectionFound: !!billingSection,
+      toggleChecked: billingToggle?.checked,
+      currentHeight: billingSection?.style.height,
+      currentOverflow: billingSection?.style.overflow,
+      currentClasses: billingSection?.className
+    });
+    
     if (billingToggle && billingSection) {
+      // Clear any existing inline styles first
+      billingSection.style.removeProperty('height');
+      billingSection.style.removeProperty('overflow');
+      billingSection.style.removeProperty('transition');
+      
       if (billingToggle.checked) {
-        this.collapseBillingForm(billingSection);
+        // Set collapsed state immediately without animation
+        billingSection.style.height = '0px';
+        billingSection.style.overflow = 'hidden';
+        billingSection.classList.add('billing-form-collapsed');
+        billingSection.classList.remove('billing-form-expanded');
+        this.logger.info('[Billing] Initial state: COLLAPSED (checkbox checked)');
       } else {
-        this.expandBillingForm(billingSection);
+        // Set expanded state immediately without animation
+        billingSection.style.height = 'auto';
+        billingSection.style.overflow = 'visible';
+        billingSection.classList.add('billing-form-expanded');
+        billingSection.classList.remove('billing-form-collapsed');
+        this.logger.info('[Billing] Initial state: EXPANDED (checkbox unchecked)');
       }
+    } else {
+      this.logger.warn('[Billing] Could not set initial state - missing elements');
     }
   }
 
   private expandBillingForm(billingSection: HTMLElement): void {
-    // Use requestAnimationFrame for smoother animation
+    // Clear any existing animation timeouts
+    this.billingAnimationTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.billingAnimationTimeouts.clear();
+    
+    // Mark animation as in progress
+    this.billingAnimationInProgress = true;
+    
+    this.logger.debug('[Billing] Starting expand animation', {
+      startHeight: billingSection.offsetHeight,
+      startOverflow: billingSection.style.overflow
+    });
+    
+    // Double RAF for better browser compatibility in production
     requestAnimationFrame(() => {
-      // First, measure the full height
+      requestAnimationFrame(() => {
+      // Measure the full height
       billingSection.style.transition = 'none';
       billingSection.style.height = 'auto';
       const fullHeight = billingSection.scrollHeight;
       
-      // Set initial state
+      this.logger.debug('[Billing] Measured full height:', fullHeight);
+      
+      // Set back to 0 for animation
       billingSection.style.height = '0px';
       billingSection.style.overflow = 'hidden';
       
-      // Force reflow to ensure initial state is applied
+      // Force reflow
       billingSection.offsetHeight;
       
-      // Now animate to full height using cubic-bezier for smoother motion
-      billingSection.style.transition = 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
-      billingSection.style.height = `${fullHeight}px`;
+      // Animate to full height
+      billingSection.style.setProperty('transition', 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 'important');
+      billingSection.style.setProperty('height', `${fullHeight}px`, 'important');
       
-      // After animation completes, set to auto for dynamic content
+      // Force style in production
+      const computedStyle = window.getComputedStyle(billingSection);
+      console.log('%c[PROD] Expand animation started', 'color: #00BCD4; font-weight: bold', {
+        fromHeight: '0px',
+        toHeight: fullHeight,
+        measuredFullHeight: fullHeight,
+        appliedTransition: billingSection.style.transition,
+        computedTransition: computedStyle.transition,
+        computedHeight: computedStyle.height,
+        hasTransition: computedStyle.transition !== 'none',
+        transitionProperty: computedStyle.transitionProperty,
+        transitionDuration: computedStyle.transitionDuration
+      });
+      
+      this.logger.debug('[Billing] Expand animation started', {
+        fromHeight: '0px',
+        toHeight: fullHeight
+      });
+      
+      // Clean up after animation
       const handleTransitionEnd = () => {
+        // Set to auto and remove transition
+        billingSection.style.transition = 'none';
         billingSection.style.height = 'auto';
         billingSection.style.overflow = 'visible';
         billingSection.removeEventListener('transitionend', handleTransitionEnd);
+        this.billingAnimationInProgress = false;
+        
+        // Production logging for completion
+        console.log('%c[PROD] Expand complete', 'color: #4CAF50; font-weight: bold', {
+          finalHeight: billingSection.style.height,
+          finalOverflow: billingSection.style.overflow,
+          finalTransition: billingSection.style.transition,
+          computedHeight: window.getComputedStyle(billingSection).height,
+          scrollHeight: billingSection.scrollHeight
+        });
+        
+        this.logger.info('[Billing] Expand complete', {
+          finalHeight: billingSection.style.height,
+          finalOverflow: billingSection.style.overflow,
+          finalTransition: billingSection.style.transition
+        });
       };
       
       billingSection.addEventListener('transitionend', handleTransitionEnd);
       
+      // Fallback cleanup
+      const fallbackTimeout = setTimeout(() => {
+        if (this.billingAnimationInProgress && billingSection.classList.contains('billing-form-expanded')) {
+          this.logger.warn('[Billing] Expand fallback triggered - forcing completion');
+          billingSection.style.transition = 'none';
+          billingSection.style.height = 'auto';
+          billingSection.style.overflow = 'visible';
+          this.billingAnimationInProgress = false;
+        }
+        this.billingAnimationTimeouts.delete(fallbackTimeout);
+      }, 350);
+      
+      this.billingAnimationTimeouts.add(fallbackTimeout);
+      
       billingSection.classList.add('billing-form-expanded');
       billingSection.classList.remove('billing-form-collapsed');
+      }); // Extra RAF close
     });
   }
 
   private collapseBillingForm(billingSection: HTMLElement): void {
-    // Use requestAnimationFrame for smoother animation
+    // Clear any existing animation timeouts
+    this.billingAnimationTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.billingAnimationTimeouts.clear();
+    
+    // Mark animation as in progress
+    this.billingAnimationInProgress = true;
+    
+    this.logger.debug('[Billing] Starting collapse animation', {
+      startHeight: billingSection.offsetHeight,
+      scrollHeight: billingSection.scrollHeight
+    });
+    
+    // Double RAF for better browser compatibility in production
     requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
       // Get current height before collapsing
       const currentHeight = billingSection.scrollHeight;
       
@@ -601,12 +722,71 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Force reflow
       billingSection.offsetHeight;
       
-      // Animate to collapsed state using cubic-bezier for smoother motion
-      billingSection.style.transition = 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
-      billingSection.style.height = '0px';
+      // Animate to collapsed state
+      billingSection.style.setProperty('transition', 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 'important');
+      billingSection.style.setProperty('height', '0px', 'important');
+      
+      // Force style in production
+      const computedStyle = window.getComputedStyle(billingSection);
+      console.log('%c[PROD] Collapse animation started', 'color: #E91E63; font-weight: bold', {
+        fromHeight: currentHeight,
+        toHeight: '0px',
+        appliedTransition: billingSection.style.transition,
+        computedTransition: computedStyle.transition,
+        computedHeight: computedStyle.height,
+        hasTransition: computedStyle.transition !== 'none',
+        transitionProperty: computedStyle.transitionProperty,
+        transitionDuration: computedStyle.transitionDuration
+      });
+      
+      this.logger.debug('[Billing] Collapse animation started', {
+        fromHeight: currentHeight,
+        toHeight: '0px'
+      });
+      
+      // Clean up after animation
+      const handleTransitionEnd = () => {
+        // Keep it collapsed but remove transition
+        billingSection.style.transition = 'none';
+        billingSection.style.height = '0px';
+        billingSection.style.overflow = 'hidden';
+        billingSection.removeEventListener('transitionend', handleTransitionEnd);
+        this.billingAnimationInProgress = false;
+        
+        // Production logging for completion
+        console.log('%c[PROD] Collapse complete', 'color: #9C27B0; font-weight: bold', {
+          finalHeight: billingSection.style.height,
+          finalOverflow: billingSection.style.overflow,
+          finalTransition: billingSection.style.transition,
+          computedHeight: window.getComputedStyle(billingSection).height
+        });
+        
+        this.logger.info('[Billing] Collapse complete', {
+          finalHeight: billingSection.style.height,
+          finalOverflow: billingSection.style.overflow,
+          finalTransition: billingSection.style.transition
+        });
+      };
+      
+      billingSection.addEventListener('transitionend', handleTransitionEnd);
+      
+      // Fallback cleanup
+      const fallbackTimeout = setTimeout(() => {
+        if (this.billingAnimationInProgress && billingSection.classList.contains('billing-form-collapsed')) {
+          this.logger.warn('[Billing] Collapse fallback triggered - forcing completion');
+          billingSection.style.transition = 'none';
+          billingSection.style.height = '0px';
+          billingSection.style.overflow = 'hidden';
+          this.billingAnimationInProgress = false;
+        }
+        this.billingAnimationTimeouts.delete(fallbackTimeout);
+      }, 350);
+      
+      this.billingAnimationTimeouts.add(fallbackTimeout);
       
       billingSection.classList.add('billing-form-collapsed');
       billingSection.classList.remove('billing-form-expanded');
+      }); // Extra RAF close
     });
   }
 
@@ -3136,16 +3316,72 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private handleBillingAddressToggle(event: Event): void {
     const target = event.target as HTMLInputElement;
-    const checkoutStore = useCheckoutStore.getState();
     
-    checkoutStore.setSameAsShipping(target.checked);
+    // Production logging
+    console.log('%c[PROD] Billing toggle clicked', 'color: #2196F3; font-weight: bold', {
+      checked: target.checked,
+      animationInProgress: this.billingAnimationInProgress,
+      timestamp: Date.now()
+    });
     
-    const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR);
-    if (billingSection instanceof HTMLElement) {
+    this.logger.info('[Billing] Toggle clicked', {
+      checked: target.checked,
+      animationInProgress: this.billingAnimationInProgress
+    });
+    
+    // Prevent rapid clicks during animation
+    if (this.billingAnimationInProgress) {
+      event.preventDefault();
+      // Revert checkbox state
+      target.checked = !target.checked;
+      this.logger.warn('[Billing] Click blocked - animation in progress');
+      return;
+    }
+    
+    // Clear any existing debounce timer
+    if (this.billingAnimationDebounceTimer) {
+      clearTimeout(this.billingAnimationDebounceTimer);
+    }
+    
+    // Reduced debounce to 10ms (just enough to prevent double-clicks)
+    this.billingAnimationDebounceTimer = setTimeout(() => {
+      const checkoutStore = useCheckoutStore.getState();
+      const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR);
+      
+      if (!billingSection || !(billingSection instanceof HTMLElement)) {
+        this.logger.error('[Billing] CRITICAL: Billing section not found!');
+        return;
+      }
+      
+      // Production logging before processing
+      console.log('%c[PROD] Processing toggle', 'color: #FF9800; font-weight: bold', {
+        targetChecked: target.checked,
+        currentHeight: billingSection.style.height,
+        currentOverflow: billingSection.style.overflow,
+        currentTransition: billingSection.style.transition,
+        classes: billingSection.className,
+        computedHeight: window.getComputedStyle(billingSection).height
+      });
+      
+      this.logger.info('[Billing] Processing toggle', {
+        targetChecked: target.checked,
+        currentHeight: billingSection.style.height,
+        currentOverflow: billingSection.style.overflow,
+        currentTransition: billingSection.style.transition,
+        classes: billingSection.className
+      });
+      
+      // Update store state
+      checkoutStore.setSameAsShipping(target.checked);
+      
       if (target.checked) {
+        this.logger.info('[Billing] Collapsing form...');
         this.collapseBillingForm(billingSection);
       } else {
+        this.logger.info('[Billing] Expanding form...');
         this.expandBillingForm(billingSection);
+        
+        // Populate billing fields after expansion
         setTimeout(() => {
           // Only set the country and trigger state loading
           const shippingCountry = checkoutStore.formData.country;
@@ -3154,6 +3390,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           if (shippingCountry && billingCountryField instanceof HTMLSelectElement) {
             billingCountryField.value = shippingCountry;
             billingCountryField.dispatchEvent(new Event('change', { bubbles: true }));
+            this.logger.debug('[Billing] Set country to:', shippingCountry);
           }
           
           // Clear the billing address in the store (except country)
@@ -3170,7 +3407,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           });
         }, 50);
       }
-    }
+    }, 10); // Reduced debounce delay from 50ms to 10ms
   }
 
   /**
@@ -3618,6 +3855,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   public override destroy(): void {
+    // Clear any pending animation timers
+    if (this.billingAnimationDebounceTimer) {
+      clearTimeout(this.billingAnimationDebounceTimer);
+    }
+    
+    // Clear all animation timeouts
+    this.billingAnimationTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.billingAnimationTimeouts.clear();
+    
     if (this.validator) {
       this.validator.destroy();
     }

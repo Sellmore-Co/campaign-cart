@@ -21,6 +21,7 @@ import { OrderManager } from './managers/OrderManager';
 import { ExpressCheckoutProcessor } from './processors/ExpressCheckoutProcessor';
 import { PAYPAL_SVG, APPLE_PAY_SVG, GOOGLE_PAY_SVG } from './constants/payment-icons';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
+import { isApplePayAvailable, isGooglePayAvailable, isPayPalAvailable, getPaymentCapabilities } from '@/utils/paymentAvailability';
 import type { PaymentConfig, CartState } from '@/types/global';
 import type { PaymentMethodOption } from '@/types/api';
 
@@ -48,6 +49,10 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
     if (containerType !== 'container') {
       throw new Error('ExpressCheckoutContainerEnhancer can only be used on container elements');
     }
+    
+    // Log payment capabilities for debugging
+    const capabilities = getPaymentCapabilities();
+    this.logger.info('Payment capabilities detected:', capabilities);
     
     // Find buttons container
     this.buttonsContainer = this.element.querySelector('[data-next-express-checkout="buttons"]') as HTMLElement;
@@ -122,25 +127,46 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
       this.clearButtons();
       
       // Create buttons based on available express methods from campaign
+      // BUT only if the device actually supports them
       for (const method of this.availableExpressMethods) {
         switch (method.code) {
           case 'paypal':
-            this.createPayPalButton();
+            if (isPayPalAvailable()) {
+              this.createPayPalButton();
+            } else {
+              this.logger.debug('PayPal not available on this device');
+            }
             break;
           case 'apple_pay':
-            this.createApplePayButton();
+            if (isApplePayAvailable()) {
+              this.createApplePayButton();
+            } else {
+              this.logger.debug('Apple Pay not available on this device/browser');
+            }
             break;
           case 'google_pay':
-            this.createGooglePayButton();
+            if (isGooglePayAvailable()) {
+              this.createGooglePayButton();
+            } else {
+              this.logger.debug('Google Pay not available on this device/browser');
+            }
             break;
           default:
             this.logger.warn(`Unknown express payment method: ${method.code}`);
         }
       }
       
+      const actuallyAvailable = this.buttonInstances.size > 0;
       this.logger.debug('Express checkout buttons updated from campaign data', {
-        methods: this.availableExpressMethods.map(m => m.code)
+        requestedMethods: this.availableExpressMethods.map(m => m.code),
+        actuallyShown: Array.from(this.buttonInstances.keys()),
+        hasVisibleButtons: actuallyAvailable
       });
+      
+      // Hide container if no buttons were actually created
+      if (!actuallyAvailable) {
+        this.hideContainer();
+      }
     } else if (this.paymentConfig?.expressCheckout) {
       // Fall back to config-based setup
       const { enabled, methods } = this.paymentConfig.expressCheckout;
@@ -165,23 +191,40 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
       this.clearButtons();
       
       // Create buttons for enabled methods
-      if (methods.paypal) {
+      // BUT only if the device actually supports them
+      if (methods.paypal && isPayPalAvailable()) {
         this.createPayPalButton();
+      } else if (methods.paypal) {
+        this.logger.debug('PayPal enabled in config but not available on device');
       }
       
-      if (methods.applePay) {
+      if (methods.applePay && isApplePayAvailable()) {
         this.createApplePayButton();
+      } else if (methods.applePay) {
+        this.logger.debug('Apple Pay enabled in config but not available on device/browser');
       }
       
-      if (methods.googlePay) {
+      if (methods.googlePay && isGooglePayAvailable()) {
         this.createGooglePayButton();
+      } else if (methods.googlePay) {
+        this.logger.debug('Google Pay enabled in config but not available on device/browser');
       }
       
+      const actuallyAvailable = this.buttonInstances.size > 0;
       this.logger.debug('Express checkout buttons updated from config', {
-        paypal: methods.paypal,
-        applePay: methods.applePay,
-        googlePay: methods.googlePay
+        requestedMethods: {
+          paypal: methods.paypal,
+          applePay: methods.applePay,
+          googlePay: methods.googlePay
+        },
+        actuallyShown: Array.from(this.buttonInstances.keys()),
+        hasVisibleButtons: actuallyAvailable
       });
+      
+      // Hide container if no buttons were actually created
+      if (!actuallyAvailable) {
+        this.hideContainer();
+      }
     } else {
       // No payment methods available
       this.hideContainer();
