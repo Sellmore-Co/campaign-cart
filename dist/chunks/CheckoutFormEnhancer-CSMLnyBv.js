@@ -2652,34 +2652,34 @@ class CheckoutFormEnhancer extends BaseEnhancer {
     const billingToggle = this.form.querySelector('input[name="use_shipping_address"]');
     const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR);
     if (billingToggle && billingSection) {
+      billingSection.style.removeProperty("height");
+      billingSection.style.removeProperty("overflow");
+      billingSection.style.removeProperty("transition");
       if (billingToggle.checked) {
-        this.collapseBillingForm(billingSection);
+        billingSection.style.height = "0px";
+        billingSection.style.overflow = "hidden";
+        billingSection.classList.add("billing-form-collapsed");
+        billingSection.classList.remove("billing-form-expanded");
       } else {
-        this.expandBillingForm(billingSection);
+        billingSection.style.height = "auto";
+        billingSection.style.overflow = "visible";
+        billingSection.classList.add("billing-form-expanded");
+        billingSection.classList.remove("billing-form-collapsed");
       }
     }
   }
   expandBillingForm(billingSection) {
     this.billingAnimationInProgress = true;
-    const currentHeight = billingSection.offsetHeight;
-    const isCollapsed = currentHeight === 0 || billingSection.classList.contains("billing-form-collapsed");
     requestAnimationFrame(() => {
-      if (isCollapsed) {
-        billingSection.style.transition = "none";
-        billingSection.style.height = "auto";
-        const fullHeight = billingSection.scrollHeight;
-        billingSection.style.height = "0px";
-        billingSection.style.overflow = "hidden";
-        billingSection.style.transition = "height 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
-        billingSection.style.height = `${fullHeight}px`;
-      } else {
-        billingSection.style.transition = "height 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
-        billingSection.style.height = "auto";
-        const fullHeight = billingSection.scrollHeight;
-        billingSection.style.height = `${currentHeight}px`;
-        billingSection.style.height = `${fullHeight}px`;
-      }
+      billingSection.style.transition = "none";
+      billingSection.style.height = "auto";
+      const fullHeight = billingSection.scrollHeight;
+      billingSection.style.height = "0px";
+      billingSection.style.overflow = "hidden";
+      billingSection.style.transition = "height 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+      billingSection.style.height = `${fullHeight}px`;
       const handleTransitionEnd = () => {
+        billingSection.style.transition = "none";
         billingSection.style.height = "auto";
         billingSection.style.overflow = "visible";
         billingSection.removeEventListener("transitionend", handleTransitionEnd);
@@ -2687,7 +2687,12 @@ class CheckoutFormEnhancer extends BaseEnhancer {
       };
       billingSection.addEventListener("transitionend", handleTransitionEnd);
       setTimeout(() => {
-        this.billingAnimationInProgress = false;
+        if (this.billingAnimationInProgress) {
+          billingSection.style.transition = "none";
+          billingSection.style.height = "auto";
+          billingSection.style.overflow = "visible";
+          this.billingAnimationInProgress = false;
+        }
       }, 350);
       billingSection.classList.add("billing-form-expanded");
       billingSection.classList.remove("billing-form-collapsed");
@@ -2702,13 +2707,20 @@ class CheckoutFormEnhancer extends BaseEnhancer {
       billingSection.style.transition = "height 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
       billingSection.style.height = "0px";
       const handleTransitionEnd = () => {
+        billingSection.style.transition = "none";
+        billingSection.style.height = "0px";
         billingSection.style.overflow = "hidden";
         billingSection.removeEventListener("transitionend", handleTransitionEnd);
         this.billingAnimationInProgress = false;
       };
       billingSection.addEventListener("transitionend", handleTransitionEnd);
       setTimeout(() => {
-        this.billingAnimationInProgress = false;
+        if (this.billingAnimationInProgress) {
+          billingSection.style.transition = "none";
+          billingSection.style.height = "0px";
+          billingSection.style.overflow = "hidden";
+          this.billingAnimationInProgress = false;
+        }
       }, 350);
       billingSection.classList.add("billing-form-collapsed");
       billingSection.classList.remove("billing-form-expanded");

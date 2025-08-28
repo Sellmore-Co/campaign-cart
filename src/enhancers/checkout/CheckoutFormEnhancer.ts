@@ -551,10 +551,23 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR) as HTMLElement;
     
     if (billingToggle && billingSection) {
+      // Clear any existing inline styles first
+      billingSection.style.removeProperty('height');
+      billingSection.style.removeProperty('overflow');
+      billingSection.style.removeProperty('transition');
+      
       if (billingToggle.checked) {
-        this.collapseBillingForm(billingSection);
+        // Set collapsed state immediately without animation
+        billingSection.style.height = '0px';
+        billingSection.style.overflow = 'hidden';
+        billingSection.classList.add('billing-form-collapsed');
+        billingSection.classList.remove('billing-form-expanded');
       } else {
-        this.expandBillingForm(billingSection);
+        // Set expanded state immediately without animation
+        billingSection.style.height = 'auto';
+        billingSection.style.overflow = 'visible';
+        billingSection.classList.add('billing-form-expanded');
+        billingSection.classList.remove('billing-form-collapsed');
       }
     }
   }
@@ -563,53 +576,44 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Mark animation as in progress
     this.billingAnimationInProgress = true;
     
-    // Get current state
-    const currentHeight = billingSection.offsetHeight;
-    const isCollapsed = currentHeight === 0 || billingSection.classList.contains('billing-form-collapsed');
-    
     // Use requestAnimationFrame for smoother animation
     requestAnimationFrame(() => {
-      if (isCollapsed) {
-        // Starting from collapsed state
-        // First, measure the full height
-        billingSection.style.transition = 'none';
-        billingSection.style.height = 'auto';
-        const fullHeight = billingSection.scrollHeight;
-        
-        // Set back to 0 for animation
-        billingSection.style.height = '0px';
-        billingSection.style.overflow = 'hidden';
-        
-        // Force reflow
-        billingSection.offsetHeight;
-        
-        // Animate to full height
-        billingSection.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-        billingSection.style.height = `${fullHeight}px`;
-      } else {
-        // Already has some height, just transition to auto
-        billingSection.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-        billingSection.style.height = 'auto';
-        const fullHeight = billingSection.scrollHeight;
-        billingSection.style.height = `${currentHeight}px`;
-        billingSection.offsetHeight; // Force reflow
-        billingSection.style.height = `${fullHeight}px`;
-      }
+      // Measure the full height
+      billingSection.style.transition = 'none';
+      billingSection.style.height = 'auto';
+      const fullHeight = billingSection.scrollHeight;
       
-      // After animation completes, set to auto for dynamic content
+      // Set back to 0 for animation
+      billingSection.style.height = '0px';
+      billingSection.style.overflow = 'hidden';
+      
+      // Force reflow
+      billingSection.offsetHeight;
+      
+      // Animate to full height
+      billingSection.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      billingSection.style.height = `${fullHeight}px`;
+      
+      // Clean up after animation
       const handleTransitionEnd = () => {
+        // Set to auto and remove transition
+        billingSection.style.transition = 'none';
         billingSection.style.height = 'auto';
         billingSection.style.overflow = 'visible';
         billingSection.removeEventListener('transitionend', handleTransitionEnd);
-        // Mark animation as complete
         this.billingAnimationInProgress = false;
       };
       
       billingSection.addEventListener('transitionend', handleTransitionEnd);
       
-      // Reduced fallback timer from 400ms to 350ms
+      // Fallback cleanup
       setTimeout(() => {
-        this.billingAnimationInProgress = false;
+        if (this.billingAnimationInProgress) {
+          billingSection.style.transition = 'none';
+          billingSection.style.height = 'auto';
+          billingSection.style.overflow = 'visible';
+          this.billingAnimationInProgress = false;
+        }
       }, 350);
       
       billingSection.classList.add('billing-form-expanded');
@@ -633,22 +637,30 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Force reflow
       billingSection.offsetHeight;
       
-      // Animate to collapsed state - reduced duration from 0.35s to 0.3s
+      // Animate to collapsed state
       billingSection.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
       billingSection.style.height = '0px';
       
-      // Mark animation as complete after transition duration
+      // Clean up after animation
       const handleTransitionEnd = () => {
-        billingSection.style.overflow = 'hidden'; // Keep hidden when collapsed
+        // Keep it collapsed but remove transition
+        billingSection.style.transition = 'none';
+        billingSection.style.height = '0px';
+        billingSection.style.overflow = 'hidden';
         billingSection.removeEventListener('transitionend', handleTransitionEnd);
         this.billingAnimationInProgress = false;
       };
       
       billingSection.addEventListener('transitionend', handleTransitionEnd);
       
-      // Reduced fallback timer from 400ms to 350ms
+      // Fallback cleanup
       setTimeout(() => {
-        this.billingAnimationInProgress = false;
+        if (this.billingAnimationInProgress) {
+          billingSection.style.transition = 'none';
+          billingSection.style.height = '0px';
+          billingSection.style.overflow = 'hidden';
+          this.billingAnimationInProgress = false;
+        }
       }, 350);
       
       billingSection.classList.add('billing-form-collapsed');
