@@ -1,4 +1,4 @@
-import { B as BaseDisplayEnhancer, a as getPropertyMapping, D as DisplayFormatter } from "./DisplayEnhancerCore-D5XArbyL.js";
+import { B as BaseDisplayEnhancer, a as getPropertyMapping, D as DisplayFormatter } from "./DisplayEnhancerCore-CYfyrLdK.js";
 import { a as useCampaignStore } from "./utils-CZw3O5q7.js";
 class ShippingDisplayEnhancer extends BaseDisplayEnhancer {
   async initialize() {

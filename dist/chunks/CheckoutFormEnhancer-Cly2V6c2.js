@@ -2652,6 +2652,14 @@ class CheckoutFormEnhancer extends BaseEnhancer {
   setInitialBillingFormState() {
     const billingToggle = this.form.querySelector('input[name="use_shipping_address"]');
     const billingSection = document.querySelector(BILLING_CONTAINER_SELECTOR);
+    console.log("%c[PROD] Setting initial billing state", "color: #4CAF50; font-weight: bold", {
+      toggleFound: !!billingToggle,
+      sectionFound: !!billingSection,
+      toggleChecked: billingToggle?.checked,
+      currentHeight: billingSection?.style.height,
+      currentOverflow: billingSection?.style.overflow,
+      currentClasses: billingSection?.className
+    });
     this.logger.info("[Billing] Setting initial state", {
       toggleFound: !!billingToggle,
       sectionFound: !!billingSection,
@@ -2690,44 +2698,65 @@ class CheckoutFormEnhancer extends BaseEnhancer {
       startOverflow: billingSection.style.overflow
     });
     requestAnimationFrame(() => {
-      billingSection.style.transition = "none";
-      billingSection.style.height = "auto";
-      const fullHeight = billingSection.scrollHeight;
-      this.logger.debug("[Billing] Measured full height:", fullHeight);
-      billingSection.style.height = "0px";
-      billingSection.style.overflow = "hidden";
-      billingSection.style.transition = "height 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
-      billingSection.style.height = `${fullHeight}px`;
-      this.logger.debug("[Billing] Expand animation started", {
-        fromHeight: "0px",
-        toHeight: fullHeight
-      });
-      const handleTransitionEnd = () => {
+      requestAnimationFrame(() => {
         billingSection.style.transition = "none";
         billingSection.style.height = "auto";
-        billingSection.style.overflow = "visible";
-        billingSection.removeEventListener("transitionend", handleTransitionEnd);
-        this.billingAnimationInProgress = false;
-        this.logger.info("[Billing] Expand complete", {
-          finalHeight: billingSection.style.height,
-          finalOverflow: billingSection.style.overflow,
-          finalTransition: billingSection.style.transition
+        const fullHeight = billingSection.scrollHeight;
+        this.logger.debug("[Billing] Measured full height:", fullHeight);
+        billingSection.style.height = "0px";
+        billingSection.style.overflow = "hidden";
+        billingSection.style.setProperty("transition", "height 0.3s cubic-bezier(0.4, 0, 0.2, 1)", "important");
+        billingSection.style.setProperty("height", `${fullHeight}px`, "important");
+        const computedStyle = window.getComputedStyle(billingSection);
+        console.log("%c[PROD] Expand animation started", "color: #00BCD4; font-weight: bold", {
+          fromHeight: "0px",
+          toHeight: fullHeight,
+          measuredFullHeight: fullHeight,
+          appliedTransition: billingSection.style.transition,
+          computedTransition: computedStyle.transition,
+          computedHeight: computedStyle.height,
+          hasTransition: computedStyle.transition !== "none",
+          transitionProperty: computedStyle.transitionProperty,
+          transitionDuration: computedStyle.transitionDuration
         });
-      };
-      billingSection.addEventListener("transitionend", handleTransitionEnd);
-      const fallbackTimeout = setTimeout(() => {
-        if (this.billingAnimationInProgress && billingSection.classList.contains("billing-form-expanded")) {
-          this.logger.warn("[Billing] Expand fallback triggered - forcing completion");
+        this.logger.debug("[Billing] Expand animation started", {
+          fromHeight: "0px",
+          toHeight: fullHeight
+        });
+        const handleTransitionEnd = () => {
           billingSection.style.transition = "none";
           billingSection.style.height = "auto";
           billingSection.style.overflow = "visible";
+          billingSection.removeEventListener("transitionend", handleTransitionEnd);
           this.billingAnimationInProgress = false;
-        }
-        this.billingAnimationTimeouts.delete(fallbackTimeout);
-      }, 350);
-      this.billingAnimationTimeouts.add(fallbackTimeout);
-      billingSection.classList.add("billing-form-expanded");
-      billingSection.classList.remove("billing-form-collapsed");
+          console.log("%c[PROD] Expand complete", "color: #4CAF50; font-weight: bold", {
+            finalHeight: billingSection.style.height,
+            finalOverflow: billingSection.style.overflow,
+            finalTransition: billingSection.style.transition,
+            computedHeight: window.getComputedStyle(billingSection).height,
+            scrollHeight: billingSection.scrollHeight
+          });
+          this.logger.info("[Billing] Expand complete", {
+            finalHeight: billingSection.style.height,
+            finalOverflow: billingSection.style.overflow,
+            finalTransition: billingSection.style.transition
+          });
+        };
+        billingSection.addEventListener("transitionend", handleTransitionEnd);
+        const fallbackTimeout = setTimeout(() => {
+          if (this.billingAnimationInProgress && billingSection.classList.contains("billing-form-expanded")) {
+            this.logger.warn("[Billing] Expand fallback triggered - forcing completion");
+            billingSection.style.transition = "none";
+            billingSection.style.height = "auto";
+            billingSection.style.overflow = "visible";
+            this.billingAnimationInProgress = false;
+          }
+          this.billingAnimationTimeouts.delete(fallbackTimeout);
+        }, 350);
+        this.billingAnimationTimeouts.add(fallbackTimeout);
+        billingSection.classList.add("billing-form-expanded");
+        billingSection.classList.remove("billing-form-collapsed");
+      });
     });
   }
   collapseBillingForm(billingSection) {
@@ -2739,41 +2768,60 @@ class CheckoutFormEnhancer extends BaseEnhancer {
       scrollHeight: billingSection.scrollHeight
     });
     requestAnimationFrame(() => {
-      const currentHeight = billingSection.scrollHeight;
-      billingSection.style.height = `${currentHeight}px`;
-      billingSection.style.overflow = "hidden";
-      billingSection.style.transition = "height 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
-      billingSection.style.height = "0px";
-      this.logger.debug("[Billing] Collapse animation started", {
-        fromHeight: currentHeight,
-        toHeight: "0px"
-      });
-      const handleTransitionEnd = () => {
-        billingSection.style.transition = "none";
-        billingSection.style.height = "0px";
+      requestAnimationFrame(() => {
+        const currentHeight = billingSection.scrollHeight;
+        billingSection.style.height = `${currentHeight}px`;
         billingSection.style.overflow = "hidden";
-        billingSection.removeEventListener("transitionend", handleTransitionEnd);
-        this.billingAnimationInProgress = false;
-        this.logger.info("[Billing] Collapse complete", {
-          finalHeight: billingSection.style.height,
-          finalOverflow: billingSection.style.overflow,
-          finalTransition: billingSection.style.transition
+        billingSection.style.setProperty("transition", "height 0.3s cubic-bezier(0.4, 0, 0.2, 1)", "important");
+        billingSection.style.setProperty("height", "0px", "important");
+        const computedStyle = window.getComputedStyle(billingSection);
+        console.log("%c[PROD] Collapse animation started", "color: #E91E63; font-weight: bold", {
+          fromHeight: currentHeight,
+          toHeight: "0px",
+          appliedTransition: billingSection.style.transition,
+          computedTransition: computedStyle.transition,
+          computedHeight: computedStyle.height,
+          hasTransition: computedStyle.transition !== "none",
+          transitionProperty: computedStyle.transitionProperty,
+          transitionDuration: computedStyle.transitionDuration
         });
-      };
-      billingSection.addEventListener("transitionend", handleTransitionEnd);
-      const fallbackTimeout = setTimeout(() => {
-        if (this.billingAnimationInProgress && billingSection.classList.contains("billing-form-collapsed")) {
-          this.logger.warn("[Billing] Collapse fallback triggered - forcing completion");
+        this.logger.debug("[Billing] Collapse animation started", {
+          fromHeight: currentHeight,
+          toHeight: "0px"
+        });
+        const handleTransitionEnd = () => {
           billingSection.style.transition = "none";
           billingSection.style.height = "0px";
           billingSection.style.overflow = "hidden";
+          billingSection.removeEventListener("transitionend", handleTransitionEnd);
           this.billingAnimationInProgress = false;
-        }
-        this.billingAnimationTimeouts.delete(fallbackTimeout);
-      }, 350);
-      this.billingAnimationTimeouts.add(fallbackTimeout);
-      billingSection.classList.add("billing-form-collapsed");
-      billingSection.classList.remove("billing-form-expanded");
+          console.log("%c[PROD] Collapse complete", "color: #9C27B0; font-weight: bold", {
+            finalHeight: billingSection.style.height,
+            finalOverflow: billingSection.style.overflow,
+            finalTransition: billingSection.style.transition,
+            computedHeight: window.getComputedStyle(billingSection).height
+          });
+          this.logger.info("[Billing] Collapse complete", {
+            finalHeight: billingSection.style.height,
+            finalOverflow: billingSection.style.overflow,
+            finalTransition: billingSection.style.transition
+          });
+        };
+        billingSection.addEventListener("transitionend", handleTransitionEnd);
+        const fallbackTimeout = setTimeout(() => {
+          if (this.billingAnimationInProgress && billingSection.classList.contains("billing-form-collapsed")) {
+            this.logger.warn("[Billing] Collapse fallback triggered - forcing completion");
+            billingSection.style.transition = "none";
+            billingSection.style.height = "0px";
+            billingSection.style.overflow = "hidden";
+            this.billingAnimationInProgress = false;
+          }
+          this.billingAnimationTimeouts.delete(fallbackTimeout);
+        }, 350);
+        this.billingAnimationTimeouts.add(fallbackTimeout);
+        billingSection.classList.add("billing-form-collapsed");
+        billingSection.classList.remove("billing-form-expanded");
+      });
     });
   }
   // ============================================================================
@@ -4630,6 +4678,11 @@ class CheckoutFormEnhancer extends BaseEnhancer {
   }
   handleBillingAddressToggle(event) {
     const target = event.target;
+    console.log("%c[PROD] Billing toggle clicked", "color: #2196F3; font-weight: bold", {
+      checked: target.checked,
+      animationInProgress: this.billingAnimationInProgress,
+      timestamp: Date.now()
+    });
     this.logger.info("[Billing] Toggle clicked", {
       checked: target.checked,
       animationInProgress: this.billingAnimationInProgress
@@ -4650,6 +4703,14 @@ class CheckoutFormEnhancer extends BaseEnhancer {
         this.logger.error("[Billing] CRITICAL: Billing section not found!");
         return;
       }
+      console.log("%c[PROD] Processing toggle", "color: #FF9800; font-weight: bold", {
+        targetChecked: target.checked,
+        currentHeight: billingSection.style.height,
+        currentOverflow: billingSection.style.overflow,
+        currentTransition: billingSection.style.transition,
+        classes: billingSection.className,
+        computedHeight: window.getComputedStyle(billingSection).height
+      });
       this.logger.info("[Billing] Processing toggle", {
         targetChecked: target.checked,
         currentHeight: billingSection.style.height,

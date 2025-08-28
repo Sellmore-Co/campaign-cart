@@ -1,8 +1,8 @@
 import { B as BaseEnhancer } from "./BaseEnhancer-DGhWiEnS.js";
-import { u as useOrderStore } from "./index-BNWKjHid.js";
+import { u as useOrderStore } from "./index-DDdpX9Hf.js";
 import { e as configStore, T as TemplateRenderer } from "./utils-CZw3O5q7.js";
 import { ApiClient } from "./api-CKvZdO89.js";
-import { D as DisplayFormatter } from "./DisplayEnhancerCore-D5XArbyL.js";
+import { D as DisplayFormatter } from "./DisplayEnhancerCore-CYfyrLdK.js";
 class OrderItemListEnhancer extends BaseEnhancer {
   async initialize() {
     this.validateElement();

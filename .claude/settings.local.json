@@ -6,7 +6,9 @@
       "Bash(npm run build:*)",
       "Bash(rm:*)",
       "Bash(curl:*)",
-      "Bash(npm run test:critical:*)"
+      "Bash(npm run test:critical:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
