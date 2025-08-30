@@ -2973,58 +2973,18 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.updateFormData({ [fieldName]: target.value });
       checkoutStore.clearError(fieldName);
       
-      // Validate email on blur
-      if (fieldName === 'email' && (event.type === 'blur' || event.type === 'change')) {
-        const emailValue = target.value.trim();
-        if (emailValue) {
-          const validationResult = this.validator.validateField('email', emailValue);
-          if (!validationResult.isValid) {
-            this.validator.setError('email', validationResult.message || 'Please enter a valid email address');
-            this.logger.warn('Invalid email detected on blur:', emailValue);
-          } else {
-            this.validator.clearError('email');
-          }
-        }
-      }
+      // Validate fields on blur - simplified without redundant fallback messages
+      const fieldsToValidate = ['email', 'city', 'fname', 'lname'];
       
-      // Validate city on blur
-      if (fieldName === 'city' && (event.type === 'blur' || event.type === 'change')) {
-        const cityValue = target.value.trim();
-        if (cityValue) {
-          const validationResult = this.validator.validateField('city', cityValue);
-          if (!validationResult.isValid) {
-            this.validator.setError('city', validationResult.message || 'Please enter a valid city name');
-            this.logger.warn('Invalid city detected on blur:', cityValue);
-          } else {
-            this.validator.clearError('city');
-          }
-        }
-      }
-      
-      // Validate first name on blur
-      if (fieldName === 'fname' && (event.type === 'blur' || event.type === 'change')) {
-        const fnameValue = target.value.trim();
-        if (fnameValue) {
-          const validationResult = this.validator.validateField('fname', fnameValue);
-          if (!validationResult.isValid) {
-            this.validator.setError('fname', validationResult.message || 'First name can only contain letters, spaces, hyphens, and apostrophes');
-            this.logger.warn('Invalid first name detected on blur:', fnameValue);
-          } else {
-            this.validator.clearError('fname');
-          }
-        }
-      }
-      
-      // Validate last name on blur
-      if (fieldName === 'lname' && (event.type === 'blur' || event.type === 'change')) {
-        const lnameValue = target.value.trim();
-        if (lnameValue) {
-          const validationResult = this.validator.validateField('lname', lnameValue);
-          if (!validationResult.isValid) {
-            this.validator.setError('lname', validationResult.message || 'Last name can only contain letters, spaces, hyphens, and apostrophes');
-            this.logger.warn('Invalid last name detected on blur:', lnameValue);
-          } else {
-            this.validator.clearError('lname');
+      if (fieldsToValidate.includes(fieldName) && (event.type === 'blur' || event.type === 'change')) {
+        const fieldValue = target.value.trim();
+        if (fieldValue) {
+          const validationResult = this.validator.validateField(fieldName, fieldValue);
+          if (!validationResult.isValid && validationResult.message) {
+            this.validator.setError(fieldName, validationResult.message);
+            this.logger.warn(`Invalid ${fieldName} detected on blur:`, fieldValue);
+          } else if (validationResult.isValid) {
+            this.validator.clearError(fieldName);
           }
         }
       }
