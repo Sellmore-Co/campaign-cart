@@ -2629,10 +2629,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       }
       
-      // Special validation for email
+      // Special validation for email using the validator
       if (field === 'email' && value) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) {
+        if (!this.validator.isValidEmail(value)) {
           errors[field] = 'Please enter a valid email address';
           if (!firstErrorField) {
             firstErrorField = field;
@@ -2973,6 +2972,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     } else {
       this.updateFormData({ [fieldName]: target.value });
       checkoutStore.clearError(fieldName);
+      
+      // Validate email on blur
+      if (fieldName === 'email' && (event.type === 'blur' || event.type === 'change')) {
+        const emailValue = target.value.trim();
+        if (emailValue) {
+          const validationResult = this.validator.validateField('email', emailValue);
+          if (!validationResult.isValid) {
+            this.validator.setError('email', validationResult.message || 'Please enter a valid email address');
+            this.logger.warn('Invalid email detected on blur:', emailValue);
+          } else {
+            this.validator.clearError('email');
+          }
+        }
+      }
       
       if (fieldName === 'country') {
         const provinceField = this.fields.get('province');

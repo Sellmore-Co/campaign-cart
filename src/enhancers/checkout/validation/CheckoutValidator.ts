@@ -10,7 +10,8 @@ import { CreditCardService, type CreditCardData } from '../services/CreditCardSe
 
 // Centralized validation patterns and constants
 export const VALIDATION_PATTERNS = {
-  EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  // Enhanced email validation - prevents multiple dots, ensures proper TLD
+  EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
   PHONE: /^[\d\s\-\+\(\)]+$/,
   NAME: /^[A-Za-zÀ-ÿ]+(?:[' -][A-Za-zÀ-ÿ]+)*$/,
 } as const;
@@ -346,7 +347,48 @@ export class CheckoutValidator {
   }
 
   public isValidEmail(email: string): boolean {
-    return VALIDATION_PATTERNS.EMAIL.test(email);
+    // First check basic regex pattern
+    if (!VALIDATION_PATTERNS.EMAIL.test(email)) {
+      return false;
+    }
+    
+    // Additional validation rules
+    // Check for consecutive dots
+    if (email.includes('..')) {
+      return false;
+    }
+    
+    // Check that email doesn't start or end with a dot
+    const [localPart, domainPart] = email.split('@');
+    if (!localPart || !domainPart) {
+      return false;
+    }
+    
+    if (localPart.startsWith('.') || localPart.endsWith('.') || 
+        domainPart.startsWith('.') || domainPart.endsWith('.')) {
+      return false;
+    }
+    
+    // Ensure TLD is at least 2 characters (prevents .c, .h, etc.)
+    const parts = domainPart.split('.');
+    const tld = parts[parts.length - 1];
+    if (!tld || tld.length < 2) {
+      return false;
+    }
+    
+    // Check for common incomplete domains
+    const incompletePatterns = [
+      /\.c$/,     // gmail.c, yahoo.c
+      /\.co$/,    // incomplete .com
+      /\.n$/,     // incomplete .net
+      /\.o$/,     // incomplete .org
+    ];
+    
+    if (incompletePatterns.some(pattern => pattern.test(email.toLowerCase()))) {
+      return false;
+    }
+    
+    return true;
   }
 
   public isValidPhone(phone: string): boolean {
