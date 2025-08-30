@@ -658,10 +658,6 @@ export class ProspectCartEnhancer extends BaseEnhancer {
    * Check if we have enough data to create prospect cart and create it immediately
    */
   public checkAndCreateCart(): void {
-    if (this.hasTriggered) {
-      return;
-    }
-    
     // Get current form values
     const email = (this.element.querySelector('[data-next-checkout-field="email"], [os-checkout-field="email"], input[type="email"]') as HTMLInputElement)?.value?.trim() || '';
     const firstName = (this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]') as HTMLInputElement)?.value?.trim() || '';
@@ -672,8 +668,19 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     const hasValidFirstName = this.isValidName(firstName);
     const hasValidLastName = this.isValidName(lastName);
     
+    // Track begin_checkout event as soon as we have a valid email (shows intent)
+    if (hasValidEmail && !this.hasTrackedBeginCheckout) {
+      this.trackBeginCheckout();
+      this.logger.info('Tracked begin_checkout event on valid email entry:', email);
+    }
+    
+    // Check if prospect cart has already been created
+    if (this.hasTriggered) {
+      return;
+    }
+    
     // Log validation status
-    this.logger.debug('Field validation status:', {
+    this.logger.debug('Field validation status for cart creation:', {
       email: { value: email, valid: hasValidEmail },
       firstName: { value: firstName, valid: hasValidFirstName },
       lastName: { value: lastName, valid: hasValidLastName }
@@ -690,9 +697,9 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       if (!hasValidEmail) {
         this.logger.debug('Invalid or incomplete email, skipping cart creation:', email);
       } else if (!hasValidFirstName) {
-        this.logger.debug('Invalid or missing first name, skipping cart creation:', firstName);
+        this.logger.debug('Invalid or missing first name, waiting for valid name:', firstName);
       } else if (!hasValidLastName) {
-        this.logger.debug('Invalid or missing last name, skipping cart creation:', lastName);
+        this.logger.debug('Invalid or missing last name, waiting for valid name:', lastName);
       }
       
       return;
@@ -713,9 +720,6 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     
     this.createProspectCart();
     this.hasTriggered = true;
-    
-    // Track begin_checkout event
-    this.trackBeginCheckout();
   }
   
   /**
