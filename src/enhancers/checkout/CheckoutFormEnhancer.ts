@@ -1072,10 +1072,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       provinceField.innerHTML = '';
       
+      // Create placeholder option that shows the appropriate label
       const placeholderOption = document.createElement('option');
       placeholderOption.value = '';
       placeholderOption.textContent = `Select ${countryData.countryConfig.stateLabel}`;
-      placeholderOption.disabled = true;
+      placeholderOption.disabled = false; // Keep it selectable but invalid for validation
       placeholderOption.selected = true;
       provinceField.appendChild(placeholderOption);
       
@@ -1117,16 +1118,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         provinceField.value = '';
       }
       
-      // Only auto-select first state if no valid state was found and states are required
-      if (!validStateFound && countryData.states.length > 0 && countryData.countryConfig.stateRequired) {
-        const firstState = countryData.states[0];
-        if (firstState) {
-          provinceField.value = firstState.code;
-          this.updateFormData({ province: firstState.code });
-          this.clearError('province');
-          provinceField.dispatchEvent(new Event('change', { bubbles: true }));
-          this.logger.debug(`Auto-selected first state: ${firstState.name} (${firstState.code})`);
-        }
+      // Don't auto-select - keep the placeholder selected
+      // The placeholder option is already selected by default
+      if (!validStateFound) {
+        // Ensure the placeholder is selected (value is empty)
+        provinceField.value = '';
+        this.logger.debug(`No valid state found, showing placeholder: Select ${countryData.countryConfig.stateLabel}`);
       }
       
     } catch (error) {
@@ -3191,10 +3188,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       billingProvinceField.innerHTML = '';
       
+      // Create placeholder option with appropriate label
       const placeholderOption = document.createElement('option');
       placeholderOption.value = '';
       placeholderOption.textContent = `Select ${countryData.countryConfig.stateLabel}`;
-      placeholderOption.disabled = true;
+      placeholderOption.disabled = false; // Keep it selectable but invalid for validation
       placeholderOption.selected = true;
       billingProvinceField.appendChild(placeholderOption);
       
