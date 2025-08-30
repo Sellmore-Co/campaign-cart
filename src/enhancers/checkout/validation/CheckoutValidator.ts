@@ -14,9 +14,9 @@ export const VALIDATION_PATTERNS = {
   EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
   PHONE: /^[\d\s\-\+\(\)]+$/,
   NAME: /^[A-Za-zÀ-ÿ]+(?:[' -][A-Za-zÀ-ÿ]+)*$/,
-  // City validation - allows letters, spaces, hyphens, apostrophes, periods, and accented characters
-  // Prevents special characters like @, #, $, %, numbers at start, excessive punctuation
-  CITY: /^[A-Za-zÀ-ÿ]+(?:[\s'-][A-Za-zÀ-ÿ]+)*(?:\.[A-Za-zÀ-ÿ]+)?$/,
+  // City validation - allows any Unicode letter, spaces, periods, apostrophes (both straight and curly), and hyphens
+  // Examples: "New York", "St. John's", "São Paulo", "Québec-City", "Mont-Saint-Michel", "O'Fallon"
+  CITY: /^[\p{L}\s.''-]+$/u,
 } as const;
 
 export interface ValidationRule {
@@ -428,28 +428,8 @@ export class CheckoutValidator {
       return false;
     }
     
-    // Check for invalid characters
-    if (trimmedCity.includes('@') || 
-        trimmedCity.includes('#') || 
-        trimmedCity.includes('$') || 
-        trimmedCity.includes('%') || 
-        trimmedCity.includes('&') || 
-        trimmedCity.includes('*') ||
-        trimmedCity.includes('!') ||
-        trimmedCity.includes('=') ||
-        trimmedCity.includes('+') ||
-        trimmedCity.includes('[') ||
-        trimmedCity.includes(']') ||
-        trimmedCity.includes('{') ||
-        trimmedCity.includes('}') ||
-        trimmedCity.includes('|') ||
-        trimmedCity.includes('\\') ||
-        trimmedCity.includes('/') ||
-        trimmedCity.includes('<') ||
-        trimmedCity.includes('>') ||
-        trimmedCity.includes('?') ||
-        trimmedCity.includes('~') ||
-        trimmedCity.includes('`')) {
+    // Check for numbers anywhere in the city name
+    if (/\d/.test(trimmedCity)) {
       return false;
     }
     
@@ -458,12 +438,14 @@ export class CheckoutValidator {
       return false;
     }
     
-    // Check if starts with number or punctuation (except for allowed cases like "St. Louis")
-    if (/^[0-9]/.test(trimmedCity) || /^[-']/.test(trimmedCity)) {
+    // Check if starts with punctuation (except for allowed cases)
+    // Allow starting with letters only (Unicode letters via \p{L})
+    if (!/^[\p{L}]/u.test(trimmedCity)) {
       return false;
     }
     
-    // Use the CITY pattern for final validation
+    // Use the CITY pattern for validation
+    // This regex allows: Unicode letters, spaces, periods, apostrophes (both ' and '), and hyphens
     return VALIDATION_PATTERNS.CITY.test(trimmedCity);
   }
 
