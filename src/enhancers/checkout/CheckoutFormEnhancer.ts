@@ -2987,6 +2987,48 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       }
       
+      // Validate city on blur
+      if (fieldName === 'city' && (event.type === 'blur' || event.type === 'change')) {
+        const cityValue = target.value.trim();
+        if (cityValue) {
+          const validationResult = this.validator.validateField('city', cityValue);
+          if (!validationResult.isValid) {
+            this.validator.setError('city', validationResult.message || 'Please enter a valid city name');
+            this.logger.warn('Invalid city detected on blur:', cityValue);
+          } else {
+            this.validator.clearError('city');
+          }
+        }
+      }
+      
+      // Validate first name on blur
+      if (fieldName === 'fname' && (event.type === 'blur' || event.type === 'change')) {
+        const fnameValue = target.value.trim();
+        if (fnameValue) {
+          const validationResult = this.validator.validateField('fname', fnameValue);
+          if (!validationResult.isValid) {
+            this.validator.setError('fname', validationResult.message || 'First name can only contain letters, spaces, hyphens, and apostrophes');
+            this.logger.warn('Invalid first name detected on blur:', fnameValue);
+          } else {
+            this.validator.clearError('fname');
+          }
+        }
+      }
+      
+      // Validate last name on blur
+      if (fieldName === 'lname' && (event.type === 'blur' || event.type === 'change')) {
+        const lnameValue = target.value.trim();
+        if (lnameValue) {
+          const validationResult = this.validator.validateField('lname', lnameValue);
+          if (!validationResult.isValid) {
+            this.validator.setError('lname', validationResult.message || 'Last name can only contain letters, spaces, hyphens, and apostrophes');
+            this.logger.warn('Invalid last name detected on blur:', lnameValue);
+          } else {
+            this.validator.clearError('lname');
+          }
+        }
+      }
+      
       if (fieldName === 'country') {
         const provinceField = this.fields.get('province');
         if (provinceField instanceof HTMLSelectElement) {

@@ -14,10 +14,13 @@ export const VALIDATION_PATTERNS = {
   EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
   PHONE: /^[\d\s\-\+\(\)]+$/,
   NAME: /^[A-Za-zÀ-ÿ]+(?:[' -][A-Za-zÀ-ÿ]+)*$/,
+  // City validation - allows letters, spaces, hyphens, apostrophes, periods, and accented characters
+  // Prevents special characters like @, #, $, %, numbers at start, excessive punctuation
+  CITY: /^[A-Za-zÀ-ÿ]+(?:[\s'-][A-Za-zÀ-ÿ]+)*(?:\.[A-Za-zÀ-ÿ]+)?$/,
 } as const;
 
 export interface ValidationRule {
-  type: 'required' | 'email' | 'phone' | 'postal' | 'name' | 'custom';
+  type: 'required' | 'email' | 'phone' | 'postal' | 'name' | 'city' | 'custom';
   message?: string;
   validator?: (value: any, context?: any) => boolean;
 }
@@ -82,12 +85,13 @@ export class CheckoutValidator {
     const emailRule: ValidationRule = { type: 'email', message: 'Please enter a valid email address' };
     const phoneRule: ValidationRule = { type: 'phone', message: 'Please enter a valid phone number' };
     const nameRule: ValidationRule = { type: 'name', message: 'Name can only contain letters, spaces, hyphens, and apostrophes' };
+    const cityRule: ValidationRule = { type: 'city', message: 'Please enter a valid city name' };
     
     this.rules.set('email', [requiredRule, emailRule]);
     this.rules.set('fname', [requiredRule, nameRule]);
     this.rules.set('lname', [requiredRule, nameRule]);
     this.rules.set('address1', [requiredRule]);
-    this.rules.set('city', [requiredRule]);
+    this.rules.set('city', [requiredRule, cityRule]);
     this.rules.set('postal', [requiredRule]);
     this.rules.set('country', [requiredRule]);
     this.rules.set('phone', [phoneRule]); // Phone is optional but validated if present
@@ -176,6 +180,15 @@ export class CheckoutValidator {
       errors.lname = 'Last name can only contain letters, spaces, hyphens, and apostrophes';
       if (!firstErrorField) {
         firstErrorField = 'lname';
+      }
+      isValid = false;
+    }
+    
+    // City validation
+    if (formData.city && formData.city.trim() && !this.isValidCity(formData.city)) {
+      errors.city = 'Please enter a valid city name';
+      if (!firstErrorField) {
+        firstErrorField = 'city';
       }
       isValid = false;
     }
@@ -333,6 +346,9 @@ export class CheckoutValidator {
       case 'name':
         return !value || this.isValidName(value);
       
+      case 'city':
+        return !value || this.isValidCity(value);
+      
       case 'postal':
         if (!value || !context?.country) return true;
         const countryConfig = context.countryConfigs?.get(context.country);
@@ -397,6 +413,58 @@ export class CheckoutValidator {
 
   public isValidName(name: string): boolean {
     return VALIDATION_PATTERNS.NAME.test(name.trim());
+  }
+
+  public isValidCity(city: string): boolean {
+    const trimmedCity = city.trim();
+    
+    // City must not be empty
+    if (!trimmedCity) {
+      return false;
+    }
+    
+    // City must be at least 2 characters
+    if (trimmedCity.length < 2) {
+      return false;
+    }
+    
+    // Check for invalid characters
+    if (trimmedCity.includes('@') || 
+        trimmedCity.includes('#') || 
+        trimmedCity.includes('$') || 
+        trimmedCity.includes('%') || 
+        trimmedCity.includes('&') || 
+        trimmedCity.includes('*') ||
+        trimmedCity.includes('!') ||
+        trimmedCity.includes('=') ||
+        trimmedCity.includes('+') ||
+        trimmedCity.includes('[') ||
+        trimmedCity.includes(']') ||
+        trimmedCity.includes('{') ||
+        trimmedCity.includes('}') ||
+        trimmedCity.includes('|') ||
+        trimmedCity.includes('\\') ||
+        trimmedCity.includes('/') ||
+        trimmedCity.includes('<') ||
+        trimmedCity.includes('>') ||
+        trimmedCity.includes('?') ||
+        trimmedCity.includes('~') ||
+        trimmedCity.includes('`')) {
+      return false;
+    }
+    
+    // Check for excessive consecutive punctuation (more than 2 hyphens or spaces)
+    if (/---+/.test(trimmedCity) || /\s{3,}/.test(trimmedCity)) {
+      return false;
+    }
+    
+    // Check if starts with number or punctuation (except for allowed cases like "St. Louis")
+    if (/^[0-9]/.test(trimmedCity) || /^[-']/.test(trimmedCity)) {
+      return false;
+    }
+    
+    // Use the CITY pattern for final validation
+    return VALIDATION_PATTERNS.CITY.test(trimmedCity);
   }
 
   private formatFieldName(field: string, currentCountryConfig?: any): string {
