@@ -8,6 +8,14 @@ export interface EventMap {
   'cart:item-added': { packageId: number; quantity?: number; source?: string };
   'cart:item-removed': { packageId: number; };
   'cart:quantity-changed': { packageId: number; quantity: number; oldQuantity: number };
+  'cart:package-swapped': { 
+    previousPackageId: number; 
+    newPackageId: number; 
+    previousItem?: CartItem;
+    newItem?: CartItem;
+    priceDifference: number;
+    source?: string;
+  };
   'campaign:loaded': Campaign;
   'checkout:started': CheckoutData;
   'checkout:form-initialized': { form: HTMLFormElement };

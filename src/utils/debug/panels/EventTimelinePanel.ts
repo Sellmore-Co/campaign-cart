@@ -29,6 +29,7 @@ const INTERNAL_EVENT_PATTERNS = [
   'cart:item-added', 
   'cart:item-removed',
   'cart:quantity-changed',
+  'cart:package-swapped',
   'campaign:loaded',
   'checkout:started',
   'checkout:form-initialized',
@@ -85,6 +86,20 @@ const INTERNAL_EVENT_PATTERNS = [
   'fomo:shown'
 ];
 
+// Events to filter out (noise events)
+const FILTERED_EVENTS = [
+  'dataLayer.push',
+  'gtm.dom',
+  'gtm.js',
+  'gtm.load',
+  'gtm.click',
+  'gtm.linkClick',
+  'gtm.scrollDepth',
+  'gtm.timer',
+  'gtm.historyChange',
+  'gtm.video'
+];
+
 export class EventTimelinePanel implements DebugPanel {
   id = 'event-timeline';
   title = 'Events';
@@ -96,8 +111,8 @@ export class EventTimelinePanel implements DebugPanel {
   private showInternalEvents = false;
   private updateTimeout: NodeJS.Timeout | null = null;
   private saveTimeout: NodeJS.Timeout | null = null;
+  private selectedEventId: string | null = null;
 
-  private startTime = Date.now();
   private eventBus = EventBus.getInstance();
   
   // Storage keys
@@ -207,7 +222,7 @@ export class EventTimelinePanel implements DebugPanel {
 
     // Watch for existing events
     if (window.dataLayer.length > 0) {
-      window.dataLayer.forEach((event, index) => {
+      window.dataLayer.forEach((event) => {
         if (typeof event === 'object' && event.event) {
           this.addEvent({
             type: 'dataLayer',
@@ -239,7 +254,7 @@ export class EventTimelinePanel implements DebugPanel {
     const originalEmit = this.eventBus.emit.bind(this.eventBus);
     (this.eventBus as any).emit = (event: string, data?: any) => {
       eventHandler(event, data);
-      return originalEmit(event, data);
+      return originalEmit(event as any, data);
     };
   }
 
@@ -325,6 +340,11 @@ export class EventTimelinePanel implements DebugPanel {
   }
 
   private addEvent(eventData: Partial<TimelineEvent>): void {
+    // Filter out noise events
+    if (FILTERED_EVENTS.includes(eventData.name || '')) {
+      return;
+    }
+    
     const now = Date.now();
     const event: TimelineEvent = {
       id: `event_${now}_${Math.random().toString(36).substr(2, 9)}`,
@@ -380,13 +400,14 @@ export class EventTimelinePanel implements DebugPanel {
 
   private formatTimestamp(timestamp: number): string {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', { 
+    const time = date.toLocaleTimeString('en-US', { 
       hour12: false,
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit',
-      fractionalSecondDigits: 3
+      second: '2-digit'
     });
+    const ms = date.getMilliseconds().toString().padStart(3, '0');
+    return `${time}.${ms}`;
   }
 
   private getFilteredEvents(): TimelineEvent[] {
@@ -416,8 +437,98 @@ export class EventTimelinePanel implements DebugPanel {
     return badges[type as keyof typeof badges] || type.toUpperCase();
   }
 
+  private showEventModal(eventId: string): void {
+    this.selectedEventId = eventId;
+    // Trigger re-render
+    if (typeof document !== 'undefined') {
+      document.dispatchEvent(new CustomEvent('debug:update-content', {
+        detail: { panelId: this.id }
+      }));
+    }
+  }
+
+  private closeEventModal(): void {
+    this.selectedEventId = null;
+    // Trigger re-render
+    if (typeof document !== 'undefined') {
+      document.dispatchEvent(new CustomEvent('debug:update-content', {
+        detail: { panelId: this.id }
+      }));
+    }
+  }
+
   getContent(): string {
     const filteredEvents = this.getFilteredEvents();
+    const selectedEvent = this.selectedEventId ? 
+      this.events.find(e => e.id === this.selectedEventId) : null;
+
+    // Add modal HTML if an event is selected
+    const modalHtml = selectedEvent ? `
+      <div class="event-modal-overlay" onclick="window.eventTimelinePanel_closeModal()">
+        <div class="event-modal" onclick="event.stopPropagation()">
+          <div class="event-modal-header">
+            <h3 class="event-modal-title">${selectedEvent.name}</h3>
+            <button class="event-modal-close" onclick="window.eventTimelinePanel_closeModal()">✕</button>
+          </div>
+          <div class="event-modal-body">
+            <div class="event-modal-meta">
+              <div class="event-modal-meta-item">
+                <span class="event-modal-meta-label">Type:</span>
+                <span class="event-type-badge" style="background: ${this.getEventTypeColor(selectedEvent.type)}22; color: ${this.getEventTypeColor(selectedEvent.type)};">
+                  ${this.getEventTypeBadge(selectedEvent.type)}
+                </span>
+              </div>
+              <div class="event-modal-meta-item">
+                <span class="event-modal-meta-label">Source:</span>
+                <span>${selectedEvent.source}</span>
+              </div>
+              <div class="event-modal-meta-item">
+                <span class="event-modal-meta-label">Time:</span>
+                <span>${this.formatTimestamp(selectedEvent.timestamp)}</span>
+              </div>
+              <div class="event-modal-meta-item">
+                <span class="event-modal-meta-label">Relative:</span>
+                <span>${selectedEvent.relativeTime}</span>
+              </div>
+            </div>
+            <div class="event-modal-data">
+              <div class="event-modal-data-header">
+                <span>Event Data</span>
+                <button class="event-modal-copy" onclick="window.eventTimelinePanel_copyData('${selectedEvent.id}')">
+                  Copy JSON
+                </button>
+              </div>
+              <pre class="event-modal-data-content">${JSON.stringify(selectedEvent.data, null, 2)}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    ` : '';
+
+    // Setup global functions for modal interaction
+    if (typeof window !== 'undefined') {
+      (window as any).eventTimelinePanel_showModal = (eventId: string) => {
+        this.showEventModal(eventId);
+      };
+      (window as any).eventTimelinePanel_closeModal = () => {
+        this.closeEventModal();
+      };
+      (window as any).eventTimelinePanel_copyData = (eventId: string) => {
+        const event = this.events.find(e => e.id === eventId);
+        if (event) {
+          navigator.clipboard.writeText(JSON.stringify(event.data, null, 2));
+          // Show feedback
+          const button = document.querySelector('.event-modal-copy');
+          if (button) {
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            setTimeout(() => {
+              button.textContent = originalText;
+            }, 2000);
+          }
+        }
+      };
+    }
 
     return `
       <style>
@@ -426,6 +537,120 @@ export class EventTimelinePanel implements DebugPanel {
           display: flex;
           flex-direction: column;
           background: #0f0f0f;
+        }
+        /* Modal Styles */
+        .event-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 100000;
+          backdrop-filter: blur(4px);
+        }
+        .event-modal {
+          background: #1a1a1a;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          width: 90%;
+          max-width: 800px;
+          max-height: 80vh;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+        }
+        .event-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .event-modal-title {
+          margin: 0;
+          font-size: 1.2em;
+          color: rgba(255, 255, 255, 0.9);
+          font-weight: 600;
+        }
+        .event-modal-close {
+          background: none;
+          border: none;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 24px;
+          cursor: pointer;
+          padding: 0;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 6px;
+          transition: all 0.2s;
+        }
+        .event-modal-close:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.9);
+        }
+        .event-modal-body {
+          flex: 1;
+          overflow-y: auto;
+          padding: 20px;
+        }
+        .event-modal-meta {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+          margin-bottom: 20px;
+        }
+        .event-modal-meta-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .event-modal-meta-label {
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 0.9em;
+        }
+        .event-modal-data {
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .event-modal-data-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 16px;
+          background: rgba(255, 255, 255, 0.02);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .event-modal-copy {
+          background: rgba(60, 125, 255, 0.2);
+          border: 1px solid #3C7DFF;
+          color: #3C7DFF;
+          padding: 6px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.85em;
+          transition: all 0.2s;
+        }
+        .event-modal-copy:hover {
+          background: rgba(60, 125, 255, 0.3);
+        }
+        .event-modal-data-content {
+          padding: 16px;
+          margin: 0;
+          color: rgba(255, 255, 255, 0.8);
+          font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+          font-size: 0.85em;
+          line-height: 1.5;
+          overflow-x: auto;
+          max-height: 400px;
         }
         .events-header {
           display: flex;
@@ -553,17 +778,12 @@ export class EventTimelinePanel implements DebugPanel {
           color: rgba(255, 255, 255, 0.6);
           cursor: pointer;
         }
-        .event-data:hover {
-          color: rgba(255, 255, 255, 0.8);
+        .event-row {
+          cursor: pointer;
+          transition: background 0.2s;
         }
-        .event-data-expanded {
-          white-space: pre-wrap;
-          word-break: break-all;
-          max-width: none;
+        .event-row:hover {
           background: rgba(255, 255, 255, 0.02);
-          padding: 8px;
-          border-radius: 4px;
-          margin-top: 4px;
         }
         .internal-badge {
           display: inline-block;
@@ -639,7 +859,7 @@ export class EventTimelinePanel implements DebugPanel {
               </thead>
               <tbody>
                 ${filteredEvents.slice(0, 100).map((event, index) => `
-                  <tr>
+                  <tr class="event-row" onclick="window.eventTimelinePanel_showModal('${event.id}')">
                     <td>${index + 1}</td>
                     <td>
                       <span class="event-type-badge" style="background: ${this.getEventTypeColor(event.type)}22; color: ${this.getEventTypeColor(event.type)};">
@@ -653,7 +873,7 @@ export class EventTimelinePanel implements DebugPanel {
                     <td class="event-source">${event.source}</td>
                     <td class="event-time">${this.formatTimestamp(event.timestamp)}</td>
                     <td>
-                      <div class="event-data" onclick="this.classList.toggle('event-data-expanded')">
+                      <div class="event-data" onclick="event.stopPropagation(); window.eventTimelinePanel_showModal('${event.id}')">
                         ${JSON.stringify(event.data, null, 2)}
                       </div>
                     </td>
@@ -664,6 +884,7 @@ export class EventTimelinePanel implements DebugPanel {
           </div>
         `}
       </div>
+      ${modalHtml}
     `;
   }
 

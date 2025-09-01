@@ -5,6 +5,7 @@ export declare class DebugOverlay {
     private visible;
     private isExpanded;
     private container;
+    private shadowRoot;
     private activePanel;
     private activePanelTab;
     private updateInterval;
@@ -12,6 +13,8 @@ export declare class DebugOverlay {
     private eventManager;
     private panels;
     private static readonly EXPANDED_STORAGE_KEY;
+    private static readonly ACTIVE_PANEL_KEY;
+    private static readonly ACTIVE_TAB_KEY;
     static getInstance(): DebugOverlay;
     private constructor();
     private initializePanels;
@@ -22,6 +25,7 @@ export declare class DebugOverlay {
     toggle(): Promise<void>;
     isVisible(): boolean;
     private createOverlay;
+    private injectShadowStyles;
     private updateOverlay;
     private updateContent;
     private addEventListeners;
@@ -35,6 +39,7 @@ export declare class DebugOverlay {
     logEvent(type: string, data: any, source?: string): void;
     private clearCart;
     private exportAllData;
+    private closeMiniCart;
     private toggleMiniCart;
     private updateMiniCart;
     private toggleXray;

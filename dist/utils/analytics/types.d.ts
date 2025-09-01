@@ -38,7 +38,10 @@ export interface UserProperties {
 export interface EcommerceData {
     currency?: string;
     value?: number;
+    value_change?: number;
     items?: EcommerceItem[];
+    items_removed?: EcommerceItem[];
+    items_added?: EcommerceItem[];
     transaction_id?: string;
     affiliation?: string;
     tax?: number;

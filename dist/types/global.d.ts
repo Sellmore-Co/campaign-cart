@@ -13,6 +13,14 @@ export interface EventMap {
         quantity: number;
         oldQuantity: number;
     };
+    'cart:package-swapped': {
+        previousPackageId: number;
+        newPackageId: number;
+        previousItem?: CartItem;
+        newItem?: CartItem;
+        priceDifference: number;
+        source?: string;
+    };
     'campaign:loaded': Campaign;
     'checkout:started': CheckoutData;
     'checkout:form-initialized': {
