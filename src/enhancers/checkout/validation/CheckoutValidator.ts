@@ -10,13 +10,17 @@ import { CreditCardService, type CreditCardData } from '../services/CreditCardSe
 
 // Centralized validation patterns and constants
 export const VALIDATION_PATTERNS = {
-  EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  // Enhanced email validation - prevents multiple dots, ensures proper TLD
+  EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
   PHONE: /^[\d\s\-\+\(\)]+$/,
   NAME: /^[A-Za-zÀ-ÿ]+(?:[' -][A-Za-zÀ-ÿ]+)*$/,
+  // City validation - allows any Unicode letter, spaces, periods, apostrophes (both straight and curly), and hyphens
+  // Examples: "New York", "St. John's", "São Paulo", "Québec-City", "Mont-Saint-Michel", "O'Fallon"
+  CITY: /^[\p{L}\s.''-]+$/u,
 } as const;
 
 export interface ValidationRule {
-  type: 'required' | 'email' | 'phone' | 'postal' | 'name' | 'custom';
+  type: 'required' | 'email' | 'phone' | 'postal' | 'name' | 'city' | 'custom';
   message?: string;
   validator?: (value: any, context?: any) => boolean;
 }
@@ -81,12 +85,13 @@ export class CheckoutValidator {
     const emailRule: ValidationRule = { type: 'email', message: 'Please enter a valid email address' };
     const phoneRule: ValidationRule = { type: 'phone', message: 'Please enter a valid phone number' };
     const nameRule: ValidationRule = { type: 'name', message: 'Name can only contain letters, spaces, hyphens, and apostrophes' };
+    const cityRule: ValidationRule = { type: 'city', message: 'Please enter a valid city name' };
     
     this.rules.set('email', [requiredRule, emailRule]);
     this.rules.set('fname', [requiredRule, nameRule]);
     this.rules.set('lname', [requiredRule, nameRule]);
     this.rules.set('address1', [requiredRule]);
-    this.rules.set('city', [requiredRule]);
+    this.rules.set('city', [requiredRule, cityRule]);
     this.rules.set('postal', [requiredRule]);
     this.rules.set('country', [requiredRule]);
     this.rules.set('phone', [phoneRule]); // Phone is optional but validated if present
@@ -175,6 +180,15 @@ export class CheckoutValidator {
       errors.lname = 'Last name can only contain letters, spaces, hyphens, and apostrophes';
       if (!firstErrorField) {
         firstErrorField = 'lname';
+      }
+      isValid = false;
+    }
+    
+    // City validation
+    if (formData.city && formData.city.trim() && !this.isValidCity(formData.city)) {
+      errors.city = 'Please enter a valid city name';
+      if (!firstErrorField) {
+        firstErrorField = 'city';
       }
       isValid = false;
     }
@@ -332,6 +346,9 @@ export class CheckoutValidator {
       case 'name':
         return !value || this.isValidName(value);
       
+      case 'city':
+        return !value || this.isValidCity(value);
+      
       case 'postal':
         if (!value || !context?.country) return true;
         const countryConfig = context.countryConfigs?.get(context.country);
@@ -346,7 +363,48 @@ export class CheckoutValidator {
   }
 
   public isValidEmail(email: string): boolean {
-    return VALIDATION_PATTERNS.EMAIL.test(email);
+    // First check basic regex pattern
+    if (!VALIDATION_PATTERNS.EMAIL.test(email)) {
+      return false;
+    }
+    
+    // Additional validation rules
+    // Check for consecutive dots
+    if (email.includes('..')) {
+      return false;
+    }
+    
+    // Check that email doesn't start or end with a dot
+    const [localPart, domainPart] = email.split('@');
+    if (!localPart || !domainPart) {
+      return false;
+    }
+    
+    if (localPart.startsWith('.') || localPart.endsWith('.') || 
+        domainPart.startsWith('.') || domainPart.endsWith('.')) {
+      return false;
+    }
+    
+    // Ensure TLD is at least 2 characters (prevents .c, .h, etc.)
+    const parts = domainPart.split('.');
+    const tld = parts[parts.length - 1];
+    if (!tld || tld.length < 2) {
+      return false;
+    }
+    
+    // Check for common incomplete domains
+    const incompletePatterns = [
+      /\.c$/,     // gmail.c, yahoo.c
+      /\.co$/,    // incomplete .com
+      /\.n$/,     // incomplete .net
+      /\.o$/,     // incomplete .org
+    ];
+    
+    if (incompletePatterns.some(pattern => pattern.test(email.toLowerCase()))) {
+      return false;
+    }
+    
+    return true;
   }
 
   public isValidPhone(phone: string): boolean {
@@ -355,6 +413,40 @@ export class CheckoutValidator {
 
   public isValidName(name: string): boolean {
     return VALIDATION_PATTERNS.NAME.test(name.trim());
+  }
+
+  public isValidCity(city: string): boolean {
+    const trimmedCity = city.trim();
+    
+    // City must not be empty
+    if (!trimmedCity) {
+      return false;
+    }
+    
+    // City must be at least 2 characters
+    if (trimmedCity.length < 2) {
+      return false;
+    }
+    
+    // Check for numbers anywhere in the city name
+    if (/\d/.test(trimmedCity)) {
+      return false;
+    }
+    
+    // Check for excessive consecutive punctuation (more than 2 hyphens or spaces)
+    if (/---+/.test(trimmedCity) || /\s{3,}/.test(trimmedCity)) {
+      return false;
+    }
+    
+    // Check if starts with punctuation (except for allowed cases)
+    // Allow starting with letters only (Unicode letters via \p{L})
+    if (!/^[\p{L}]/u.test(trimmedCity)) {
+      return false;
+    }
+    
+    // Use the CITY pattern for validation
+    // This regex allows: Unicode letters, spaces, periods, apostrophes (both ' and '), and hyphens
+    return VALIDATION_PATTERNS.CITY.test(trimmedCity);
   }
 
   private formatFieldName(field: string, currentCountryConfig?: any): string {

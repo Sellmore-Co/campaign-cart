@@ -140,6 +140,37 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       this.logger.warn('Email field not found for prospect cart');
     }
   }
+  
+  /**
+   * Get formatted phone number in E.164 format from existing intlTelInput instance
+   */
+  private getFormattedPhoneNumber(): string {
+    // Find the phone field
+    const phoneField = this.element.querySelector('[data-next-checkout-field="phone"], [os-checkout-field="phone"], input[name="phone"], input[type="tel"]') as HTMLInputElement;
+    
+    if (!phoneField) {
+      return '';
+    }
+    
+    // Check if intlTelInput instance exists on the element (created by CheckoutFormEnhancer)
+    const intlTelInputInstance = (window as any).intlTelInputGlobals?.getInstance?.(phoneField);
+    
+    if (intlTelInputInstance && typeof intlTelInputInstance.getNumber === 'function') {
+      try {
+        const e164Number = intlTelInputInstance.getNumber();
+        if (e164Number) {
+          this.logger.debug('Got E.164 formatted phone from existing instance:', e164Number);
+          return e164Number;
+        }
+      } catch (error) {
+        this.logger.warn('Failed to get E.164 formatted phone from existing instance:', error);
+      }
+    }
+    
+    // Fallback to raw phone value if intlTelInput not available or not initialized
+    this.logger.debug('Using raw phone value (intlTelInput instance not found)');
+    return phoneField.value || '';
+  }
 
   private setupTriggers(): void {
     if (!this.config.autoCreate) return;
@@ -175,8 +206,8 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   }
 
   // Store timeouts at class level to coordinate between blur and updateEmail
-  private emailInputTimeout?: number;
-  private emailBlurTimeout?: number;
+  private emailInputTimeout: number | undefined;
+  private emailBlurTimeout: number | undefined;
 
   private setupEmailEntryTrigger(): void {
     if (!this.emailField) {
@@ -186,14 +217,91 @@ export class ProspectCartEnhancer extends BaseEnhancer {
 
     this.logger.debug('Setting up email entry trigger on field:', this.emailField);
 
-    // Trigger when email is entered - check immediately for all required fields
+    // Find first name and last name fields
+    const firstNameField = this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]') as HTMLInputElement;
+    const lastNameField = this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]') as HTMLInputElement;
+
+    let blurTimeout: number | undefined;
+    let lastEmailValue = '';
+
+    // Handler for checking if we should create cart
+    const checkForCartCreation = () => {
+      // Clear any existing timeout
+      if (blurTimeout) {
+        clearTimeout(blurTimeout);
+      }
+      
+      blurTimeout = window.setTimeout(() => {
+        this.logger.debug('Checking if all required fields are valid for cart creation');
+        this.checkAndCreateCart();
+      }, 300); // 300ms delay to catch rapid blur events
+    };
+
+    // Set up email field listeners
     this.emailField.addEventListener('blur', () => {
-      this.logger.debug('Email blur event triggered, value:', this.emailField!.value);
-      // Check if we have enough data to create cart immediately
-      this.checkAndCreateCart();
+      const currentEmail = this.emailField!.value.trim();
+      
+      // Only process if email has changed and appears complete
+      if (currentEmail !== lastEmailValue && currentEmail.length > 0) {
+        lastEmailValue = currentEmail;
+        
+        this.logger.debug('Email blur event processed, value:', currentEmail);
+        
+        // Only check if email looks complete (has @ and a domain with TLD)
+        if (currentEmail.includes('@') && currentEmail.split('@')[1]?.includes('.')) {
+          checkForCartCreation();
+        } else {
+          this.logger.debug('Email appears incomplete, skipping cart creation:', currentEmail);
+        }
+      }
     });
 
-    // Don't need input handler anymore since we check on blur/change
+    // Also listen for change event on email (more reliable for autofill)
+    this.emailField.addEventListener('change', () => {
+      const currentEmail = this.emailField!.value.trim();
+      if (this.isValidEmail(currentEmail)) {
+        this.logger.debug('Valid email detected on change event:', currentEmail);
+        checkForCartCreation();
+      }
+    });
+
+    // Set up first name field listeners
+    if (firstNameField) {
+      firstNameField.addEventListener('blur', () => {
+        const firstName = firstNameField.value.trim();
+        if (firstName.length >= 2) {
+          this.logger.debug('First name blur event, checking cart creation');
+          checkForCartCreation();
+        }
+      });
+      
+      firstNameField.addEventListener('change', () => {
+        const firstName = firstNameField.value.trim();
+        if (this.isValidName(firstName)) {
+          this.logger.debug('Valid first name detected on change event:', firstName);
+          checkForCartCreation();
+        }
+      });
+    }
+
+    // Set up last name field listeners
+    if (lastNameField) {
+      lastNameField.addEventListener('blur', () => {
+        const lastName = lastNameField.value.trim();
+        if (lastName.length >= 2) {
+          this.logger.debug('Last name blur event, checking cart creation');
+          checkForCartCreation();
+        }
+      });
+      
+      lastNameField.addEventListener('change', () => {
+        const lastName = lastNameField.value.trim();
+        if (this.isValidName(lastName)) {
+          this.logger.debug('Valid last name detected on change event:', lastName);
+          checkForCartCreation();
+        }
+      });
+    }
   }
 
   private checkExistingProspectCart(): void {
@@ -247,7 +355,8 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       // Get all available form data
       const firstName = (this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]') as HTMLInputElement)?.value || '';
       const lastName = (this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]') as HTMLInputElement)?.value || '';
-      const phone = (this.element.querySelector('[data-next-checkout-field="phone"], [os-checkout-field="phone"], input[name="phone"]') as HTMLInputElement)?.value || '';
+      // Get phone in E.164 format if possible
+      const phone = this.getFormattedPhoneNumber();
       
       // Get address data if available
       const address1 = (this.element.querySelector('[data-next-checkout-field="address1"], [os-checkout-field="address1"], input[name="address1"]') as HTMLInputElement)?.value || '';
@@ -303,7 +412,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         user.email = email;
       }
       
-      // Add phone if it exists
+      // Add phone if it exists (in E.164 format)
       if (phone) {
         user.phone_number = phone;
       }
@@ -333,6 +442,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         if (address2) addressData.line2 = address2;
         if (state) addressData.state = state;
         if (postal) addressData.postcode = postal;
+        // Use E.164 formatted phone for address
         if (phone) addressData.phone_number = phone;
         
         cartData.address = addressData;
@@ -458,8 +568,56 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   }
 
   private isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    // More robust email validation regex that prevents multiple dots and ensures proper TLD
+    // Matches: user@domain.com, user.name@domain.co.uk
+    // Rejects: test@test....com, user@domain.c, spaces, etc.
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    
+    // Additional validation rules
+    if (!emailRegex.test(email)) {
+      return false;
+    }
+    
+    // Check for consecutive dots in local or domain part
+    if (email.includes('..')) {
+      return false;
+    }
+    
+    // Check that email doesn't start or end with a dot
+    const [localPart, domainPart] = email.split('@');
+    if (!localPart || !domainPart) {
+      return false;
+    }
+    
+    if (localPart.startsWith('.') || localPart.endsWith('.') || 
+        domainPart.startsWith('.') || domainPart.endsWith('.')) {
+      return false;
+    }
+    
+    // Ensure TLD is at least 2 characters (prevents .c, .h, etc.)
+    const parts = domainPart.split('.');
+    const tld = parts[parts.length - 1];
+    if (!tld || tld.length < 2) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  private isValidName(name: string): boolean {
+    // Name must not be empty
+    if (!name || name.trim().length === 0) {
+      return false;
+    }
+    
+    // Name must be at least 2 characters
+    if (name.trim().length < 2) {
+      return false;
+    }
+    
+    // Name can only contain letters, spaces, hyphens, apostrophes, and accented characters
+    const nameRegex = /^[A-Za-zÀ-ÿ]+(?:[' -][A-Za-zÀ-ÿ]+)*$/;
+    return nameRegex.test(name.trim());
   }
 
   private handleCartUpdate(cartState: any): void {
@@ -518,54 +676,93 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     this.logger.info('Prospect cart converted to order');
   }
 
-  private updateEmailTimeout?: number;
+  private updateEmailTimeout: number | undefined;
   
   public updateEmail(email: string): void {
     if (this.emailField) {
       this.emailField.value = email;
     }
     
-    // Don't set a timer, just check if we have enough data
-    this.checkAndCreateCart();
+    // Only check cart creation if email is valid
+    if (this.isValidEmail(email.trim())) {
+      this.checkAndCreateCart();
+    } else {
+      this.logger.debug('updateEmail called with invalid email:', email);
+    }
   }
   
   /**
    * Check if we have enough data to create prospect cart and create it immediately
    */
   public checkAndCreateCart(): void {
+    // Get current form values
+    const email = (this.element.querySelector('[data-next-checkout-field="email"], [os-checkout-field="email"], input[type="email"]') as HTMLInputElement)?.value?.trim() || '';
+    const firstName = (this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]') as HTMLInputElement)?.value?.trim() || '';
+    const lastName = (this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]') as HTMLInputElement)?.value?.trim() || '';
+    
+    // Validate all required fields
+    const hasValidEmail = this.isValidEmail(email);
+    const hasValidFirstName = this.isValidName(firstName);
+    const hasValidLastName = this.isValidName(lastName);
+    
+    // Track begin_checkout event as soon as we have a valid email (shows intent)
+    if (hasValidEmail && !this.hasTrackedBeginCheckout) {
+      this.trackBeginCheckout();
+      this.logger.info('Tracked begin_checkout event on valid email entry:', email);
+    }
+    
+    // Check if prospect cart has already been created
     if (this.hasTriggered) {
       return;
     }
     
-    // Get current form values
-    const email = (this.element.querySelector('[data-next-checkout-field="email"], [os-checkout-field="email"], input[type="email"]') as HTMLInputElement)?.value || '';
-    const firstName = (this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]') as HTMLInputElement)?.value || '';
-    const lastName = (this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]') as HTMLInputElement)?.value || '';
+    // Log validation status
+    this.logger.debug('Field validation status for cart creation:', {
+      email: { value: email, valid: hasValidEmail },
+      firstName: { value: firstName, valid: hasValidFirstName },
+      lastName: { value: lastName, valid: hasValidLastName }
+    });
     
-    // Create cart immediately if we have valid email + first name + last name
-    if (this.isValidEmail(email) && firstName.trim() !== '' && lastName.trim() !== '') {
-      // Clear any pending timeouts
-      clearTimeout(this.updateEmailTimeout);
-      clearTimeout(this.emailBlurTimeout);
-      clearTimeout(this.emailInputTimeout);
+    // Clear any pending timeout if any field is invalid
+    if (!hasValidEmail || !hasValidFirstName || !hasValidLastName) {
+      if (this.updateEmailTimeout !== undefined) {
+        clearTimeout(this.updateEmailTimeout);
+        this.updateEmailTimeout = undefined;
+      }
       
-      this.logger.info('All required fields filled (email, fname, lname), creating prospect cart immediately');
-      this.createProspectCart();
-      this.hasTriggered = true;
+      // Log why we're not creating cart
+      if (!hasValidEmail) {
+        this.logger.debug('Invalid or incomplete email, skipping cart creation:', email);
+      } else if (!hasValidFirstName) {
+        this.logger.debug('Invalid or missing first name, waiting for valid name:', firstName);
+      } else if (!hasValidLastName) {
+        this.logger.debug('Invalid or missing last name, waiting for valid name:', lastName);
+      }
       
-      // Track begin_checkout event
-      this.trackBeginCheckout();
-    } else if (this.isValidEmail(email) && !this.updateEmailTimeout) {
-      // If we only have email, set a timeout to wait for more data
-      this.updateEmailTimeout = window.setTimeout(() => {
-        this.logger.info('Creating prospect cart after timeout (only email available)');
-        this.createProspectCart();
-        this.hasTriggered = true;
-        this.trackBeginCheckout();
-      }, 5000);
-      
-      this.logger.debug(`Waiting for more data. Has email: ${!!email}, fname: ${!!firstName}, lname: ${!!lastName}`);
+      return;
     }
+    
+    // All fields are valid - create cart immediately
+    // Clear any pending timeouts
+    if (this.updateEmailTimeout !== undefined) {
+      clearTimeout(this.updateEmailTimeout);
+      this.updateEmailTimeout = undefined;
+    }
+    if (this.emailBlurTimeout !== undefined) {
+      clearTimeout(this.emailBlurTimeout);
+    }
+    if (this.emailInputTimeout !== undefined) {
+      clearTimeout(this.emailInputTimeout);
+    }
+    
+    this.logger.info('All required fields valid (email, fname, lname), creating prospect cart immediately', {
+      email,
+      firstName,
+      lastName
+    });
+    
+    this.createProspectCart();
+    this.hasTriggered = true;
   }
   
   /**

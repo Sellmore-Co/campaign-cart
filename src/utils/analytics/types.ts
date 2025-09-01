@@ -56,7 +56,10 @@ export interface UserProperties {
 export interface EcommerceData {
   currency?: string;
   value?: number;
+  value_change?: number; // For package swap events
   items?: EcommerceItem[];
+  items_removed?: EcommerceItem[]; // For package swap events
+  items_added?: EcommerceItem[]; // For package swap events
   transaction_id?: string;
   affiliation?: string;
   tax?: number;

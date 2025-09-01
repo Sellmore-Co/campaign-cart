@@ -687,9 +687,6 @@ swiper-container {
   display: none; 
 }
 
-.cart-items:has(.cart-item:nth-child(4)) .cart-items__scroll-hint {
-  display: flex;
-}
 
 /* ===========================
    10. SKELETON LOADING

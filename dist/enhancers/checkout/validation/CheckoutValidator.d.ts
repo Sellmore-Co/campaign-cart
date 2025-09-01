@@ -5,9 +5,10 @@ export declare const VALIDATION_PATTERNS: {
     readonly EMAIL: RegExp;
     readonly PHONE: RegExp;
     readonly NAME: RegExp;
+    readonly CITY: RegExp;
 };
 export interface ValidationRule {
-    type: 'required' | 'email' | 'phone' | 'postal' | 'name' | 'custom';
+    type: 'required' | 'email' | 'phone' | 'postal' | 'name' | 'city' | 'custom';
     message?: string;
     validator?: (value: any, context?: any) => boolean;
 }
@@ -39,6 +40,7 @@ export declare class CheckoutValidator {
     isValidEmail(email: string): boolean;
     isValidPhone(phone: string): boolean;
     isValidName(name: string): boolean;
+    isValidCity(city: string): boolean;
     private formatFieldName;
     private validateBillingAddress;
     setError(fieldName: string, message: string): void;

@@ -6,6 +6,7 @@ import { useCampaignStore } from '../../stores/campaignStore';
 import { useCartStore } from '../../stores/cartStore';
 import { useConfigStore } from '../../stores/configStore';
 import { DebugPanel, PanelAction, PanelTab } from './DebugPanels';
+import { RawDataHelper } from './panels/RawDataHelper';
 
 interface Package {
   ref_id: number;
@@ -162,15 +163,7 @@ export class EnhancedCampaignPanel implements DebugPanel {
       `;
     }
 
-    return `
-      <div class="enhanced-panel">
-        <div class="section">
-          <div class="json-viewer">
-            <pre><code>${JSON.stringify(campaignData, null, 2)}</code></pre>
-          </div>
-        </div>
-      </div>
-    `;
+    return RawDataHelper.generateRawDataContent(campaignData);
   }
 
   private getCampaignOverview(data: CampaignData): string {

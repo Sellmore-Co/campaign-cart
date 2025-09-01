@@ -9,6 +9,7 @@ export declare class SDKInitializer {
     private static loadConfiguration;
     private static loadCampaignData;
     private static processForcePackageId;
+    private static processForceShippingId;
     private static initializeAttribution;
     private static setupAttributionListeners;
     private static initializeAnalytics;
@@ -21,6 +22,7 @@ export declare class SDKInitializer {
     static isInitialized(): boolean;
     static reinitialize(): Promise<void>;
     private static waitForDOM;
+    private static waitForStoreRehydration;
     private static emitInitializedEvent;
     static getAttributeScanner(): AttributeScanner | null;
     static getInitializationStats(): {

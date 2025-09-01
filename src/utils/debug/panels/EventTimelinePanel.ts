@@ -8,7 +8,7 @@
  * - Performance timeline
  */
 
-import { DebugPanel } from '../DebugPanels';
+import { DebugPanel, PanelAction } from '../DebugPanels';
 import { EventBus } from '../../events';
 
 interface TimelineEvent {
@@ -20,14 +20,85 @@ interface TimelineEvent {
   source: string;
   duration?: number;
   relativeTime: string;
+  isInternal?: boolean;
 }
 
-interface EventFilter {
-  types: Set<string>;
-  sources: Set<string>;
-  search: string;
-  timeRange: number; // minutes
-}
+// Map internal events from global.ts EventMap
+const INTERNAL_EVENT_PATTERNS = [
+  'cart:updated',
+  'cart:item-added', 
+  'cart:item-removed',
+  'cart:quantity-changed',
+  'cart:package-swapped',
+  'campaign:loaded',
+  'checkout:started',
+  'checkout:form-initialized',
+  'checkout:spreedly-ready',
+  'checkout:express-started',
+  'order:completed',
+  'order:redirect-missing',
+  'error:occurred',
+  'timer:expired',
+  'config:updated',
+  'coupon:applied',
+  'coupon:removed',
+  'coupon:validation-failed',
+  'selector:item-selected',
+  'selector:action-completed',
+  'selector:selection-changed',
+  'shipping:method-selected',
+  'shipping:method-changed',
+  'action:success',
+  'action:failed',
+  'upsell:accepted',
+  'upsell-selector:item-selected',
+  'upsell:quantity-changed',
+  'upsell:option-selected',
+  'message:displayed',
+  'payment:tokenized',
+  'payment:error',
+  'checkout:express-completed',
+  'checkout:express-failed',
+  'express-checkout:initialized',
+  'express-checkout:error',
+  'express-checkout:started',
+  'express-checkout:failed',
+  'express-checkout:completed',
+  'express-checkout:redirect-missing',
+  'address:autocomplete-filled',
+  'address:location-fields-shown',
+  'checkout:location-fields-shown',
+  'checkout:billing-location-fields-shown',
+  'upsell:initialized',
+  'upsell:adding',
+  'upsell:added',
+  'upsell:error',
+  'accordion:toggled',
+  'accordion:opened',
+  'accordion:closed',
+  'upsell:skipped',
+  'upsell:viewed',
+  'exit-intent:shown',
+  'exit-intent:clicked',
+  'exit-intent:dismissed',
+  'exit-intent:closed',
+  'exit-intent:action',
+  'fomo:shown'
+];
+
+// Events to filter out (noise events)
+const FILTERED_EVENTS = [
+  'dataLayer.push',
+  'gtm.dom',
+  'gtm.js',
+  'gtm.load',
+  'gtm.click',
+  'gtm.linkClick',
+  'gtm.scrollDepth',
+  'gtm.timer',
+  'gtm.historyChange',
+  'gtm.video'
+];
 
 export class EventTimelinePanel implements DebugPanel {
   id = 'event-timeline';
@@ -37,19 +108,68 @@ export class EventTimelinePanel implements DebugPanel {
   private events: TimelineEvent[] = [];
   private maxEvents = 1000;
   private isRecording = true;
+  private showInternalEvents = false;
   private updateTimeout: NodeJS.Timeout | null = null;
-  private filters: EventFilter = {
-    types: new Set(['dataLayer', 'internal', 'dom']),
-    sources: new Set(),
-    search: '',
-    timeRange: 30 // last 30 minutes
-  };
+  private saveTimeout: NodeJS.Timeout | null = null;
+  private selectedEventId: string | null = null;
 
-  private startTime = Date.now();
   private eventBus = EventBus.getInstance();
+  
+  // Storage keys
+  private static readonly EVENTS_STORAGE_KEY = 'debug-events-history';
+  private static readonly SHOW_INTERNAL_KEY = 'debug-events-show-internal';
+  private static readonly MAX_STORED_EVENTS = 500;
 
   constructor() {
+    this.loadSavedState();
     this.initializeEventWatching();
+    EventTimelinePanel.instance = this;
+  }
+
+  private loadSavedState(): void {
+    // Load show internal events preference
+    const savedShowInternal = localStorage.getItem(EventTimelinePanel.SHOW_INTERNAL_KEY);
+    if (savedShowInternal !== null) {
+      this.showInternalEvents = savedShowInternal === 'true';
+    }
+    
+    // Load saved events
+    try {
+      const savedEvents = localStorage.getItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
+      if (savedEvents) {
+        const parsed = JSON.parse(savedEvents);
+        if (Array.isArray(parsed)) {
+          this.events = parsed.map(event => ({
+            ...event,
+            relativeTime: this.formatRelativeTime(event.timestamp)
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load saved events:', error);
+    }
+  }
+  
+  private saveEvents(): void {
+    // Debounce saves to avoid too many localStorage writes
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+    
+    this.saveTimeout = setTimeout(() => {
+      try {
+        // Only save the most recent events to avoid localStorage limits
+        const eventsToSave = this.events.slice(0, EventTimelinePanel.MAX_STORED_EVENTS);
+        localStorage.setItem(EventTimelinePanel.EVENTS_STORAGE_KEY, JSON.stringify(eventsToSave));
+      } catch (error) {
+        console.error('Failed to save events:', error);
+      }
+    }, 500); // Debounce for 500ms
+  }
+  
+  public toggleInternalEvents(): void {
+    this.showInternalEvents = !this.showInternalEvents;
+    localStorage.setItem(EventTimelinePanel.SHOW_INTERNAL_KEY, String(this.showInternalEvents));
   }
 
   private initializeEventWatching(): void {
@@ -74,17 +194,26 @@ export class EventTimelinePanel implements DebugPanel {
         args.forEach(event => {
           // Determine source based on event content
           let source = 'GTM DataLayer';
+          let isInternal = false;
+          
           if (event.event && event.event.startsWith('gtm_')) {
             source = 'GTM Internal';
+            isInternal = true;
           } else if (event.timestamp || event.event_context) {
             source = 'Analytics Manager';
+          }
+
+          // Check if it's an internal SDK event
+          if (event.event && INTERNAL_EVENT_PATTERNS.includes(event.event)) {
+            isInternal = true;
           }
 
           this.addEvent({
             type: 'dataLayer',
             name: event.event || 'dataLayer.push',
             data: event,
-            source
+            source,
+            isInternal
           });
         });
       }
@@ -93,14 +222,14 @@ export class EventTimelinePanel implements DebugPanel {
 
     // Watch for existing events
     if (window.dataLayer.length > 0) {
-      window.dataLayer.forEach((event, index) => {
+      window.dataLayer.forEach((event) => {
         if (typeof event === 'object' && event.event) {
           this.addEvent({
             type: 'dataLayer',
             name: event.event,
             data: event,
-            source: 'GTM DataLayer (existing)',
-            timestamp: this.startTime + index * 10 // Approximate timing
+            source: 'GTM DataLayer (Historical)',
+            isInternal: INTERNAL_EVENT_PATTERNS.includes(event.event)
           });
         }
       });
@@ -108,74 +237,93 @@ export class EventTimelinePanel implements DebugPanel {
   }
 
   private watchInternalEvents(): void {
-    // Monitor all internal SDK events
-    const internalEvents = [
-      'cart:updated', 'cart:item-added', 'cart:item-removed', 'cart:quantity-changed',
-      'campaign:loaded', 'checkout:started', 'checkout:form-initialized',
-      'order:completed', 'payment:tokenized', 'payment:error',
-      'coupon:applied', 'coupon:removed', 'upsell:added', 'upsell:skipped',
-      'config:updated', 'error:occurred'
-    ];
+    // Subscribe to all EventBus events
+    const eventHandler = (eventName: string, data: any) => {
+      if (this.isRecording) {
+        this.addEvent({
+          type: 'internal',
+          name: eventName,
+          data: data,
+          source: 'SDK EventBus',
+          isInternal: true
+        });
+      }
+    };
 
-    internalEvents.forEach(eventName => {
-      this.eventBus.on(eventName as any, (data) => {
-        if (this.isRecording) {
-          this.addEvent({
-            type: 'internal',
-            name: eventName,
-            data: data,
-            source: 'SDK Internal'
-          });
-        }
-      });
-    });
+    // Hook into EventBus emit method
+    const originalEmit = this.eventBus.emit.bind(this.eventBus);
+    (this.eventBus as any).emit = (event: string, data?: any) => {
+      eventHandler(event, data);
+      return originalEmit(event as any, data);
+    };
   }
 
   private watchDOMEvents(): void {
-    if (typeof document === 'undefined') return;
+    if (typeof window === 'undefined') return;
 
-    const domEvents = [
-      'next:initialized', 'next:cart-updated', 'next:item-added', 'next:item-removed',
-      'next:checkout-started', 'next:payment-success', 'next:payment-error',
-      'next:timer-expired', 'next:coupon-applied', 'next:display-ready'
+    const eventsToWatch = [
+      'click', 'submit', 'change', 'focus', 'blur',
+      'scroll', 'resize', 'load', 'error'
+    ];
+    
+    // Events to ignore (debug panel internal events)
+    const eventsToIgnore = [
+      'debug:event-added',
+      'debug:update-content',
+      'debug:panel-switched'
     ];
 
-    domEvents.forEach(eventName => {
-      document.addEventListener(eventName, (event: Event) => {
-        if (this.isRecording) {
-          const customEvent = event as CustomEvent;
-          this.addEvent({
+    // Override dispatchEvent for CustomEvents
+    const originalDispatch = EventTarget.prototype.dispatchEvent;
+    EventTarget.prototype.dispatchEvent = function(event: Event) {
+      if (event instanceof CustomEvent && 
+          !eventsToWatch.includes(event.type) && 
+          !eventsToIgnore.includes(event.type) &&
+          !event.type.startsWith('debug:')) {
+        const self = EventTimelinePanel.getInstance();
+        if (self && self.isRecording) {
+          self.addEvent({
             type: 'dom',
-            name: eventName,
-            data: customEvent.detail,
-            source: 'DOM CustomEvent'
+            name: event.type,
+            data: event.detail || {},
+            source: 'DOM CustomEvent',
+            isInternal: INTERNAL_EVENT_PATTERNS.includes(event.type)
           });
         }
-      });
-    });
+      }
+      return originalDispatch.call(this, event);
+    };
+  }
+
+  private static instance: EventTimelinePanel | null = null;
+  
+  private static getInstance(): EventTimelinePanel | null {
+    return EventTimelinePanel.instance;
   }
 
   private watchPerformanceEvents(): void {
     if (typeof window === 'undefined' || !window.performance) return;
 
-    // Monitor performance marks and measures
-    const originalMark = performance.mark;
-    const originalMeasure = performance.measure;
     const self = this;
-
+    
+    // Watch performance marks
+    const originalMark = performance.mark;
     performance.mark = function(name: string) {
       const result = originalMark.call(performance, name);
       if (self.isRecording) {
         self.addEvent({
           type: 'performance',
           name: `mark: ${name}`,
-          data: { markName: name, timestamp: performance.now() },
-          source: 'Performance API'
+          data: { markName: name },
+          source: 'Performance API',
+          isInternal: true
         });
       }
       return result;
     };
 
+    // Watch performance measures
+    const originalMeasure = performance.measure;
     performance.measure = function(name: string, startMark?: string, endMark?: string) {
       const result = originalMeasure.call(performance, name, startMark, endMark);
       if (self.isRecording) {
@@ -183,7 +331,8 @@ export class EventTimelinePanel implements DebugPanel {
           type: 'performance',
           name: `measure: ${name}`,
           data: { measureName: name, startMark, endMark },
-          source: 'Performance API'
+          source: 'Performance API',
+          isInternal: true
         });
       }
       return result;
@@ -191,6 +340,11 @@ export class EventTimelinePanel implements DebugPanel {
   }
 
   private addEvent(eventData: Partial<TimelineEvent>): void {
+    // Filter out noise events
+    if (FILTERED_EVENTS.includes(eventData.name || '')) {
+      return;
+    }
+    
     const now = Date.now();
     const event: TimelineEvent = {
       id: `event_${now}_${Math.random().toString(36).substr(2, 9)}`,
@@ -199,7 +353,8 @@ export class EventTimelinePanel implements DebugPanel {
       name: eventData.name || 'unknown',
       data: eventData.data || {},
       source: eventData.source || 'Unknown',
-      relativeTime: this.formatRelativeTime(eventData.timestamp || now)
+      relativeTime: this.formatRelativeTime(eventData.timestamp || now),
+      isInternal: eventData.isInternal || false
     };
 
     this.events.unshift(event); // Add to beginning for chronological order
@@ -209,10 +364,8 @@ export class EventTimelinePanel implements DebugPanel {
       this.events = this.events.slice(0, this.maxEvents);
     }
 
-    // Update filter options safely
-    if (event.source && event.source !== 'Unknown') {
-      this.filters.sources.add(event.source);
-    }
+    // Save events to localStorage
+    this.saveEvents();
 
     // Trigger content update for real-time updates
     if (typeof document !== 'undefined') {
@@ -223,7 +376,6 @@ export class EventTimelinePanel implements DebugPanel {
       
       this.updateTimeout = setTimeout(() => {
         // Dispatch event to update content
-        console.log('[EventTimelinePanel] Dispatching update for panel:', this.id);
         document.dispatchEvent(new CustomEvent('debug:event-added', { 
           detail: { 
             panelId: this.id,
@@ -246,272 +398,527 @@ export class EventTimelinePanel implements DebugPanel {
     return 'just now';
   }
 
-  private getFilteredEvents(): TimelineEvent[] {
-    const cutoffTime = Date.now() - (this.filters.timeRange * 60 * 1000);
-    
-    return this.events.filter(event => {
-      // Time range filter
-      if (event.timestamp < cutoffTime) return false;
-      
-      // Type filter
-      if (!this.filters.types.has(event.type)) return false;
-      
-      // Source filter (if any sources selected)
-      if (this.filters.sources.size > 0 && !this.filters.sources.has(event.source)) return false;
-      
-      // Search filter
-      if (this.filters.search) {
-        const searchLower = this.filters.search.toLowerCase();
-        return (
-          event.name.toLowerCase().includes(searchLower) ||
-          event.source.toLowerCase().includes(searchLower) ||
-          JSON.stringify(event.data).toLowerCase().includes(searchLower)
-        );
-      }
-      
-      return true;
+  private formatTimestamp(timestamp: number): string {
+    const date = new Date(timestamp);
+    const time = date.toLocaleTimeString('en-US', { 
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     });
+    const ms = date.getMilliseconds().toString().padStart(3, '0');
+    return `${time}.${ms}`;
   }
 
-  // getEventIcon method removed - unused
+  private getFilteredEvents(): TimelineEvent[] {
+    if (this.showInternalEvents) {
+      return this.events;
+    }
+    return this.events.filter(event => !event.isInternal);
+  }
 
   private getEventTypeColor(type: string): string {
     const colors = {
-      dataLayer: '#4CAF50',    // Green
-      internal: '#2196F3',     // Blue  
-      dom: '#FF9800',          // Orange
-      performance: '#9C27B0'   // Purple
+      dataLayer: '#4CAF50',
+      internal: '#2196F3', 
+      dom: '#FF9800',
+      performance: '#9C27B0'
     };
     return colors[type as keyof typeof colors] || '#666';
   }
 
-
-  getTabs() {
-    return [
-      {
-        id: 'timeline',
-        label: 'Events',
-        icon: '📅',
-        getContent: () => this.getTimelineContent()
-      },
-      {
-        id: 'analytics',
-        label: 'Stats', 
-        icon: '📊',
-        getContent: () => this.getAnalyticsContent()
-      },
-      {
-        id: 'filters',
-        label: 'Filter',
-        icon: '🔍',
-        getContent: () => this.getFiltersContent()
-      }
-    ];
+  private getEventTypeBadge(type: string): string {
+    const badges = {
+      dataLayer: 'GTM',
+      internal: 'SDK', 
+      dom: 'DOM',
+      performance: 'PERF'
+    };
+    return badges[type as keyof typeof badges] || type.toUpperCase();
   }
 
-  private getTimelineContent(): string {
-    const filteredEvents = this.getFilteredEvents();
+  private showEventModal(eventId: string): void {
+    this.selectedEventId = eventId;
+    // Trigger re-render
+    if (typeof document !== 'undefined') {
+      document.dispatchEvent(new CustomEvent('debug:update-content', {
+        detail: { panelId: this.id }
+      }));
+    }
+  }
 
-    if (filteredEvents.length === 0) {
-      return `<div style="padding: 20px; text-align: center; color: #666;">No events yet</div>`;
+  private closeEventModal(): void {
+    this.selectedEventId = null;
+    // Trigger re-render
+    if (typeof document !== 'undefined') {
+      document.dispatchEvent(new CustomEvent('debug:update-content', {
+        detail: { panelId: this.id }
+      }));
+    }
+  }
+
+  getContent(): string {
+    const filteredEvents = this.getFilteredEvents();
+    const selectedEvent = this.selectedEventId ? 
+      this.events.find(e => e.id === this.selectedEventId) : null;
+
+    // Add modal HTML if an event is selected
+    const modalHtml = selectedEvent ? `
+      <div class="event-modal-overlay" onclick="window.eventTimelinePanel_closeModal()">
+        <div class="event-modal" onclick="event.stopPropagation()">
+          <div class="event-modal-header">
+            <h3 class="event-modal-title">${selectedEvent.name}</h3>
+            <button class="event-modal-close" onclick="window.eventTimelinePanel_closeModal()">✕</button>
+          </div>
+          <div class="event-modal-body">
+            <div class="event-modal-meta">
+              <div class="event-modal-meta-item">
+                <span class="event-modal-meta-label">Type:</span>
+                <span class="event-type-badge" style="background: ${this.getEventTypeColor(selectedEvent.type)}22; color: ${this.getEventTypeColor(selectedEvent.type)};">
+                  ${this.getEventTypeBadge(selectedEvent.type)}
+                </span>
+              </div>
+              <div class="event-modal-meta-item">
+                <span class="event-modal-meta-label">Source:</span>
+                <span>${selectedEvent.source}</span>
+              </div>
+              <div class="event-modal-meta-item">
+                <span class="event-modal-meta-label">Time:</span>
+                <span>${this.formatTimestamp(selectedEvent.timestamp)}</span>
+              </div>
+              <div class="event-modal-meta-item">
+                <span class="event-modal-meta-label">Relative:</span>
+                <span>${selectedEvent.relativeTime}</span>
+              </div>
+            </div>
+            <div class="event-modal-data">
+              <div class="event-modal-data-header">
+                <span>Event Data</span>
+                <button class="event-modal-copy" onclick="window.eventTimelinePanel_copyData('${selectedEvent.id}')">
+                  Copy JSON
+                </button>
+              </div>
+              <pre class="event-modal-data-content">${JSON.stringify(selectedEvent.data, null, 2)}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    ` : '';
+
+    // Setup global functions for modal interaction
+    if (typeof window !== 'undefined') {
+      (window as any).eventTimelinePanel_showModal = (eventId: string) => {
+        this.showEventModal(eventId);
+      };
+      (window as any).eventTimelinePanel_closeModal = () => {
+        this.closeEventModal();
+      };
+      (window as any).eventTimelinePanel_copyData = (eventId: string) => {
+        const event = this.events.find(e => e.id === eventId);
+        if (event) {
+          navigator.clipboard.writeText(JSON.stringify(event.data, null, 2));
+          // Show feedback
+          const button = document.querySelector('.event-modal-copy');
+          if (button) {
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            setTimeout(() => {
+              button.textContent = originalText;
+            }, 2000);
+          }
+        }
+      };
     }
 
-    let eventsHtml = '';
-    filteredEvents.slice(0, 20).forEach(event => {
-      eventsHtml += `
-        <div style="border-bottom: 1px solid #333; padding: 8px; background: #1a1a1a;">
-          <div style="font-weight: bold; color: ${this.getEventTypeColor(event.type)};">
-            ${event.name} <span style="float: right; font-weight: normal; color: #999;">${event.relativeTime}</span>
+    return `
+      <style>
+        .events-table-container {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          background: #0f0f0f;
+        }
+        /* Modal Styles */
+        .event-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 100000;
+          backdrop-filter: blur(4px);
+        }
+        .event-modal {
+          background: #1a1a1a;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          width: 90%;
+          max-width: 800px;
+          max-height: 80vh;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+        }
+        .event-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .event-modal-title {
+          margin: 0;
+          font-size: 1.2em;
+          color: rgba(255, 255, 255, 0.9);
+          font-weight: 600;
+        }
+        .event-modal-close {
+          background: none;
+          border: none;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 24px;
+          cursor: pointer;
+          padding: 0;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 6px;
+          transition: all 0.2s;
+        }
+        .event-modal-close:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.9);
+        }
+        .event-modal-body {
+          flex: 1;
+          overflow-y: auto;
+          padding: 20px;
+        }
+        .event-modal-meta {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+          margin-bottom: 20px;
+        }
+        .event-modal-meta-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .event-modal-meta-label {
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 0.9em;
+        }
+        .event-modal-data {
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .event-modal-data-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 16px;
+          background: rgba(255, 255, 255, 0.02);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .event-modal-copy {
+          background: rgba(60, 125, 255, 0.2);
+          border: 1px solid #3C7DFF;
+          color: #3C7DFF;
+          padding: 6px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.85em;
+          transition: all 0.2s;
+        }
+        .event-modal-copy:hover {
+          background: rgba(60, 125, 255, 0.3);
+        }
+        .event-modal-data-content {
+          padding: 16px;
+          margin: 0;
+          color: rgba(255, 255, 255, 0.8);
+          font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+          font-size: 0.85em;
+          line-height: 1.5;
+          overflow-x: auto;
+          max-height: 400px;
+        }
+        .events-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 20px;
+          background: rgba(255, 255, 255, 0.02);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .events-stats {
+          display: flex;
+          gap: 20px;
+          align-items: center;
+        }
+        .event-stat {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .event-stat-value {
+          font-weight: 600;
+          color: #3C7DFF;
+        }
+        .event-stat-label {
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 0.9em;
+        }
+        .events-controls {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+        }
+        .toggle-internal {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 12px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 6px;
+          color: rgba(255, 255, 255, 0.8);
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .toggle-internal:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
+        .toggle-internal.active {
+          background: rgba(60, 125, 255, 0.2);
+          border-color: #3C7DFF;
+        }
+        .recording-status {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          background: ${this.isRecording ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.05)'};
+          border: 1px solid ${this.isRecording ? '#EF4444' : 'rgba(255, 255, 255, 0.1)'};
+          border-radius: 6px;
+          color: ${this.isRecording ? '#EF4444' : 'rgba(255, 255, 255, 0.6)'};
+        }
+        .recording-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: currentColor;
+          ${this.isRecording ? 'animation: pulse 1.5s infinite;' : ''}
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        .events-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.9em;
+        }
+        .events-table th {
+          background: rgba(255, 255, 255, 0.05);
+          padding: 10px;
+          text-align: left;
+          border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.8);
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+        .events-table td {
+          padding: 10px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          color: rgba(255, 255, 255, 0.7);
+        }
+        .events-table tr:hover {
+          background: rgba(255, 255, 255, 0.02);
+        }
+        .event-type-badge {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 0.75em;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
+        .event-name {
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.9);
+        }
+        .event-source {
+          font-size: 0.85em;
+          color: rgba(255, 255, 255, 0.5);
+        }
+        .event-time {
+          font-family: 'SF Mono', monospace;
+          font-size: 0.85em;
+          color: rgba(255, 255, 255, 0.5);
+        }
+        .event-data {
+          max-width: 400px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-family: 'SF Mono', monospace;
+          font-size: 0.85em;
+          color: rgba(255, 255, 255, 0.6);
+          cursor: pointer;
+        }
+        .event-row {
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .event-row:hover {
+          background: rgba(255, 255, 255, 0.02);
+        }
+        .internal-badge {
+          display: inline-block;
+          padding: 1px 6px;
+          background: rgba(156, 39, 176, 0.2);
+          color: #9C27B0;
+          border-radius: 3px;
+          font-size: 0.7em;
+          font-weight: 600;
+          margin-left: 6px;
+        }
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 300px;
+          color: rgba(255, 255, 255, 0.4);
+        }
+        .empty-state-icon {
+          font-size: 48px;
+          margin-bottom: 16px;
+        }
+        .empty-state-text {
+          font-size: 1.1em;
+        }
+      </style>
+      
+      <div class="events-table-container">
+        <div class="events-header">
+          <div class="events-stats">
+            <div class="event-stat">
+              <span class="event-stat-value">${this.events.length}</span>
+              <span class="event-stat-label">Total Events</span>
+            </div>
+            <div class="event-stat">
+              <span class="event-stat-value">${filteredEvents.length}</span>
+              <span class="event-stat-label">Visible</span>
+            </div>
           </div>
-          <div style="color: #999; font-size: 11px; margin: 4px 0;">${event.source}</div>
-          <div style="background: #2a2a2a; padding: 4px; border-radius: 3px; font-family: monospace; font-size: 10px; overflow: hidden; color: #ccc;">
-            ${JSON.stringify(event.data).length > 100 ? JSON.stringify(event.data).substring(0, 100) + '...' : JSON.stringify(event.data)}
+          
+          <div class="events-controls">
+            <button class="toggle-internal ${this.showInternalEvents ? 'active' : ''}" 
+                    data-action="toggle-internal-events">
+              <span>${this.showInternalEvents ? '✓' : ''}</span>
+              Show Internal Events
+            </button>
+            
+            <div class="recording-status">
+              <span class="recording-dot"></span>
+              <span>${this.isRecording ? 'Recording' : 'Paused'}</span>
+            </div>
           </div>
         </div>
-      `;
-    });
-
-    return `
-      <div style="display: flex; flex-direction: column; height: 100%;">
-        <div style="position: sticky; top: 0; padding: 12px 24px; background: #2a2a2a; border-bottom: 1px solid #444; z-index: 1;">
-          <strong style="color: #fff;">Total Events: ${this.events.length}</strong>
-          <span style="float: right; color: #888; font-size: 12px;">
-            ${this.isRecording ? '🔴 Recording' : '⏸️ Paused'}
-          </span>
-        </div>
-        <div style="flex: 1; background: #1a1a1a;">
-          ${eventsHtml}
-        </div>
+        
+        ${filteredEvents.length === 0 ? `
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <div class="empty-state-text">No events captured yet</div>
+          </div>
+        ` : `
+          <div style="flex: 1; overflow-y: auto;">
+            <table class="events-table">
+              <thead>
+                <tr>
+                  <th style="width: 5%">#</th>
+                  <th style="width: 8%">Type</th>
+                  <th style="width: 25%">Event Name</th>
+                  <th style="width: 15%">Source</th>
+                  <th style="width: 12%">Time</th>
+                  <th style="width: 35%">Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredEvents.slice(0, 100).map((event, index) => `
+                  <tr class="event-row" onclick="window.eventTimelinePanel_showModal('${event.id}')">
+                    <td>${index + 1}</td>
+                    <td>
+                      <span class="event-type-badge" style="background: ${this.getEventTypeColor(event.type)}22; color: ${this.getEventTypeColor(event.type)};">
+                        ${this.getEventTypeBadge(event.type)}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="event-name">${event.name}</span>
+                      ${event.isInternal ? '<span class="internal-badge">INTERNAL</span>' : ''}
+                    </td>
+                    <td class="event-source">${event.source}</td>
+                    <td class="event-time">${this.formatTimestamp(event.timestamp)}</td>
+                    <td>
+                      <div class="event-data" onclick="event.stopPropagation(); window.eventTimelinePanel_showModal('${event.id}')">
+                        ${JSON.stringify(event.data, null, 2)}
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
       </div>
+      ${modalHtml}
     `;
   }
 
-  private getAnalyticsContent(): string {
-    const stats = this.getEventStats();
-    const typeDistribution = this.getTypeDistribution();
-
-    return `
-      <div style="padding: 15px; background: #1a1a1a; color: #fff;">
-        <h4 style="color: #fff;">Event Statistics</h4>
-        <p>Total Events: <strong>${stats.total}</strong></p>
-        <p>Events Per Minute: <strong>${stats.eventsPerMinute}</strong></p>
-        <p>Most Active Type: <strong>${stats.mostActiveType}</strong></p>
-        
-        <h4 style="margin-top: 20px; color: #fff;">Event Types</h4>
-        ${Object.entries(typeDistribution).map(([type, count]) => `
-          <p style="margin: 5px 0;">
-            <span style="color: ${this.getEventTypeColor(type)};">${type}:</span> 
-            <strong>${count}</strong>
-          </p>
-        `).join('')}
-      </div>
-    `;
-  }
-
-  private getFiltersContent(): string {
-    const availableTypes = ['dataLayer', 'internal', 'dom', 'performance'];
-
-    return `
-      <div style="padding: 15px; background: #1a1a1a; color: #fff;">
-        <h4 style="color: #fff;">Search Events</h4>
-        <input type="text" 
-               placeholder="Search event names or data..." 
-               value="${this.filters.search || ''}"
-               style="width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #666; border-radius: 4px; background: #2a2a2a; color: #fff;">
-        
-        <h4 style="color: #fff;">Event Types</h4>
-        ${availableTypes.map(type => `
-          <label style="display: block; margin: 8px 0; color: #fff;">
-            <input type="checkbox" ${this.filters.types.has(type) ? 'checked' : ''} style="margin-right: 8px;">
-            ${type}
-          </label>
-        `).join('')}
-        
-        <h4 style="margin-top: 20px; color: #fff;">Time Range</h4>
-        <select style="width: 100%; padding: 8px; border: 1px solid #666; border-radius: 4px; background: #2a2a2a; color: #fff;">
-          <option value="5">Last 5 minutes</option>
-          <option value="15">Last 15 minutes</option>
-          <option value="30" selected>Last 30 minutes</option>
-          <option value="60">Last hour</option>
-        </select>
-      </div>
-    `;
-  }
-
-  private getEventStats() {
-    const now = Date.now();
-    const oneMinuteAgo = now - 60000;
-    const recentEvents = this.events.filter(e => e?.timestamp && e.timestamp > oneMinuteAgo);
-    
-    const typeCounts = this.events.reduce((acc, event) => {
-      if (event?.type) {
-        acc[event.type] = (acc[event.type] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-    
-    const mostActiveType = Object.entries(typeCounts)
-      .sort(([,a], [,b]) => (b || 0) - (a || 0))[0]?.[0];
-
-    return {
-      total: this.events.length,
-      eventsPerMinute: recentEvents.length,
-      mostActiveType: mostActiveType || 'None'
-    };
-  }
-
-  private getTypeDistribution(): Record<string, number> {
-    return this.events.reduce((acc, event) => {
-      if (event?.type) {
-        acc[event.type] = (acc[event.type] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-  }
-
-  private getSourceDistribution(): Record<string, number> {
-    return this.events.reduce((acc, event) => {
-      if (event?.source) {
-        acc[event.source] = (acc[event.source] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-  }
-
-  // getTimelineChart method removed - unused
-
-  public getActions() {
+  getActions(): PanelAction[] {
     return [
       {
-        label: this.isRecording ? '⏸️ Pause Recording' : '▶️ Start Recording',
+        label: this.isRecording ? 'Pause' : 'Resume',
+        variant: this.isRecording ? 'secondary' : 'primary',
         action: () => {
           this.isRecording = !this.isRecording;
-          console.log(`Event recording ${this.isRecording ? 'started' : 'paused'}`);
         }
       },
       {
-        label: '🗑️ Clear Events',
+        label: 'Clear Events',
+        variant: 'danger',
         action: () => {
           this.events = [];
-          console.log('Event timeline cleared');
+          localStorage.removeItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
         }
       },
       {
-        label: '💾 Export Events',
-        action: () => this.exportEvents()
-      },
-      {
-        label: '🧪 Test Events',
-        action: () => this.generateTestEvents()
+        label: 'Export Events',
+        variant: 'primary',
+        action: () => {
+          const dataStr = JSON.stringify(this.events, null, 2);
+          const dataBlob = new Blob([dataStr], { type: 'application/json' });
+          const url = URL.createObjectURL(dataBlob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `events-${Date.now()}.json`;
+          link.click();
+          URL.revokeObjectURL(url);
+        }
       }
     ];
-  }
-
-  private exportEvents(): void {
-    const exportData = {
-      timestamp: new Date().toISOString(),
-      totalEvents: this.events.length,
-      filters: {
-        types: Array.from(this.filters.types),
-        sources: Array.from(this.filters.sources),
-        search: this.filters.search,
-        timeRange: this.filters.timeRange
-      },
-      events: this.events,
-      stats: this.getEventStats(),
-      typeDistribution: this.getTypeDistribution(),
-      sourceDistribution: this.getSourceDistribution()
-    };
-
-    const data = JSON.stringify(exportData, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `event-timeline-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  private generateTestEvents(): void {
-    // Generate test events for demonstration
-    const testEvents: Partial<TimelineEvent>[] = [
-      { type: 'dataLayer', name: 'add_to_cart', data: { item_id: '123', value: 29.99 }, source: 'Test' },
-      { type: 'internal', name: 'cart:updated', data: { itemCount: 2 }, source: 'Test' },
-      { type: 'dom', name: 'next:item-added', data: { packageId: 123 }, source: 'Test' },
-      { type: 'performance', name: 'navigation', data: { loadTime: 1234 }, source: 'Test' }
-    ];
-
-    testEvents.forEach((event, index) => {
-      setTimeout(() => {
-        this.addEvent(event);
-      }, index * 200);
-    });
-
-    console.log('Generated test events for timeline');
-  }
-
-  public getContent(): string {
-    return this.getTimelineContent();
   }
 }

@@ -130,6 +130,38 @@ export class EcommerceEvents {
   }
 
   /**
+   * Create package_swapped event for atomic package swaps
+   */
+  static createPackageSwappedEvent(
+    previousItem: CartItem | any,
+    newItem: CartItem | any,
+    priceDifference: number
+  ): DataLayerEvent {
+    const currency = EventBuilder.getCurrency();
+    const formattedPreviousItem = EventBuilder.formatEcommerceItem(previousItem);
+    const formattedNewItem = EventBuilder.formatEcommerceItem(newItem);
+
+    const ecommerce: EcommerceData = {
+      currency,
+      value_change: priceDifference,
+      items_removed: [formattedPreviousItem],
+      items_added: [formattedNewItem]
+    };
+
+    return EventBuilder.createEvent('dl_package_swapped', {
+      ecommerce,
+      event_category: 'ecommerce',
+      event_action: 'swap',
+      event_label: `${formattedPreviousItem.item_name} → ${formattedNewItem.item_name}`,
+      swap_details: {
+        previous_package_id: previousItem.packageId,
+        new_package_id: newItem.packageId,
+        price_difference: priceDifference
+      }
+    });
+  }
+
+  /**
    * Create select_item event (product click)
    */
   static createSelectItemEvent(

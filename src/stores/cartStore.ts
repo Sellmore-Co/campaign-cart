@@ -195,19 +195,84 @@ const cartStoreInstance = create<CartState & CartActions>()(
 
 
       swapPackage: async (removePackageId: number, addItem: Partial<CartItem> & { isUpsell: boolean | undefined }) => {
-        // Set swap in progress flag
-        set(state => ({ ...state, swapInProgress: true }));
+        const { useCampaignStore } = await import('./campaignStore');
+        const campaignStore = useCampaignStore.getState();
         
-        try {
-          // Remove the old package
-          await get().removeItem(removePackageId);
-          
-          // Add the new package
-          await get().addItem(addItem);
-        } finally {
-          // Clear swap in progress flag
-          set(state => ({ ...state, swapInProgress: false }));
+        // Get package data from campaign
+        const newPackageData = campaignStore.getPackage(addItem.packageId ?? 0);
+        
+        if (!newPackageData) {
+          throw new Error(`Package ${addItem.packageId} not found in campaign data`);
         }
+        
+        // Get the item being removed
+        const previousItem = get().items.find(item => item.packageId === removePackageId);
+        
+        // Create the new item
+        const newItem: CartItem = {
+          id: Date.now(),
+          packageId: addItem.packageId ?? 0,
+          quantity: addItem.quantity ?? 1,
+          price: parseFloat(newPackageData.price_total),
+          title: addItem.title ?? newPackageData.name,
+          is_upsell: addItem.isUpsell ?? false,
+          image: addItem.image ?? undefined,
+          sku: addItem.sku ?? undefined,
+          price_per_unit: newPackageData.price,
+          qty: newPackageData.qty,
+          price_total: newPackageData.price_total,
+          price_retail: newPackageData.price_retail,
+          price_retail_total: newPackageData.price_retail_total,
+          price_recurring: newPackageData.price_recurring,
+          is_recurring: newPackageData.is_recurring,
+          interval: newPackageData.interval,
+          interval_count: newPackageData.interval_count
+        };
+        
+        // Calculate price difference
+        const priceDifference = newItem.price - (previousItem?.price ?? 0);
+        
+        // Perform atomic update
+        set(state => {
+          // Remove old item and add new item in single state update
+          const newItems = state.items.filter(item => item.packageId !== removePackageId);
+          
+          // Check if new package already exists
+          const existingIndex = newItems.findIndex(
+            existing => existing.packageId === newItem.packageId
+          );
+          
+          if (existingIndex >= 0) {
+            newItems[existingIndex]!.quantity += newItem.quantity;
+          } else {
+            newItems.push(newItem);
+          }
+          
+          return { ...state, items: newItems, swapInProgress: false };
+        });
+        
+        // Calculate totals after state update
+        get().calculateTotals();
+        
+        // Emit single swap event
+        const eventBus = EventBus.getInstance();
+        const swapEvent: Parameters<typeof eventBus.emit<'cart:package-swapped'>>[1] = {
+          previousPackageId: removePackageId,
+          newPackageId: addItem.packageId ?? 0,
+          newItem,
+          priceDifference,
+          source: 'package-selector'
+        };
+        
+        // Only include previousItem if it exists
+        if (previousItem) {
+          swapEvent.previousItem = previousItem;
+        }
+        
+        eventBus.emit('cart:package-swapped', swapEvent);
+        
+        // Emit cart updated event
+        eventBus.emit('cart:updated', get());
       },
 
       clear: async () => {

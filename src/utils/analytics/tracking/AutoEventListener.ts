@@ -28,7 +28,8 @@ export class AutoEventListener {
     'cart:item-added': 1000,
     'cart:item-removed': 500,
     'cart:quantity-changed': 500,
-    'cart:updated': 1000
+    'cart:updated': 1000,
+    'cart:package-swapped': 100 // Low debounce since it's already atomic
   };
 
   private constructor() {}
@@ -173,6 +174,64 @@ export class AutoEventListener {
 
     this.eventBus.on('cart:item-removed', handleRemoveFromCart);
     this.eventHandlers.set('cart:item-removed', handleRemoveFromCart);
+
+    // Package swapped (atomic swap operation)
+    const handlePackageSwapped = async (data: any) => {
+      const { previousPackageId, newPackageId, priceDifference } = data;
+      
+      const campaignStore = useCampaignStore.getState();
+      const previousPackageData = campaignStore.getPackage(previousPackageId);
+      const newPackageData = campaignStore.getPackage(newPackageId);
+      
+      if (!previousPackageData || !newPackageData) {
+        logger.warn('Package data not found for swap:', { previousPackageId, newPackageId });
+        return;
+      }
+
+      // Format items for analytics
+      const previousItemFormatted = {
+        item_id: previousPackageData.external_id.toString(),
+        item_name: previousPackageData.name || `Package ${previousPackageId}`,
+        currency: campaignStore.data?.currency || 'USD',
+        price: parseFloat(previousPackageData.price_total || '0'),
+        quantity: 1,
+        item_category: 'uncategorized'
+      };
+
+      const newItemFormatted = {
+        item_id: newPackageData.external_id.toString(),
+        item_name: newPackageData.name || `Package ${newPackageId}`,
+        currency: campaignStore.data?.currency || 'USD',
+        price: parseFloat(newPackageData.price_total || '0'),
+        quantity: 1,
+        item_category: 'uncategorized'
+      };
+
+      // Push single swap event instead of remove + add
+      const event = {
+        event: 'dl_package_swapped',
+        event_category: 'ecommerce',
+        event_action: 'swap',
+        event_label: `${previousItemFormatted.item_name} → ${newItemFormatted.item_name}`,
+        ecommerce: {
+          currency: campaignStore.data?.currency || 'USD',
+          value_change: priceDifference,
+          items_removed: [previousItemFormatted],
+          items_added: [newItemFormatted]
+        },
+        swap_details: {
+          previous_package_id: previousPackageId,
+          new_package_id: newPackageId,
+          price_difference: priceDifference
+        }
+      };
+
+      dataLayer.push(event);
+      logger.debug('Tracked package swap:', { previousPackageId, newPackageId, priceDifference });
+    };
+
+    this.eventBus.on('cart:package-swapped', handlePackageSwapped);
+    this.eventHandlers.set('cart:package-swapped', handlePackageSwapped);
 
     // Cart updated (generic cart change)
     const handleCartUpdated = async () => {

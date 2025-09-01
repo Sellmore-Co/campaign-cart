@@ -16,6 +16,7 @@ import { NextCommerce } from '@/core/NextCommerce';
 import { testModeManager } from '@/utils/testMode';
 import { EventBus } from '@/utils/events';
 import { ApiClient } from '@/api/client';
+import { CART_STORAGE_KEY } from '@/utils/storage';
 
 export class SDKInitializer {
   private static logger = createLogger('SDKInitializer');
@@ -48,6 +49,9 @@ export class SDKInitializer {
       // Initialize analytics after campaign data is loaded
       await this.initializeAnalytics();
       
+      // IMPORTANT: Wait for cart store to fully rehydrate from storage
+      // This prevents race conditions where display enhancers initialize with empty cart state
+      await this.waitForStoreRehydration();
       
       // Initialize global error handler
       this.initializeErrorHandler();
@@ -91,10 +95,11 @@ export class SDKInitializer {
   private static async loadConfiguration(): Promise<void> {
     const configStore = useConfigStore.getState();
     
-    // Check URL parameters for debug mode and forcePackageId
+    // Check URL parameters for debug mode, forcePackageId, and forceShippingId
     const urlParams = new URLSearchParams(window.location.search);
     const debugMode = urlParams.get('debugger') === 'true';
     const forcePackageId = urlParams.get('forcePackageId');
+    const forceShippingId = urlParams.get('forceShippingId');
     
     // Load from window.nextConfig first (as defaults)
     configStore.loadFromWindow();
@@ -112,6 +117,13 @@ export class SDKInitializer {
       this.logger.info('forcePackageId parameter detected:', forcePackageId);
       // Store for later processing after campaign data is loaded
       (window as any)._nextForcePackageId = forcePackageId;
+    }
+    
+    // Handle forceShippingId parameter
+    if (forceShippingId) {
+      this.logger.info('forceShippingId parameter detected:', forceShippingId);
+      // Store for later processing after campaign data is loaded
+      (window as any)._nextForceShippingId = forceShippingId;
     }
     
     this.logger.debug('Configuration loaded (metatags have priority):', configStore);
@@ -133,6 +145,9 @@ export class SDKInitializer {
     
     // Process forcePackageId parameter after campaign data is available
     await this.processForcePackageId();
+    
+    // Process forceShippingId parameter after campaign data is available
+    await this.processForceShippingId();
   }
 
   private static async processForcePackageId(): Promise<void> {
@@ -196,6 +211,59 @@ export class SDKInitializer {
       
     } catch (error) {
       this.logger.error('Error processing forcePackageId parameter:', error);
+      // Don't throw - this shouldn't break SDK initialization
+    }
+  }
+
+  private static async processForceShippingId(): Promise<void> {
+    const forceShippingId = (window as any)._nextForceShippingId;
+    
+    if (!forceShippingId) {
+      return;
+    }
+    
+    try {
+      this.logger.info('Processing forceShippingId parameter:', forceShippingId);
+      
+      const cartStore = useCartStore.getState();
+      const campaignStore = useCampaignStore.getState();
+      
+      // Parse the shipping ID (should be a number)
+      const shippingId = parseInt(forceShippingId, 10);
+      
+      if (isNaN(shippingId) || shippingId <= 0) {
+        throw new Error(`Invalid shipping ID: ${forceShippingId}`);
+      }
+      
+      // Verify the shipping method exists in campaign data
+      const campaignData = campaignStore.data;
+      if (!campaignData?.shipping_methods) {
+        this.logger.warn('No shipping methods available in campaign data');
+        return;
+      }
+      
+      const shippingMethod = campaignData.shipping_methods.find(
+        method => method.ref_id === shippingId
+      );
+      
+      if (!shippingMethod) {
+        this.logger.warn(`Shipping method ${shippingId} not found in campaign data`);
+        this.logger.debug('Available shipping methods:', 
+          campaignData.shipping_methods.map(m => ({ id: m.ref_id, code: m.code, price: m.price }))
+        );
+        return;
+      }
+      
+      // Set the shipping method
+      await cartStore.setShippingMethod(shippingId);
+      
+      this.logger.info(`Successfully set shipping method: ${shippingMethod.code} (ID: ${shippingId}, Price: $${shippingMethod.price})`);
+      
+      // Clean up the temporary storage
+      delete (window as any)._nextForceShippingId;
+      
+    } catch (error) {
+      this.logger.error('Error processing forceShippingId parameter:', error);
       // Don't throw - this shouldn't break SDK initialization
     }
   }
@@ -639,6 +707,40 @@ export class SDKInitializer {
         document.addEventListener('DOMContentLoaded', onReady);
         document.addEventListener('readystatechange', onReady);
       });
+    }
+  }
+
+  private static async waitForStoreRehydration(): Promise<void> {
+    // Wait for cart store to rehydrate from session storage
+    // This is crucial to prevent display enhancers from initializing with empty state
+    const cartStore = useCartStore.getState();
+    
+    // Check if there's data in sessionStorage that needs to be rehydrated
+    // Using the shared constant from storage.ts ensures consistency
+    const storedData = sessionStorage.getItem(CART_STORAGE_KEY);
+    
+    if (storedData) {
+      this.logger.debug('Waiting for cart store rehydration...');
+      
+      // Give the store time to rehydrate and recalculate totals
+      // The store's onRehydrateStorage callback calls calculateTotals()
+      // We need to wait for that to complete
+      await new Promise(resolve => {
+        // Use a small timeout to ensure the rehydration process completes
+        // This includes the async calculateTotals() call in the store
+        setTimeout(resolve, 50);
+      });
+      
+      // Force a recalculation to ensure everything is up to date
+      await cartStore.calculateTotals();
+      
+      this.logger.debug('Cart store rehydration complete', {
+        itemCount: cartStore.items.length,
+        total: cartStore.total,
+        isEmpty: cartStore.isEmpty
+      });
+    } else {
+      this.logger.debug('No cart data to rehydrate');
     }
   }
 
