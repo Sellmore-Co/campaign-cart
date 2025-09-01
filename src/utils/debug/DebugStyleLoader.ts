@@ -23,15 +23,7 @@ export class DebugStyleLoader {
     
     try {
       // Create a single style element with all debug CSS
-      const combinedCSS = [
-        baseCSS,
-        sidebarCSS,
-        panelsCSS,
-        componentsCSS,
-        campaignCSS,
-        panelComponentsCSS,
-        eventTimelineCSS
-      ].join('\n');
+      const combinedCSS = await this.getDebugStyles();
       
       this.styleElement = document.createElement('style');
       this.styleElement.id = 'debug-overlay-styles';
@@ -44,6 +36,19 @@ export class DebugStyleLoader {
     } finally {
       this.isLoading = false;
     }
+  }
+  
+  public static async getDebugStyles(): Promise<string> {
+    // Return combined CSS for use in Shadow DOM
+    return [
+      baseCSS,
+      sidebarCSS,
+      panelsCSS,
+      componentsCSS,
+      campaignCSS,
+      panelComponentsCSS,
+      eventTimelineCSS
+    ].join('\n');
   }
 
   public static removeDebugStyles(): void {

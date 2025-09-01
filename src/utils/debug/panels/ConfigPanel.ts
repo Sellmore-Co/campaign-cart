@@ -5,6 +5,7 @@
 
 import { useConfigStore } from '../../../stores/configStore';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
+import { RawDataHelper } from './RawDataHelper';
 
 export class ConfigPanel implements DebugPanel {
   id = 'config';
@@ -159,16 +160,7 @@ export class ConfigPanel implements DebugPanel {
 
   private getRawDataContent(): string {
     const config = useConfigStore.getState();
-    
-    return `
-      <div class="enhanced-panel">
-        <div class="section">
-          <div class="json-viewer">
-            <pre><code>${JSON.stringify(config, null, 2)}</code></pre>
-          </div>
-        </div>
-      </div>
-    `;
+    return RawDataHelper.generateRawDataContent(config);
   }
 
   getActions(): PanelAction[] {

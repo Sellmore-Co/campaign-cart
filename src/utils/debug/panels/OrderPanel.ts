@@ -5,6 +5,7 @@
 
 import { useOrderStore } from '../../../stores/orderStore';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
+import { RawDataHelper } from './RawDataHelper';
 
 export class OrderPanel implements DebugPanel {
   id = 'order';
@@ -163,10 +164,6 @@ export class OrderPanel implements DebugPanel {
       return this.getEmptyState('No order lines available');
     }
 
-    // Separate main items and upsells
-    const mainItems = order.lines.filter((line: any) => !line.is_upsell);
-    const upsellItems = order.lines.filter((line: any) => line.is_upsell);
-
     return `
       <div class="enhanced-panel">
         <div class="section">
@@ -201,12 +198,7 @@ export class OrderPanel implements DebugPanel {
               font-size: 0.75em;
               font-weight: bold;
               margin-left: 8px;
-            }
-            .order-table .section-header {
-              background: rgba(255, 255, 255, 0.08);
-              font-weight: bold;
-              text-transform: uppercase;
-              font-size: 0.85em;
+              display: inline-block;
             }
             .order-table .text-right {
               text-align: right;
@@ -229,42 +221,20 @@ export class OrderPanel implements DebugPanel {
               </tr>
             </thead>
             <tbody>
-              ${mainItems.length > 0 ? `
-                <tr class="section-header">
-                  <td colspan="7">Main Order Items</td>
+              ${order.lines.map((line: any, index: number) => `
+                <tr ${line.is_upsell ? 'class="upsell-row"' : ''}>
+                  <td>${index + 1}</td>
+                  <td>
+                    ${line.product_title || line.title || 'Unknown Product'}
+                    ${line.is_upsell ? '<span class="upsell-badge">POST-PURCHASE</span>' : ''}
+                  </td>
+                  <td>${line.product_sku || 'N/A'}</td>
+                  <td class="text-center">${line.quantity || 1}</td>
+                  <td class="text-right">$${parseFloat(line.price_excl_tax || '0').toFixed(2)}</td>
+                  <td class="text-right">$${(parseFloat(line.price_incl_tax || '0') - parseFloat(line.price_excl_tax || '0')).toFixed(2)}</td>
+                  <td class="text-right"><strong>$${parseFloat(line.price_incl_tax || '0').toFixed(2)}</strong></td>
                 </tr>
-                ${mainItems.map((line: any, index: number) => `
-                  <tr>
-                    <td>${index + 1}</td>
-                    <td>${line.product_title || line.title || 'Unknown Product'}</td>
-                    <td>${line.product_sku || 'N/A'}</td>
-                    <td class="text-center">${line.quantity || 1}</td>
-                    <td class="text-right">$${parseFloat(line.price_excl_tax || '0').toFixed(2)}</td>
-                    <td class="text-right">$${(parseFloat(line.price_incl_tax || '0') - parseFloat(line.price_excl_tax || '0')).toFixed(2)}</td>
-                    <td class="text-right"><strong>$${parseFloat(line.price_incl_tax || '0').toFixed(2)}</strong></td>
-                  </tr>
-                `).join('')}
-              ` : ''}
-              
-              ${upsellItems.length > 0 ? `
-                <tr class="section-header">
-                  <td colspan="7">Upsell Items</td>
-                </tr>
-                ${upsellItems.map((line: any, index: number) => `
-                  <tr class="upsell-row">
-                    <td>${mainItems.length + index + 1}</td>
-                    <td>
-                      ${line.product_title || line.title || 'Unknown Product'}
-                      <span class="upsell-badge">UPSELL</span>
-                    </td>
-                    <td>${line.product_sku || 'N/A'}</td>
-                    <td class="text-center">${line.quantity || 1}</td>
-                    <td class="text-right">$${parseFloat(line.price_excl_tax || '0').toFixed(2)}</td>
-                    <td class="text-right">$${(parseFloat(line.price_incl_tax || '0') - parseFloat(line.price_excl_tax || '0')).toFixed(2)}</td>
-                    <td class="text-right"><strong>$${parseFloat(line.price_incl_tax || '0').toFixed(2)}</strong></td>
-                  </tr>
-                `).join('')}
-              ` : ''}
+              `).join('')}
               
               <tr style="border-top: 2px solid rgba(255, 255, 255, 0.1);">
                 <td colspan="6" class="text-right"><strong>Order Total:</strong></td>
@@ -285,49 +255,187 @@ export class OrderPanel implements DebugPanel {
       return this.getEmptyState();
     }
 
-    const formatAddress = (address: any) => {
-      if (!address) return 'No address provided';
+    const formatAddressTable = (address: any, type: 'shipping' | 'billing') => {
+      const icon = type === 'shipping' ? '📦' : '💳';
+      const title = type === 'shipping' ? 'Shipping Address' : 'Billing Address';
+      
+      if (!address) {
+        return `
+          <div class="address-table-container">
+            <div class="address-header">
+              <span class="address-icon">${icon}</span>
+              <h4>${title}</h4>
+            </div>
+            <div class="address-empty">No ${type} address provided</div>
+          </div>
+        `;
+      }
       
       return `
-        <div class="address-card">
-          <div class="address-name">${address.first_name || ''} ${address.last_name || ''}</div>
-          ${address.line1 ? `<div>${address.line1}</div>` : ''}
-          ${address.line2 ? `<div>${address.line2}</div>` : ''}
-          ${address.line4 ? `<div>${address.line4}${address.state ? `, ${address.state}` : ''} ${address.postcode || ''}</div>` : ''}
-          ${address.country ? `<div>${address.country}</div>` : ''}
-          ${address.phone_number ? `<div>📞 ${address.phone_number}</div>` : ''}
+        <div class="address-table-container">
+          <div class="address-header">
+            <span class="address-icon">${icon}</span>
+            <h4>${title}</h4>
+          </div>
+          <table class="address-table">
+            <tbody>
+              ${address.first_name || address.last_name ? `
+                <tr>
+                  <td class="field-label">Name</td>
+                  <td class="field-value">${address.first_name || ''} ${address.last_name || ''}</td>
+                </tr>
+              ` : ''}
+              ${address.line1 ? `
+                <tr>
+                  <td class="field-label">Address 1</td>
+                  <td class="field-value">${address.line1}</td>
+                </tr>
+              ` : ''}
+              ${address.line2 ? `
+                <tr>
+                  <td class="field-label">Address 2</td>
+                  <td class="field-value">${address.line2}</td>
+                </tr>
+              ` : ''}
+              ${address.line4 || address.state || address.postcode ? `
+                <tr>
+                  <td class="field-label">City/State/Zip</td>
+                  <td class="field-value">${address.line4 || ''}${address.state ? `, ${address.state}` : ''} ${address.postcode || ''}</td>
+                </tr>
+              ` : ''}
+              ${address.country ? `
+                <tr>
+                  <td class="field-label">Country</td>
+                  <td class="field-value">${address.country}</td>
+                </tr>
+              ` : ''}
+              ${address.phone_number ? `
+                <tr>
+                  <td class="field-label">Phone</td>
+                  <td class="field-value">${address.phone_number}</td>
+                </tr>
+              ` : ''}
+            </tbody>
+          </table>
         </div>
       `;
     };
 
     return `
       <div class="enhanced-panel">
-        <div class="section">
-          <h4>Billing Address</h4>
-          ${formatAddress(order.billing_address)}
+        <style>
+          .addresses-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+          }
+          .address-table-container {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+          }
+          .address-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          }
+          .address-header h4 {
+            margin: 0;
+            font-size: 1em;
+            font-weight: 600;
+          }
+          .address-icon {
+            font-size: 1.2em;
+          }
+          .address-table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .address-table td {
+            padding: 10px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          }
+          .address-table tr:last-child td {
+            border-bottom: none;
+          }
+          .field-label {
+            width: 40%;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9em;
+          }
+          .field-value {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9em;
+          }
+          .address-empty {
+            padding: 30px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.4);
+            font-style: italic;
+          }
+          .customer-info-section {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+          }
+          .customer-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          }
+          .customer-header h4 {
+            margin: 0;
+            font-size: 1em;
+            font-weight: 600;
+          }
+          .customer-table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .customer-table td {
+            padding: 10px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          }
+          .customer-table tr:last-child td {
+            border-bottom: none;
+          }
+        </style>
+        
+        <div class="addresses-container">
+          ${formatAddressTable(order.shipping_address, 'shipping')}
+          ${formatAddressTable(order.billing_address, 'billing')}
         </div>
         
-        <div class="section">
-          <h4>Shipping Address</h4>
-          ${formatAddress(order.shipping_address)}
-        </div>
-        
-        <div class="section">
-          <h4>Customer Information</h4>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Name:</span>
-              <span class="info-value">${order.user?.first_name || ''} ${order.user?.last_name || ''}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Email:</span>
-              <span class="info-value">${order.user?.email || 'N/A'}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Phone:</span>
-              <span class="info-value">${order.user?.phone_number || 'N/A'}</span>
-            </div>
+        <div class="customer-info-section">
+          <div class="customer-header">
+            <span class="address-icon">👤</span>
+            <h4>Customer Information</h4>
           </div>
+          <table class="customer-table">
+            <tbody>
+              <tr>
+                <td class="field-label">Name</td>
+                <td class="field-value">${order.user?.first_name || ''} ${order.user?.last_name || ''}</td>
+              </tr>
+              <tr>
+                <td class="field-label">Email</td>
+                <td class="field-value">${order.user?.email || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td class="field-label">Phone</td>
+                <td class="field-value">${order.user?.phone_number || 'N/A'}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     `;
@@ -337,28 +445,19 @@ export class OrderPanel implements DebugPanel {
 
   private getRawDataContent(): string {
     const orderState = useOrderStore.getState();
-    
-    return `
-      <div class="enhanced-panel">
-        <div class="section">
-          <div class="json-viewer">
-            <pre><code>${JSON.stringify({
-              order: orderState.order,
-              refId: orderState.refId,
-              orderLoadedAt: orderState.orderLoadedAt,
-              isLoading: orderState.isLoading,
-              isProcessingUpsell: orderState.isProcessingUpsell,
-              error: orderState.error,
-              upsellError: orderState.upsellError,
-              pendingUpsells: orderState.pendingUpsells,
-              completedUpsellPages: orderState.completedUpsellPages,
-              viewedUpsellPages: orderState.viewedUpsellPages,
-              upsellJourney: orderState.upsellJourney
-            }, null, 2)}</code></pre>
-          </div>
-        </div>
-      </div>
-    `;
+    return RawDataHelper.generateRawDataContent({
+      order: orderState.order,
+      refId: orderState.refId,
+      orderLoadedAt: orderState.orderLoadedAt,
+      isLoading: orderState.isLoading,
+      isProcessingUpsell: orderState.isProcessingUpsell,
+      error: orderState.error,
+      upsellError: orderState.upsellError,
+      pendingUpsells: orderState.pendingUpsells,
+      completedUpsellPages: orderState.completedUpsellPages,
+      viewedUpsellPages: orderState.viewedUpsellPages,
+      upsellJourney: orderState.upsellJourney
+    });
   }
 
   private getEmptyState(message: string = 'No order loaded'): string {

@@ -27,6 +27,7 @@ export class DebugOverlay {
   private visible = false;
   private isExpanded = false;
   private container: HTMLDivElement | null = null;
+  private shadowRoot: ShadowRoot | null = null;
   private activePanel = 'cart';
   private activePanelTab: string | undefined;
   private updateInterval: number | null = null;
@@ -37,6 +38,8 @@ export class DebugOverlay {
   
   // Storage keys
   private static readonly EXPANDED_STORAGE_KEY = 'debug-overlay-expanded';
+  private static readonly ACTIVE_PANEL_KEY = 'debug-overlay-active-panel';
+  private static readonly ACTIVE_TAB_KEY = 'debug-overlay-active-tab';
 
   public static getInstance(): DebugOverlay {
     if (!DebugOverlay.instance) {
@@ -50,10 +53,22 @@ export class DebugOverlay {
     this.initializePanels();
     this.setupEventListeners();
     
-    // Restore expanded state from localStorage
+    // Restore saved state from localStorage
     const savedExpandedState = localStorage.getItem(DebugOverlay.EXPANDED_STORAGE_KEY);
     if (savedExpandedState === 'true') {
       this.isExpanded = true;
+    }
+    
+    // Restore active panel
+    const savedPanel = localStorage.getItem(DebugOverlay.ACTIVE_PANEL_KEY);
+    if (savedPanel) {
+      this.activePanel = savedPanel;
+    }
+    
+    // Restore active tab
+    const savedTab = localStorage.getItem(DebugOverlay.ACTIVE_TAB_KEY);
+    if (savedTab) {
+      this.activePanelTab = savedTab;
     }
   }
 
@@ -118,20 +133,15 @@ export class DebugOverlay {
     // Initialize XrayManager with saved state
     XrayManager.initialize();
     
-    // Update X-ray button state if active
-    if (XrayManager.isXrayActive()) {
-      const xrayButton = this.container?.querySelector('[data-action="toggle-xray"]');
-      if (xrayButton) {
-        xrayButton.classList.add('active');
-        xrayButton.setAttribute('title', 'Disable X-Ray View');
-      }
-    }
-    
     // Auto-restore mini cart if it was previously visible
     const savedMiniCartState = localStorage.getItem('debug-mini-cart-visible');
     if (savedMiniCartState === 'true') {
-      this.toggleMiniCart();
+      // Create mini cart and show it based on saved state
+      this.toggleMiniCart(true);
     }
+    
+    // Update button states after everything is rendered
+    this.updateButtonStates();
   }
 
   public hide(): void {
@@ -147,9 +157,8 @@ export class DebugOverlay {
     if (this.container) {
       this.container.remove();
       this.container = null;
+      this.shadowRoot = null;
     }
-    
-    EnhancedDebugUI.removeStyles();
   }
 
   public async toggle(): Promise<void> {
@@ -165,12 +174,31 @@ export class DebugOverlay {
   }
 
   private async createOverlay(): Promise<void> {
-    // Load debug styles using the existing DebugStyleLoader
-    const { DebugStyleLoader } = await import('./DebugStyleLoader');
-    await DebugStyleLoader.loadDebugStyles();
-    
+    // Create host container
     this.container = document.createElement('div');
-    this.container.className = 'debug-overlay';
+    this.container.id = 'next-debug-overlay-host';
+    this.container.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2147483647;
+      pointer-events: none;
+    `;
+    
+    // Create Shadow DOM
+    this.shadowRoot = this.container.attachShadow({ mode: 'open' });
+    
+    // Load and inject styles into Shadow DOM
+    await this.injectShadowStyles();
+    
+    // Create overlay container inside shadow DOM
+    const overlayContainer = document.createElement('div');
+    overlayContainer.className = 'debug-overlay';
+    overlayContainer.style.pointerEvents = 'auto';
+    
+    this.shadowRoot.appendChild(overlayContainer);
     
     // Render initial content
     this.updateOverlay();
@@ -180,11 +208,52 @@ export class DebugOverlay {
     
     document.body.appendChild(this.container);
   }
+  
+  private async injectShadowStyles(): Promise<void> {
+    if (!this.shadowRoot) return;
+    
+    // Load debug styles
+    const { DebugStyleLoader } = await import('./DebugStyleLoader');
+    const styles = await DebugStyleLoader.getDebugStyles();
+    
+    // Create style element in shadow DOM
+    const styleElement = document.createElement('style');
+    styleElement.textContent = styles;
+    this.shadowRoot.appendChild(styleElement);
+    
+    // Add reset styles to prevent inheritance
+    const resetStyles = document.createElement('style');
+    resetStyles.textContent = `
+      :host {
+        all: initial;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #e0e0e0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      * {
+        box-sizing: border-box;
+      }
+      
+      /* Ensure debug overlay is always on top */
+      .debug-overlay {
+        position: fixed;
+        z-index: 2147483647;
+      }
+    `;
+    this.shadowRoot.appendChild(resetStyles);
+  }
 
   private updateOverlay(): void {
-    if (!this.container) return;
+    if (!this.shadowRoot) return;
     
-    this.container.innerHTML = EnhancedDebugUI.createOverlayHTML(
+    const overlayContainer = this.shadowRoot.querySelector('.debug-overlay');
+    if (!overlayContainer) return;
+    
+    overlayContainer.innerHTML = EnhancedDebugUI.createOverlayHTML(
       this.panels, 
       this.activePanel, 
       this.isExpanded,
@@ -198,9 +267,9 @@ export class DebugOverlay {
   }
 
   private updateContent(): void {
-    if (!this.container) return;
+    if (!this.shadowRoot) return;
     
-    const panelContent = this.container.querySelector('.panel-content');
+    const panelContent = this.shadowRoot.querySelector('.panel-content');
     if (panelContent) {
       const activePanel = this.panels.find(p => p.id === this.activePanel);
       if (activePanel) {
@@ -221,13 +290,13 @@ export class DebugOverlay {
   }
 
   private addEventListeners(): void {
-    if (!this.container) return;
+    if (!this.shadowRoot) return;
 
     // Remove any existing listeners to prevent duplicates
-    this.container.removeEventListener('click', this.handleContainerClick);
+    this.shadowRoot.removeEventListener('click', this.handleContainerClick);
     
     // Use event delegation for all debug actions
-    this.container.addEventListener('click', this.handleContainerClick);
+    this.shadowRoot.addEventListener('click', this.handleContainerClick);
   }
 
   private handleContainerClick = (event: Event) => {
@@ -260,6 +329,9 @@ export class DebugOverlay {
         case 'toggle-xray':
           this.toggleXray();
           break;
+        case 'close-mini-cart':
+          this.closeMiniCart();
+          break;
       }
       return;
     }
@@ -272,6 +344,11 @@ export class DebugOverlay {
       if (panelId && panelId !== this.activePanel) {
         this.activePanel = panelId;
         this.activePanelTab = undefined; // Reset horizontal tab when switching panels
+        
+        // Save to localStorage
+        localStorage.setItem(DebugOverlay.ACTIVE_PANEL_KEY, panelId);
+        localStorage.removeItem(DebugOverlay.ACTIVE_TAB_KEY); // Clear tab when switching panels
+        
         this.updateOverlay();
       }
       return;
@@ -284,6 +361,10 @@ export class DebugOverlay {
       console.log('[Debug] Horizontal tab switch:', this.activePanelTab, '->', tabId, 'in panel:', this.activePanel);
       if (tabId && tabId !== this.activePanelTab) {
         this.activePanelTab = tabId;
+        
+        // Save to localStorage
+        localStorage.setItem(DebugOverlay.ACTIVE_TAB_KEY, tabId);
+        
         this.updateOverlay();
       }
       return;
@@ -321,7 +402,8 @@ export class DebugOverlay {
       this.updateQuickStats();
       
       // Only update content for specific panels that need real-time updates
-      if (this.activePanel === 'cart' || this.activePanel === 'config') {
+      // Skip updates if viewing raw data tab to prevent constant re-renders
+      if ((this.activePanel === 'cart' || this.activePanel === 'config' || this.activePanel === 'campaign') && this.activePanelTab !== 'raw') {
         this.updateContent();
       }
     }, 1000);
@@ -346,6 +428,10 @@ export class DebugOverlay {
   public setActivePanel(panelId: string): void {
     if (this.panels.find(p => p.id === panelId)) {
       this.activePanel = panelId;
+      
+      // Save to localStorage
+      localStorage.setItem(DebugOverlay.ACTIVE_PANEL_KEY, panelId);
+      
       this.updateOverlay();
     }
   }
@@ -380,26 +466,44 @@ export class DebugOverlay {
     URL.revokeObjectURL(url);
   }
 
-  private toggleMiniCart(): void {
-    let miniCart = document.getElementById('debug-mini-cart-display');
+  private closeMiniCart(): void {
+    if (!this.shadowRoot) return;
+    const miniCart = this.shadowRoot.querySelector('#debug-mini-cart-display') as HTMLDivElement;
+    if (miniCart) {
+      miniCart.classList.remove('show');
+      localStorage.setItem('debug-mini-cart-visible', 'false');
+      
+      // Update button state
+      const cartButton = this.shadowRoot.querySelector('[data-action="toggle-mini-cart"]');
+      if (cartButton) {
+        cartButton.classList.remove('active');
+        cartButton.setAttribute('title', 'Toggle Mini Cart');
+      }
+    }
+  }
+  
+  private toggleMiniCart(forceShow?: boolean): void {
+    if (!this.shadowRoot) return;
+    
+    let miniCart = this.shadowRoot.querySelector('#debug-mini-cart-display') as HTMLDivElement;
     
     if (!miniCart) {
       // Create mini cart if it doesn't exist
       miniCart = document.createElement('div');
       miniCart.id = 'debug-mini-cart-display';
       miniCart.className = 'debug-mini-cart-display';
-      document.body.appendChild(miniCart);
+      this.shadowRoot.appendChild(miniCart);
       
       // Subscribe to cart changes for real-time updates
       useCartStore.subscribe(() => {
-        if (miniCart && miniCart.classList.contains('show')) {
+        const cart = this.shadowRoot?.querySelector('#debug-mini-cart-display');
+        if (cart && cart.classList.contains('show')) {
           this.updateMiniCart();
         }
       });
       
-      // Check localStorage for saved state
-      const savedState = localStorage.getItem('debug-mini-cart-visible');
-      if (savedState === 'true') {
+      // When creating for the first time via button click (not auto-restore), show it
+      if (forceShow !== false) {
         miniCart.classList.add('show');
         this.updateMiniCart();
       }
@@ -407,17 +511,17 @@ export class DebugOverlay {
       // Toggle visibility
       miniCart.classList.toggle('show');
       
-      // Save state to localStorage
-      localStorage.setItem('debug-mini-cart-visible', miniCart.classList.contains('show').toString());
-      
       // Update content if showing
       if (miniCart.classList.contains('show')) {
         this.updateMiniCart();
       }
     }
     
-    // Update cart button state
-    const cartButton = this.container?.querySelector('[data-action="toggle-mini-cart"]');
+    // Save state to localStorage
+    localStorage.setItem('debug-mini-cart-visible', miniCart.classList.contains('show').toString());
+    
+    // Update cart button state - use shadowRoot!
+    const cartButton = this.shadowRoot?.querySelector('[data-action="toggle-mini-cart"]');
     if (cartButton && miniCart) {
       if (miniCart.classList.contains('show')) {
         cartButton.classList.add('active');
@@ -430,7 +534,8 @@ export class DebugOverlay {
   }
 
   private updateMiniCart(): void {
-    const miniCart = document.getElementById('debug-mini-cart-display');
+    if (!this.shadowRoot) return;
+    const miniCart = this.shadowRoot.querySelector('#debug-mini-cart-display') as HTMLDivElement;
     if (!miniCart || !miniCart.classList.contains('show')) return;
     
     const cartState = useCartStore.getState();
@@ -439,7 +544,7 @@ export class DebugOverlay {
       miniCart.innerHTML = `
         <div class="debug-mini-cart-header">
           <span>🛒 Debug Cart</span>
-          <button class="mini-cart-close" onclick="document.getElementById('debug-mini-cart-display').classList.remove('show'); localStorage.setItem('debug-mini-cart-visible', 'false')">×</button>
+          <button class="mini-cart-close" data-action="close-mini-cart">×</button>
         </div>
         <div class="debug-mini-cart-empty">Cart empty</div>
       `;
@@ -467,7 +572,7 @@ export class DebugOverlay {
     miniCart.innerHTML = `
       <div class="debug-mini-cart-header">
         <span>🛒 Debug Cart</span>
-        <button class="mini-cart-close" onclick="document.getElementById('debug-mini-cart-display').classList.remove('show'); localStorage.setItem('debug-mini-cart-visible', 'false')">×</button>
+        <button class="mini-cart-close" data-action="close-mini-cart">×</button>
       </div>
       <div class="debug-mini-cart-items">${itemsHtml}</div>
       <div class="debug-mini-cart-footer">
@@ -487,8 +592,8 @@ export class DebugOverlay {
   private toggleXray(): void {
     const isActive = XrayManager.toggle();
     
-    // Update button state
-    const xrayButton = this.container?.querySelector('[data-action="toggle-xray"]');
+    // Update button state - use shadowRoot not container!
+    const xrayButton = this.shadowRoot?.querySelector('[data-action="toggle-xray"]');
     if (xrayButton) {
       if (isActive) {
         xrayButton.classList.add('active');
@@ -504,35 +609,43 @@ export class DebugOverlay {
   }
 
   private updateButtonStates(): void {
+    if (!this.shadowRoot) return;
+    
     // Update X-ray button state
-    if (XrayManager.isXrayActive()) {
-      const xrayButton = this.container?.querySelector('[data-action="toggle-xray"]');
-      if (xrayButton) {
+    const xrayButton = this.shadowRoot.querySelector('[data-action="toggle-xray"]');
+    if (xrayButton) {
+      if (XrayManager.isXrayActive()) {
         xrayButton.classList.add('active');
         xrayButton.setAttribute('title', 'Disable X-Ray View');
+      } else {
+        xrayButton.classList.remove('active');
+        xrayButton.setAttribute('title', 'Toggle X-Ray View');
       }
     }
     
     // Update mini cart button state
-    const miniCart = document.getElementById('debug-mini-cart-display');
-    if (miniCart && miniCart.classList.contains('show')) {
-      const cartButton = this.container?.querySelector('[data-action="toggle-mini-cart"]');
-      if (cartButton) {
+    const miniCart = this.shadowRoot.querySelector('#debug-mini-cart-display');
+    const cartButton = this.shadowRoot.querySelector('[data-action="toggle-mini-cart"]');
+    if (cartButton) {
+      if (miniCart && miniCart.classList.contains('show')) {
         cartButton.classList.add('active');
         cartButton.setAttribute('title', 'Hide Mini Cart');
+      } else {
+        cartButton.classList.remove('active');
+        cartButton.setAttribute('title', 'Toggle Mini Cart');
       }
     }
   }
 
   public updateQuickStats(): void {
-    if (!this.container) return;
+    if (!this.shadowRoot) return;
 
     const cartState = useCartStore.getState();
     
     // Update cart stats
-    const cartItemsEl = this.container.querySelector('[data-debug-stat="cart-items"]');
-    const cartTotalEl = this.container.querySelector('[data-debug-stat="cart-total"]');
-    const enhancedElementsEl = this.container.querySelector('[data-debug-stat="enhanced-elements"]');
+    const cartItemsEl = this.shadowRoot.querySelector('[data-debug-stat="cart-items"]');
+    const cartTotalEl = this.shadowRoot.querySelector('[data-debug-stat="cart-total"]');
+    const enhancedElementsEl = this.shadowRoot.querySelector('[data-debug-stat="enhanced-elements"]');
     
     if (cartItemsEl) cartItemsEl.textContent = cartState.totalQuantity.toString();
     if (cartTotalEl) cartTotalEl.textContent = cartState.totals.total.formatted;

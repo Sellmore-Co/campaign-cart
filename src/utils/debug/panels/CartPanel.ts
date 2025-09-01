@@ -5,6 +5,7 @@
 
 import { useCartStore } from '../../../stores/cartStore';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
+import { RawDataHelper } from './RawDataHelper';
 
 export class CartPanel implements DebugPanel {
   id = 'cart';
@@ -136,16 +137,7 @@ export class CartPanel implements DebugPanel {
 
   private getRawDataContent(): string {
     const cartState = useCartStore.getState();
-    
-    return `
-      <div class="enhanced-panel">
-        <div class="section">
-          <div class="json-viewer">
-            <pre><code>${JSON.stringify(cartState, null, 2)}</code></pre>
-          </div>
-        </div>
-      </div>
-    `;
+    return RawDataHelper.generateRawDataContent(cartState);
   }
 
   getActions(): PanelAction[] {

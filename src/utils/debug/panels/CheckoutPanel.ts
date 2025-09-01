@@ -5,6 +5,7 @@
 
 import { useCheckoutStore } from '../../../stores/checkoutStore';
 import { DebugPanel, PanelAction, PanelTab } from '../DebugPanels';
+import { RawDataHelper } from './RawDataHelper';
 
 export class CheckoutPanel implements DebugPanel {
   id = 'checkout';
@@ -229,16 +230,7 @@ export class CheckoutPanel implements DebugPanel {
 
   private getRawDataContent(): string {
     const checkoutState = useCheckoutStore.getState();
-    
-    return `
-      <div class="enhanced-panel">
-        <div class="section">
-          <div class="json-viewer">
-            <pre><code>${JSON.stringify(checkoutState, null, 2)}</code></pre>
-          </div>
-        </div>
-      </div>
-    `;
+    return RawDataHelper.generateRawDataContent(checkoutState);
   }
 
   getActions(): PanelAction[] {
