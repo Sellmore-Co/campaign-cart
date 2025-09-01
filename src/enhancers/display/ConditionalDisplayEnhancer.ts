@@ -80,7 +80,10 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
       this.subscribe(useCampaignStore, this.handleShippingUpdate.bind(this));
     }
     
-    // Initial update
+    // Initial update - force immediate evaluation with current state
+    // This ensures we get the correct state even after rehydration
+    await new Promise(resolve => setTimeout(resolve, 0)); // Allow stores to fully initialize
+    
     if (this.dependsOnCart) {
       this.handleStateUpdate(useCartStore.getState());
     } else if (this.dependsOnPackage) {

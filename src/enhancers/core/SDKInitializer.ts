@@ -16,6 +16,7 @@ import { NextCommerce } from '@/core/NextCommerce';
 import { testModeManager } from '@/utils/testMode';
 import { EventBus } from '@/utils/events';
 import { ApiClient } from '@/api/client';
+import { CART_STORAGE_KEY } from '@/utils/storage';
 
 export class SDKInitializer {
   private static logger = createLogger('SDKInitializer');
@@ -48,6 +49,9 @@ export class SDKInitializer {
       // Initialize analytics after campaign data is loaded
       await this.initializeAnalytics();
       
+      // IMPORTANT: Wait for cart store to fully rehydrate from storage
+      // This prevents race conditions where display enhancers initialize with empty cart state
+      await this.waitForStoreRehydration();
       
       // Initialize global error handler
       this.initializeErrorHandler();
@@ -639,6 +643,40 @@ export class SDKInitializer {
         document.addEventListener('DOMContentLoaded', onReady);
         document.addEventListener('readystatechange', onReady);
       });
+    }
+  }
+
+  private static async waitForStoreRehydration(): Promise<void> {
+    // Wait for cart store to rehydrate from session storage
+    // This is crucial to prevent display enhancers from initializing with empty state
+    const cartStore = useCartStore.getState();
+    
+    // Check if there's data in sessionStorage that needs to be rehydrated
+    // Using the shared constant from storage.ts ensures consistency
+    const storedData = sessionStorage.getItem(CART_STORAGE_KEY);
+    
+    if (storedData) {
+      this.logger.debug('Waiting for cart store rehydration...');
+      
+      // Give the store time to rehydrate and recalculate totals
+      // The store's onRehydrateStorage callback calls calculateTotals()
+      // We need to wait for that to complete
+      await new Promise(resolve => {
+        // Use a small timeout to ensure the rehydration process completes
+        // This includes the async calculateTotals() call in the store
+        setTimeout(resolve, 50);
+      });
+      
+      // Force a recalculation to ensure everything is up to date
+      await cartStore.calculateTotals();
+      
+      this.logger.debug('Cart store rehydration complete', {
+        itemCount: cartStore.items.length,
+        total: cartStore.total,
+        isEmpty: cartStore.isEmpty
+      });
+    } else {
+      this.logger.debug('No cart data to rehydrate');
     }
   }
 

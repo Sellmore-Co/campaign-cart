@@ -25,8 +25,15 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
     // Subscribe to cart store updates
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     
-    // Get initial cart state
+    // Get initial cart state - this should now have rehydrated data
     this.cartState = useCartStore.getState();
+    
+    // If cart has items but totals haven't been calculated yet, trigger recalculation
+    // This handles edge cases where rehydration might not have completed fully
+    if (this.cartState.items.length > 0 && this.cartState.totals.isEmpty) {
+      this.logger.debug('Cart has items but totals are empty, triggering recalculation');
+      useCartStore.getState().calculateTotals();
+    }
   }
 
   private handleCartUpdate(cartState: CartState): void {
