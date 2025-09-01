@@ -4,6 +4,7 @@
  */
 
 export { CartPanel } from './CartPanel';
+export { OrderPanel } from './OrderPanel';
 export { EventTimelinePanel } from './EventTimelinePanel';
 export { ConfigPanel } from './ConfigPanel';
 export { CheckoutPanel } from './CheckoutPanel';

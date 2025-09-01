@@ -13,6 +13,7 @@ import { useConfigStore } from '../../stores/configStore';
 import { XrayManager } from './XrayStyles';
 import {
   CartPanel,
+  OrderPanel,
   EventTimelinePanel,
   ConfigPanel,
   CheckoutPanel,
@@ -59,6 +60,7 @@ export class DebugOverlay {
   private initializePanels(): void {
     this.panels = [
       new CartPanel(),
+      new OrderPanel(),
       new ConfigPanel(),
       new EnhancedCampaignPanel(),
       new CheckoutPanel(),
