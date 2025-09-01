@@ -140,6 +140,37 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       this.logger.warn('Email field not found for prospect cart');
     }
   }
+  
+  /**
+   * Get formatted phone number in E.164 format from existing intlTelInput instance
+   */
+  private getFormattedPhoneNumber(): string {
+    // Find the phone field
+    const phoneField = this.element.querySelector('[data-next-checkout-field="phone"], [os-checkout-field="phone"], input[name="phone"], input[type="tel"]') as HTMLInputElement;
+    
+    if (!phoneField) {
+      return '';
+    }
+    
+    // Check if intlTelInput instance exists on the element (created by CheckoutFormEnhancer)
+    const intlTelInputInstance = (window as any).intlTelInputGlobals?.getInstance?.(phoneField);
+    
+    if (intlTelInputInstance && typeof intlTelInputInstance.getNumber === 'function') {
+      try {
+        const e164Number = intlTelInputInstance.getNumber();
+        if (e164Number) {
+          this.logger.debug('Got E.164 formatted phone from existing instance:', e164Number);
+          return e164Number;
+        }
+      } catch (error) {
+        this.logger.warn('Failed to get E.164 formatted phone from existing instance:', error);
+      }
+    }
+    
+    // Fallback to raw phone value if intlTelInput not available or not initialized
+    this.logger.debug('Using raw phone value (intlTelInput instance not found)');
+    return phoneField.value || '';
+  }
 
   private setupTriggers(): void {
     if (!this.config.autoCreate) return;
@@ -175,8 +206,8 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   }
 
   // Store timeouts at class level to coordinate between blur and updateEmail
-  private emailInputTimeout?: number;
-  private emailBlurTimeout?: number;
+  private emailInputTimeout: number | undefined;
+  private emailBlurTimeout: number | undefined;
 
   private setupEmailEntryTrigger(): void {
     if (!this.emailField) {
@@ -324,7 +355,8 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       // Get all available form data
       const firstName = (this.element.querySelector('[data-next-checkout-field="fname"], [os-checkout-field="fname"], input[name="first_name"]') as HTMLInputElement)?.value || '';
       const lastName = (this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]') as HTMLInputElement)?.value || '';
-      const phone = (this.element.querySelector('[data-next-checkout-field="phone"], [os-checkout-field="phone"], input[name="phone"]') as HTMLInputElement)?.value || '';
+      // Get phone in E.164 format if possible
+      const phone = this.getFormattedPhoneNumber();
       
       // Get address data if available
       const address1 = (this.element.querySelector('[data-next-checkout-field="address1"], [os-checkout-field="address1"], input[name="address1"]') as HTMLInputElement)?.value || '';
@@ -380,7 +412,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         user.email = email;
       }
       
-      // Add phone if it exists
+      // Add phone if it exists (in E.164 format)
       if (phone) {
         user.phone_number = phone;
       }
@@ -410,6 +442,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         if (address2) addressData.line2 = address2;
         if (state) addressData.state = state;
         if (postal) addressData.postcode = postal;
+        // Use E.164 formatted phone for address
         if (phone) addressData.phone_number = phone;
         
         cartData.address = addressData;
@@ -552,6 +585,10 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     
     // Check that email doesn't start or end with a dot
     const [localPart, domainPart] = email.split('@');
+    if (!localPart || !domainPart) {
+      return false;
+    }
+    
     if (localPart.startsWith('.') || localPart.endsWith('.') || 
         domainPart.startsWith('.') || domainPart.endsWith('.')) {
       return false;
@@ -560,7 +597,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     // Ensure TLD is at least 2 characters (prevents .c, .h, etc.)
     const parts = domainPart.split('.');
     const tld = parts[parts.length - 1];
-    if (tld.length < 2) {
+    if (!tld || tld.length < 2) {
       return false;
     }
     
@@ -639,7 +676,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     this.logger.info('Prospect cart converted to order');
   }
 
-  private updateEmailTimeout?: number;
+  private updateEmailTimeout: number | undefined;
   
   public updateEmail(email: string): void {
     if (this.emailField) {
@@ -688,7 +725,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     
     // Clear any pending timeout if any field is invalid
     if (!hasValidEmail || !hasValidFirstName || !hasValidLastName) {
-      if (this.updateEmailTimeout) {
+      if (this.updateEmailTimeout !== undefined) {
         clearTimeout(this.updateEmailTimeout);
         this.updateEmailTimeout = undefined;
       }
@@ -707,10 +744,16 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     
     // All fields are valid - create cart immediately
     // Clear any pending timeouts
-    clearTimeout(this.updateEmailTimeout);
-    clearTimeout(this.emailBlurTimeout);
-    clearTimeout(this.emailInputTimeout);
-    this.updateEmailTimeout = undefined;
+    if (this.updateEmailTimeout !== undefined) {
+      clearTimeout(this.updateEmailTimeout);
+      this.updateEmailTimeout = undefined;
+    }
+    if (this.emailBlurTimeout !== undefined) {
+      clearTimeout(this.emailBlurTimeout);
+    }
+    if (this.emailInputTimeout !== undefined) {
+      clearTimeout(this.emailInputTimeout);
+    }
     
     this.logger.info('All required fields valid (email, fname, lname), creating prospect cart immediately', {
       email,
