@@ -332,6 +332,14 @@ export class DebugOverlay {
         case 'close-mini-cart':
           this.closeMiniCart();
           break;
+        case 'toggle-internal-events':
+          // Toggle internal events for the Events panel
+          const eventPanel = this.panels.find(p => p.id === 'event-timeline') as any;
+          if (eventPanel && eventPanel.toggleInternalEvents) {
+            eventPanel.toggleInternalEvents();
+            this.updateContent();
+          }
+          break;
       }
       return;
     }

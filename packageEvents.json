@@ -1,0 +1,886 @@
+[
+  {
+    "id": "event_1756754790063_qthipohq3",
+    "timestamp": 1756754790063,
+    "type": "internal",
+    "name": "shipping:method-changed",
+    "data": {
+      "methodId": 1,
+      "method": {
+        "ref_id": 1,
+        "code": "standard",
+        "price": "0.00"
+      }
+    },
+    "source": "SDK EventBus",
+    "relativeTime": "just now",
+    "isInternal": true
+  },
+  {
+    "id": "event_1756754790046_1glycgk54",
+    "timestamp": 1756754790046,
+    "type": "internal",
+    "name": "cart:updated",
+    "data": {
+      "items": [
+        {
+          "id": 1756752651137,
+          "packageId": 7,
+          "quantity": 1,
+          "price": 9.99,
+          "title": "Drone Extra Battery",
+          "is_upsell": false,
+          "price_per_unit": "9.99",
+          "qty": 1,
+          "price_total": "9.99",
+          "price_retail": "19.99",
+          "price_retail_total": "19.99",
+          "price_recurring": "16.99",
+          "is_recurring": false,
+          "interval": null,
+          "interval_count": null
+        },
+        {
+          "id": 1756754790042,
+          "packageId": 4,
+          "quantity": 1,
+          "price": 47.97,
+          "title": "3x Drone",
+          "is_upsell": false,
+          "price_per_unit": "15.99",
+          "qty": 3,
+          "price_total": "47.97",
+          "price_retail": "39.99",
+          "price_retail_total": "119.97",
+          "price_recurring": null,
+          "is_recurring": false,
+          "interval": null,
+          "interval_count": null
+        }
+      ],
+      "subtotal": 9.99,
+      "shipping": 12.99,
+      "tax": 0,
+      "total": 22.98,
+      "totalQuantity": 1,
+      "isEmpty": false,
+      "appliedCoupons": [],
+      "enrichedItems": [
+        {
+          "id": 1756752651137,
+          "packageId": 7,
+          "quantity": 1,
+          "price": {
+            "excl_tax": {
+              "value": 9.99,
+              "formatted": "$9.99"
+            },
+            "incl_tax": {
+              "value": 9.99,
+              "formatted": "$9.99"
+            },
+            "original": {
+              "value": 19.99,
+              "formatted": "$19.99"
+            },
+            "savings": {
+              "value": 9.999999999999998,
+              "formatted": "$10.00"
+            },
+            "recurring": {
+              "value": 0,
+              "formatted": "$0.00"
+            },
+            "lineTotal": {
+              "value": 9.99,
+              "formatted": "$9.99"
+            },
+            "lineCompare": {
+              "value": 19.99,
+              "formatted": "$19.99"
+            },
+            "lineSavings": {
+              "value": 9.999999999999998,
+              "formatted": "$10.00"
+            },
+            "savingsPct": {
+              "value": 50,
+              "formatted": "50%"
+            }
+          },
+          "product": {
+            "title": "Drone Extra Battery",
+            "sku": "10",
+            "image": "https://d1w87fp8j98gad.cloudfront.net/media/cache/92/14/921415343bfdbad2f4cd8c0cf2110b5d.webp"
+          },
+          "is_upsell": false,
+          "is_recurring": false,
+          "interval_count": null,
+          "frequency": "One time",
+          "is_bundle": false,
+          "hasSavings": true,
+          "hasComparePrice": true,
+          "showCompare": "show",
+          "showSavings": "show",
+          "showRecurring": "hide"
+        },
+        {
+          "id": 1756754781768,
+          "packageId": 3,
+          "quantity": 1,
+          "price": {
+            "excl_tax": {
+              "value": 17.99,
+              "formatted": "$17.99"
+            },
+            "incl_tax": {
+              "value": 17.99,
+              "formatted": "$17.99"
+            },
+            "original": {
+              "value": 39.99,
+              "formatted": "$39.99"
+            },
+            "savings": {
+              "value": 22.000000000000004,
+              "formatted": "$22.00"
+            },
+            "recurring": {
+              "value": 0,
+              "formatted": "$0.00"
+            },
+            "lineTotal": {
+              "value": 35.98,
+              "formatted": "$35.98"
+            },
+            "lineCompare": {
+              "value": 79.98,
+              "formatted": "$79.98"
+            },
+            "lineSavings": {
+              "value": 44.00000000000001,
+              "formatted": "$44.00"
+            },
+            "savingsPct": {
+              "value": 55,
+              "formatted": "55%"
+            }
+          },
+          "product": {
+            "title": "2x Drone",
+            "sku": "267",
+            "image": "https://d1w87fp8j98gad.cloudfront.net/media/cache/a0/6b/a06b750446f400be6a606ae0e5a283df.webp"
+          },
+          "is_upsell": false,
+          "is_recurring": false,
+          "interval_count": null,
+          "frequency": "One time",
+          "is_bundle": false,
+          "hasSavings": true,
+          "hasComparePrice": true,
+          "showCompare": "show",
+          "showSavings": "show",
+          "showRecurring": "hide"
+        }
+      ],
+      "totals": {
+        "subtotal": {
+          "value": 9.99,
+          "formatted": "$9.99"
+        },
+        "shipping": {
+          "value": 12.99,
+          "formatted": "$12.99"
+        },
+        "tax": {
+          "value": 0,
+          "formatted": "$0.00"
+        },
+        "discounts": {
+          "value": 0,
+          "formatted": "$0.00"
+        },
+        "total": {
+          "value": 22.98,
+          "formatted": "$22.98"
+        },
+        "totalExclShipping": {
+          "value": 9.99,
+          "formatted": "$9.99"
+        },
+        "count": 1,
+        "isEmpty": false,
+        "savings": {
+          "value": 9.999999999999998,
+          "formatted": "$10.00"
+        },
+        "savingsPercentage": {
+          "value": 50.02501250625312,
+          "formatted": "50%"
+        },
+        "compareTotal": {
+          "value": 19.99,
+          "formatted": "$19.99"
+        },
+        "hasSavings": true,
+        "totalSavings": {
+          "value": 9.999999999999998,
+          "formatted": "$10.00"
+        },
+        "totalSavingsPercentage": {
+          "value": 50.02501250625312,
+          "formatted": "50%"
+        },
+        "hasTotalSavings": true
+      },
+      "shippingMethod": {
+        "id": 2,
+        "name": "Express",
+        "price": 12.99,
+        "code": "Express"
+      },
+      "swapInProgress": true
+    },
+    "source": "SDK EventBus",
+    "relativeTime": "just now",
+    "isInternal": true
+  },
+  {
+    "id": "event_1756754790044_8zige4wsg",
+    "timestamp": 1756754790044,
+    "type": "dataLayer",
+    "name": "dl_add_to_cart",
+    "data": {
+      "event": "dl_add_to_cart",
+      "ecommerce": {
+        "currency": "USD",
+        "value": 47.97,
+        "items": [
+          {
+            "item_id": "267",
+            "item_name": "3x Drone",
+            "affiliation": "Online Store",
+            "discount": 0,
+            "index": 0,
+            "item_category": "uncategorized",
+            "price": 47.97,
+            "quantity": 1
+          }
+        ]
+      },
+      "attribution": {
+        "funnel": "CH01",
+        "metadata": {
+          "landing_page": "https://next-staging-core.webflow.io/demo/checkout?debugger=true&debug=true",
+          "referrer": "",
+          "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+          "device_type": "desktop",
+          "domain": "next-staging-core.webflow.io",
+          "timestamp": 1756754703156,
+          "fb_fbp": "fb.2.1755895012611.80981150301318764",
+          "fb_fbc": "",
+          "fb_pixel_id": "286865669194576",
+          "sdk_version": "unknown",
+          "conversion_timestamp": 1756754790034
+        }
+      },
+      "funnel": "CH01",
+      "gtm.uniqueEventId": 50
+    },
+    "source": "GTM DataLayer",
+    "relativeTime": "just now",
+    "isInternal": false
+  },
+  {
+    "id": "event_1756754790043_c38h1ltog",
+    "timestamp": 1756754790043,
+    "type": "dataLayer",
+    "name": "dataLayer.push",
+    "data": {
+      "ecommerce": null
+    },
+    "source": "GTM DataLayer",
+    "relativeTime": "just now",
+    "isInternal": false
+  },
+  {
+    "id": "event_1756754790043_x8t3a7arb",
+    "timestamp": 1756754790043,
+    "type": "dataLayer",
+    "name": "add_to_cart",
+    "data": {
+      "event": "add_to_cart",
+      "event_timestamp": "2025-09-01T19:26:30.043Z",
+      "event_id": "1756750420413_pb8pllvl8_30_1756754790043",
+      "ecommerce": {
+        "currency": "USD",
+        "value": 47.97,
+        "items": [
+          {
+            "item_id": "267",
+            "item_name": "3x Drone",
+            "currency": "USD",
+            "item_category": "uncategorized",
+            "price": 47.97,
+            "quantity": 1
+          }
+        ]
+      },
+      "event_time": "2025-09-01T19:26:30.043Z",
+      "data": {
+        "currency": "USD",
+        "value": 47.97,
+        "items": [
+          {
+            "item_id": "267",
+            "item_name": "3x Drone",
+            "currency": "USD",
+            "price": 47.97,
+            "quantity": 1,
+            "item_category": "uncategorized"
+          }
+        ]
+      },
+      "attribution": {
+        "funnel": "CH01",
+        "metadata": {
+          "landing_page": "https://next-staging-core.webflow.io/demo/checkout?debugger=true&debug=true",
+          "referrer": "",
+          "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+          "device_type": "desktop",
+          "domain": "next-staging-core.webflow.io",
+          "timestamp": 1756754703156,
+          "fb_fbp": "fb.2.1755895012611.80981150301318764",
+          "fb_fbc": "",
+          "fb_pixel_id": "286865669194576",
+          "sdk_version": "unknown",
+          "conversion_timestamp": 1756754790034
+        }
+      },
+      "gtm.uniqueEventId": 49
+    },
+    "source": "GTM DataLayer",
+    "relativeTime": "just now",
+    "isInternal": false
+  },
+  {
+    "id": "event_1756754790043_j3fymemfv",
+    "timestamp": 1756754790043,
+    "type": "dataLayer",
+    "name": "dataLayer.push",
+    "data": {
+      "ecommerce": null
+    },
+    "source": "GTM DataLayer",
+    "relativeTime": "just now",
+    "isInternal": false
+  },
+  {
+    "id": "event_1756754790043_1n5fbb0vu",
+    "timestamp": 1756754790043,
+    "type": "internal",
+    "name": "cart:item-added",
+    "data": {
+      "packageId": 4,
+      "quantity": 1
+    },
+    "source": "SDK EventBus",
+    "relativeTime": "just now",
+    "isInternal": true
+  },
+  {
+    "id": "event_1756754790042_cnhl3q5tc",
+    "timestamp": 1756754790042,
+    "type": "internal",
+    "name": "selector:selection-changed",
+    "data": {
+      "selectorId": "drone-packages",
+      "packageId": 4,
+      "item": {
+        "element": {},
+        "packageId": 4,
+        "quantity": 1,
+        "price": 15.99,
+        "name": "3x Drone",
+        "isPreSelected": true,
+        "shippingId": "1"
+      }
+    },
+    "source": "SDK EventBus",
+    "relativeTime": "just now",
+    "isInternal": true
+  },
+  {
+    "id": "event_1756754790034_gju79p8dr",
+    "timestamp": 1756754790034,
+    "type": "dataLayer",
+    "name": "dl_cart_updated",
+    "data": {
+      "event": "dl_cart_updated",
+      "attribution": {
+        "funnel": "CH01",
+        "metadata": {
+          "landing_page": "https://next-staging-core.webflow.io/demo/checkout?debugger=true&debug=true",
+          "referrer": "",
+          "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+          "device_type": "desktop",
+          "domain": "next-staging-core.webflow.io",
+          "timestamp": 1756754703156,
+          "fb_fbp": "fb.2.1755895012611.80981150301318764",
+          "fb_fbc": "",
+          "fb_pixel_id": "286865669194576",
+          "sdk_version": "unknown",
+          "conversion_timestamp": 1756754790034
+        }
+      },
+      "funnel": "CH01",
+      "gtm.uniqueEventId": 48
+    },
+    "source": "GTM DataLayer",
+    "relativeTime": "just now",
+    "isInternal": false
+  },
+  {
+    "id": "event_1756754790034_z3v8j896t",
+    "timestamp": 1756754790034,
+    "type": "internal",
+    "name": "cart:updated",
+    "data": {
+      "items": [
+        {
+          "id": 1756752651137,
+          "packageId": 7,
+          "quantity": 1,
+          "price": 9.99,
+          "title": "Drone Extra Battery",
+          "is_upsell": false,
+          "price_per_unit": "9.99",
+          "qty": 1,
+          "price_total": "9.99",
+          "price_retail": "19.99",
+          "price_retail_total": "19.99",
+          "price_recurring": "16.99",
+          "is_recurring": false,
+          "interval": null,
+          "interval_count": null
+        }
+      ],
+      "subtotal": 45.97,
+      "shipping": 12.99,
+      "tax": 0,
+      "total": 58.96,
+      "totalQuantity": 2,
+      "isEmpty": false,
+      "appliedCoupons": [],
+      "enrichedItems": [
+        {
+          "id": 1756752651137,
+          "packageId": 7,
+          "quantity": 1,
+          "price": {
+            "excl_tax": {
+              "value": 9.99,
+              "formatted": "$9.99"
+            },
+            "incl_tax": {
+              "value": 9.99,
+              "formatted": "$9.99"
+            },
+            "original": {
+              "value": 19.99,
+              "formatted": "$19.99"
+            },
+            "savings": {
+              "value": 9.999999999999998,
+              "formatted": "$10.00"
+            },
+            "recurring": {
+              "value": 0,
+              "formatted": "$0.00"
+            },
+            "lineTotal": {
+              "value": 9.99,
+              "formatted": "$9.99"
+            },
+            "lineCompare": {
+              "value": 19.99,
+              "formatted": "$19.99"
+            },
+            "lineSavings": {
+              "value": 9.999999999999998,
+              "formatted": "$10.00"
+            },
+            "savingsPct": {
+              "value": 50,
+              "formatted": "50%"
+            }
+          },
+          "product": {
+            "title": "Drone Extra Battery",
+            "sku": "10",
+            "image": "https://d1w87fp8j98gad.cloudfront.net/media/cache/92/14/921415343bfdbad2f4cd8c0cf2110b5d.webp"
+          },
+          "is_upsell": false,
+          "is_recurring": false,
+          "interval_count": null,
+          "frequency": "One time",
+          "is_bundle": false,
+          "hasSavings": true,
+          "hasComparePrice": true,
+          "showCompare": "show",
+          "showSavings": "show",
+          "showRecurring": "hide"
+        },
+        {
+          "id": 1756754781768,
+          "packageId": 3,
+          "quantity": 1,
+          "price": {
+            "excl_tax": {
+              "value": 17.99,
+              "formatted": "$17.99"
+            },
+            "incl_tax": {
+              "value": 17.99,
+              "formatted": "$17.99"
+            },
+            "original": {
+              "value": 39.99,
+              "formatted": "$39.99"
+            },
+            "savings": {
+              "value": 22.000000000000004,
+              "formatted": "$22.00"
+            },
+            "recurring": {
+              "value": 0,
+              "formatted": "$0.00"
+            },
+            "lineTotal": {
+              "value": 35.98,
+              "formatted": "$35.98"
+            },
+            "lineCompare": {
+              "value": 79.98,
+              "formatted": "$79.98"
+            },
+            "lineSavings": {
+              "value": 44.00000000000001,
+              "formatted": "$44.00"
+            },
+            "savingsPct": {
+              "value": 55,
+              "formatted": "55%"
+            }
+          },
+          "product": {
+            "title": "2x Drone",
+            "sku": "267",
+            "image": "https://d1w87fp8j98gad.cloudfront.net/media/cache/a0/6b/a06b750446f400be6a606ae0e5a283df.webp"
+          },
+          "is_upsell": false,
+          "is_recurring": false,
+          "interval_count": null,
+          "frequency": "One time",
+          "is_bundle": false,
+          "hasSavings": true,
+          "hasComparePrice": true,
+          "showCompare": "show",
+          "showSavings": "show",
+          "showRecurring": "hide"
+        }
+      ],
+      "totals": {
+        "subtotal": {
+          "value": 45.97,
+          "formatted": "$45.97"
+        },
+        "shipping": {
+          "value": 12.99,
+          "formatted": "$12.99"
+        },
+        "tax": {
+          "value": 0,
+          "formatted": "$0.00"
+        },
+        "discounts": {
+          "value": 0,
+          "formatted": "$0.00"
+        },
+        "total": {
+          "value": 58.96,
+          "formatted": "$58.96"
+        },
+        "totalExclShipping": {
+          "value": 45.97,
+          "formatted": "$45.97"
+        },
+        "count": 2,
+        "isEmpty": false,
+        "savings": {
+          "value": 54,
+          "formatted": "$54.00"
+        },
+        "savingsPercentage": {
+          "value": 54.01620486145844,
+          "formatted": "54%"
+        },
+        "compareTotal": {
+          "value": 99.97,
+          "formatted": "$99.97"
+        },
+        "hasSavings": true,
+        "totalSavings": {
+          "value": 54,
+          "formatted": "$54.00"
+        },
+        "totalSavingsPercentage": {
+          "value": 54.01620486145844,
+          "formatted": "54%"
+        },
+        "hasTotalSavings": true
+      },
+      "shippingMethod": {
+        "id": 2,
+        "name": "Express",
+        "price": 12.99,
+        "code": "Express"
+      },
+      "swapInProgress": true
+    },
+    "source": "SDK EventBus",
+    "relativeTime": "just now",
+    "isInternal": true
+  },
+  {
+    "id": "event_1756754790032_bxqwd9556",
+    "timestamp": 1756754790032,
+    "type": "dataLayer",
+    "name": "dl_remove_from_cart",
+    "data": {
+      "event": "dl_remove_from_cart",
+      "ecommerce": {
+        "currency": "USD",
+        "value": 35.98,
+        "items": [
+          {
+            "item_id": "267",
+            "item_name": "2x Drone",
+            "affiliation": "Online Store",
+            "discount": 0,
+            "index": 0,
+            "item_category": "uncategorized",
+            "price": 35.98,
+            "quantity": 1
+          }
+        ]
+      },
+      "attribution": {
+        "funnel": "CH01",
+        "metadata": {
+          "landing_page": "https://next-staging-core.webflow.io/demo/checkout?debugger=true&debug=true",
+          "referrer": "",
+          "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+          "device_type": "desktop",
+          "domain": "next-staging-core.webflow.io",
+          "timestamp": 1756754703156,
+          "fb_fbp": "fb.2.1755895012611.80981150301318764",
+          "fb_fbc": "",
+          "fb_pixel_id": "286865669194576",
+          "sdk_version": "unknown",
+          "conversion_timestamp": 1756754781771
+        }
+      },
+      "funnel": "CH01",
+      "gtm.uniqueEventId": 47
+    },
+    "source": "GTM DataLayer",
+    "relativeTime": "just now",
+    "isInternal": false
+  },
+  {
+    "id": "event_1756754790032_vh3w9qbwy",
+    "timestamp": 1756754790032,
+    "type": "dataLayer",
+    "name": "dataLayer.push",
+    "data": {
+      "ecommerce": null
+    },
+    "source": "GTM DataLayer",
+    "relativeTime": "just now",
+    "isInternal": false
+  },
+  {
+    "id": "event_1756754790031_ga0c766af",
+    "timestamp": 1756754790031,
+    "type": "dataLayer",
+    "name": "remove_from_cart",
+    "data": {
+      "event": "remove_from_cart",
+      "event_timestamp": "2025-09-01T19:26:30.031Z",
+      "event_id": "1756750420413_pb8pllvl8_28_1756754790031",
+      "ecommerce": {
+        "currency": "USD",
+        "value": 35.98,
+        "items": [
+          {
+            "item_id": "267",
+            "item_name": "2x Drone",
+            "currency": "USD",
+            "item_category": "uncategorized",
+            "price": 35.98,
+            "quantity": 1
+          }
+        ]
+      },
+      "event_time": "2025-09-01T19:26:30.031Z",
+      "data": {
+        "currency": "USD",
+        "value": 35.98,
+        "items": [
+          {
+            "item_id": "267",
+            "item_name": "2x Drone",
+            "currency": "USD",
+            "price": 35.98,
+            "quantity": 1,
+            "item_category": "uncategorized"
+          }
+        ]
+      },
+      "attribution": {
+        "funnel": "CH01",
+        "metadata": {
+          "landing_page": "https://next-staging-core.webflow.io/demo/checkout?debugger=true&debug=true",
+          "referrer": "",
+          "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+          "device_type": "desktop",
+          "domain": "next-staging-core.webflow.io",
+          "timestamp": 1756754703156,
+          "fb_fbp": "fb.2.1755895012611.80981150301318764",
+          "fb_fbc": "",
+          "fb_pixel_id": "286865669194576",
+          "sdk_version": "unknown",
+          "conversion_timestamp": 1756754781771
+        }
+      },
+      "gtm.uniqueEventId": 46
+    },
+    "source": "GTM DataLayer",
+    "relativeTime": "just now",
+    "isInternal": false
+  },
+  {
+    "id": "event_1756754790031_g3zf9hsph",
+    "timestamp": 1756754790031,
+    "type": "dataLayer",
+    "name": "dataLayer.push",
+    "data": {
+      "ecommerce": null
+    },
+    "source": "GTM DataLayer",
+    "relativeTime": "just now",
+    "isInternal": false
+  },
+  {
+    "id": "event_1756754790031_2ge92fxct",
+    "timestamp": 1756754790031,
+    "type": "internal",
+    "name": "cart:item-removed",
+    "data": {
+      "packageId": 3
+    },
+    "source": "SDK EventBus",
+    "relativeTime": "just now",
+    "isInternal": true
+  },
+  {
+    "id": "event_1756754790029_27qe8jbqt",
+    "timestamp": 1756754790029,
+    "type": "dataLayer",
+    "name": "dl_user_data",
+    "data": {
+      "event": "dl_user_data",
+      "attribution": {
+        "funnel": "CH01",
+        "metadata": {
+          "landing_page": "https://next-staging-core.webflow.io/demo/checkout?debugger=true&debug=true",
+          "referrer": "",
+          "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+          "device_type": "desktop",
+          "domain": "next-staging-core.webflow.io",
+          "timestamp": 1756754703156,
+          "fb_fbp": "fb.2.1755895012611.80981150301318764",
+          "fb_fbc": "",
+          "fb_pixel_id": "286865669194576",
+          "sdk_version": "unknown",
+          "conversion_timestamp": 1756754781771
+        }
+      },
+      "funnel": "CH01",
+      "gtm.uniqueEventId": 45
+    },
+    "source": "GTM DataLayer",
+    "relativeTime": "just now",
+    "isInternal": false
+  },
+  {
+    "id": "event_1756754790028_cccrgwszu",
+    "timestamp": 1756754790028,
+    "type": "internal",
+    "name": "selector:selection-changed",
+    "data": {
+      "selectorId": "drone-packages",
+      "packageId": 3,
+      "item": {
+        "element": {},
+        "packageId": 3,
+        "quantity": 1,
+        "price": 17.99,
+        "name": "2x Drone",
+        "isPreSelected": false,
+        "shippingId": "2"
+      }
+    },
+    "source": "SDK EventBus",
+    "relativeTime": "just now",
+    "isInternal": true
+  },
+  {
+    "id": "event_1756754790028_5vn9xqmq6",
+    "timestamp": 1756754790028,
+    "type": "internal",
+    "name": "selector:item-selected",
+    "data": {
+      "selectorId": "drone-packages",
+      "packageId": 4,
+      "previousPackageId": 3,
+      "mode": "swap"
+    },
+    "source": "SDK EventBus",
+    "relativeTime": "just now",
+    "isInternal": true
+  },
+  {
+    "id": "event_1756754790027_rwmwx2hgu",
+    "timestamp": 1756754790027,
+    "type": "internal",
+    "name": "selector:selection-changed",
+    "data": {
+      "selectorId": "drone-packages",
+      "packageId": 4,
+      "item": {
+        "element": {},
+        "packageId": 4,
+        "quantity": 1,
+        "price": 15.99,
+        "name": "3x Drone",
+        "isPreSelected": true,
+        "shippingId": "1"
+      }
+    },
+    "source": "SDK EventBus",
+    "relativeTime": "just now",
+    "isInternal": true
+  }
+]
