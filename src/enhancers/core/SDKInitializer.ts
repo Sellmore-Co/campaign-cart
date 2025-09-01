@@ -95,10 +95,11 @@ export class SDKInitializer {
   private static async loadConfiguration(): Promise<void> {
     const configStore = useConfigStore.getState();
     
-    // Check URL parameters for debug mode and forcePackageId
+    // Check URL parameters for debug mode, forcePackageId, and forceShippingId
     const urlParams = new URLSearchParams(window.location.search);
     const debugMode = urlParams.get('debugger') === 'true';
     const forcePackageId = urlParams.get('forcePackageId');
+    const forceShippingId = urlParams.get('forceShippingId');
     
     // Load from window.nextConfig first (as defaults)
     configStore.loadFromWindow();
@@ -116,6 +117,13 @@ export class SDKInitializer {
       this.logger.info('forcePackageId parameter detected:', forcePackageId);
       // Store for later processing after campaign data is loaded
       (window as any)._nextForcePackageId = forcePackageId;
+    }
+    
+    // Handle forceShippingId parameter
+    if (forceShippingId) {
+      this.logger.info('forceShippingId parameter detected:', forceShippingId);
+      // Store for later processing after campaign data is loaded
+      (window as any)._nextForceShippingId = forceShippingId;
     }
     
     this.logger.debug('Configuration loaded (metatags have priority):', configStore);
@@ -137,6 +145,9 @@ export class SDKInitializer {
     
     // Process forcePackageId parameter after campaign data is available
     await this.processForcePackageId();
+    
+    // Process forceShippingId parameter after campaign data is available
+    await this.processForceShippingId();
   }
 
   private static async processForcePackageId(): Promise<void> {
@@ -200,6 +211,59 @@ export class SDKInitializer {
       
     } catch (error) {
       this.logger.error('Error processing forcePackageId parameter:', error);
+      // Don't throw - this shouldn't break SDK initialization
+    }
+  }
+
+  private static async processForceShippingId(): Promise<void> {
+    const forceShippingId = (window as any)._nextForceShippingId;
+    
+    if (!forceShippingId) {
+      return;
+    }
+    
+    try {
+      this.logger.info('Processing forceShippingId parameter:', forceShippingId);
+      
+      const cartStore = useCartStore.getState();
+      const campaignStore = useCampaignStore.getState();
+      
+      // Parse the shipping ID (should be a number)
+      const shippingId = parseInt(forceShippingId, 10);
+      
+      if (isNaN(shippingId) || shippingId <= 0) {
+        throw new Error(`Invalid shipping ID: ${forceShippingId}`);
+      }
+      
+      // Verify the shipping method exists in campaign data
+      const campaignData = campaignStore.data;
+      if (!campaignData?.shipping_methods) {
+        this.logger.warn('No shipping methods available in campaign data');
+        return;
+      }
+      
+      const shippingMethod = campaignData.shipping_methods.find(
+        method => method.ref_id === shippingId
+      );
+      
+      if (!shippingMethod) {
+        this.logger.warn(`Shipping method ${shippingId} not found in campaign data`);
+        this.logger.debug('Available shipping methods:', 
+          campaignData.shipping_methods.map(m => ({ id: m.ref_id, code: m.code, price: m.price }))
+        );
+        return;
+      }
+      
+      // Set the shipping method
+      await cartStore.setShippingMethod(shippingId);
+      
+      this.logger.info(`Successfully set shipping method: ${shippingMethod.code} (ID: ${shippingId}, Price: $${shippingMethod.price})`);
+      
+      // Clean up the temporary storage
+      delete (window as any)._nextForceShippingId;
+      
+    } catch (error) {
+      this.logger.error('Error processing forceShippingId parameter:', error);
       // Don't throw - this shouldn't break SDK initialization
     }
   }
