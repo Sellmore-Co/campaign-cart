@@ -28,19 +28,8 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
     // Subscribe to cart store updates
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     
-    // Also subscribe to campaign store for currency changes
-    let previousCurrency: string | undefined;
-    this.subscribe(useCampaignStore, (state) => {
-      const currentCurrency = state?.data?.currency;
-      // Only update if currency actually changed
-      if (currentCurrency !== previousCurrency) {
-        if (previousCurrency !== undefined) { // Skip first call
-          this.logger.debug('Currency changed, updating display for ' + this.property);
-          this.updateDisplay();
-        }
-        previousCurrency = currentCurrency;
-      }
-    });
+    // Note: Currency change handling is done in BaseDisplayEnhancer.setupCurrencyChangeListener()
+    // No need to duplicate it here
     
     // Get initial cart state - this should now have rehydrated data
     this.cartState = useCartStore.getState();
