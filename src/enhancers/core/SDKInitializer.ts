@@ -194,6 +194,14 @@ export class SDKInitializer {
             countries: []
           };
         }
+      } else if (locationData && !locationData.countries?.length) {
+        // If we have forced country data but no countries list, fetch just the countries
+        try {
+          const countriesData = await countryService.getLocationData();
+          locationData.countries = countriesData.countries || [];
+        } catch (error) {
+          this.logger.warn('Failed to fetch countries list:', error);
+        }
       }
       
       if (locationData) {

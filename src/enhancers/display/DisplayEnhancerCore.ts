@@ -29,19 +29,43 @@ export class DisplayFormatter {
   
   private static getCurrencyFormatter(currency: string = 'USD'): Intl.NumberFormat {
     if (!this.currencyFormatters.has(currency)) {
-      this.currencyFormatters.set(currency, new Intl.NumberFormat('en-US', {
+      // Use browser's locale or fallback to en-US
+      const userLocale = navigator.language || 'en-US';
+      
+      const formatter = new Intl.NumberFormat(userLocale, {
         style: 'currency',
-        currency: currency
-      }));
+        currency: currency,
+        currencyDisplay: 'narrowSymbol' // Use narrowSymbol to avoid A$, CA$, etc.
+      });
+      
+      // Test what symbol this produces
+      const testFormat = formatter.format(123.45);
+      const symbol = testFormat.replace(/[0-9.,\s]/g, '').trim();
+      
+      console.log('%c[Currency Formatter] Creating formatter', 'color: #4CAF50; font-weight: bold', {
+        userLocale,
+        navigatorLanguage: navigator.language,
+        navigatorLanguages: navigator.languages,
+        currency,
+        currencyDisplay: 'narrowSymbol',
+        testFormat,
+        extractedSymbol: symbol
+      });
+      
+      this.currencyFormatters.set(currency, formatter);
     }
     return this.currencyFormatters.get(currency)!;
   }
   
   private static getCurrencyFormatterNoZeroCents(currency: string = 'USD'): Intl.NumberFormat {
     if (!this.currencyFormattersNoZeroCents.has(currency)) {
-      this.currencyFormattersNoZeroCents.set(currency, new Intl.NumberFormat('en-US', {
+      // Use browser's locale or fallback to en-US
+      const userLocale = navigator.language || 'en-US';
+      
+      this.currencyFormattersNoZeroCents.set(currency, new Intl.NumberFormat(userLocale, {
         style: 'currency',
         currency: currency,
+        currencyDisplay: 'narrowSymbol', // Use narrowSymbol to avoid A$, CA$, etc.
         minimumFractionDigits: 0,
         maximumFractionDigits: 2
       }));

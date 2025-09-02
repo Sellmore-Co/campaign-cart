@@ -314,8 +314,14 @@ const cartStoreInstance = create<CartState & CartActions>()(
           currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
         }
         
-        const formatCurrency = (amount: number) => 
-          new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+        const formatCurrency = (amount: number) => {
+          const userLocale = navigator.language || 'en-US';
+          return new Intl.NumberFormat(userLocale, { 
+            style: 'currency', 
+            currency,
+            currencyDisplay: 'narrowSymbol' // Use narrowSymbol to avoid A$, CA$, etc.
+          }).format(amount);
+        };
         
         // Calculate compare total (retail prices) - FIXED: Handle null values properly
         const compareTotal = state.items.reduce((sum, item) => {
@@ -558,8 +564,14 @@ const cartStoreInstance = create<CartState & CartActions>()(
             // Fallback to USD if stores aren't available
           }
           
-          const formatCurrency = (amount: number) => 
-            new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+          const formatCurrency = (amount: number) => {
+            const userLocale = navigator.language || 'en-US';
+            return new Intl.NumberFormat(userLocale, { 
+              style: 'currency', 
+              currency,
+              currencyDisplay: 'narrowSymbol' // Use narrowSymbol to avoid A$, CA$, etc.
+            }).format(amount);
+          };
           
           const enrichedItems = state.items.map(item => {
             const packageData = campaignState.getPackage(item.packageId);

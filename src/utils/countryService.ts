@@ -81,7 +81,8 @@ export class CountryService {
    * Get location data with user's detected country and list of all countries
    */
   public async getLocationData(): Promise<LocationData> {
-    const cached = this.getFromCache('location_data');
+    // Use localStorage for location data as countries list doesn't change often
+    const cached = this.getFromCache('location_data', true);
     
     if (cached) {
       return await this.applyCountryFiltering(cached);
@@ -95,7 +96,8 @@ export class CountryService {
       }
 
       const data = await response.json();
-      this.setCache('location_data', data);
+      // Store in localStorage for longer persistence
+      this.setCache('location_data', data, true);
       
       this.logger.debug('Location data fetched', {
         detectedCountry: data.detectedCountryCode,
@@ -114,7 +116,8 @@ export class CountryService {
    */
   public async getCountryStates(countryCode: string): Promise<CountryStatesData> {
     const cacheKey = `states_${countryCode}`;
-    const cached = this.getFromCache(cacheKey);
+    // Use localStorage for country states as they don't change often
+    const cached = this.getFromCache(cacheKey, true);
     
     if (cached) {
       return {
@@ -131,7 +134,8 @@ export class CountryService {
       }
 
       const data = await response.json();
-      this.setCache(cacheKey, data);
+      // Store in localStorage for longer persistence
+      this.setCache(cacheKey, data, true);
       
       this.logger.debug(`States data fetched for ${countryCode}`, {
         statesCount: data.states?.length,
@@ -198,17 +202,29 @@ export class CountryService {
    */
   public clearCache(): void {
     try {
-      // Remove all cache entries with our prefix
+      // Remove all cache entries with our prefix from both storages
       const keysToRemove: string[] = [];
+      
+      // Clear from sessionStorage
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i);
         if (key && key.startsWith(this.cachePrefix)) {
           keysToRemove.push(key);
         }
       }
-      
       keysToRemove.forEach(key => sessionStorage.removeItem(key));
-      this.logger.debug('Country service cache cleared');
+      
+      // Clear from localStorage (mainly states data)
+      const localKeysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(this.cachePrefix)) {
+          localKeysToRemove.push(key);
+        }
+      }
+      localKeysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      this.logger.debug(`Country service cache cleared (${keysToRemove.length} session + ${localKeysToRemove.length} local entries)`);
     } catch (error) {
       this.logger.warn('Failed to clear cache:', error);
     }
@@ -220,6 +236,9 @@ export class CountryService {
   public clearCountryCache(countryCode: string): void {
     try {
       const cacheKey = this.cachePrefix + `states_${countryCode}`;
+      // Clear from localStorage since states are stored there
+      localStorage.removeItem(cacheKey);
+      // Also clear from sessionStorage in case there's any legacy data
       sessionStorage.removeItem(cacheKey);
       this.logger.debug(`Cache cleared for country: ${countryCode}`);
     } catch (error) {
@@ -227,17 +246,18 @@ export class CountryService {
     }
   }
 
-  private getFromCache(key: string): any {
+  private getFromCache(key: string, useLocalStorage: boolean = false): any {
     try {
       const cacheKey = this.cachePrefix + key;
-      const cached = sessionStorage.getItem(cacheKey);
+      const storage = useLocalStorage ? localStorage : sessionStorage;
+      const cached = storage.getItem(cacheKey);
       if (!cached) return null;
 
       const { data, timestamp } = JSON.parse(cached);
       const now = Date.now();
 
       if (now - timestamp > this.cacheExpiry) {
-        sessionStorage.removeItem(cacheKey);
+        storage.removeItem(cacheKey);
         return null;
       }
 
@@ -248,17 +268,18 @@ export class CountryService {
     }
   }
 
-  private setCache(key: string, data: any): void {
+  private setCache(key: string, data: any, useLocalStorage: boolean = false): void {
     try {
       const cacheKey = this.cachePrefix + key;
       const cacheData = {
         data,
         timestamp: Date.now()
       };
-      sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+      const storage = useLocalStorage ? localStorage : sessionStorage;
+      storage.setItem(cacheKey, JSON.stringify(cacheData));
     } catch (error) {
       this.logger.warn('Failed to write to cache:', error);
-      // Continue without caching if sessionStorage is unavailable
+      // Continue without caching if storage is unavailable
     }
   }
 
