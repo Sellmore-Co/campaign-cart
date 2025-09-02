@@ -6,6 +6,7 @@
 import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCartStore } from '@/stores/cartStore';
 import { useConfigStore } from '@/stores/configStore';
+import { useCampaignStore } from '@/stores/campaignStore';
 import { useAttributionStore } from '@/stores/attributionStore';
 import { ApiClient } from '@/api/client';
 import type { CartBase, UserCreateCart, AddressCart } from '@/types/api';
@@ -424,7 +425,8 @@ export class ProspectCartEnhancer extends BaseEnhancer {
           quantity: item.quantity,
           is_upsell: item.is_upsell || false
         })),
-        user
+        user,
+        currency: this.getCurrency()
       };
       
       // Only add address data if we have the required fields (first_name, last_name, line1, line4/city, and country)
@@ -486,7 +488,8 @@ export class ProspectCartEnhancer extends BaseEnhancer {
             first_name: '',  // Required field, but empty for minimal cart
             last_name: '',   // Required field, but empty for minimal cart
             language: 'en'   // Default to English
-          }
+          },
+          currency: this.getCurrency()
         };
         
         // Don't include attribution or address in the retry
@@ -565,6 +568,17 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     }
 
     return utmData;
+  }
+
+  private getCurrency(): string {
+    // Get currency from campaign or config store (same logic as cart store)
+    const campaignState = useCampaignStore.getState();
+    if (campaignState?.data?.currency) {
+      return campaignState.data.currency;
+    }
+    
+    const configStore = useConfigStore.getState();
+    return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
   }
 
   private isValidEmail(email: string): boolean {

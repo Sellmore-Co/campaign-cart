@@ -193,6 +193,7 @@ export type PaymentMethod =
 export interface CartBase {
   address?: AddressCart;
   attribution?: Attribution;
+  currency?: string;
   lines: LineWithUpsell[];
   user: UserCreateCart;
   vouchers?: string[];
@@ -249,6 +250,7 @@ export interface CreateOrder {
   attribution?: Attribution;
   billing_address?: Address;
   billing_same_as_shipping_address?: boolean;
+  currency?: string;
   lines: LineWithUpsell[];
   payment_detail: Payment;
   payment_failed_url?: string;

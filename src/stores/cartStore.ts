@@ -532,19 +532,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
           const campaignState = useCampaignStore.getState();
           const state = get();
           
-          // Get currency from campaign or config store
-          let currency = 'USD';
-          try {
-            if (campaignState?.data?.currency) {
-              currency = campaignState.data.currency;
-            } else {
-              const { useConfigStore } = await import('./configStore');
-              const configStore = useConfigStore.getState();
-              currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
-            }
-          } catch (e) {
-            // Fallback to USD if stores aren't available
-          }
+          // Currency is now handled by individual components via campaign/config stores
           
           // Use centralized formatter
           

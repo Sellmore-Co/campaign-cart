@@ -1,5 +1,7 @@
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { useCartStore } from '@/stores/cartStore';
+import { useCampaignStore } from '@/stores/campaignStore';
+import { useConfigStore } from '@/stores/configStore';
 import type { ApiClient } from '@/api/client';
 import type { CreateOrder, Address, Payment, Attribution } from '@/types/api';
 import type { CheckoutRedirectHandler } from '@/utils/checkout/checkoutRedirectHandler';
@@ -95,6 +97,7 @@ export class CheckoutOrderManager {
       },
       vouchers: checkoutStore.vouchers,
       attribution: attribution,
+      currency: this.getCurrency(),
       success_url: this.redirectHandler.getSuccessUrl(),
       payment_failed_url: this.redirectHandler.getFailureUrl()
     };
@@ -128,6 +131,7 @@ export class CheckoutOrderManager {
       },
       shipping_method: 1, // Default shipping method
       vouchers: vouchers,
+      currency: this.getCurrency(),
       success_url: this.redirectHandler.getSuccessUrl(),
       payment_failed_url: this.redirectHandler.getFailureUrl()
     };
@@ -153,6 +157,17 @@ export class CheckoutOrderManager {
     };
     
     return methodMap[method] || 'card_token';
+  }
+
+  private getCurrency(): string {
+    // Get currency from campaign or config store (same logic as cart store)
+    const campaignState = useCampaignStore.getState();
+    if (campaignState?.data?.currency) {
+      return campaignState.data.currency;
+    }
+    
+    const configStore = useConfigStore.getState();
+    return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
   }
 
   private getUrlParam(param: string): string | undefined {
