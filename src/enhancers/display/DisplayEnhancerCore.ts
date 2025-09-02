@@ -10,7 +10,7 @@ import { DisplayValueValidator } from '@/utils/validation/DisplayValueValidator'
 import { DisplayErrorBoundary } from './DisplayErrorBoundary';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useConfigStore } from '@/stores/configStore';
-import { formatCurrency as formatCurrencyUtil, formatNumber as formatNumberUtil } from '@/utils/currencyFormatter';
+import { formatCurrency as formatCurrencyUtil, formatNumber as formatNumberUtil, CurrencyFormatter } from '@/utils/currencyFormatter';
 
 // =====================
 // DISPLAY FORMATTER
@@ -249,7 +249,7 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
     document.addEventListener('next:currency-changed', () => {
       this.logger.debug(`Currency changed, updating display for ${this.displayPath}`);
       // Clear formatter cache to ensure new currency is used
-      DisplayFormatter.clearCurrencyCache();
+      CurrencyFormatter.clearCache();
       // Clear the last value to force a display update even if the raw value hasn't changed
       // This is important because currency symbol changes even when the numeric value doesn't
       this.lastValue = undefined;
