@@ -370,16 +370,27 @@ export class CountryService {
       );
     }
     
-    // Apply default country if specified and country is available
+    // Use detected country or fall back to default if detection failed
     let detectedCountryCode = data.detectedCountryCode;
     let detectedCountryConfig = data.detectedCountryConfig;
     
-    if (this.config.defaultCountry) {
+    // Check if detected country is in the allowed list
+    const detectedCountryAllowed = filteredCountries.some(country => 
+      country.code === detectedCountryCode
+    );
+    
+    // Only use defaultCountry as a fallback when:
+    // 1. No country was detected, OR
+    // 2. The detected country is not in the allowed list
+    if ((!detectedCountryCode || !detectedCountryAllowed) && this.config.defaultCountry) {
       const defaultCountryExists = filteredCountries.some(country => 
         country.code === this.config.defaultCountry
       );
+      
       if (defaultCountryExists) {
+        this.logger.info(`Using default country ${this.config.defaultCountry} as fallback (detected: ${detectedCountryCode}, allowed: ${detectedCountryAllowed})`);
         detectedCountryCode = this.config.defaultCountry;
+        
         // Fetch the correct country config for the default country
         try {
           const defaultCountryData = await this.getCountryStates(this.config.defaultCountry);
@@ -389,6 +400,8 @@ export class CountryService {
           detectedCountryConfig = this.getDefaultCountryConfig(this.config.defaultCountry);
         }
       }
+    } else if (detectedCountryCode && detectedCountryAllowed) {
+      this.logger.info(`Using detected country: ${detectedCountryCode}`);
     }
     
     return {
