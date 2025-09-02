@@ -336,9 +336,10 @@ export class CurrencySelector {
     });
 
     // Listen for currency changes from other sources
-    document.addEventListener('next:currency-changed', (e: CustomEvent) => {
+    document.addEventListener('next:currency-changed', (e) => {
+      const customEvent = e as CustomEvent;
       // Skip if this change was initiated by this selector (to avoid self-triggering)
-      if ((e.detail as any)?.source === 'currency-selector') {
+      if ((customEvent.detail as any)?.source === 'currency-selector') {
         return;
       }
       

@@ -107,7 +107,7 @@ export class SDKInitializer {
       // Check for country override in URL or session
       const urlParams = new URLSearchParams(window.location.search);
       const countryOverride = urlParams.get('country');
-      const savedCountry = sessionStorage.getItem('next_forced_country');
+      const savedCountry = sessionStorage.getItem('next_selected_country');
       
       // Priority: URL param > saved preference > auto-detection
       const forcedCountry = countryOverride || savedCountry;
@@ -144,7 +144,7 @@ export class SDKInitializer {
             
             // Save to session if from URL
             if (countryOverride) {
-              sessionStorage.setItem('next_forced_country', countryOverride.toUpperCase());
+              sessionStorage.setItem('next_selected_country', countryOverride.toUpperCase());
             }
             
             this.logger.info('Country config loaded:', {

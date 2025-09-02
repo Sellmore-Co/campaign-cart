@@ -98,7 +98,7 @@ export class CountrySelector {
 
     const configStore = useConfigStore.getState();
     const detectedCountry = configStore.detectedCountry || 'US';
-    const currentCountry = sessionStorage.getItem('next_forced_country') || detectedCountry;
+    const currentCountry = sessionStorage.getItem('next_selected_country') || detectedCountry;
     
     // Don't show selector if no countries loaded
     if (this.countries.length === 0) {
@@ -357,16 +357,16 @@ export class CountrySelector {
       const countryService = CountryService.getInstance();
       
       // Store the old country
-      const oldCountry = sessionStorage.getItem('next_forced_country') || configStore.detectedCountry || 'US';
+      const oldCountry = sessionStorage.getItem('next_selected_country') || configStore.detectedCountry || 'US';
       
       if (isReset) {
         // Clear forced country from session
-        sessionStorage.removeItem('next_forced_country');
-        this.logger.info('Cleared forced country, using detected country');
+        sessionStorage.removeItem('next_selected_country');
+        this.logger.info('Cleared selected country override, using detected country');
       } else {
         // Save forced country to session
-        sessionStorage.setItem('next_forced_country', newCountry);
-        this.logger.info(`Saved forced country to session: ${newCountry}`);
+        sessionStorage.setItem('next_selected_country', newCountry);
+        this.logger.info(`Saved selected country to session: ${newCountry}`);
       }
       
       // Fetch country configuration
@@ -441,7 +441,7 @@ export class CountrySelector {
       this.showErrorFeedback();
       
       // Revert selection
-      const currentCountry = sessionStorage.getItem('next_forced_country') || 
+      const currentCountry = sessionStorage.getItem('next_selected_country') || 
                            useConfigStore.getState().detectedCountry || 'US';
       if (select) select.value = currentCountry;
       

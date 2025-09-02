@@ -28,11 +28,16 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     
     // Also subscribe to campaign store for currency changes
-    this.subscribe(useCampaignStore, (state, prevState) => {
+    let previousCurrency: string | undefined;
+    this.subscribe(useCampaignStore, (state) => {
+      const currentCurrency = state?.data?.currency;
       // Only update if currency actually changed
-      if (state?.data?.currency !== prevState?.data?.currency) {
-        this.logger.debug('Currency changed, updating display for ' + this.property);
-        this.updateDisplay();
+      if (currentCurrency !== previousCurrency) {
+        if (previousCurrency !== undefined) { // Skip first call
+          this.logger.debug('Currency changed, updating display for ' + this.property);
+          this.updateDisplay();
+        }
+        previousCurrency = currentCurrency;
       }
     });
     

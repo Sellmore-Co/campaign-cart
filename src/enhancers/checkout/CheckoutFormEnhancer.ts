@@ -252,8 +252,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     });
     
     // Listen for country changes from debug selector
-    document.addEventListener('next:country-changed', async (e: CustomEvent) => {
-      const { to: newCountry } = e.detail;
+    document.addEventListener('next:country-changed', async (e) => {
+      const customEvent = e as CustomEvent;
+      const { to: newCountry } = customEvent.detail;
       if (newCountry) {
         await this.handleCountryChange(newCountry);
       }
@@ -980,19 +981,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       let selectedCountryCode = locationData.detectedCountryCode;
       
       // Use console.log to ensure visibility
+      const countryConfig = this.countryService.getConfig();
       console.log('%c[CheckoutForm] Country Priority Check', 'color: #FF6B6B; font-weight: bold', {
         detectedCountry: locationData.detectedCountryCode,
-        addressConfigDefault: this.countryService.config?.defaultCountry,
+        addressConfigDefault: countryConfig?.defaultCountry,
         urlParam: new URLSearchParams(window.location.search).get('country'),
-        sessionOverride: sessionStorage.getItem('next_selected_country_override'),
+        sessionOverride: sessionStorage.getItem('next_selected_country'),
         availableCountries: this.countries.map(c => c.code)
       });
       
       this.logger.info('Country selection priority check:', {
         detectedCountry: locationData.detectedCountryCode,
-        addressConfigDefault: this.countryService.config?.defaultCountry,
+        addressConfigDefault: countryConfig?.defaultCountry,
         urlParam: new URLSearchParams(window.location.search).get('country'),
-        sessionOverride: sessionStorage.getItem('next_selected_country_override')
+        sessionOverride: sessionStorage.getItem('next_selected_country')
       });
       
       // Priority 1: URL parameter
@@ -1005,7 +1007,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         if (countryExists) {
           selectedCountryCode = countryCode;
           // Save to sessionStorage for persistence
-          sessionStorage.setItem('next_selected_country_override', countryCode);
+          sessionStorage.setItem('next_selected_country', countryCode);
           this.logger.info(`✅ Using country from URL parameter: ${countryCode}`);
         } else {
           this.logger.warn(`Country ${countryCode} from URL not in available countries`);
@@ -1013,7 +1015,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
       // Priority 2: sessionStorage override (from previous URL param or user selection)
       else {
-        const savedCountryOverride = sessionStorage.getItem('next_selected_country_override');
+        const savedCountryOverride = sessionStorage.getItem('next_selected_country');
         if (savedCountryOverride) {
           const countryExists = this.countries.some(c => c.code === savedCountryOverride);
           if (countryExists) {
@@ -1155,7 +1157,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Update billing state options
       const billingProvinceField = this.billingFields.get('billing-province');
       if (billingProvinceField instanceof HTMLSelectElement) {
-        await this.updateBillingStateOptions(newCountry, billingProvinceField);
+        // Pass the shipping province value if "same as shipping" is checked
+        const checkoutStore = useCheckoutStore.getState();
+        const shippingProvince = checkoutStore.sameAsShipping ? checkoutStore.formData.province : undefined;
+        await this.updateBillingStateOptions(newCountry, billingProvinceField, shippingProvince);
       }
       
       billingCountryField.dispatchEvent(new Event('change', { bubbles: true }));
@@ -3124,7 +3129,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
         
         // Save the user's country selection to sessionStorage
-        sessionStorage.setItem('next_selected_country_override', target.value);
+        sessionStorage.setItem('next_selected_country', target.value);
         this.logger.debug(`Saved user's country selection to session: ${target.value}`);
         
         // Auto-switch currency based on country if available
