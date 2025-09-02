@@ -5,9 +5,22 @@
 import { API_PAYMENT_METHOD_MAP } from '../constants/field-mappings';
 import { getSuccessUrl, getFailureUrl } from '../utils/url-utils';
 import { useAttributionStore } from '@/stores/attributionStore';
+import { useCampaignStore } from '@/stores/campaignStore';
+import { useConfigStore } from '@/stores/configStore';
 import type { CreateOrder, Address, Payment, Attribution } from '@/types/api';
 
 export class OrderBuilder {
+  private getCurrency(): string {
+    // Get currency from campaign or config store (same logic as cart store)
+    const campaignState = useCampaignStore.getState();
+    if (campaignState?.data?.currency) {
+      return campaignState.data.currency;
+    }
+    
+    const configStore = useConfigStore.getState();
+    return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
+  }
+
   public buildOrder(
     checkoutFormData: Record<string, any>,
     cartItems: any[],
@@ -79,6 +92,7 @@ export class OrderBuilder {
       },
       vouchers: vouchers,
       attribution: attribution,
+      currency: this.getCurrency(),
       success_url: getSuccessUrl(),
       payment_failed_url: getFailureUrl()
     };
@@ -108,6 +122,7 @@ export class OrderBuilder {
       shipping_method: 1, // Default shipping method
       vouchers: vouchers,
       attribution: attribution,
+      currency: this.getCurrency(),
       success_url: getSuccessUrl(),
       payment_failed_url: getFailureUrl()
     };
@@ -157,6 +172,7 @@ export class OrderBuilder {
       
       vouchers: vouchers,
       attribution: this.getTestAttribution(),
+      currency: this.getCurrency(),
       success_url: getSuccessUrl(),
       payment_failed_url: getFailureUrl()
     };

@@ -2617,6 +2617,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         
         vouchers: vouchers,
         attribution: this.getTestAttribution(),
+        currency: this.getCurrency(),
         success_url: this.getSuccessUrl(),
         payment_failed_url: this.getFailureUrl()
       };
@@ -2714,6 +2715,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     } catch (error) {
       return targetUrl;
     }
+  }
+
+  private getCurrency(): string {
+    // Get currency from campaign or config store (same logic as cart store)
+    const campaignState = useCampaignStore.getState();
+    if (campaignState?.data?.currency) {
+      return campaignState.data.currency;
+    }
+    
+    const configStore = useConfigStore.getState();
+    return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
   }
 
   private getSuccessUrl(): string {
