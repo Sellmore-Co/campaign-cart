@@ -167,10 +167,8 @@ export class CouponEnhancer extends BaseActionEnhancer {
       
       const discountEl = couponEl.querySelector('[pb-checkout="coupon-discount"]');
       if (discountEl) {
-        const formatted = new Intl.NumberFormat('en-US', { 
-          style: 'currency', 
-          currency: 'USD' 
-        }).format(coupon.discount);
+        const { formatCurrency } = await import('@/utils/currencyFormatter');
+        const formatted = formatCurrency(coupon.discount);
         discountEl.textContent = `-${formatted}`;
       }
       

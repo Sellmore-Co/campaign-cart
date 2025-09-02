@@ -10,74 +10,13 @@ import { DisplayValueValidator } from '@/utils/validation/DisplayValueValidator'
 import { DisplayErrorBoundary } from './DisplayErrorBoundary';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useConfigStore } from '@/stores/configStore';
+import { formatCurrency as formatCurrencyUtil, formatNumber as formatNumberUtil } from '@/utils/currencyFormatter';
 
 // =====================
 // DISPLAY FORMATTER
 // =====================
 
 export class DisplayFormatter {
-  private static currencyFormatters: Map<string, Intl.NumberFormat> = new Map();
-  private static currencyFormattersNoZeroCents: Map<string, Intl.NumberFormat> = new Map();
-  
-  /**
-   * Clears the currency formatter cache to force recreation with new currency
-   */
-  static clearCurrencyCache(): void {
-    this.currencyFormatters.clear();
-    this.currencyFormattersNoZeroCents.clear();
-  }
-  
-  private static getCurrencyFormatter(currency: string = 'USD'): Intl.NumberFormat {
-    if (!this.currencyFormatters.has(currency)) {
-      // Use browser's locale or fallback to en-US
-      const userLocale = navigator.language || 'en-US';
-      
-      const formatter = new Intl.NumberFormat(userLocale, {
-        style: 'currency',
-        currency: currency,
-        currencyDisplay: 'narrowSymbol' // Use narrowSymbol to avoid A$, CA$, etc.
-      });
-      
-      // Test what symbol this produces
-      const testFormat = formatter.format(123.45);
-      const symbol = testFormat.replace(/[0-9.,\s]/g, '').trim();
-      
-      console.log('%c[Currency Formatter] Creating formatter', 'color: #4CAF50; font-weight: bold', {
-        userLocale,
-        navigatorLanguage: navigator.language,
-        navigatorLanguages: navigator.languages,
-        currency,
-        currencyDisplay: 'narrowSymbol',
-        testFormat,
-        extractedSymbol: symbol
-      });
-      
-      this.currencyFormatters.set(currency, formatter);
-    }
-    return this.currencyFormatters.get(currency)!;
-  }
-  
-  private static getCurrencyFormatterNoZeroCents(currency: string = 'USD'): Intl.NumberFormat {
-    if (!this.currencyFormattersNoZeroCents.has(currency)) {
-      // Use browser's locale or fallback to en-US
-      const userLocale = navigator.language || 'en-US';
-      
-      this.currencyFormattersNoZeroCents.set(currency, new Intl.NumberFormat(userLocale, {
-        style: 'currency',
-        currency: currency,
-        currencyDisplay: 'narrowSymbol', // Use narrowSymbol to avoid A$, CA$, etc.
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2
-      }));
-    }
-    return this.currencyFormattersNoZeroCents.get(currency)!;
-  }
-
-  private static numberFormatter = new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  });
-
   private static dateFormatter = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'long',
@@ -123,41 +62,13 @@ export class DisplayFormatter {
   }
 
   static formatCurrency(value: any, hideZeroCents?: boolean): string {
-    // Get current currency from campaign store or config store
-    let currency = 'USD';
-    
-    // Try to get from campaign data first (most accurate)
-    const campaignStore = useCampaignStore.getState();
-    if (campaignStore?.data?.currency) {
-      currency = campaignStore.data.currency;
-    } else {
-      // Fallback to config store
-      const configStore = useConfigStore.getState();
-      currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
-    }
-    
-    // Check if already formatted with correct currency symbol
-    if (typeof value === 'string') {
-      // Get the currency symbol for the current currency
-      const formatter = this.getCurrencyFormatter(currency);
-      const symbol = formatter.format(0).replace(/[0-9.,\s]/g, '');
-      if (value.includes(symbol)) {
-        return value; // Already formatted with correct currency, return as-is
-      }
-    }
-    
     const numValue = DisplayValueValidator.validateCurrency(value);
-    
-    // Use appropriate formatter based on hideZeroCents option
-    if (hideZeroCents) {
-      return this.getCurrencyFormatterNoZeroCents(currency).format(numValue);
-    }
-    return this.getCurrencyFormatter(currency).format(numValue);
+    return formatCurrencyUtil(numValue, undefined, { hideZeroCents });
   }
 
   static formatNumber(value: any): string {
     const numValue = DisplayValueValidator.validateNumber(value);
-    return this.numberFormatter.format(numValue);
+    return formatNumberUtil(numValue);
   }
 
   static formatBoolean(value: any): string {

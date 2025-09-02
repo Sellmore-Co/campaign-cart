@@ -8,6 +8,7 @@ import type { CartState, CartItem, CartTotals, DiscountDefinition, AppliedCoupon
 import { sessionStorageManager, CART_STORAGE_KEY } from '@/utils/storage';
 import { EventBus } from '@/utils/events';
 import { createLogger } from '@/utils/logger';
+import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
 
 const logger = createLogger('CartStore');
 
@@ -302,26 +303,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
         const totalQuantity = state.items.reduce((sum, item) => sum + item.quantity, 0);
         const isEmpty = state.items.length === 0;
         
-        // Get currency from campaign or config store
-        let currency = 'USD';
-        // Use the already imported campaignState
-        if (campaignState?.data?.currency) {
-          currency = campaignState.data.currency;
-        } else {
-          // Import config store dynamically
-          const { useConfigStore } = await import('./configStore');
-          const configStore = useConfigStore.getState();
-          currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
-        }
-        
-        const formatCurrency = (amount: number) => {
-          const userLocale = navigator.language || 'en-US';
-          return new Intl.NumberFormat(userLocale, { 
-            style: 'currency', 
-            currency,
-            currencyDisplay: 'narrowSymbol' // Use narrowSymbol to avoid A$, CA$, etc.
-          }).format(amount);
-        };
+        // Currency formatting is handled by the centralized formatter
         
         // Calculate compare total (retail prices) - FIXED: Handle null values properly
         const compareTotal = state.items.reduce((sum, item) => {
@@ -382,11 +364,11 @@ const cartStoreInstance = create<CartState & CartActions>()(
           count: totalQuantity,
           isEmpty,
           savings: { value: savings, formatted: formatCurrency(savings) },
-          savingsPercentage: { value: savingsPercentage, formatted: `${Math.round(savingsPercentage)}%` },
+          savingsPercentage: { value: savingsPercentage, formatted: formatPercentage(savingsPercentage) },
           compareTotal: { value: compareTotal, formatted: formatCurrency(compareTotal) },
           hasSavings,
           totalSavings: { value: totalSavings, formatted: formatCurrency(totalSavings) },
-          totalSavingsPercentage: { value: totalSavingsPercentage, formatted: `${Math.round(totalSavingsPercentage)}%` },
+          totalSavingsPercentage: { value: totalSavingsPercentage, formatted: formatPercentage(totalSavingsPercentage) },
           hasTotalSavings,
         };
         
@@ -564,14 +546,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
             // Fallback to USD if stores aren't available
           }
           
-          const formatCurrency = (amount: number) => {
-            const userLocale = navigator.language || 'en-US';
-            return new Intl.NumberFormat(userLocale, { 
-              style: 'currency', 
-              currency,
-              currencyDisplay: 'narrowSymbol' // Use narrowSymbol to avoid A$, CA$, etc.
-            }).format(amount);
-          };
+          // Use centralized formatter
           
           const enrichedItems = state.items.map(item => {
             const packageData = campaignState.getPackage(item.packageId);
@@ -623,7 +598,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
                 lineCompare: { value: retailLineTotal, formatted: formatCurrency(retailLineTotal) },
                 lineSavings: { value: lineSavings, formatted: formatCurrency(lineSavings) },
                 // Calculated fields
-                savingsPct: { value: savingsPct, formatted: `${savingsPct}%` },
+                savingsPct: { value: savingsPct, formatted: formatPercentage(savingsPct) },
               },
               product: {
                 title: item.title || packageData?.name || '',

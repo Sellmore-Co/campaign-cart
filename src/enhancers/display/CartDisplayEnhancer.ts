@@ -10,6 +10,7 @@ import { PackageContextResolver } from '@/utils/dom/PackageContextResolver';
 import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useConfigStore } from '@/stores/configStore';
+import { formatCurrency, getCurrencySymbol } from '@/utils/currencyFormatter';
 import type { CartState } from '@/types/global';
 
 export class CartDisplayEnhancer extends BaseDisplayEnhancer {
@@ -113,20 +114,8 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
         currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
       }
       
-      // Use Intl.NumberFormat to get the symbol
-      try {
-        const formatted = new Intl.NumberFormat('en-US', { 
-          style: 'currency', 
-          currency,
-          currencyDisplay: 'symbol'
-        }).format(0);
-        // Extract the symbol from formatted string (removes digits and spaces)
-        const symbol = formatted.replace(/[\d\s.,]/g, '').trim();
-        return symbol || currency;
-      } catch (e) {
-        // If currency code is invalid, return the code itself
-        return currency;
-      }
+      // Use centralized formatter to get the symbol
+      return getCurrencySymbol(currency) || currency;
     }
 
     // Special handling for subtotal with discounts
@@ -151,11 +140,8 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
         currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
       }
       
-      // Return formatted value to match expected format
-      const formatted = new Intl.NumberFormat('en-US', { 
-        style: 'currency', 
-        currency 
-      }).format(discountedSubtotal);
+      // Return formatted value using centralized formatter
+      const formatted = formatCurrency(discountedSubtotal, currency);
       
       this.logger.debug('Returning discounted subtotal', { 
         discountedSubtotal, 

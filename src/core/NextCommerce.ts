@@ -421,13 +421,11 @@ export class NextCommerce {
   }
 
   public formatPrice(amount: number, currency?: string): string {
+    const { formatCurrency } = require('@/utils/currencyFormatter');
     const campaignStore = useCampaignStore.getState();
     const useCurrency = currency ?? campaignStore.data?.currency ?? 'USD';
     
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: useCurrency,
-    }).format(amount);
+    return formatCurrency(amount, useCurrency);
   }
 
   public validateCheckout(): { valid: boolean; errors: string[] } {
