@@ -643,6 +643,15 @@ export class UpsellEnhancer extends BaseEnhancer {
     }
   }
 
+  private getCurrency(): string {
+    const campaignState = useCampaignStore.getState();
+    if (campaignState?.data?.currency) {
+      return campaignState.data.currency;
+    }
+    const configStore = useConfigStore.getState();
+    return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
+  }
+
   private async addUpsellToOrder(nextUrl: string | null | undefined): Promise<void> {
     const orderStore = useOrderStore.getState();
     
@@ -736,7 +745,8 @@ export class UpsellEnhancer extends BaseEnhancer {
         lines: [{
           package_id: packageToAdd,
           quantity: quantityToUse
-        }]
+        }],
+        currency: this.getCurrency()
       };
       
       this.logger.info('Adding upsell to order:', upsellData);

@@ -114,6 +114,9 @@ export class CountrySelector {
       this.container.style.display = 'block';
     }
 
+    // Get the actual detected country from geo-location (not overridden)  
+    const rawDetectedCountry = configStore.detectedCountry; // Raw geo-detection result
+    
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -121,94 +124,93 @@ export class CountrySelector {
         }
 
         .country-selector {
-          background: linear-gradient(135deg, #4c6ef5 0%, #5f3dc4 100%);
-          border-radius: 12px;
-          padding: 8px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+          background: linear-gradient(135deg, #222 0%, #1a1a1a 100%);
+          backdrop-filter: blur(10px);
+          border: 1px solid #333;
+          border-radius: 4px;
+          padding: 4px 8px;
           display: inline-flex;
           align-items: center;
-          gap: 8px;
-          transition: all 0.3s ease;
-          ${!this.hasInitiallyRendered ? 'animation: slideIn 0.3s ease;' : ''}
-        }
-
-        @keyframes slideIn {
-          from {
-            transform: translateX(-100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
+          gap: 6px;
+          font-size: 11px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+          transition: all 0.2s ease;
         }
 
         .country-selector:hover {
-          box-shadow: 0 6px 30px rgba(0, 0, 0, 0.35);
-          transform: translateY(-2px);
+          background: linear-gradient(135deg, #2a2a2a 0%, #222 100%);
+          border-color: #444;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
 
         .country-label {
-          color: white;
-          font-size: 12px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin: 0 4px;
-          opacity: 0.9;
-        }
-
-        .country-select-wrapper {
-          position: relative;
-          display: inline-block;
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 11px;
+          font-weight: 500;
+          white-space: nowrap;
         }
 
         .country-select {
           appearance: none;
-          background: rgba(255, 255, 255, 0.95);
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          border-radius: 8px;
-          padding: 6px 32px 6px 12px;
-          font-size: 14px;
-          font-weight: 600;
-          color: #4a5568;
+          background: #2a2a2a;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 3px;
+          padding: 2px 20px 2px 6px;
+          font-size: 11px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.9);
           cursor: pointer;
-          transition: all 0.2s ease;
-          min-width: 140px;
+          min-width: 80px;
+          max-width: 120px;
+        }
+
+        .country-select option {
+          background: #2a2a2a;
+          color: rgba(255, 255, 255, 0.9);
+          padding: 4px;
         }
 
         .country-select:hover {
-          background: white;
-          border-color: rgba(255, 255, 255, 0.5);
+          background: #333;
+          border-color: rgba(255, 255, 255, 0.3);
         }
 
         .country-select:focus {
           outline: none;
-          box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+          border-color: #4299e1;
+          background: #333;
         }
 
         .country-select:disabled {
-          opacity: 0.6;
+          opacity: 0.5;
           cursor: not-allowed;
+        }
+
+        .select-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
         }
 
         .select-arrow {
           position: absolute;
-          right: 10px;
+          right: 4px;
           top: 50%;
           transform: translateY(-50%);
           pointer-events: none;
-          color: #4a5568;
+          color: rgba(255, 255, 255, 0.6);
+          width: 10px;
+          height: 10px;
         }
 
         .loading-indicator {
           display: none;
-          width: 14px;
-          height: 14px;
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          border-top-color: white;
+          width: 10px;
+          height: 10px;
+          border: 1px solid #cbd5e0;
+          border-top-color: #4299e1;
           border-radius: 50%;
-          animation: spin 0.6s linear infinite;
+          animation: spin 0.8s linear infinite;
         }
 
         .loading-indicator.active {
@@ -219,71 +221,66 @@ export class CountrySelector {
           to { transform: rotate(360deg); }
         }
 
-        .country-info {
-          background: rgba(255, 255, 255, 0.15);
-          border-radius: 6px;
-          padding: 4px 8px;
-          color: white;
-          font-size: 11px;
-          font-weight: 500;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-
-        .detected-label {
-          opacity: 0.8;
-        }
-
-        .detected-value {
-          font-weight: 700;
-        }
-
         .reset-button {
-          background: rgba(255, 255, 255, 0.2);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          border-radius: 6px;
-          color: white;
-          padding: 4px 8px;
-          font-size: 11px;
-          font-weight: 600;
+          background: rgba(239, 68, 68, 0.2);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          border-radius: 3px;
+          color: #ff6b6b;
+          padding: 2px 6px;
+          font-size: 10px;
+          font-weight: 500;
           cursor: pointer;
           transition: all 0.2s ease;
         }
 
         .reset-button:hover {
-          background: rgba(255, 255, 255, 0.3);
+          background: rgba(239, 68, 68, 0.3);
+          border-color: rgba(239, 68, 68, 0.4);
+          color: #ff8787;
+        }
+
+        .detected-info {
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 10px;
+          font-weight: 400;
+          white-space: nowrap;
+          padding-left: 6px;
+          border-left: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .detected-value {
+          color: rgba(255, 255, 255, 0.8);
+          font-weight: 500;
         }
       </style>
 
       <div class="country-selector">
-        <span class="country-label">🌍 Country</span>
+        <span class="country-label">🌍</span>
         
-        <div class="country-select-wrapper">
+        <div class="select-wrapper">
           <select class="country-select" id="country-select">
             ${this.countries.map(country => `
               <option value="${country.code}" ${country.code === currentCountry ? 'selected' : ''}>
-                ${country.name}
+                ${country.name.length > 15 ? country.name.substring(0, 15) + '...' : country.name}
               </option>
             `).join('')}
           </select>
-          <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <svg class="select-arrow" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/>
           </svg>
         </div>
 
         <div class="loading-indicator" id="loading-indicator"></div>
 
-        ${detectedCountry !== currentCountry ? `
-          <button class="reset-button" id="reset-button" title="Reset to detected country">
+        ${rawDetectedCountry !== currentCountry ? `
+          <button class="reset-button" id="reset-button" title="Reset to detected country: ${rawDetectedCountry}">
             Reset
           </button>
         ` : ''}
 
-        ${detectedCountry ? `
-          <div class="country-info">
-            <span class="detected-label">Detected:</span>
-            <span class="detected-value">${detectedCountry}</span>
+        ${rawDetectedCountry ? `
+          <div class="detected-info">
+            Detected: <span class="detected-value">${rawDetectedCountry}</span>
           </div>
         ` : ''}
       </div>

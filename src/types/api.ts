@@ -290,6 +290,7 @@ export interface Payment {
 export interface AddUpsellLine {
   lines: UpsellLineItem[];
   payment_detail?: PaymentDetail;
+  currency?: string;
 }
 
 export interface UpsellLineItem {
