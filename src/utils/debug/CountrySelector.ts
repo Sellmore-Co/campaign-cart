@@ -68,10 +68,7 @@ export class CountrySelector {
     this.container = document.createElement('div');
     this.container.id = 'debug-country-selector';
     this.container.style.cssText = `
-      position: fixed;
-      top: 60px;
-      left: 10px;
-      z-index: 999999;
+      position: relative;
       pointer-events: auto;
     `;
 
@@ -456,7 +453,7 @@ export class CountrySelector {
     selector.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
     
     setTimeout(() => {
-      selector.style.background = 'linear-gradient(135deg, #4c6ef5 0%, #5f3dc4 100%)';
+      selector.style.background = 'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
     }, 1000);
   }
 
@@ -467,7 +464,7 @@ export class CountrySelector {
     selector.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
     
     setTimeout(() => {
-      selector.style.background = 'linear-gradient(135deg, #4c6ef5 0%, #5f3dc4 100%)';
+      selector.style.background = 'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
     }, 1000);
   }
 

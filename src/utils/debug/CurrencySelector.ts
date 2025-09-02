@@ -73,10 +73,7 @@ export class CurrencySelector {
     this.container = document.createElement('div');
     this.container.id = 'debug-currency-selector';
     this.container.style.cssText = `
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      z-index: 999999;
+      position: relative;
       pointer-events: auto;
     `;
 
@@ -420,7 +417,7 @@ export class CurrencySelector {
     selector.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
     
     setTimeout(() => {
-      selector.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+      selector.style.background = 'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
     }, 1000);
   }
 
@@ -432,7 +429,7 @@ export class CurrencySelector {
     selector.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
     
     setTimeout(() => {
-      selector.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+      selector.style.background = 'linear-gradient(135deg, #222 0%, #1a1a1a 100%)';
     }, 1000);
   }
 

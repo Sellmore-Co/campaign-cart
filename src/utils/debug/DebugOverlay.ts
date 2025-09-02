@@ -11,8 +11,7 @@ import { EnhancedDebugUI } from './EnhancedDebugUI';
 import { useCartStore } from '../../stores/cartStore';
 import { useConfigStore } from '../../stores/configStore';
 import { XrayManager } from './XrayStyles';
-import { currencySelector } from './CurrencySelector';
-import { countrySelector } from './CountrySelector';
+import { selectorContainer } from './SelectorContainer';
 import {
   CartPanel,
   OrderPanel,
@@ -118,13 +117,9 @@ export class DebugOverlay {
       this.show();
       this.logger.info('Debug overlay initialized');
       
-      // Initialize currency selector (fixed at top-left)
-      currencySelector.initialize();
-      this.logger.info('Currency selector initialized');
-      
-      // Initialize country selector (below currency selector)
-      countrySelector.initialize();
-      this.logger.info('Country selector initialized');
+      // Initialize selector container with both currency and country selectors
+      selectorContainer.initialize();
+      this.logger.info('Selector container initialized');
       
       // Test components in development
       if (import.meta.env && import.meta.env.DEV) {
@@ -164,8 +159,8 @@ export class DebugOverlay {
     document.body.classList.remove('debug-body-expanded');
     document.documentElement.classList.remove('debug-body-expanded');
     
-    // Destroy currency selector
-    currencySelector.destroy();
+    // Destroy selector container
+    selectorContainer.destroy();
     
     if (this.container) {
       this.container.remove();
@@ -326,6 +321,10 @@ export class DebugOverlay {
           localStorage.setItem(DebugOverlay.EXPANDED_STORAGE_KEY, this.isExpanded.toString());
           this.updateBodyHeight();
           this.updateOverlay();
+          // Emit event for selector container
+          document.dispatchEvent(new CustomEvent('debug:panel-toggled', { 
+            detail: { isExpanded: this.isExpanded } 
+          }));
           break;
         case 'close':
           this.hide();

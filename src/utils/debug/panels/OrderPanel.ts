@@ -57,6 +57,8 @@ export class OrderPanel implements DebugPanel {
 
     const orderTotal = orderState.getOrderTotal();
     const canAddUpsells = orderState.canAddUpsells();
+    const currency = order.currency || 'USD';
+    const currencySymbol = this.getCurrencySymbol(currency);
     
     return `
       <div class="enhanced-panel">
@@ -92,7 +94,7 @@ export class OrderPanel implements DebugPanel {
           <div class="metric-card">
             <div class="metric-icon">💰</div>
             <div class="metric-content">
-              <div class="metric-value">$${orderTotal.toFixed(2)}</div>
+              <div class="metric-value">${currencySymbol}${orderTotal.toFixed(2)}</div>
               <div class="metric-label">Order Total</div>
             </div>
           </div>
@@ -136,19 +138,19 @@ export class OrderPanel implements DebugPanel {
           <div class="totals-breakdown">
             <div class="total-item">
               <span>Subtotal (excl. tax):</span>
-              <span>$${parseFloat(order.total_excl_tax || '0').toFixed(2)}</span>
+              <span>${currencySymbol}${parseFloat(order.total_excl_tax || '0').toFixed(2)}</span>
             </div>
             <div class="total-item">
               <span>Shipping:</span>
-              <span>$${parseFloat(order.shipping_excl_tax || '0').toFixed(2)}</span>
+              <span>${currencySymbol}${parseFloat(order.shipping_excl_tax || '0').toFixed(2)}</span>
             </div>
             <div class="total-item">
               <span>Tax:</span>
-              <span>$${parseFloat(order.total_tax || '0').toFixed(2)}</span>
+              <span>${currencySymbol}${parseFloat(order.total_tax || '0').toFixed(2)}</span>
             </div>
             <div class="total-item total-final">
               <span>Total (incl. tax):</span>
-              <span>$${parseFloat(order.total_incl_tax || '0').toFixed(2)}</span>
+              <span>${currencySymbol}${parseFloat(order.total_incl_tax || '0').toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -163,6 +165,9 @@ export class OrderPanel implements DebugPanel {
     if (!order || !order.lines || order.lines.length === 0) {
       return this.getEmptyState('No order lines available');
     }
+
+    const currency = order.currency || 'USD';
+    const currencySymbol = this.getCurrencySymbol(currency);
 
     return `
       <div class="enhanced-panel">
@@ -230,15 +235,15 @@ export class OrderPanel implements DebugPanel {
                   </td>
                   <td>${line.product_sku || 'N/A'}</td>
                   <td class="text-center">${line.quantity || 1}</td>
-                  <td class="text-right">$${parseFloat(line.price_excl_tax || '0').toFixed(2)}</td>
-                  <td class="text-right">$${(parseFloat(line.price_incl_tax || '0') - parseFloat(line.price_excl_tax || '0')).toFixed(2)}</td>
-                  <td class="text-right"><strong>$${parseFloat(line.price_incl_tax || '0').toFixed(2)}</strong></td>
+                  <td class="text-right">${currencySymbol}${parseFloat(line.price_excl_tax || '0').toFixed(2)}</td>
+                  <td class="text-right">${currencySymbol}${(parseFloat(line.price_incl_tax || '0') - parseFloat(line.price_excl_tax || '0')).toFixed(2)}</td>
+                  <td class="text-right"><strong>${currencySymbol}${parseFloat(line.price_incl_tax || '0').toFixed(2)}</strong></td>
                 </tr>
               `).join('')}
               
               <tr style="border-top: 2px solid rgba(255, 255, 255, 0.1);">
                 <td colspan="6" class="text-right"><strong>Order Total:</strong></td>
-                <td class="text-right"><strong>$${parseFloat(order.total_incl_tax || '0').toFixed(2)}</strong></td>
+                <td class="text-right"><strong>${currencySymbol}${parseFloat(order.total_incl_tax || '0').toFixed(2)} ${currency}</strong></td>
               </tr>
             </tbody>
           </table>
@@ -537,5 +542,46 @@ export class OrderPanel implements DebugPanel {
     a.download = `order-state-${orderState.refId || 'unknown'}-${new Date().toISOString()}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  private getCurrencySymbol(currency: string): string {
+    const symbols: { [key: string]: string } = {
+      'USD': '$',
+      'EUR': '€',
+      'GBP': '£',
+      'AUD': '$',
+      'CAD': '$',
+      'JPY': '¥',
+      'CNY': '¥',
+      'INR': '₹',
+      'KRW': '₩',
+      'BRL': 'R$',
+      'MXN': '$',
+      'CHF': 'Fr',
+      'SEK': 'kr',
+      'NOK': 'kr',
+      'DKK': 'kr',
+      'PLN': 'zł',
+      'RUB': '₽',
+      'ZAR': 'R',
+      'NZD': '$',
+      'SGD': '$',
+      'HKD': '$',
+      'THB': '฿',
+      'PHP': '₱',
+      'IDR': 'Rp',
+      'MYR': 'RM',
+      'VND': '₫',
+      'TRY': '₺',
+      'AED': 'د.إ',
+      'SAR': '﷼',
+      'ILS': '₪',
+      'EGP': '£',
+      'COP': '$',
+      'CLP': '$',
+      'ARS': '$',
+      'PEN': 'S/'
+    };
+    return symbols[currency] || currency + ' ';
   }
 }
