@@ -8,23 +8,46 @@ import { AttributeParser } from '../base/AttributeParser';
 import { FormatType, getPropertyConfig, type DisplayValue } from './DisplayEnhancerTypes';
 import { DisplayValueValidator } from '@/utils/validation/DisplayValueValidator';
 import { DisplayErrorBoundary } from './DisplayErrorBoundary';
+import { useCampaignStore } from '@/stores/campaignStore';
+import { useConfigStore } from '@/stores/configStore';
 
 // =====================
 // DISPLAY FORMATTER
 // =====================
 
 export class DisplayFormatter {
-  private static currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
-  });
-
-  private static currencyFormatterNoZeroCents = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  });
+  private static currencyFormatters: Map<string, Intl.NumberFormat> = new Map();
+  private static currencyFormattersNoZeroCents: Map<string, Intl.NumberFormat> = new Map();
+  
+  /**
+   * Clears the currency formatter cache to force recreation with new currency
+   */
+  static clearCurrencyCache(): void {
+    this.currencyFormatters.clear();
+    this.currencyFormattersNoZeroCents.clear();
+  }
+  
+  private static getCurrencyFormatter(currency: string = 'USD'): Intl.NumberFormat {
+    if (!this.currencyFormatters.has(currency)) {
+      this.currencyFormatters.set(currency, new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency
+      }));
+    }
+    return this.currencyFormatters.get(currency)!;
+  }
+  
+  private static getCurrencyFormatterNoZeroCents(currency: string = 'USD'): Intl.NumberFormat {
+    if (!this.currencyFormattersNoZeroCents.has(currency)) {
+      this.currencyFormattersNoZeroCents.set(currency, new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      }));
+    }
+    return this.currencyFormattersNoZeroCents.get(currency)!;
+  }
 
   private static numberFormatter = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 0,
@@ -76,17 +99,36 @@ export class DisplayFormatter {
   }
 
   static formatCurrency(value: any, hideZeroCents?: boolean): string {
-    // Check if already formatted
-    if (typeof value === 'string' && value.includes('$')) {
-      return value; // Already formatted, return as-is
+    // Get current currency from campaign store or config store
+    let currency = 'USD';
+    
+    // Try to get from campaign data first (most accurate)
+    const campaignStore = useCampaignStore.getState();
+    if (campaignStore?.data?.currency) {
+      currency = campaignStore.data.currency;
+    } else {
+      // Fallback to config store
+      const configStore = useConfigStore.getState();
+      currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
     }
+    
+    // Check if already formatted with correct currency symbol
+    if (typeof value === 'string') {
+      // Get the currency symbol for the current currency
+      const formatter = this.getCurrencyFormatter(currency);
+      const symbol = formatter.format(0).replace(/[0-9.,\s]/g, '');
+      if (value.includes(symbol)) {
+        return value; // Already formatted with correct currency, return as-is
+      }
+    }
+    
     const numValue = DisplayValueValidator.validateCurrency(value);
     
     // Use appropriate formatter based on hideZeroCents option
     if (hideZeroCents) {
-      return this.currencyFormatterNoZeroCents.format(numValue);
+      return this.getCurrencyFormatterNoZeroCents(currency).format(numValue);
     }
-    return this.currencyFormatter.format(numValue);
+    return this.getCurrencyFormatter(currency).format(numValue);
   }
 
   static formatNumber(value: any): string {
@@ -259,8 +301,26 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
     this.validateElement();
     this.parseDisplayAttributes();
     this.setupStoreSubscriptions();
+    this.setupCurrencyChangeListener();
     await this.performInitialUpdate();
     this.logger.debug(`${this.constructor.name} initialized with path: ${this.displayPath}`);
+  }
+
+  /**
+   * Sets up listener for currency change events to refresh display
+   */
+  protected setupCurrencyChangeListener(): void {
+    // Listen for currency changes and update display
+    document.addEventListener('next:currency-changed', () => {
+      this.logger.debug(`Currency changed, updating display for ${this.displayPath}`);
+      // Clear formatter cache to ensure new currency is used
+      DisplayFormatter.clearCurrencyCache();
+      // Clear the last value to force a display update even if the raw value hasn't changed
+      // This is important because currency symbol changes even when the numeric value doesn't
+      this.lastValue = undefined;
+      // Update the display with new currency
+      this.updateDisplay();
+    });
   }
 
   /**

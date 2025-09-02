@@ -17,6 +17,7 @@ import { testModeManager } from '@/utils/testMode';
 import { EventBus } from '@/utils/events';
 import { ApiClient } from '@/api/client';
 import { CART_STORAGE_KEY } from '@/utils/storage';
+import { CountryService } from '@/utils/countryService';
 
 export class SDKInitializer {
   private static logger = createLogger('SDKInitializer');
@@ -40,10 +41,13 @@ export class SDKInitializer {
       // Load configuration
       await this.loadConfiguration();
 
+      // NEW: Initialize location and currency detection EARLY (before campaign data)
+      await this.initializeLocationAndCurrency();
+
       // Initialize attribution store
       await this.initializeAttribution();
 
-      // Load campaign data
+      // Load campaign data (will now use the detected/selected currency)
       await this.loadCampaignData();
 
       // Initialize analytics after campaign data is loaded
@@ -89,6 +93,185 @@ export class SDKInitializer {
       }
       
       throw error;
+    }
+  }
+
+  private static async initializeLocationAndCurrency(): Promise<void> {
+    try {
+      this.logger.info('Initializing location and currency detection...');
+      
+      // Initialize country service early
+      const countryService = CountryService.getInstance();
+      const configStore = useConfigStore.getState();
+      
+      // Check for country override in URL or session
+      const urlParams = new URLSearchParams(window.location.search);
+      const countryOverride = urlParams.get('country');
+      const savedCountry = sessionStorage.getItem('next_forced_country');
+      
+      // Priority: URL param > saved preference > auto-detection
+      const forcedCountry = countryOverride || savedCountry;
+      
+      let locationData;
+      
+      if (forcedCountry) {
+        // Use forced country instead of detection
+        this.logger.info(`Using forced country: ${forcedCountry} (source: ${countryOverride ? 'URL' : 'session'})`);
+        
+        try {
+          const response = await fetch(`https://cdn-countries.muddy-wind-c7ca.workers.dev/countries/${forcedCountry.toUpperCase()}/states`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Format response to match location detection structure
+            locationData = {
+              detectedCountryCode: forcedCountry.toUpperCase(),
+              detectedCountryConfig: data.countryConfig || {
+                currencyCode: 'USD',
+                currencySymbol: '$',
+                stateLabel: 'State / Province',
+                stateRequired: true,
+                postcodeLabel: 'Postcode / ZIP',
+                postcodeMinLength: 2,
+                postcodeMaxLength: 20
+              },
+              detectedStates: data.states || [],
+              detectedStateCode: '',
+              detectedCity: '',
+              countries: []
+            };
+            
+            // Save to session if from URL
+            if (countryOverride) {
+              sessionStorage.setItem('next_forced_country', countryOverride.toUpperCase());
+            }
+            
+            this.logger.info('Country config loaded:', {
+              country: locationData.detectedCountryCode,
+              currency: locationData.detectedCountryConfig.currencyCode
+            });
+          } else {
+            this.logger.warn(`Failed to fetch country config for ${forcedCountry}, falling back to detection`);
+          }
+        } catch (error) {
+          this.logger.error('Error fetching country config:', error);
+        }
+      }
+      
+      // If no forced country or fetch failed, use normal detection
+      if (!locationData) {
+        // Apply address config if available
+        if (configStore.addressConfig) {
+          countryService.setConfig(configStore.addressConfig);
+        }
+        
+        // Fetch location data with timeout to prevent blocking
+        const locationDataPromise = countryService.getLocationData();
+        const timeoutPromise = new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error('Location detection timeout')), 3000)
+        );
+        
+        try {
+          locationData = await Promise.race([locationDataPromise, timeoutPromise]);
+        } catch (error) {
+          this.logger.warn('Location detection failed or timed out, using defaults:', error);
+          // Use fallback data
+          locationData = {
+            detectedCountryCode: 'US',
+            detectedCountryConfig: {
+              stateLabel: 'State',
+              stateRequired: true,
+              postcodeLabel: 'ZIP Code',
+              postcodeRegex: '^\\d{5}(-\\d{4})?$',
+              postcodeMinLength: 5,
+              postcodeMaxLength: 10,
+              postcodeExample: '12345',
+              currencyCode: 'USD',
+              currencySymbol: '$'
+            },
+            detectedStates: [],
+            countries: []
+          };
+        }
+      }
+      
+      if (locationData) {
+        this.logger.info('User location detected:', {
+          country: locationData.detectedCountryCode,
+          currency: locationData.detectedCountryConfig.currencyCode,
+          currencySymbol: locationData.detectedCountryConfig.currencySymbol
+        });
+        
+        // Store in config for global access
+        configStore.updateConfig({
+          detectedCountry: locationData.detectedCountryCode,
+          detectedCurrency: locationData.detectedCountryConfig.currencyCode,
+          locationData: locationData // Cache the entire response
+        });
+        
+        // Determine selected currency with proper priority:
+        // 1. URL parameter (highest priority - immediate override)
+        // 2. Previously saved user selection (from session)
+        // 3. Detected currency from location (default)
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlCurrency = urlParams.get('currency');
+        const savedCurrency = sessionStorage.getItem('next_selected_currency');
+        const detectedCurrency = locationData.detectedCountryConfig.currencyCode;
+        
+        let selectedCurrency: string;
+        
+        if (urlCurrency) {
+          // URL parameter has highest priority
+          selectedCurrency = urlCurrency.toUpperCase();
+          this.logger.info('Currency override from URL:', selectedCurrency);
+          // Save to session for persistence
+          sessionStorage.setItem('next_selected_currency', selectedCurrency);
+        } else if (savedCurrency) {
+          // Use previously saved selection
+          selectedCurrency = savedCurrency;
+          this.logger.info('Using saved currency preference:', selectedCurrency);
+        } else {
+          // Use detected currency as default
+          selectedCurrency = detectedCurrency;
+          this.logger.info('Using detected currency:', selectedCurrency);
+        }
+        
+        configStore.updateConfig({
+          selectedCurrency
+        });
+        
+        this.logger.debug('Location and currency initialized:', {
+          detectedCountry: configStore.detectedCountry,
+          detectedCurrency: configStore.detectedCurrency,
+          selectedCurrency: configStore.selectedCurrency
+        });
+      }
+      
+    } catch (error) {
+      this.logger.warn('Failed to initialize location/currency, using defaults:', error);
+      
+      // Check for saved currency even in fallback case
+      const savedCurrency = sessionStorage.getItem('next_selected_currency');
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlCurrency = urlParams.get('currency');
+      
+      // Determine fallback currency with priority
+      let fallbackCurrency = 'USD';
+      if (urlCurrency) {
+        fallbackCurrency = urlCurrency.toUpperCase();
+        sessionStorage.setItem('next_selected_currency', fallbackCurrency);
+      } else if (savedCurrency) {
+        fallbackCurrency = savedCurrency;
+      }
+      
+      const configStore = useConfigStore.getState();
+      configStore.updateConfig({
+        detectedCountry: 'US',
+        detectedCurrency: 'USD',
+        selectedCurrency: fallbackCurrency
+      });
     }
   }
 

@@ -22,6 +22,7 @@ interface CartActions {
   calculateShipping: () => number;
   calculateTax: () => number;
   calculateEnrichedItems: () => Promise<void>;
+  refreshItemPrices: () => Promise<void>;
   setShippingMethod: (methodId: number) => Promise<void>;
   hasItem: (packageId: number) => boolean;
   getItem: (packageId: number) => CartItem | undefined;
@@ -301,8 +302,20 @@ const cartStoreInstance = create<CartState & CartActions>()(
         const totalQuantity = state.items.reduce((sum, item) => sum + item.quantity, 0);
         const isEmpty = state.items.length === 0;
         
+        // Get currency from campaign or config store
+        let currency = 'USD';
+        // Use the already imported campaignState
+        if (campaignState?.data?.currency) {
+          currency = campaignState.data.currency;
+        } else {
+          // Import config store dynamically
+          const { useConfigStore } = await import('./configStore');
+          const configStore = useConfigStore.getState();
+          currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
+        }
+        
         const formatCurrency = (amount: number) => 
-          new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+          new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
         
         // Calculate compare total (retail prices) - FIXED: Handle null values properly
         const compareTotal = state.items.reduce((sum, item) => {
@@ -531,8 +544,22 @@ const cartStoreInstance = create<CartState & CartActions>()(
           const campaignState = useCampaignStore.getState();
           const state = get();
           
+          // Get currency from campaign or config store
+          let currency = 'USD';
+          try {
+            if (campaignState?.data?.currency) {
+              currency = campaignState.data.currency;
+            } else {
+              const { useConfigStore } = await import('./configStore');
+              const configStore = useConfigStore.getState();
+              currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
+            }
+          } catch (e) {
+            // Fallback to USD if stores aren't available
+          }
+          
           const formatCurrency = (amount: number) => 
-            new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+            new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
           
           const enrichedItems = state.items.map(item => {
             const packageData = campaignState.getPackage(item.packageId);
@@ -729,6 +756,59 @@ const cartStoreInstance = create<CartState & CartActions>()(
         
         // Ensure discount doesn't exceed subtotal
         return Math.min(discountAmount, state.subtotal);
+      },
+
+      refreshItemPrices: async () => {
+        try {
+          logger.info('Refreshing cart item prices with new currency data...');
+          
+          // Import campaign store to get updated package data
+          const { useCampaignStore } = await import('./campaignStore');
+          const campaignStore = useCampaignStore.getState();
+          
+          if (!campaignStore.data) {
+            logger.warn('No campaign data available to refresh prices');
+            return;
+          }
+          
+          const state = get();
+          
+          // Update each item with new prices from campaign data
+          const updatedItems = state.items.map(item => {
+            const packageData = campaignStore.getPackage(item.packageId);
+            
+            if (!packageData) {
+              logger.warn(`Package ${item.packageId} not found in campaign data`);
+              return item;
+            }
+            
+            // Update the item with new prices from the reloaded campaign data
+            return {
+              ...item,
+              price: parseFloat(packageData.price_total), // Update package total price
+              price_per_unit: packageData.price,
+              price_total: packageData.price_total,
+              price_retail: packageData.price_retail,
+              price_retail_total: packageData.price_retail_total,
+              price_recurring: packageData.price_recurring,
+              // Keep other fields unchanged (quantity, title, etc.)
+            };
+          });
+          
+          // Update state with new items
+          set(state => ({
+            ...state,
+            items: updatedItems
+          }));
+          
+          logger.info('Cart item prices refreshed with new currency');
+          
+          // Recalculate totals with updated prices
+          await get().calculateTotals();
+          
+        } catch (error) {
+          logger.error('Failed to refresh item prices:', error);
+        }
       },
 
       reset: () => {

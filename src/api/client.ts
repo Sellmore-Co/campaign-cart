@@ -16,12 +16,13 @@ export class ApiClient {
   }
 
   // Campaign endpoints
-  public async getCampaigns(): Promise<Campaign> {
-    return this.request<Campaign>('/api/v1/campaigns/');
+  public async getCampaigns(currency?: string): Promise<Campaign> {
+    const queryString = currency ? `?currency=${currency}` : '';
+    return this.request<Campaign>(`/api/v1/campaigns/${queryString}`);
   }
 
   // Cart endpoints
-  public async createCart(data: CartBase): Promise<Cart> {
+  public async createCart(data: CartBase & { currency?: string }): Promise<Cart> {
     return this.request<Cart>('/api/v1/carts/', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -29,7 +30,7 @@ export class ApiClient {
   }
 
   // Order endpoints
-  public async createOrder(data: CreateOrder): Promise<Order> {
+  public async createOrder(data: CreateOrder & { currency?: string }): Promise<Order> {
     return this.request<Order>('/api/v1/orders/', {
       method: 'POST',
       body: JSON.stringify(data),

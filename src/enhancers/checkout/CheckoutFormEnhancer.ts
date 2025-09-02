@@ -6,6 +6,7 @@ import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCheckoutStore, type CheckoutState } from '@/stores/checkoutStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useConfigStore } from '@/stores/configStore';
+import { useCampaignStore } from '@/stores/campaignStore';
 import { ApiClient } from '@/api/client';
 import { CountryService, type Country, type CountryConfig } from '@/utils/countryService';
 import type { CartState } from '@/types/global';
@@ -966,27 +967,100 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       const locationData = await this.countryService.getLocationData();
       this.countries = locationData.countries;
-      this.detectedCountryCode = locationData.detectedCountryCode;
       
-      const countryField = this.fields.get('country');
-      if (countryField instanceof HTMLSelectElement) {
-        this.populateCountryDropdown(countryField, locationData.countries, locationData.detectedCountryCode);
-        
-        if (locationData.detectedCountryCode) {
-          this.updateFormData({ country: locationData.detectedCountryCode });
-          this.clearError('country');
+      // Check for country override from URL or sessionStorage (same priority as SDKInitializer)
+      let selectedCountryCode = locationData.detectedCountryCode;
+      
+      // Use console.log to ensure visibility
+      console.log('%c[CheckoutForm] Country Priority Check', 'color: #FF6B6B; font-weight: bold', {
+        detectedCountry: locationData.detectedCountryCode,
+        addressConfigDefault: this.countryService.config?.defaultCountry,
+        urlParam: new URLSearchParams(window.location.search).get('country'),
+        sessionOverride: sessionStorage.getItem('next_selected_country_override'),
+        availableCountries: this.countries.map(c => c.code)
+      });
+      
+      this.logger.info('Country selection priority check:', {
+        detectedCountry: locationData.detectedCountryCode,
+        addressConfigDefault: this.countryService.config?.defaultCountry,
+        urlParam: new URLSearchParams(window.location.search).get('country'),
+        sessionOverride: sessionStorage.getItem('next_selected_country_override')
+      });
+      
+      // Priority 1: URL parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlCountry = urlParams.get('country');
+      if (urlCountry) {
+        const countryCode = urlCountry.toUpperCase();
+        // Verify the country exists in the available countries
+        const countryExists = this.countries.some(c => c.code === countryCode);
+        if (countryExists) {
+          selectedCountryCode = countryCode;
+          // Save to sessionStorage for persistence
+          sessionStorage.setItem('next_selected_country_override', countryCode);
+          this.logger.info(`✅ Using country from URL parameter: ${countryCode}`);
+        } else {
+          this.logger.warn(`Country ${countryCode} from URL not in available countries`);
+        }
+      }
+      // Priority 2: sessionStorage override (from previous URL param or user selection)
+      else {
+        const savedCountryOverride = sessionStorage.getItem('next_selected_country_override');
+        if (savedCountryOverride) {
+          const countryExists = this.countries.some(c => c.code === savedCountryOverride);
+          if (countryExists) {
+            selectedCountryCode = savedCountryOverride;
+            this.logger.info(`✅ Using country from session storage: ${savedCountryOverride}`);
+          } else {
+            this.logger.warn(`Saved country ${savedCountryOverride} not in available countries`);
+          }
+        } else {
+          this.logger.info(`✅ Using detected/default country: ${selectedCountryCode}`);
         }
       }
       
-      this.countryConfigs.set(locationData.detectedCountryCode, locationData.detectedCountryConfig);
+      this.detectedCountryCode = selectedCountryCode;
       
-      if (locationData.detectedCountryCode) {
+      const countryField = this.fields.get('country');
+      if (countryField instanceof HTMLSelectElement) {
+        console.log('%c[CheckoutForm] Setting country dropdown', 'color: #4ECDC4; font-weight: bold', {
+          field: countryField,
+          selectedCountry: selectedCountryCode,
+          availableOptions: locationData.countries.map(c => c.code)
+        });
+        
+        this.populateCountryDropdown(countryField, locationData.countries, selectedCountryCode);
+        
+        if (selectedCountryCode) {
+          this.updateFormData({ country: selectedCountryCode });
+          this.clearError('country');
+          
+          console.log('%c[CheckoutForm] Country set to:', 'color: #95E77E; font-weight: bold', selectedCountryCode, {
+            dropdownValue: countryField.value,
+            formData: useCheckoutStore.getState().formData.country
+          });
+        }
+      }
+      
+      // Always fetch the config for the selected country to ensure we have the right one
+      let selectedCountryConfig;
+      try {
+        selectedCountryConfig = await this.countryService.getCountryConfig(selectedCountryCode);
+        this.logger.debug(`Fetched config for country ${selectedCountryCode}`);
+      } catch (error) {
+        this.logger.warn(`Failed to get config for country ${selectedCountryCode}, using detected config`);
+        selectedCountryConfig = locationData.detectedCountryConfig;
+      }
+      
+      this.countryConfigs.set(selectedCountryCode, selectedCountryConfig);
+      
+      if (selectedCountryCode) {
         const provinceField = this.fields.get('province');
         if (provinceField instanceof HTMLSelectElement) {
-          await this.updateStateOptions(locationData.detectedCountryCode, provinceField);
-          this.currentCountryConfig = locationData.detectedCountryConfig;
+          await this.updateStateOptions(selectedCountryCode, provinceField);
+          this.currentCountryConfig = selectedCountryConfig;
         }
-        this.updateFormLabels(locationData.detectedCountryConfig);
+        this.updateFormLabels(selectedCountryConfig);
       }
       
       if (this.billingFields.size > 0) {
@@ -3002,6 +3076,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         if (provinceField instanceof HTMLSelectElement) {
           await this.updateStateOptions(target.value, provinceField);
         }
+        
+        // Save the user's country selection to sessionStorage
+        sessionStorage.setItem('next_selected_country_override', target.value);
+        this.logger.debug(`Saved user's country selection to session: ${target.value}`);
+        
+        // Auto-switch currency based on country if available
+        await this.handleCountryCurrencyChange(target.value);
       }
       
       // Show location fields when address1 is populated
@@ -3590,6 +3671,86 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
     
     // Note: Credit card error clearing is handled by CreditCardService via Spreedly events
+  }
+
+  // ============================================================================
+  // CURRENCY MANAGEMENT
+  // ============================================================================
+
+  private async handleCountryCurrencyChange(countryCode: string): Promise<void> {
+    try {
+      const configStore = useConfigStore.getState();
+      
+      // Check if currency behavior is set to manual - if so, don't auto-change
+      if (configStore.currencyBehavior === 'manual') {
+        this.logger.debug('Currency behavior is set to manual - not auto-switching currency');
+        return;
+      }
+      
+      // Get the country's currency from the countries list
+      const country = this.countries.find(c => c.code === countryCode);
+      if (!country || !country.currencyCode) {
+        this.logger.debug(`No currency found for country ${countryCode}`);
+        return;
+      }
+      
+      const newCurrency = country.currencyCode;
+      const campaignStore = useCampaignStore.getState();
+      const cartStore = useCartStore.getState();
+      
+      // Check if this currency is available in the campaign
+      const availableCurrencies = campaignStore.data?.available_currencies || [];
+      const currencyAvailable = availableCurrencies.some((c: any) => c.code === newCurrency);
+      
+      if (!currencyAvailable) {
+        this.logger.debug(`Currency ${newCurrency} not available in campaign for country ${countryCode}`);
+        return;
+      }
+      
+      // Check if currency is already set to this
+      const currentCurrency = campaignStore.data?.currency || configStore.selectedCurrency || 'USD';
+      if (currentCurrency === newCurrency) {
+        this.logger.debug(`Currency already set to ${newCurrency}`);
+        return;
+      }
+      
+      this.logger.info(`Auto-switching currency from ${currentCurrency} to ${newCurrency} for country ${countryCode}`);
+      
+      // Clear the cache for the current currency
+      campaignStore.clearCache();
+      
+      // Update the selected currency
+      configStore.updateConfig({
+        selectedCurrency: newCurrency
+      });
+      
+      // Save to sessionStorage for persistence
+      sessionStorage.setItem('next_selected_currency', newCurrency);
+      
+      // Reload campaign data with new currency
+      await campaignStore.loadCampaign(configStore.apiKey);
+      
+      // Refresh cart item prices with new campaign data
+      await cartStore.refreshItemPrices();
+      
+      this.logger.info(`Currency auto-switched to ${newCurrency} for country ${countryCode}`);
+      
+      // Emit event for other components
+      document.dispatchEvent(new CustomEvent('next:currency-changed', {
+        detail: { 
+          from: currentCurrency,
+          to: newCurrency,
+          trigger: 'country-change',
+          country: countryCode
+        }
+      }));
+      
+      // Update debug currency selector if present
+      document.dispatchEvent(new CustomEvent('debug:update-content'));
+      
+    } catch (error) {
+      this.logger.error('Failed to auto-switch currency:', error);
+    }
   }
 
   // ============================================================================

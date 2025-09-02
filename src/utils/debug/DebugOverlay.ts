@@ -11,6 +11,7 @@ import { EnhancedDebugUI } from './EnhancedDebugUI';
 import { useCartStore } from '../../stores/cartStore';
 import { useConfigStore } from '../../stores/configStore';
 import { XrayManager } from './XrayStyles';
+import { currencySelector } from './CurrencySelector';
 import {
   CartPanel,
   OrderPanel,
@@ -116,6 +117,10 @@ export class DebugOverlay {
       this.show();
       this.logger.info('Debug overlay initialized');
       
+      // Initialize currency selector (fixed at top-left)
+      currencySelector.initialize();
+      this.logger.info('Currency selector initialized');
+      
       // Test components in development
       if (import.meta.env && import.meta.env.DEV) {
 
@@ -153,6 +158,9 @@ export class DebugOverlay {
     // Remove body height adjustment
     document.body.classList.remove('debug-body-expanded');
     document.documentElement.classList.remove('debug-body-expanded');
+    
+    // Destroy currency selector
+    currencySelector.destroy();
     
     if (this.container) {
       this.container.remove();

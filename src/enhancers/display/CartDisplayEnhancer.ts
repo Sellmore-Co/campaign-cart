@@ -8,6 +8,8 @@ import { getPropertyConfig } from './DisplayEnhancerTypes';
 import { AttributeParser } from '../base/AttributeParser';
 import { PackageContextResolver } from '@/utils/dom/PackageContextResolver';
 import { useCartStore } from '@/stores/cartStore';
+import { useCampaignStore } from '@/stores/campaignStore';
+import { useConfigStore } from '@/stores/configStore';
 import type { CartState } from '@/types/global';
 
 export class CartDisplayEnhancer extends BaseDisplayEnhancer {
@@ -25,6 +27,12 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
     // Subscribe to cart store updates
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     
+    // Also subscribe to campaign store for currency changes
+    this.subscribe(useCampaignStore, () => {
+      // When campaign store updates (e.g., currency change), update display
+      this.updateDisplay();
+    });
+    
     // Get initial cart state - this should now have rehydrated data
     this.cartState = useCartStore.getState();
     
@@ -39,6 +47,13 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
   private handleCartUpdate(cartState: CartState): void {
     this.cartState = cartState;
     
+    this.logger.debug('Cart updated', {
+      isEmpty: cartState.isEmpty,
+      itemCount: cartState.items.length,
+      total: cartState.total,
+      totalsFormatted: cartState.totals?.total?.formatted
+    });
+    
     // Add/remove empty state classes
     this.toggleClass('next-cart-empty', cartState.isEmpty);
     this.toggleClass('next-cart-has-items', !cartState.isEmpty);
@@ -47,20 +62,92 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
   }
 
   protected getPropertyValue(): any {
-    if (!this.cartState || !this.property) return undefined;
+    if (!this.cartState || !this.property) {
+      this.logger.debug('Missing cartState or property', { 
+        hasCartState: !!this.cartState, 
+        property: this.property 
+      });
+      return undefined;
+    }
+
+    // Special handling for currency display
+    if (this.property === 'currency' || this.property === 'currencyCode') {
+      const campaignStore = useCampaignStore.getState();
+      if (campaignStore?.data?.currency) {
+        return campaignStore.data.currency;
+      } else {
+        const configStore = useConfigStore.getState();
+        return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
+      }
+    }
+
+    // Special handling for currency symbol
+    if (this.property === 'currencySymbol') {
+      const configStore = useConfigStore.getState();
+      
+      // First try to get symbol from location/country data
+      if (configStore?.locationData?.detectedCountryConfig?.currencySymbol) {
+        return configStore.locationData.detectedCountryConfig.currencySymbol;
+      }
+      
+      // Fallback to extracting from Intl.NumberFormat
+      let currency = 'USD';
+      const campaignStore = useCampaignStore.getState();
+      if (campaignStore?.data?.currency) {
+        currency = campaignStore.data.currency;
+      } else {
+        currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
+      }
+      
+      // Use Intl.NumberFormat to get the symbol
+      try {
+        const formatted = new Intl.NumberFormat('en-US', { 
+          style: 'currency', 
+          currency,
+          currencyDisplay: 'symbol'
+        }).format(0);
+        // Extract the symbol from formatted string (removes digits and spaces)
+        const symbol = formatted.replace(/[\d\s.,]/g, '').trim();
+        return symbol || currency;
+      } catch (e) {
+        // If currency code is invalid, return the code itself
+        return currency;
+      }
+    }
 
     // Special handling for subtotal with discounts
     if (this.includeDiscounts && this.property === 'subtotal') {
+      this.logger.debug('Handling subtotal with discounts', {
+        subtotal: this.cartState.totals?.subtotal,
+        discounts: this.cartState.totals?.discounts
+      });
+      
       // Calculate subtotal minus discounts
       const subtotalValue = this.cartState.totals?.subtotal?.value || 0;
       const discountsValue = this.cartState.totals?.discounts?.value || 0;
       const discountedSubtotal = subtotalValue - discountsValue;
       
+      // Get currency from campaign or config store
+      let currency = 'USD';
+      const campaignStore = useCampaignStore.getState();
+      if (campaignStore?.data?.currency) {
+        currency = campaignStore.data.currency;
+      } else {
+        const configStore = useConfigStore.getState();
+        currency = configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
+      }
+      
       // Return formatted value to match expected format
       const formatted = new Intl.NumberFormat('en-US', { 
         style: 'currency', 
-        currency: 'USD' 
+        currency 
       }).format(discountedSubtotal);
+      
+      this.logger.debug('Returning discounted subtotal', { 
+        discountedSubtotal, 
+        formatted,
+        currency 
+      });
       
       return { _preformatted: true, value: formatted };
     }

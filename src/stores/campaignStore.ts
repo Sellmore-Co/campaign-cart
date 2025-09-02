@@ -49,22 +49,29 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
     set({ isLoading: true, error: null });
     
     try {
+      // Get the selected currency from config store
+      const { useConfigStore } = await import('./configStore');
+      const configStore = useConfigStore.getState();
+      const currency = configStore.selectedCurrency || configStore.detectedCurrency || 'USD';
+      
+      // Create cache key that includes currency
+      const cacheKey = `${CAMPAIGN_STORAGE_KEY}_${currency}`;
+      
       // Check for cached data first
-      const cachedData = sessionStorageManager.get<CachedCampaignData>(CAMPAIGN_STORAGE_KEY);
+      const cachedData = sessionStorageManager.get<CachedCampaignData>(cacheKey);
       const now = Date.now();
       
-      // Use cache if it exists, is for the same API key, and hasn't expired
+      // Use cache if it exists, is for the same API key and currency, and hasn't expired
       if (cachedData && 
           cachedData.apiKey === apiKey && 
           (now - cachedData.timestamp) < CACHE_EXPIRY_MS) {
         
-        logger.info('🎯 Using cached campaign data (expires in ' + 
+        logger.info(`🎯 Using cached campaign data for ${currency} (expires in ` + 
           Math.round((CACHE_EXPIRY_MS - (now - cachedData.timestamp)) / 1000) + ' seconds)');
         
         // Update config store with payment_env_key from cached data
-        const { useConfigStore } = await import('./configStore');
         if (cachedData.campaign.payment_env_key) {
-          useConfigStore.getState().setSpreedlyEnvironmentKey(cachedData.campaign.payment_env_key);
+          configStore.setSpreedlyEnvironmentKey(cachedData.campaign.payment_env_key);
         }
         
         set({
@@ -77,32 +84,31 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       }
       
       // Cache miss or expired - fetch from API
-      logger.info('🌐 Fetching fresh campaign data from API...');
+      logger.info(`🌐 Fetching fresh campaign data from API with currency: ${currency}...`);
       const { ApiClient } = await import('@/api/client');
       const client = new ApiClient(apiKey);
       
-      const campaign = await client.getCampaigns();
+      const campaign = await client.getCampaigns(currency);
       
       if (!campaign) {
         throw new Error('Campaign data not found');
       }
       
       // Update config store with payment_env_key from fresh data
-      const { useConfigStore } = await import('./configStore');
       if (campaign.payment_env_key) {
-        useConfigStore.getState().setSpreedlyEnvironmentKey(campaign.payment_env_key);
+        configStore.setSpreedlyEnvironmentKey(campaign.payment_env_key);
         logger.info('💳 Spreedly environment key updated from campaign API: ' + campaign.payment_env_key);
       }
       
-      // Cache the fresh data
+      // Cache the fresh data with currency-specific key
       const cacheData: CachedCampaignData = {
         campaign,
         timestamp: now,
         apiKey
       };
       
-      sessionStorageManager.set(CAMPAIGN_STORAGE_KEY, cacheData);
-      logger.info('💾 Campaign data cached for 5 minutes');
+      sessionStorageManager.set(cacheKey, cacheData);
+      logger.info(`💾 Campaign data cached for ${currency} (5 minutes)`);
 
       set({
         data: campaign,
@@ -141,12 +147,46 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
   },
 
   clearCache: () => {
-    sessionStorageManager.remove(CAMPAIGN_STORAGE_KEY);
-    logger.info('🗑️ Campaign cache cleared');
+    // Clear ALL campaign caches by removing any key that starts with the campaign storage prefix
+    // This is more robust than maintaining a list of currencies
+    try {
+      const storage = window.sessionStorage;
+      const keysToRemove: string[] = [];
+      
+      // Find all keys that start with our campaign storage prefix
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+        if (key && (key.startsWith(CAMPAIGN_STORAGE_KEY) || key === CAMPAIGN_STORAGE_KEY)) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      // Remove all found keys
+      keysToRemove.forEach(key => {
+        sessionStorageManager.remove(key);
+        logger.debug(`Removed cache: ${key}`);
+      });
+      
+      logger.info(`🗑️ Campaign cache cleared (${keysToRemove.length} entries removed)`);
+    } catch (error) {
+      logger.error('Failed to clear campaign cache:', error);
+      // Fallback to clearing known currencies
+      const currencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'BRL', 'MXN', 'INR'];
+      currencies.forEach(currency => {
+        sessionStorageManager.remove(`${CAMPAIGN_STORAGE_KEY}_${currency}`);
+      });
+      sessionStorageManager.remove(CAMPAIGN_STORAGE_KEY);
+    }
   },
 
   getCacheInfo: () => {
-    const cachedData = sessionStorageManager.get<CachedCampaignData>(CAMPAIGN_STORAGE_KEY);
+    // Get current currency from config
+    const { useConfigStore } = require('./configStore');
+    const configStore = useConfigStore.getState();
+    const currency = configStore.selectedCurrency || configStore.detectedCurrency || 'USD';
+    const cacheKey = `${CAMPAIGN_STORAGE_KEY}_${currency}`;
+    
+    const cachedData = sessionStorageManager.get<CachedCampaignData>(cacheKey);
     if (!cachedData) {
       return { cached: false };
     }
@@ -157,7 +197,8 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
     return {
       cached: true,
       expiresIn: Math.max(0, Math.round(timeLeft / 1000)), // seconds until expiry
-      apiKey: cachedData.apiKey
+      apiKey: cachedData.apiKey,
+      currency: currency
     };
   },
 }));

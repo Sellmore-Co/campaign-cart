@@ -190,6 +190,7 @@ export interface Campaign {
   packages: Package[];
   payment_env_key: string;
   shipping_methods: ShippingOption[];
+  available_currencies?: Array<{ code: string; label: string }>;
 }
 
 export interface Package {
@@ -245,6 +246,13 @@ export interface ConfigState {
   paymentConfig: PaymentConfig;
   googleMapsConfig: GoogleMapsConfig;
   addressConfig: AddressConfig;
+  
+  // Location and currency detection
+  detectedCountry?: string;
+  detectedCurrency?: string;
+  selectedCurrency?: string;
+  locationData?: any;
+  currencyBehavior?: 'auto' | 'manual'; // auto: change currency when country changes, manual: never auto-change
   
   // Additional configuration properties for complete type coverage
   autoInit: boolean | undefined;
