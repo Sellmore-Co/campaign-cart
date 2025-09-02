@@ -63,6 +63,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private countryService!: CountryService;
   private creditCardService?: CreditCardService;
   private validator!: CheckoutValidator;
+  private loadingStatesFor: string | null = null;
+  private stateLoadingPromises: Map<string, Promise<any>> = new Map();
   private ui!: UIService;
   private prospectCartEnhancer?: ProspectCartEnhancer;
   private loadingOverlay: LoadingOverlay;
@@ -1171,7 +1173,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         await this.updateBillingStateOptions(newCountry, billingProvinceField, shippingProvince);
       }
       
+      // Mark as external to prevent duplicate currency switching
+      (billingCountryField as any)._externalChange = true;
       billingCountryField.dispatchEvent(new Event('change', { bubbles: true }));
+      setTimeout(() => {
+        delete (billingCountryField as any)._externalChange;
+      }, 100);
     }
   }
 
@@ -1188,7 +1195,23 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     provinceField.innerHTML = '<option value="">Loading...</option>';
     
     try {
-      const countryData = await this.countryService.getCountryStates(country);
+      // Check if we already have a promise for this country
+      let countryDataPromise = this.stateLoadingPromises.get(country);
+      
+      if (!countryDataPromise) {
+        // Create new promise and store it
+        countryDataPromise = this.countryService.getCountryStates(country);
+        this.stateLoadingPromises.set(country, countryDataPromise);
+        
+        // Clean up after completion
+        countryDataPromise.finally(() => {
+          setTimeout(() => this.stateLoadingPromises.delete(country), 100);
+        });
+      } else {
+        this.logger.debug(`Reusing existing state loading promise for ${country}`);
+      }
+      
+      const countryData = await countryDataPromise;
       this.countryConfigs.set(country, countryData.countryConfig);
       this.currentCountryConfig = countryData.countryConfig;
       
@@ -1834,10 +1857,21 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
+  private autocompleteListenersAttached = false;
+
   private setupAutocompleteCountryChangeListeners(): void {
-    // Shipping country change
+    // Prevent duplicate listener attachment
+    if (this.autocompleteListenersAttached) {
+      this.logger.debug('Autocomplete country change listeners already attached, skipping');
+      return;
+    }
+
+    // Shipping country change - use a named function so we can identify it
     const shippingCountryField = this.fields.get('country');
     if (shippingCountryField instanceof HTMLSelectElement) {
+      // Mark the field to indicate autocomplete handler will be attached
+      (shippingCountryField as any)._hasAutocompleteHandler = true;
+      
       shippingCountryField.addEventListener('change', () => {
         const autocomplete = this.autocompleteInstances.get('address1');
         const countryValue = shippingCountryField.value;
@@ -1866,6 +1900,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       });
     }
+
+    this.autocompleteListenersAttached = true;
   }
 
   // ============================================================================
@@ -3117,9 +3153,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.handleBillingFieldChange(fieldName, target.value, checkoutStore);
       
       if (fieldName === 'billing-country') {
-        const billingProvinceField = this.billingFields.get('billing-province');
-        if (billingProvinceField instanceof HTMLSelectElement) {
-          await this.updateBillingStateOptions(target.value, billingProvinceField, checkoutStore.formData.province);
+        // Skip state loading if this is an external change (already handled)
+        if (!(target as any)._externalChange) {
+          const billingProvinceField = this.billingFields.get('billing-province');
+          if (billingProvinceField instanceof HTMLSelectElement) {
+            await this.updateBillingStateOptions(target.value, billingProvinceField, checkoutStore.formData.province);
+          }
+          
+          // NEVER auto-switch currency for billing country - only shipping country affects currency
+          // Currency is based on where we're shipping to, not billing address
         }
       }
     } else {
@@ -3344,7 +3386,23 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     billingProvinceField.innerHTML = '<option value="">Loading...</option>';
     
     try {
-      const countryData = await this.countryService.getCountryStates(country);
+      // Check if we already have a promise for this country
+      let countryDataPromise = this.stateLoadingPromises.get(country);
+      
+      if (!countryDataPromise) {
+        // Create new promise and store it
+        countryDataPromise = this.countryService.getCountryStates(country);
+        this.stateLoadingPromises.set(country, countryDataPromise);
+        
+        // Clean up after completion
+        countryDataPromise.finally(() => {
+          setTimeout(() => this.stateLoadingPromises.delete(country), 100);
+        });
+      } else {
+        this.logger.debug(`Reusing existing state loading promise for ${country} (billing)`);
+      }
+      
+      const countryData = await countryDataPromise;
       
       // Update billing form labels and placeholders
       this.updateBillingFormLabels(countryData.countryConfig);
@@ -3748,12 +3806,26 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // CURRENCY MANAGEMENT
   // ============================================================================
 
+  private lastCurrencyChangeCountry: string | null = null;
+  private lastCurrencyChangeTime: number = 0;
+
   private async handleCountryCurrencyChange(countryCode: string, field?: HTMLElement): Promise<void> {
     // Skip if this change came from an external source (like CountrySelector)
     if (field && (field as any)._externalChange) {
       this.logger.debug('Skipping currency auto-switch for external country change');
       return;
     }
+    
+    // Deduplicate rapid duplicate calls for the same country
+    const now = Date.now();
+    if (this.lastCurrencyChangeCountry === countryCode && 
+        (now - this.lastCurrencyChangeTime) < 500) {
+      this.logger.debug(`Skipping duplicate currency change for ${countryCode} (within 500ms)`);
+      return;
+    }
+    
+    this.lastCurrencyChangeCountry = countryCode;
+    this.lastCurrencyChangeTime = now;
     
     try {
       const configStore = useConfigStore.getState();
