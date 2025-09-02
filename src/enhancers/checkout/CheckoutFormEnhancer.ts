@@ -1143,8 +1143,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         await this.updateStateOptions(newCountry, provinceField);
       }
       
+      // Mark this as an external change to prevent duplicate currency switching
+      (countryField as any)._externalChange = true;
+      
       // Trigger change event to update any dependent fields
       countryField.dispatchEvent(new Event('change', { bubbles: true }));
+      
+      // Clear the flag after a short delay
+      setTimeout(() => {
+        delete (countryField as any)._externalChange;
+      }, 100);
       
       this.logger.info(`Country field updated to: ${newCountry}`);
     }
@@ -3145,7 +3153,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         this.logger.debug(`Saved user's country selection to session: ${target.value}`);
         
         // Auto-switch currency based on country if available
-        await this.handleCountryCurrencyChange(target.value);
+        await this.handleCountryCurrencyChange(target.value, target);
       }
       
       // Show location fields when address1 is populated
@@ -3740,7 +3748,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // CURRENCY MANAGEMENT
   // ============================================================================
 
-  private async handleCountryCurrencyChange(countryCode: string): Promise<void> {
+  private async handleCountryCurrencyChange(countryCode: string, field?: HTMLElement): Promise<void> {
+    // Skip if this change came from an external source (like CountrySelector)
+    if (field && (field as any)._externalChange) {
+      this.logger.debug('Skipping currency auto-switch for external country change');
+      return;
+    }
+    
     try {
       const configStore = useConfigStore.getState();
       
@@ -3804,7 +3818,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           from: currentCurrency,
           to: newCurrency,
           trigger: 'country-change',
-          country: countryCode
+          country: countryCode,
+          source: 'checkout-form'
         }
       }));
       
