@@ -770,14 +770,31 @@ const cartStoreInstance = create<CartState & CartActions>()(
             };
           });
           
-          // Update state with new items and trigger single update
-          // Don't call calculateTotals separately as it will cause double update
+          // Also update shipping method price if one is selected
+          let updatedShippingMethod = state.shippingMethod;
+          if (updatedShippingMethod && campaignStore.data.shipping_methods) {
+            const shippingMethodData = campaignStore.data.shipping_methods.find(
+              method => method.ref_id === updatedShippingMethod!.id
+            );
+            
+            if (shippingMethodData) {
+              const newPrice = parseFloat(shippingMethodData.price || '0');
+              updatedShippingMethod = {
+                ...updatedShippingMethod,
+                price: newPrice
+              };
+              logger.info(`Updated shipping method price: ${updatedShippingMethod.code} = ${newPrice} ${campaignStore.data.currency}`);
+            }
+          }
+          
+          // Update state with new items and shipping method
           set(state => ({
             ...state,
-            items: updatedItems
+            items: updatedItems,
+            shippingMethod: updatedShippingMethod
           }));
           
-          logger.info('Cart item prices refreshed with new currency');
+          logger.info('Cart item prices and shipping refreshed with new currency');
           
           // Recalculate totals with updated prices
           // Use setTimeout to ensure the state update completes first

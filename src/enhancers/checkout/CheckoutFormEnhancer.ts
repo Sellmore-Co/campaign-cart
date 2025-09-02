@@ -2479,7 +2479,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       shipping_address: shippingAddress,
       ...(billingAddressData && { billing_address: billingAddressData }),
       billing_same_as_shipping_address: checkoutStore.sameAsShipping,
-      shipping_method: checkoutStore.shippingMethod?.id || 1,
+      shipping_method: checkoutStore.shippingMethod?.id || cartStore.shippingMethod?.id || 1,
       payment_detail: payment,
       user: {
         email: checkoutStore.formData.email,
@@ -2643,7 +2643,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         },
         
         billing_same_as_shipping_address: true,
-        shipping_method: 1,
+        shipping_method: cartStore.shippingMethod?.id || 1,
         
         payment_detail: {
           payment_method: 'card_token' as PaymentMethod,
@@ -3973,12 +3973,32 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         checkoutStore.setPaymentMethod('credit-card');
         checkoutStore.setPaymentToken('test_card');
         checkoutStore.setSameAsShipping(true);
-        checkoutStore.setShippingMethod({
-          id: 1,
-          name: 'Standard Shipping',
-          price: 0,
-          code: 'standard'
-        });
+        // Use existing shipping method from cart if available
+        const cartStore = useCartStore.getState();
+        const existingShipping = cartStore.shippingMethod || checkoutStore.shippingMethod;
+        if (existingShipping) {
+          checkoutStore.setShippingMethod(existingShipping);
+        } else {
+          // Fallback to first available from campaign
+          const campaignStore = useCampaignStore.getState();
+          if (campaignStore.data?.shipping_methods?.length > 0) {
+            const firstMethod = campaignStore.data.shipping_methods[0];
+            checkoutStore.setShippingMethod({
+              id: firstMethod.ref_id,
+              name: firstMethod.code,
+              price: parseFloat(firstMethod.price || '0'),
+              code: firstMethod.code
+            });
+          } else {
+            // Last resort fallback
+            checkoutStore.setShippingMethod({
+              id: 1,
+              name: 'Standard Shipping',
+              price: 0,
+              code: 'standard'
+            });
+          }
+        }
         
         this.populateFormData();
         

@@ -105,13 +105,36 @@ export class TestOrderManager {
       setPaymentTokenCallback('test_card'); // Use test card token
       setSameAsShippingCallback(true);
       
-      // Set a default shipping method
-      setShippingMethodCallback({
-        id: 1,
-        name: 'Standard Shipping',
-        price: 0,
-        code: 'standard'
-      });
+      // Use existing shipping method from cart/checkout store if available
+      // Otherwise, try to find the first available shipping method from campaign
+      const { useCartStore } = await import('@/stores/cartStore');
+      const { useCheckoutStore } = await import('@/stores/checkoutStore');
+      const { useCampaignStore } = await import('@/stores/campaignStore');
+      
+      const cartStore = useCartStore.getState();
+      const checkoutStore = useCheckoutStore.getState();
+      const campaignStore = useCampaignStore.getState();
+      
+      let shippingMethod = cartStore.shippingMethod || checkoutStore.shippingMethod;
+      
+      // If no shipping method is selected, use the first available one from campaign
+      if (!shippingMethod && campaignStore.data?.shipping_methods?.length > 0) {
+        const firstMethod = campaignStore.data.shipping_methods[0];
+        shippingMethod = {
+          id: firstMethod.ref_id,
+          name: firstMethod.code,
+          price: parseFloat(firstMethod.price || '0'),
+          code: firstMethod.code
+        };
+        this.logger.debug('No shipping method selected, using first available:', shippingMethod);
+      }
+      
+      // Only set shipping method if we have one
+      if (shippingMethod) {
+        setShippingMethodCallback(shippingMethod);
+      } else {
+        this.logger.warn('No shipping methods available for test order');
+      }
       
       // Update form fields
       populateFormDataCallback();

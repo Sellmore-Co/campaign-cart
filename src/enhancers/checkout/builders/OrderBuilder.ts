@@ -7,6 +7,8 @@ import { getSuccessUrl, getFailureUrl } from '../utils/url-utils';
 import { useAttributionStore } from '@/stores/attributionStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useConfigStore } from '@/stores/configStore';
+import { useCartStore } from '@/stores/cartStore';
+import { useCheckoutStore } from '@/stores/checkoutStore';
 import type { CreateOrder, Address, Payment, Attribution } from '@/types/api';
 
 export class OrderBuilder {
@@ -80,7 +82,7 @@ export class OrderBuilder {
       shipping_address: shippingAddress,
       ...(billingAddressData && { billing_address: billingAddressData }),
       billing_same_as_shipping_address: sameAsShipping,
-      shipping_method: shippingMethod?.id || 1,
+      shipping_method: shippingMethod?.id || this.getDefaultShippingMethodId(),
       payment_detail: payment,
       user: {
         email: checkoutFormData.email,
@@ -119,7 +121,7 @@ export class OrderBuilder {
       payment_detail: {
         payment_method: paymentMethod
       },
-      shipping_method: 1, // Default shipping method
+      shipping_method: this.getDefaultShippingMethodId(),
       vouchers: vouchers,
       attribution: attribution,
       currency: this.getCurrency(),
@@ -154,7 +156,7 @@ export class OrderBuilder {
       },
       
       billing_same_as_shipping_address: true,
-      shipping_method: 1,
+      shipping_method: this.getDefaultShippingMethodId(),
       
       payment_detail: {
         payment_method: 'card_token',
@@ -182,6 +184,37 @@ export class OrderBuilder {
 
   private mapPaymentMethod(method: string): 'card_token' | 'paypal' | 'apple_pay' | 'google_pay' {
     return API_PAYMENT_METHOD_MAP[method] || 'card_token';
+  }
+
+  private getDefaultShippingMethodId(): number {
+    // Import stores at the top of the file if not already imported
+    // Using the same pattern as getCurrency() method
+    const cartStore = useCartStore.getState();
+    const checkoutStore = useCheckoutStore.getState();
+    const campaignStore = useCampaignStore.getState();
+    
+    // Use existing selection first - check cart store
+    if (cartStore.shippingMethod?.id) {
+      console.log('[OrderBuilder] Using shipping method from cart:', cartStore.shippingMethod.id);
+      return cartStore.shippingMethod.id;
+    }
+    
+    // Then check checkout store
+    if (checkoutStore.shippingMethod?.id) {
+      console.log('[OrderBuilder] Using shipping method from checkout:', checkoutStore.shippingMethod.id);
+      return checkoutStore.shippingMethod.id;
+    }
+    
+    // Fall back to first available method from campaign
+    if (campaignStore.data?.shipping_methods?.length > 0) {
+      const firstMethodId = campaignStore.data.shipping_methods[0].ref_id;
+      console.log('[OrderBuilder] Using first available shipping method:', firstMethodId);
+      return firstMethodId;
+    }
+    
+    // Last resort fallback
+    console.warn('[OrderBuilder] No shipping method found, using fallback ID 1');
+    return 1;
   }
 
   private getTestAttribution(): Attribution {
