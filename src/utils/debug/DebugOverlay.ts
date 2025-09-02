@@ -12,6 +12,7 @@ import { useCartStore } from '../../stores/cartStore';
 import { useConfigStore } from '../../stores/configStore';
 import { XrayManager } from './XrayStyles';
 import { currencySelector } from './CurrencySelector';
+import { countrySelector } from './CountrySelector';
 import {
   CartPanel,
   OrderPanel,
@@ -120,6 +121,10 @@ export class DebugOverlay {
       // Initialize currency selector (fixed at top-left)
       currencySelector.initialize();
       this.logger.info('Currency selector initialized');
+      
+      // Initialize country selector (below currency selector)
+      countrySelector.initialize();
+      this.logger.info('Country selector initialized');
       
       // Test components in development
       if (import.meta.env && import.meta.env.DEV) {

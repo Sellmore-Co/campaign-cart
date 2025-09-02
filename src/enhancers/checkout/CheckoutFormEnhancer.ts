@@ -251,6 +251,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
     });
     
+    // Listen for country changes from debug selector
+    document.addEventListener('next:country-changed', async (e: CustomEvent) => {
+      const { to: newCountry } = e.detail;
+      if (newCountry) {
+        await this.handleCountryChange(newCountry);
+      }
+    });
+    
     // Handle page restoration from bfcache (back/forward navigation)
     window.addEventListener('pageshow', (event) => {
       if (event.persisted || 
@@ -1114,6 +1122,44 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       option.textContent = country.name;
       billingCountryField.appendChild(option);
     });
+  }
+
+  private async handleCountryChange(newCountry: string): Promise<void> {
+    this.logger.info(`Handling country change to: ${newCountry}`);
+    
+    // Update the country dropdown
+    const countryField = this.fields.get('country');
+    if (countryField instanceof HTMLSelectElement) {
+      countryField.value = newCountry;
+      
+      // Update form data in checkout store
+      this.updateFormData({ country: newCountry });
+      
+      // Update state options for the new country
+      const provinceField = this.fields.get('province');
+      if (provinceField instanceof HTMLSelectElement) {
+        await this.updateStateOptions(newCountry, provinceField);
+      }
+      
+      // Trigger change event to update any dependent fields
+      countryField.dispatchEvent(new Event('change', { bubbles: true }));
+      
+      this.logger.info(`Country field updated to: ${newCountry}`);
+    }
+    
+    // Also update billing country if billing form is visible
+    const billingCountryField = this.billingFields.get('billing-country');
+    if (billingCountryField instanceof HTMLSelectElement) {
+      billingCountryField.value = newCountry;
+      
+      // Update billing state options
+      const billingProvinceField = this.billingFields.get('billing-province');
+      if (billingProvinceField instanceof HTMLSelectElement) {
+        await this.updateBillingStateOptions(newCountry, billingProvinceField);
+      }
+      
+      billingCountryField.dispatchEvent(new Event('change', { bubbles: true }));
+    }
   }
 
   private async updateStateOptions(country: string, provinceField: HTMLSelectElement): Promise<void> {
