@@ -7,8 +7,8 @@ import type { Campaign, Package } from '@/types/global';
 import { sessionStorageManager, CAMPAIGN_STORAGE_KEY } from '@/utils/storage';
 import { createLogger } from '@/utils/logger';
 
-// Cache expiry time: 5 minutes (300,000 milliseconds)
-const CACHE_EXPIRY_MS = 5 * 60 * 1000;
+// Cache expiry time: 10 minutes (600,000 milliseconds)
+const CACHE_EXPIRY_MS = 10 * 60 * 1000;
 
 const logger = createLogger('CampaignStore');
 
@@ -108,7 +108,7 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       };
       
       sessionStorageManager.set(cacheKey, cacheData);
-      logger.info(`💾 Campaign data cached for ${currency} (5 minutes)`);
+      logger.info(`💾 Campaign data cached for ${currency} (10 minutes)`);
 
       set({
         data: campaign,

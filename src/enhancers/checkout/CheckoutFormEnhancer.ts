@@ -3767,8 +3767,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       this.logger.info(`Auto-switching currency from ${currentCurrency} to ${newCurrency} for country ${countryCode}`);
       
-      // Clear the cache for the current currency
-      campaignStore.clearCache();
+      // Don't clear cache - the campaignStore already caches per currency
+      // and will reuse cached data if available for each currency
       
       // Update the selected currency
       configStore.updateConfig({

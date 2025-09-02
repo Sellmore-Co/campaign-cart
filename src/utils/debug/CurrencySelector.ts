@@ -374,9 +374,8 @@ export class CurrencySelector {
       // Store the old currency for event
       const oldCurrency = configStore.selectedCurrency || configStore.detectedCurrency || 'USD';
       
-      // Clear the cache for the CURRENT currency before switching
-      // This ensures we don't use stale data when switching back
-      campaignStore.clearCache();
+      // Don't clear cache - the campaignStore already caches per currency
+      // and will reuse cached data if available for each currency
       
       // Now update the selected currency in config
       configStore.updateConfig({

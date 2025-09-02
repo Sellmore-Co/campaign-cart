@@ -389,8 +389,8 @@ export class CountrySelector {
       if (countryConfig.currencyCode && countryConfig.currencyCode !== configStore.selectedCurrency) {
         this.logger.info(`Country currency is ${countryConfig.currencyCode}, updating...`);
         
-        // Clear campaign cache
-        campaignStore.clearCache();
+        // Don't clear cache - the campaignStore already caches per currency
+        // and will reuse cached data if available for each currency
         
         // Update selected currency
         configStore.updateConfig({
