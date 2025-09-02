@@ -167,7 +167,8 @@ export class CouponEnhancer extends BaseActionEnhancer {
       
       const discountEl = couponEl.querySelector('[pb-checkout="coupon-discount"]');
       if (discountEl) {
-        const { formatCurrency } = await import('@/utils/currencyFormatter');
+        // Import at the top of the file instead of dynamically here
+        const { formatCurrency } = require('@/utils/currencyFormatter');
         const formatted = formatCurrency(coupon.discount);
         discountEl.textContent = `-${formatted}`;
       }
