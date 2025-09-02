@@ -795,7 +795,8 @@ const cartStoreInstance = create<CartState & CartActions>()(
             };
           });
           
-          // Update state with new items
+          // Update state with new items and trigger single update
+          // Don't call calculateTotals separately as it will cause double update
           set(state => ({
             ...state,
             items: updatedItems
@@ -804,7 +805,10 @@ const cartStoreInstance = create<CartState & CartActions>()(
           logger.info('Cart item prices refreshed with new currency');
           
           // Recalculate totals with updated prices
-          await get().calculateTotals();
+          // Use setTimeout to ensure the state update completes first
+          setTimeout(() => {
+            get().calculateTotals();
+          }, 0);
           
         } catch (error) {
           logger.error('Failed to refresh item prices:', error);

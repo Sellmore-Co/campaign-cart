@@ -15,6 +15,8 @@ export class CurrencySelector {
   private logger = new Logger('CurrencySelector');
   private isChanging = false;
   private listenersAttached = false;
+  private renderDebounceTimer: NodeJS.Timeout | null = null;
+  private hasInitiallyRendered = false;
 
   public static getInstance(): CurrencySelector {
     if (!CurrencySelector.instance) {
@@ -41,9 +43,18 @@ export class CurrencySelector {
 
   private setupStoreSubscriptions(): void {
     // Subscribe to campaign store changes to re-render when campaign data loads
-    const unsubscribe = useCampaignStore.subscribe((state) => {
-      if (state.data) {
-        this.logger.debug('Campaign data changed, re-rendering currency selector');
+    const unsubscribe = useCampaignStore.subscribe((state, prevState) => {
+      // Skip if we're currently changing currency (to avoid re-render during our own change)
+      if (this.isChanging) {
+        return;
+      }
+      
+      // Only re-render if the currency actually changed or data was loaded for the first time
+      const currencyChanged = state.data?.currency !== prevState?.data?.currency;
+      const dataLoaded = !prevState?.data && state.data;
+      
+      if (currencyChanged || dataLoaded) {
+        this.logger.debug('Campaign currency changed or data loaded, re-rendering currency selector');
         this.render();
       }
     });
@@ -93,6 +104,17 @@ export class CurrencySelector {
   }
 
   private render(): void {
+    // Debounce renders to prevent excessive updates
+    if (this.renderDebounceTimer) {
+      clearTimeout(this.renderDebounceTimer);
+    }
+    
+    this.renderDebounceTimer = setTimeout(() => {
+      this.doRender();
+    }, 50);
+  }
+  
+  private doRender(): void {
     if (!this.shadowRoot) return;
 
     const configStore = useConfigStore.getState();
@@ -104,7 +126,7 @@ export class CurrencySelector {
     if (!campaignStore.data) {
       this.logger.debug('No campaign data available yet, skipping currency selector render');
       // Retry render after a delay
-      setTimeout(() => this.render(), 1000);
+      setTimeout(() => this.doRender(), 1000);
       return;
     }
     
@@ -137,7 +159,7 @@ export class CurrencySelector {
           align-items: center;
           gap: 8px;
           transition: all 0.3s ease;
-          animation: slideIn 0.3s ease;
+          ${!this.hasInitiallyRendered ? 'animation: slideIn 0.3s ease;' : ''}
         }
 
         @keyframes slideIn {
@@ -283,6 +305,11 @@ export class CurrencySelector {
         ` : ''}
       </div>
     `;
+    
+    // Mark as initially rendered to prevent animation on subsequent renders
+    if (!this.hasInitiallyRendered) {
+      this.hasInitiallyRendered = true;
+    }
   }
 
   private setupEventListeners(): void {
@@ -309,9 +336,18 @@ export class CurrencySelector {
     });
 
     // Listen for currency changes from other sources
-    document.addEventListener('next:currency-changed', () => {
-      this.logger.debug('External currency change detected, re-rendering selector');
-      this.render();
+    document.addEventListener('next:currency-changed', (e: CustomEvent) => {
+      // Skip if this change was initiated by this selector (to avoid self-triggering)
+      if ((e.detail as any)?.source === 'currency-selector') {
+        return;
+      }
+      
+      // Debounce re-renders to avoid loops
+      clearTimeout((this as any)._rerenderTimeout);
+      (this as any)._rerenderTimeout = setTimeout(() => {
+        this.logger.debug('External currency change detected, re-rendering selector');
+        this.render();
+      }, 100);
     });
     
     this.listenersAttached = true;
@@ -360,11 +396,12 @@ export class CurrencySelector {
       
       this.logger.info(`Currency changed successfully to ${newCurrency}`);
       
-      // Emit event for other components
+      // Emit event for other components (mark as from selector to avoid self-triggering)
       document.dispatchEvent(new CustomEvent('next:currency-changed', {
         detail: { 
           from: oldCurrency,
-          to: newCurrency 
+          to: newCurrency,
+          source: 'currency-selector'
         }
       }));
       
@@ -419,6 +456,12 @@ export class CurrencySelector {
     if ((this as any)._unsubscribeCampaign) {
       (this as any)._unsubscribeCampaign();
       (this as any)._unsubscribeCampaign = null;
+    }
+    if (this.renderDebounceTimer) {
+      clearTimeout(this.renderDebounceTimer);
+    }
+    if ((this as any)._rerenderTimeout) {
+      clearTimeout((this as any)._rerenderTimeout);
     }
     
     if (this.container) {

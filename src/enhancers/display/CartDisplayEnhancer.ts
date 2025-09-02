@@ -28,9 +28,12 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     
     // Also subscribe to campaign store for currency changes
-    this.subscribe(useCampaignStore, () => {
-      // When campaign store updates (e.g., currency change), update display
-      this.updateDisplay();
+    this.subscribe(useCampaignStore, (state, prevState) => {
+      // Only update if currency actually changed
+      if (state?.data?.currency !== prevState?.data?.currency) {
+        this.logger.debug('Currency changed, updating display for ' + this.property);
+        this.updateDisplay();
+      }
     });
     
     // Get initial cart state - this should now have rehydrated data
@@ -45,14 +48,20 @@ export class CartDisplayEnhancer extends BaseDisplayEnhancer {
   }
 
   private handleCartUpdate(cartState: CartState): void {
+    // Check if the relevant data actually changed
+    const prevState = this.cartState;
     this.cartState = cartState;
     
-    this.logger.debug('Cart updated', {
-      isEmpty: cartState.isEmpty,
-      itemCount: cartState.items.length,
-      total: cartState.total,
-      totalsFormatted: cartState.totals?.total?.formatted
-    });
+    // Only log significant cart changes and only for specific properties
+    const shouldLog = this.property === 'total' || this.property === 'itemCount';
+    if (shouldLog && (prevState?.total !== cartState.total || prevState?.items?.length !== cartState.items?.length)) {
+      this.logger.debug('Cart updated', {
+        isEmpty: cartState.isEmpty,
+        itemCount: cartState.items.length,
+        total: cartState.total,
+        totalsFormatted: cartState.totals?.total?.formatted
+      });
+    }
     
     // Add/remove empty state classes
     this.toggleClass('next-cart-empty', cartState.isEmpty);
