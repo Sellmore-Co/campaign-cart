@@ -5,6 +5,7 @@
 
 import { currencySelector } from './CurrencySelector';
 import { countrySelector } from './CountrySelector';
+import { localeSelector } from './LocaleSelector';
 
 export class SelectorContainer {
   private static instance: SelectorContainer;
@@ -27,9 +28,10 @@ export class SelectorContainer {
     // Create the container
     this.createContainer();
     
-    // Initialize both selectors
+    // Initialize all selectors
     currencySelector.initialize();
     countrySelector.initialize();
+    localeSelector.initialize();
     
     // Move selectors into container
     this.moveSelectorsToContainer();
@@ -64,6 +66,7 @@ export class SelectorContainer {
     setTimeout(() => {
       const currencySel = document.getElementById('debug-currency-selector');
       const countrySel = document.getElementById('debug-country-selector');
+      const localeSel = document.getElementById('debug-locale-selector');
       
       if (currencySel) {
         currencySel.style.position = 'relative';
@@ -79,6 +82,14 @@ export class SelectorContainer {
         countrySel.style.left = 'auto';
         countrySel.style.transform = 'none';
         this.container!.appendChild(countrySel);
+      }
+      
+      if (localeSel) {
+        localeSel.style.position = 'relative';
+        localeSel.style.bottom = 'auto';
+        localeSel.style.left = 'auto';
+        localeSel.style.transform = 'none';
+        this.container!.appendChild(localeSel);
       }
     }, 100);
   }

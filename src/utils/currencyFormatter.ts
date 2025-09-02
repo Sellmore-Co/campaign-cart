@@ -27,9 +27,16 @@ export class CurrencyFormatter {
   }
 
   /**
-   * Get the user's locale from browser
+   * Get the user's locale (checking for override first)
    */
   private static getUserLocale(): string {
+    // Check for user-selected locale in session storage
+    const selectedLocale = sessionStorage.getItem('next_selected_locale');
+    if (selectedLocale) {
+      return selectedLocale;
+    }
+    
+    // Fallback to browser locale
     return navigator.language || 'en-US';
   }
 
