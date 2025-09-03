@@ -88,7 +88,34 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       const { ApiClient } = await import('@/api/client');
       const client = new ApiClient(apiKey);
       
-      const campaign = await client.getCampaigns(currency);
+      let campaign;
+      let actualCurrency = currency;
+      
+      try {
+        campaign = await client.getCampaigns(currency);
+      } catch (currencyError) {
+        // If the specific currency fails (CORS, 400, etc), fallback to USD
+        if (currency !== 'USD') {
+          logger.warn(`Failed to fetch campaign for ${currency}, falling back to USD:`, currencyError);
+          
+          // Update the currency in config store to USD
+          const { useConfigStore } = await import('./configStore');
+          const configStore = useConfigStore.getState();
+          configStore.updateConfig({ selectedCurrency: 'USD' });
+          
+          // Try with USD
+          actualCurrency = 'USD';
+          campaign = await client.getCampaigns('USD');
+          
+          // Clear the session storage for the failed currency
+          sessionStorage.removeItem('next_selected_currency');
+          
+          logger.info('✅ Successfully fetched campaign data with USD fallback');
+        } else {
+          // If even USD fails, re-throw the error
+          throw currencyError;
+        }
+      }
       
       if (!campaign) {
         throw new Error('Campaign data not found');
@@ -100,15 +127,16 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
         logger.info('💳 Spreedly environment key updated from campaign API: ' + campaign.payment_env_key);
       }
       
-      // Cache the fresh data with currency-specific key
+      // Cache the fresh data with the actual currency that was fetched
+      const actualCacheKey = actualCurrency !== currency ? `${CAMPAIGN_STORAGE_KEY}_${actualCurrency}` : cacheKey;
       const cacheData: CachedCampaignData = {
         campaign,
         timestamp: now,
         apiKey
       };
       
-      sessionStorageManager.set(cacheKey, cacheData);
-      logger.info(`💾 Campaign data cached for ${currency} (10 minutes)`);
+      sessionStorageManager.set(actualCacheKey, cacheData);
+      logger.info(`💾 Campaign data cached for ${actualCurrency} (10 minutes)`);
 
       set({
         data: campaign,
