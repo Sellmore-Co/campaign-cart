@@ -19,6 +19,8 @@ export class LocaleSelector {
   private locales = [
     { code: 'en-US', name: 'English (US)', flag: '🇺🇸' },
     { code: 'en-GB', name: 'English (UK)', flag: '🇬🇧' },
+    { code: 'en-CA', name: 'English (CA)', flag: '🇨🇦' },
+    { code: 'en-AU', name: 'English (AU)', flag: '🇦🇺' },
     { code: 'pt-BR', name: 'Português (BR)', flag: '🇧🇷' },
     { code: 'es-ES', name: 'Español (ES)', flag: '🇪🇸' },
     { code: 'es-MX', name: 'Español (MX)', flag: '🇲🇽' },
