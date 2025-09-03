@@ -8,8 +8,6 @@ import { AttributeParser } from '../base/AttributeParser';
 import { FormatType, getPropertyConfig, type DisplayValue } from './DisplayEnhancerTypes';
 import { DisplayValueValidator } from '@/utils/validation/DisplayValueValidator';
 import { DisplayErrorBoundary } from './DisplayErrorBoundary';
-import { useCampaignStore } from '@/stores/campaignStore';
-import { useConfigStore } from '@/stores/configStore';
 import { formatCurrency as formatCurrencyUtil, formatNumber as formatNumberUtil, CurrencyFormatter } from '@/utils/currencyFormatter';
 
 // =====================
@@ -63,7 +61,7 @@ export class DisplayFormatter {
 
   static formatCurrency(value: any, hideZeroCents?: boolean): string {
     const numValue = DisplayValueValidator.validateCurrency(value);
-    return formatCurrencyUtil(numValue, undefined, { hideZeroCents });
+    return formatCurrencyUtil(numValue, undefined, hideZeroCents !== undefined ? { hideZeroCents } : {});
   }
 
   static formatNumber(value: any): string {

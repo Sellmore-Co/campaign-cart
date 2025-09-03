@@ -12,5 +12,6 @@ export declare class OrderPanel implements DebugPanel {
     private getEmptyState;
     getActions(): PanelAction[];
     private exportOrder;
+    private getCurrencySymbol;
 }
 //# sourceMappingURL=OrderPanel.d.ts.map

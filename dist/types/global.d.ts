@@ -363,6 +363,10 @@ export interface Campaign {
     packages: Package[];
     payment_env_key: string;
     shipping_methods: ShippingOption[];
+    available_currencies?: Array<{
+        code: string;
+        label: string;
+    }>;
 }
 export interface Package {
     ref_id: number;
@@ -410,6 +414,11 @@ export interface ConfigState {
     paymentConfig: PaymentConfig;
     googleMapsConfig: GoogleMapsConfig;
     addressConfig: AddressConfig;
+    detectedCountry?: string;
+    detectedCurrency?: string;
+    selectedCurrency?: string;
+    locationData?: any;
+    currencyBehavior?: 'auto' | 'manual';
     autoInit: boolean | undefined;
     rateLimit: number | undefined;
     cacheTtl: number | undefined;

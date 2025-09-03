@@ -355,7 +355,6 @@ export class LocaleSelector {
       
       // Import and refresh display enhancers
       const { useCartStore } = await import('@/stores/cartStore');
-      const { useCampaignStore } = await import('@/stores/campaignStore');
       
       // Trigger cart recalculation to update formatted values
       const cartStore = useCartStore.getState();

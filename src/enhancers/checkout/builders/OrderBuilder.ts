@@ -206,10 +206,13 @@ export class OrderBuilder {
     }
     
     // Fall back to first available method from campaign
-    if (campaignStore.data?.shipping_methods?.length > 0) {
-      const firstMethodId = campaignStore.data.shipping_methods[0].ref_id;
-      console.log('[OrderBuilder] Using first available shipping method:', firstMethodId);
-      return firstMethodId;
+    if (campaignStore.data?.shipping_methods && campaignStore.data.shipping_methods.length > 0) {
+      const firstMethod = campaignStore.data.shipping_methods[0];
+      if (firstMethod) {
+        const firstMethodId = firstMethod.ref_id;
+        console.log('[OrderBuilder] Using first available shipping method:', firstMethodId);
+        return firstMethodId;
+      }
     }
     
     // Last resort fallback

@@ -10,7 +10,6 @@ import { localeSelector } from './LocaleSelector';
 export class SelectorContainer {
   private static instance: SelectorContainer;
   private container: HTMLDivElement | null = null;
-  private isExpanded = false;
   
   public static getInstance(): SelectorContainer {
     if (!SelectorContainer.instance) {
@@ -130,15 +129,13 @@ export class SelectorContainer {
     setTimeout(checkForOverlay, 500);
     
     // Also listen for custom events
-    document.addEventListener('debug:panel-toggled', (e: CustomEvent) => {
+    document.addEventListener('debug:panel-toggled', ((e: CustomEvent) => {
       this.updatePosition(e.detail?.isExpanded || false);
-    });
+    }) as EventListener);
   }
   
   private updatePosition(isExpanded: boolean): void {
     if (!this.container) return;
-    
-    this.isExpanded = isExpanded;
     
     if (isExpanded) {
       // Move up when panel is expanded (40vh min-height: 450px)

@@ -7,6 +7,10 @@ export interface Campaign {
     shipping_methods: ShippingOption[];
     available_express_payment_methods?: PaymentMethodOption[];
     available_payment_methods?: PaymentMethodOption[];
+    available_currencies?: Array<{
+        code: string;
+        label: string;
+    }>;
 }
 export interface PackageSerializer {
     ref_id: number;
@@ -160,6 +164,7 @@ export type PaymentMethod = 'apple_pay' | 'card_token' | 'paypal' | 'klarna' | '
 export interface CartBase {
     address?: AddressCart;
     attribution?: Attribution;
+    currency?: string;
     lines: LineWithUpsell[];
     user: UserCreateCart;
     vouchers?: string[];
@@ -211,6 +216,7 @@ export interface CreateOrder {
     attribution?: Attribution;
     billing_address?: Address;
     billing_same_as_shipping_address?: boolean;
+    currency?: string;
     lines: LineWithUpsell[];
     payment_detail: Payment;
     payment_failed_url?: string;
@@ -247,6 +253,7 @@ export interface Payment {
 export interface AddUpsellLine {
     lines: UpsellLineItem[];
     payment_detail?: PaymentDetail;
+    currency?: string;
 }
 export interface UpsellLineItem {
     package_id: number;

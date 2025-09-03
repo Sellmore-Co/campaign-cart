@@ -788,11 +788,16 @@ const cartStoreInstance = create<CartState & CartActions>()(
           }
           
           // Update state with new items and shipping method
-          set(state => ({
-            ...state,
-            items: updatedItems,
-            shippingMethod: updatedShippingMethod
-          }));
+          set(state => {
+            const updates: any = {
+              ...state,
+              items: updatedItems
+            };
+            if (updatedShippingMethod !== undefined) {
+              updates.shippingMethod = updatedShippingMethod;
+            }
+            return updates;
+          });
           
           logger.info('Cart item prices and shipping refreshed with new currency');
           

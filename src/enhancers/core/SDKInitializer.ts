@@ -17,7 +17,7 @@ import { testModeManager } from '@/utils/testMode';
 import { EventBus } from '@/utils/events';
 import { ApiClient } from '@/api/client';
 import { CART_STORAGE_KEY } from '@/utils/storage';
-import { CountryService } from '@/utils/countryService';
+import { CountryService, Country, LocationData } from '@/utils/countryService';
 
 export class SDKInitializer {
   private static logger = createLogger('SDKInitializer');
@@ -112,7 +112,7 @@ export class SDKInitializer {
       // Priority: URL param > saved preference > auto-detection
       const forcedCountry = countryOverride || savedCountry;
       
-      let locationData;
+      let locationData: LocationData | null = null;
       
       if (forcedCountry) {
         // Use forced country instead of detection
@@ -137,9 +137,7 @@ export class SDKInitializer {
                 postcodeMaxLength: 20
               },
               detectedStates: data.states || [],
-              detectedStateCode: '',
-              detectedCity: '',
-              countries: []
+              countries: [] as Country[]
             };
             
             // Save to session if from URL
@@ -148,8 +146,8 @@ export class SDKInitializer {
             }
             
             this.logger.info('Country config loaded:', {
-              country: locationData.detectedCountryCode,
-              currency: locationData.detectedCountryConfig.currencyCode
+              country: locationData?.detectedCountryCode,
+              currency: locationData?.detectedCountryConfig.currencyCode
             });
           } else {
             this.logger.warn(`Failed to fetch country config for ${forcedCountry}, falling back to detection`);
@@ -191,7 +189,7 @@ export class SDKInitializer {
               currencySymbol: '$'
             },
             detectedStates: [],
-            countries: []
+            countries: [] as Country[]
           };
         }
       } else if (locationData && !locationData.countries?.length) {

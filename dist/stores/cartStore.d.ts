@@ -14,6 +14,7 @@ interface CartActions {
     calculateShipping: () => number;
     calculateTax: () => number;
     calculateEnrichedItems: () => Promise<void>;
+    refreshItemPrices: () => Promise<void>;
     setShippingMethod: (methodId: number) => Promise<void>;
     hasItem: (packageId: number) => boolean;
     getItem: (packageId: number) => CartItem | undefined;

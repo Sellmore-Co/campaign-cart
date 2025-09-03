@@ -63,7 +63,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private countryService!: CountryService;
   private creditCardService?: CreditCardService;
   private validator!: CheckoutValidator;
-  private loadingStatesFor: string | null = null;
   private stateLoadingPromises: Map<string, Promise<any>> = new Map();
   private ui!: UIService;
   private prospectCartEnhancer?: ProspectCartEnhancer;
@@ -3981,14 +3980,16 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         } else {
           // Fallback to first available from campaign
           const campaignStore = useCampaignStore.getState();
-          if (campaignStore.data?.shipping_methods?.length > 0) {
+          if (campaignStore.data?.shipping_methods && campaignStore.data.shipping_methods.length > 0) {
             const firstMethod = campaignStore.data.shipping_methods[0];
-            checkoutStore.setShippingMethod({
-              id: firstMethod.ref_id,
-              name: firstMethod.code,
-              price: parseFloat(firstMethod.price || '0'),
-              code: firstMethod.code
-            });
+            if (firstMethod) {
+              checkoutStore.setShippingMethod({
+                id: firstMethod.ref_id,
+                name: firstMethod.code,
+                price: parseFloat(firstMethod.price || '0'),
+                code: firstMethod.code
+              });
+            }
           } else {
             // Last resort fallback
             checkoutStore.setShippingMethod({

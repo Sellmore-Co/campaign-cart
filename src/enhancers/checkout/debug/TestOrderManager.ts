@@ -118,14 +118,16 @@ export class TestOrderManager {
       let shippingMethod = cartStore.shippingMethod || checkoutStore.shippingMethod;
       
       // If no shipping method is selected, use the first available one from campaign
-      if (!shippingMethod && campaignStore.data?.shipping_methods?.length > 0) {
+      if (!shippingMethod && campaignStore.data?.shipping_methods && campaignStore.data.shipping_methods.length > 0) {
         const firstMethod = campaignStore.data.shipping_methods[0];
-        shippingMethod = {
-          id: firstMethod.ref_id,
-          name: firstMethod.code,
-          price: parseFloat(firstMethod.price || '0'),
-          code: firstMethod.code
-        };
+        if (firstMethod) {
+          shippingMethod = {
+            id: firstMethod.ref_id,
+            name: firstMethod.code,
+            price: parseFloat(firstMethod.price || '0'),
+            code: firstMethod.code
+          };
+        }
         this.logger.debug('No shipping method selected, using first available:', shippingMethod);
       }
       

@@ -18,6 +18,7 @@ export declare class AcceptUpsellEnhancer extends BaseActionEnhancer {
     private updateButtonState;
     private setEnabled;
     private handleClick;
+    private getCurrency;
     private acceptUpsell;
     private checkIfUpsellAlreadyAccepted;
     private showDuplicateUpsellDialog;

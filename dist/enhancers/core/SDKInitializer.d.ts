@@ -6,6 +6,7 @@ export declare class SDKInitializer {
     private static retryAttempts;
     private static maxRetries;
     static initialize(): Promise<void>;
+    private static initializeLocationAndCurrency;
     private static loadConfiguration;
     private static loadCampaignData;
     private static processForcePackageId;

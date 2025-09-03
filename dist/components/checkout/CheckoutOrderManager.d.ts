@@ -9,6 +9,7 @@ export declare class CheckoutOrderManager {
     createOrder(): Promise<any>;
     createExpressOrder(paymentMethod: 'paypal' | 'apple_pay' | 'google_pay'): Promise<any>;
     private mapPaymentMethod;
+    private getCurrency;
     private getUrlParam;
     destroy(): void;
 }
