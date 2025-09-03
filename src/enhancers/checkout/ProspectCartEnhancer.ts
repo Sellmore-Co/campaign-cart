@@ -8,7 +8,7 @@ import { useCartStore } from '@/stores/cartStore';
 import { useConfigStore } from '@/stores/configStore';
 import { useAttributionStore } from '@/stores/attributionStore';
 import { ApiClient } from '@/api/client';
-import type { CartBase, UserCreateCart, AddressCart } from '@/types/api';
+import type { CartBase, UserCreateCart } from '@/types/api';
 import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
 
 export interface ProspectCartConfig {
