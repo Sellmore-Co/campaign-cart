@@ -27,12 +27,12 @@ export class AttributionCollector {
       utm_content: this.getStoredValue('utm_content') || '',
       utm_term: this.getStoredValue('utm_term') || '',
       
-      // Subaffiliates
-      subaffiliate1: this.getStoredValue('subaffiliate1') || this.getStoredValue('sub1') || '',
-      subaffiliate2: this.getStoredValue('subaffiliate2') || this.getStoredValue('sub2') || '',
-      subaffiliate3: this.getStoredValue('subaffiliate3') || this.getStoredValue('sub3') || '',
-      subaffiliate4: this.getStoredValue('subaffiliate4') || this.getStoredValue('sub4') || '',
-      subaffiliate5: this.getStoredValue('subaffiliate5') || this.getStoredValue('sub5') || '',
+      // Subaffiliates - limited to 225 characters to prevent API errors
+      subaffiliate1: this.limitSubaffiliateLength(this.getStoredValue('subaffiliate1') || this.getStoredValue('sub1')),
+      subaffiliate2: this.limitSubaffiliateLength(this.getStoredValue('subaffiliate2') || this.getStoredValue('sub2')),
+      subaffiliate3: this.limitSubaffiliateLength(this.getStoredValue('subaffiliate3') || this.getStoredValue('sub3')),
+      subaffiliate4: this.limitSubaffiliateLength(this.getStoredValue('subaffiliate4') || this.getStoredValue('sub4')),
+      subaffiliate5: this.limitSubaffiliateLength(this.getStoredValue('subaffiliate5') || this.getStoredValue('sub5')),
       
       // Metadata
       metadata,
@@ -80,6 +80,22 @@ export class AttributionCollector {
     this.collectTrackingTags(metadata);
     
     return metadata;
+  }
+  
+  /**
+   * Limit subaffiliate value to 225 characters to prevent API errors
+   */
+  private limitSubaffiliateLength(value: string): string {
+    if (!value) {
+      return '';
+    }
+    
+    if (value.length > 225) {
+      logger.warn(`Subaffiliate value truncated from ${value.length} to 225 characters`);
+      return value.substring(0, 225);
+    }
+    
+    return value;
   }
   
   /**
