@@ -992,11 +992,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const countryConfig = this.countryService.getConfig();
       console.log('%c[CheckoutForm] Shipping Country Priority Check', 'color: #FF6B6B; font-weight: bold', {
         detectedCountry: locationData.detectedCountryCode,
+        detectedCurrency: locationData.detectedCountryConfig.currencyCode,
         addressConfigDefault: countryConfig?.defaultCountry,
         urlParam: new URLSearchParams(window.location.search).get('country'),
         sessionOverride: sessionStorage.getItem('next_selected_country'),
         availableCountries: this.countries.map(c => c.code),
-        note: 'This only affects shipping country, NOT currency'
+        note: 'Shipping country may differ from detected location. Currency is based on detected location only.'
       });
       
       this.logger.info('Shipping country selection priority check (does not affect currency):', {

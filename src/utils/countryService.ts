@@ -370,6 +370,11 @@ export class CountryService {
       );
     }
     
+    // IMPORTANT: Preserve the original detected country config for currency purposes
+    // Even if the country is not in the allowed shipping list, we want to keep
+    // the detected currency (e.g., show CAD for Canadian users even if only shipping to US)
+    const originalDetectedCountryConfig = data.detectedCountryConfig;
+    
     // Use detected country or fall back to default if detection failed
     let detectedCountryCode = data.detectedCountryCode;
     let detectedCountryConfig = data.detectedCountryConfig;
@@ -379,26 +384,25 @@ export class CountryService {
       country.code === detectedCountryCode
     );
     
-    // Only use defaultCountry as a fallback when:
+    // Only change the country code for shipping purposes when:
     // 1. No country was detected, OR
-    // 2. The detected country is not in the allowed list
+    // 2. The detected country is not in the allowed shipping list
     if ((!detectedCountryCode || !detectedCountryAllowed) && this.config.defaultCountry) {
       const defaultCountryExists = filteredCountries.some(country => 
         country.code === this.config.defaultCountry
       );
       
       if (defaultCountryExists) {
-        this.logger.info(`Using default country ${this.config.defaultCountry} as fallback (detected: ${detectedCountryCode}, allowed: ${detectedCountryAllowed})`);
+        this.logger.info(`Using default country ${this.config.defaultCountry} for shipping (detected: ${detectedCountryCode}, allowed: ${detectedCountryAllowed})`);
+        this.logger.info(`Preserving detected currency: ${originalDetectedCountryConfig.currencyCode} from detected location: ${data.detectedCountryCode}`);
+        
+        // Only change the country code for shipping dropdown default
+        // Keep the original detected country config for currency
         detectedCountryCode = this.config.defaultCountry;
         
-        // Fetch the correct country config for the default country
-        try {
-          const defaultCountryData = await this.getCountryStates(this.config.defaultCountry);
-          detectedCountryConfig = defaultCountryData.countryConfig;
-        } catch (error) {
-          this.logger.warn(`Failed to fetch config for default country ${this.config.defaultCountry}, using fallback:`, error);
-          detectedCountryConfig = this.getDefaultCountryConfig(this.config.defaultCountry);
-        }
+        // KEEP the original detected currency config, don't replace it
+        // This ensures Canadian users see CAD even if only US shipping is allowed
+        detectedCountryConfig = originalDetectedCountryConfig;
       }
     } else if (detectedCountryCode && detectedCountryAllowed) {
       this.logger.info(`Using detected country: ${detectedCountryCode}`);
@@ -408,7 +412,7 @@ export class CountryService {
       ...data,
       countries: filteredCountries,
       detectedCountryCode,
-      detectedCountryConfig
+      detectedCountryConfig  // This will be the original detected config for currency
     };
   }
 
