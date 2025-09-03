@@ -110,9 +110,6 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private handleBillingAddressToggle;
     private setupAutofillDetection;
     private setupEventHandlers;
-    private lastCurrencyChangeCountry;
-    private lastCurrencyChangeTime;
-    private handleCountryCurrencyChange;
     private updateFormData;
     private clearError;
     private populateFormData;

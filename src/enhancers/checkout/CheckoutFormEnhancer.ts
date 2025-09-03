@@ -134,6 +134,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Initialize loading overlay
     this.loadingOverlay = new LoadingOverlay();
     
+    // NOTE: Currency is initialized separately based on:
+    // 1. URL parameter (?currency=XXX) - highest priority
+    // 2. Session storage (previous selection) - medium priority  
+    // 3. Detected location - lowest priority
+    // Currency does NOT change when shipping/billing country changes
+    
     // Initialize core dependencies
     const config = useConfigStore.getState();
     this.apiClient = new ApiClient(config.apiKey);
@@ -978,27 +984,29 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       const locationData = await this.countryService.getLocationData();
       this.countries = locationData.countries;
       
-      // Check for country override from URL or sessionStorage (same priority as SDKInitializer)
+      // Check for shipping country override from URL or sessionStorage
+      // NOTE: This only affects the shipping country dropdown, NOT currency
       let selectedCountryCode = locationData.detectedCountryCode;
       
       // Use console.log to ensure visibility
       const countryConfig = this.countryService.getConfig();
-      console.log('%c[CheckoutForm] Country Priority Check', 'color: #FF6B6B; font-weight: bold', {
+      console.log('%c[CheckoutForm] Shipping Country Priority Check', 'color: #FF6B6B; font-weight: bold', {
         detectedCountry: locationData.detectedCountryCode,
         addressConfigDefault: countryConfig?.defaultCountry,
         urlParam: new URLSearchParams(window.location.search).get('country'),
         sessionOverride: sessionStorage.getItem('next_selected_country'),
-        availableCountries: this.countries.map(c => c.code)
+        availableCountries: this.countries.map(c => c.code),
+        note: 'This only affects shipping country, NOT currency'
       });
       
-      this.logger.info('Country selection priority check:', {
+      this.logger.info('Shipping country selection priority check (does not affect currency):', {
         detectedCountry: locationData.detectedCountryCode,
         addressConfigDefault: countryConfig?.defaultCountry,
         urlParam: new URLSearchParams(window.location.search).get('country'),
         sessionOverride: sessionStorage.getItem('next_selected_country')
       });
       
-      // Priority 1: URL parameter
+      // Priority 1: URL parameter (?country=XX for shipping destination)
       const urlParams = new URLSearchParams(window.location.search);
       const urlCountry = urlParams.get('country');
       if (urlCountry) {
@@ -1009,7 +1017,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           selectedCountryCode = countryCode;
           // Save to sessionStorage for persistence
           sessionStorage.setItem('next_selected_country', countryCode);
-          this.logger.info(`✅ Using country from URL parameter: ${countryCode}`);
+          this.logger.info(`✅ Using shipping country from URL parameter: ${countryCode} (currency unaffected)`);
         } else {
           this.logger.warn(`Country ${countryCode} from URL not in available countries`);
         }
@@ -1021,12 +1029,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           const countryExists = this.countries.some(c => c.code === savedCountryOverride);
           if (countryExists) {
             selectedCountryCode = savedCountryOverride;
-            this.logger.info(`✅ Using country from session storage: ${savedCountryOverride}`);
+            this.logger.info(`✅ Using shipping country from session storage: ${savedCountryOverride} (currency unaffected)`);
           } else {
             this.logger.warn(`Saved country ${savedCountryOverride} not in available countries`);
           }
         } else {
-          this.logger.info(`✅ Using detected/default country: ${selectedCountryCode}`);
+          this.logger.info(`✅ Using detected/default shipping country: ${selectedCountryCode} (currency unaffected)`);
         }
       }
       
@@ -1144,16 +1152,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         await this.updateStateOptions(newCountry, provinceField);
       }
       
-      // Mark this as an external change to prevent duplicate currency switching
-      (countryField as any)._externalChange = true;
-      
       // Trigger change event to update any dependent fields
       countryField.dispatchEvent(new Event('change', { bubbles: true }));
-      
-      // Clear the flag after a short delay
-      setTimeout(() => {
-        delete (countryField as any)._externalChange;
-      }, 100);
       
       this.logger.info(`Country field updated to: ${newCountry}`);
     }
@@ -1172,12 +1172,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         await this.updateBillingStateOptions(newCountry, billingProvinceField, shippingProvince);
       }
       
-      // Mark as external to prevent duplicate currency switching
-      (billingCountryField as any)._externalChange = true;
       billingCountryField.dispatchEvent(new Event('change', { bubbles: true }));
-      setTimeout(() => {
-        delete (billingCountryField as any)._externalChange;
-      }, 100);
     }
   }
 
@@ -3152,16 +3147,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       this.handleBillingFieldChange(fieldName, target.value, checkoutStore);
       
       if (fieldName === 'billing-country') {
-        // Skip state loading if this is an external change (already handled)
-        if (!(target as any)._externalChange) {
-          const billingProvinceField = this.billingFields.get('billing-province');
-          if (billingProvinceField instanceof HTMLSelectElement) {
-            await this.updateBillingStateOptions(target.value, billingProvinceField, checkoutStore.formData.province);
-          }
-          
-          // NEVER auto-switch currency for billing country - only shipping country affects currency
-          // Currency is based on where we're shipping to, not billing address
+        const billingProvinceField = this.billingFields.get('billing-province');
+        if (billingProvinceField instanceof HTMLSelectElement) {
+          await this.updateBillingStateOptions(target.value, billingProvinceField, checkoutStore.formData.province);
         }
+        // Currency is location-based only, not affected by billing or shipping country
       }
     } else {
       this.updateFormData({ [fieldName]: target.value });
@@ -3193,8 +3183,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         sessionStorage.setItem('next_selected_country', target.value);
         this.logger.debug(`Saved user's country selection to session: ${target.value}`);
         
-        // Auto-switch currency based on country if available
-        await this.handleCountryCurrencyChange(target.value, target);
+        // Currency is now based on user's location, not shipping country
+        // Currency can only be changed via URL parameter or manual selection
       }
       
       // Show location fields when address1 is populated
@@ -3805,106 +3795,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   // CURRENCY MANAGEMENT
   // ============================================================================
 
-  private lastCurrencyChangeCountry: string | null = null;
-  private lastCurrencyChangeTime: number = 0;
-
-  private async handleCountryCurrencyChange(countryCode: string, field?: HTMLElement): Promise<void> {
-    // Skip if this change came from an external source (like CountrySelector)
-    if (field && (field as any)._externalChange) {
-      this.logger.debug('Skipping currency auto-switch for external country change');
-      return;
-    }
-    
-    // Deduplicate rapid duplicate calls for the same country
-    const now = Date.now();
-    if (this.lastCurrencyChangeCountry === countryCode && 
-        (now - this.lastCurrencyChangeTime) < 500) {
-      this.logger.debug(`Skipping duplicate currency change for ${countryCode} (within 500ms)`);
-      return;
-    }
-    
-    this.lastCurrencyChangeCountry = countryCode;
-    this.lastCurrencyChangeTime = now;
-    
-    try {
-      const configStore = useConfigStore.getState();
-      
-      // Check if currency behavior is set to manual - if so, don't auto-change
-      if (configStore.currencyBehavior === 'manual') {
-        this.logger.debug('Currency behavior is set to manual - not auto-switching currency');
-        return;
-      }
-      
-      // Get the country's currency from the countries list
-      const country = this.countries.find(c => c.code === countryCode);
-      if (!country || !country.currencyCode) {
-        this.logger.debug(`No currency found for country ${countryCode}`);
-        return;
-      }
-      
-      const newCurrency = country.currencyCode;
-      const campaignStore = useCampaignStore.getState();
-      const cartStore = useCartStore.getState();
-      
-      // Check if this currency is available in the campaign
-      const availableCurrencies = campaignStore.data?.available_currencies || [];
-      const currencyAvailable = availableCurrencies.some((c: any) => c.code === newCurrency);
-      
-      if (!currencyAvailable) {
-        this.logger.debug(`Currency ${newCurrency} not available in campaign for country ${countryCode}`);
-        return;
-      }
-      
-      // Check if currency is already set to this
-      const currentCurrency = campaignStore.data?.currency || configStore.selectedCurrency || 'USD';
-      if (currentCurrency === newCurrency) {
-        this.logger.debug(`Currency already set to ${newCurrency}`);
-        return;
-      }
-      
-      this.logger.info(`Auto-switching currency from ${currentCurrency} to ${newCurrency} for country ${countryCode}`);
-      
-      // Don't clear cache - the campaignStore already caches per currency
-      // and will reuse cached data if available for each currency
-      
-      // Update the selected currency
-      configStore.updateConfig({
-        selectedCurrency: newCurrency
-      });
-      
-      // Save to sessionStorage for persistence
-      sessionStorage.setItem('next_selected_currency', newCurrency);
-      
-      // Reload campaign data with new currency
-      await campaignStore.loadCampaign(configStore.apiKey);
-      
-      // Refresh cart item prices with new campaign data
-      await cartStore.refreshItemPrices();
-      
-      // Clear currency formatter cache to ensure new currency symbol is used
-      const { CurrencyFormatter } = await import('@/utils/currencyFormatter');
-      CurrencyFormatter.clearCache();
-      
-      this.logger.info(`Currency auto-switched to ${newCurrency} for country ${countryCode}`);
-      
-      // Emit event for other components
-      document.dispatchEvent(new CustomEvent('next:currency-changed', {
-        detail: { 
-          from: currentCurrency,
-          to: newCurrency,
-          trigger: 'country-change',
-          country: countryCode,
-          source: 'checkout-form'
-        }
-      }));
-      
-      // Update debug currency selector if present
-      document.dispatchEvent(new CustomEvent('debug:update-content'));
-      
-    } catch (error) {
-      this.logger.error('Failed to auto-switch currency:', error);
-    }
-  }
+  // Currency handling has been moved to initialization only
+  // Currency is now based on user's detected location and URL parameters
+  // Shipping country changes no longer affect currency
 
   // ============================================================================
   // UTILITY METHODS
