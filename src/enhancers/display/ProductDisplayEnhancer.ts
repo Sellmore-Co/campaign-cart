@@ -35,6 +35,7 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     
     this.setupStoreSubscriptions();
     this.setupQuantityListeners();
+    this.setupCurrencyChangeListener();
     await this.performInitialUpdate();
     this.logger.debug(`ProductDisplayEnhancer initialized with package ${this.packageId}, path: ${this.displayPath}, format: ${this.formatType}, multiplyByQuantity: ${this.multiplyByQuantity}`);
   }
@@ -62,6 +63,25 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
   private handleCartUpdate(): void {
     // Update display when cart changes (discount codes might affect package price)
     this.updateDisplay();
+  }
+  
+  protected override setupCurrencyChangeListener(): void {
+    // Call base implementation first
+    super.setupCurrencyChangeListener();
+    
+    // Add our specific handling for package data refresh
+    document.addEventListener('next:currency-changed', async () => {
+      this.logger.debug('Currency changed, reloading package data');
+      
+      // Get fresh campaign state
+      this.campaignState = useCampaignStore.getState();
+      
+      // Reload package data with new currency
+      this.loadPackageData();
+      
+      // Force a complete re-render
+      await this.updateDisplay();
+    });
   }
   
   private setupQuantityListeners(): void {
@@ -158,9 +178,14 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
   private loadPackageData(): void {
     if (!this.packageId || !this.campaignState) return;
     
-    this.packageData = this.campaignState.packages?.find((pkg: Package) => pkg.ref_id === this.packageId);
+    // Get packages from the correct location in campaign state
+    const packages = this.campaignState.data?.packages || this.campaignState.packages;
+    this.packageData = packages?.find((pkg: Package) => pkg.ref_id === this.packageId);
+    
     if (!this.packageData) {
       this.logger.warn(`Package ${this.packageId} not found in campaign data`);
+    } else {
+      this.logger.debug(`Package ${this.packageId} loaded with price: ${this.packageData.price} ${this.campaignState.data?.currency || ''}`);
     }
   }
 

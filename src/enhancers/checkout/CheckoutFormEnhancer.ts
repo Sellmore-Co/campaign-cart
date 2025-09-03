@@ -3881,6 +3881,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Refresh cart item prices with new campaign data
       await cartStore.refreshItemPrices();
       
+      // Clear currency formatter cache to ensure new currency symbol is used
+      const { CurrencyFormatter } = await import('@/utils/currencyFormatter');
+      CurrencyFormatter.clearCache();
+      
       this.logger.info(`Currency auto-switched to ${newCurrency} for country ${countryCode}`);
       
       // Emit event for other components
