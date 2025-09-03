@@ -2,6 +2,7 @@ import { AttributionState } from '../../stores/attributionStore';
 export declare class AttributionCollector {
     collect(): Promise<AttributionState>;
     private collectMetadata;
+    private limitSubaffiliateLength;
     private getStoredValue;
     private getCookie;
     private getDeviceType;
