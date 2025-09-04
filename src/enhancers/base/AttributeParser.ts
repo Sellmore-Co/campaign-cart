@@ -148,9 +148,13 @@ export class AttributeParser {
 
     // Check for selector enhancer
     // Only treat as selector if it's the container, not action buttons that reference selectors
+    // Also exclude upsell selectors which are handled by UpsellEnhancer
     if (element.hasAttribute('data-next-selector') || 
         element.hasAttribute('data-next-cart-selector') ||
-        (element.hasAttribute('data-next-selector-id') && !element.hasAttribute('data-next-action'))) {
+        (element.hasAttribute('data-next-selector-id') && 
+         !element.hasAttribute('data-next-action') &&
+         !element.hasAttribute('data-next-upsell') &&
+         !element.hasAttribute('data-next-upsell-selector'))) {
       types.push('selector');
     }
 
@@ -158,9 +162,10 @@ export class AttributeParser {
     // No separate 'order' enhancer type needed
 
     // Check for upsell enhancer (handles both direct and selector modes)
-    if (element.hasAttribute('data-next-upsell') || 
-        element.hasAttribute('data-next-upsell-selector') || 
-        element.hasAttribute('data-next-upsell-select')) {
+    // Only data-next-upsell="offer" should create an enhancer
+    // data-next-upsell-selector is just a marker for option groups
+    // data-next-upsell-select is for select dropdowns within an upsell
+    if (element.hasAttribute('data-next-upsell')) {
       types.push('upsell');
     }
 
