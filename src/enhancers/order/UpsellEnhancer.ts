@@ -47,8 +47,10 @@ export class UpsellEnhancer extends BaseEnhancer {
   private quantity: number = 1;
   private actionButtons: HTMLElement[] = [];
   private clickHandler?: (event: Event) => void;
+  private keydownHandler?: (event: KeyboardEvent) => void;
   private loadingOverlay: LoadingOverlay;
   private pageShowHandler?: (event: PageTransitionEvent) => void;
+  private isProcessing: boolean = false;
 
   constructor(element: HTMLElement) {
     super(element);
@@ -74,6 +76,7 @@ export class UpsellEnhancer extends BaseEnhancer {
       if (event.persisted) {
         // Page was restored from bfcache
         this.loadingOverlay.hide(true); // Hide immediately
+        this.isProcessing = false; // Reset processing flag
         this.setProcessingState(false); // Reset processing state
       }
     };
@@ -599,10 +602,28 @@ export class UpsellEnhancer extends BaseEnhancer {
     this.actionButtons.forEach(button => {
       button.addEventListener('click', this.clickHandler!);
     });
+    
+    // Prevent Enter key submissions during processing
+    this.keydownHandler = (event: KeyboardEvent) => {
+      if (event.key === 'Enter' && this.isProcessing) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.logger.debug('Enter key blocked - upsell is processing');
+      }
+    };
+    
+    // Add keydown listener to the entire element to catch Enter key presses
+    this.element.addEventListener('keydown', this.keydownHandler, true);
   }
 
   private async handleActionClick(event: Event): Promise<void> {
     event.preventDefault();
+    
+    // Prevent multiple submissions
+    if (this.isProcessing) {
+      this.logger.debug('Upsell action blocked - already processing');
+      return;
+    }
     
     const button = event.currentTarget as HTMLElement;
     const action = button.getAttribute('data-next-upsell-action') || '';
@@ -718,6 +739,7 @@ export class UpsellEnhancer extends BaseEnhancer {
     
     
     try {
+      this.isProcessing = true;
       this.setProcessingState(true);
       this.loadingOverlay.show(); // Show loading overlay
       this.emit('upsell:adding', { packageId: packageToAdd });
@@ -806,6 +828,7 @@ export class UpsellEnhancer extends BaseEnhancer {
         setTimeout(() => this.navigateToUrl(nextUrl), 1000);
       }
     } finally {
+      this.isProcessing = false;
       this.setProcessingState(false);
     }
   }
@@ -998,6 +1021,10 @@ export class UpsellEnhancer extends BaseEnhancer {
       this.actionButtons.forEach(button => {
         button.removeEventListener('click', this.clickHandler!);
       });
+    }
+    
+    if (this.keydownHandler) {
+      this.element.removeEventListener('keydown', this.keydownHandler, true);
     }
   }
 
