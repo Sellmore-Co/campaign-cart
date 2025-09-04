@@ -7,8 +7,10 @@ export declare class UpsellEnhancer extends BaseEnhancer {
     private quantity;
     private actionButtons;
     private clickHandler?;
+    private keydownHandler?;
     private loadingOverlay;
     private pageShowHandler?;
+    private isProcessing;
     constructor(element: HTMLElement);
     private isSelector;
     private selectorId?;

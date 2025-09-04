@@ -2305,7 +2305,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       lines: cartStore.items.map((item: any) => ({
         package_id: item.packageId,
         quantity: item.quantity,
-        is_upsell: false
+        is_upsell: item.is_upsell || false
       })),
       shipping_address: shippingAddress,
       ...(billingAddressData && { billing_address: billingAddressData }),
@@ -2457,7 +2457,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           ? cartStore.items.map((item: any) => ({
               package_id: item.packageId,
               quantity: item.quantity,
-              is_upsell: false
+              is_upsell: item.is_upsell || false
             }))
           : [{ package_id: 1, quantity: 1, is_upsell: false }],
         
