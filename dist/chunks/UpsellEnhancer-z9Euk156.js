@@ -8,6 +8,7 @@ const _UpsellEnhancer = class _UpsellEnhancer extends BaseEnhancer {
     super(element);
     this.quantity = 1;
     this.actionButtons = [];
+    this.isProcessing = false;
     this.isSelector = false;
     this.options = /* @__PURE__ */ new Map();
     this.quantityBySelectorId = /* @__PURE__ */ new Map();
@@ -18,6 +19,7 @@ const _UpsellEnhancer = class _UpsellEnhancer extends BaseEnhancer {
     this.pageShowHandler = (event) => {
       if (event.persisted) {
         this.loadingOverlay.hide(true);
+        this.isProcessing = false;
         this.setProcessingState(false);
       }
     };
@@ -398,9 +400,21 @@ const _UpsellEnhancer = class _UpsellEnhancer extends BaseEnhancer {
     this.actionButtons.forEach((button) => {
       button.addEventListener("click", this.clickHandler);
     });
+    this.keydownHandler = (event) => {
+      if (event.key === "Enter" && this.isProcessing) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.logger.debug("Enter key blocked - upsell is processing");
+      }
+    };
+    this.element.addEventListener("keydown", this.keydownHandler, true);
   }
   async handleActionClick(event) {
     event.preventDefault();
+    if (this.isProcessing) {
+      this.logger.debug("Upsell action blocked - already processing");
+      return;
+    }
     const button = event.currentTarget;
     const action = button.getAttribute("data-next-upsell-action") || "";
     let nextUrl = button.getAttribute("data-next-url") || button.getAttribute("data-next-next-url") || button.getAttribute("data-os-next-url") || void 0;
@@ -484,6 +498,7 @@ const _UpsellEnhancer = class _UpsellEnhancer extends BaseEnhancer {
       return;
     }
     try {
+      this.isProcessing = true;
       this.setProcessingState(true);
       this.loadingOverlay.show();
       this.emit("upsell:adding", { packageId: packageToAdd });
@@ -548,6 +563,7 @@ const _UpsellEnhancer = class _UpsellEnhancer extends BaseEnhancer {
         setTimeout(() => this.navigateToUrl(nextUrl), 1e3);
       }
     } finally {
+      this.isProcessing = false;
       this.setProcessingState(false);
     }
   }
@@ -689,6 +705,9 @@ const _UpsellEnhancer = class _UpsellEnhancer extends BaseEnhancer {
       this.actionButtons.forEach((button) => {
         button.removeEventListener("click", this.clickHandler);
       });
+    }
+    if (this.keydownHandler) {
+      this.element.removeEventListener("keydown", this.keydownHandler, true);
     }
   }
   destroy() {

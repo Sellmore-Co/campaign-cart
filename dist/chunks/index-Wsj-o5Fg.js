@@ -571,10 +571,10 @@ const _AttributeParser = class _AttributeParser {
     if (element.hasAttribute("data-next-remove-item")) {
       types.push("remove-item");
     }
-    if (element.hasAttribute("data-next-selector") || element.hasAttribute("data-next-cart-selector") || element.hasAttribute("data-next-selector-id") && !element.hasAttribute("data-next-action")) {
+    if (element.hasAttribute("data-next-selector") || element.hasAttribute("data-next-cart-selector") || element.hasAttribute("data-next-selector-id") && !element.hasAttribute("data-next-action") && !element.hasAttribute("data-next-upsell") && !element.hasAttribute("data-next-upsell-selector")) {
       types.push("selector");
     }
-    if (element.hasAttribute("data-next-upsell") || element.hasAttribute("data-next-upsell-selector") || element.hasAttribute("data-next-upsell-select")) {
+    if (element.hasAttribute("data-next-upsell")) {
       types.push("upsell");
     }
     if (element.hasAttribute("data-next-coupon")) {
@@ -1116,23 +1116,23 @@ class AttributeScanner {
           });
           if (parsed.object === "cart") {
             this.logger.debug("Using CartDisplayEnhancer");
-            const { CartDisplayEnhancer } = await import("./CartDisplayEnhancer-DPz6aOro.js");
+            const { CartDisplayEnhancer } = await import("./CartDisplayEnhancer-C-m56fX9.js");
             return new CartDisplayEnhancer(element);
           } else if (parsed.object === "selection") {
             this.logger.debug("Using SelectionDisplayEnhancer");
-            const { SelectionDisplayEnhancer } = await import("./SelectionDisplayEnhancer-BHF30Xsj.js");
+            const { SelectionDisplayEnhancer } = await import("./SelectionDisplayEnhancer-nGVyEhnV.js");
             return new SelectionDisplayEnhancer(element);
           } else if (parsed.object === "package" || parsed.object === "campaign") {
             this.logger.debug("Using ProductDisplayEnhancer");
-            const { ProductDisplayEnhancer } = await import("./ProductDisplayEnhancer-Bny4kfSZ.js");
+            const { ProductDisplayEnhancer } = await import("./ProductDisplayEnhancer-BWfN-8oL.js");
             return new ProductDisplayEnhancer(element);
           } else if (parsed.object === "order") {
             this.logger.debug("Using OrderDisplayEnhancer");
-            const { OrderDisplayEnhancer } = await import("./OrderDisplayEnhancer-CHUPzv1n.js");
+            const { OrderDisplayEnhancer } = await import("./OrderDisplayEnhancer-CHbCfP9S.js");
             return new OrderDisplayEnhancer(element);
           } else if (parsed.object === "shipping") {
             this.logger.debug("Using ShippingDisplayEnhancer");
-            const { ShippingDisplayEnhancer } = await import("./ShippingDisplayEnhancer-AlRoMdrH.js");
+            const { ShippingDisplayEnhancer } = await import("./ShippingDisplayEnhancer-C75wx24H.js");
             return new ShippingDisplayEnhancer(element);
           } else {
             let currentElement = element.parentElement;
@@ -1145,11 +1145,11 @@ class AttributeScanner {
             }
             if (hasPackageContext) {
               this.logger.debug(`Using ProductDisplayEnhancer (fallback with package context)`);
-              const { ProductDisplayEnhancer } = await import("./ProductDisplayEnhancer-Bny4kfSZ.js");
+              const { ProductDisplayEnhancer } = await import("./ProductDisplayEnhancer-BWfN-8oL.js");
               return new ProductDisplayEnhancer(element);
             } else {
               this.logger.debug(`Using CartDisplayEnhancer (fallback without package context)`);
-              const { CartDisplayEnhancer } = await import("./CartDisplayEnhancer-DPz6aOro.js");
+              const { CartDisplayEnhancer } = await import("./CartDisplayEnhancer-C-m56fX9.js");
               return new CartDisplayEnhancer(element);
             }
           }
@@ -1176,7 +1176,7 @@ class AttributeScanner {
           const { TimerEnhancer } = await import("./TimerEnhancer-g3k1EB3U.js");
           return new TimerEnhancer(element);
         case "conditional":
-          const { ConditionalDisplayEnhancer } = await import("./ConditionalDisplayEnhancer-B62WSJxO.js");
+          const { ConditionalDisplayEnhancer } = await import("./ConditionalDisplayEnhancer-C3wUM05e.js");
           return new ConditionalDisplayEnhancer(element);
         case "checkout":
           const { CheckoutFormEnhancer } = await import("./CheckoutFormEnhancer-BV23qqUv.js");
@@ -1190,10 +1190,10 @@ class AttributeScanner {
         // REMOVED: form-validator, payment, address, phone, validation enhancers
         // These are now handled by the main CheckoutFormEnhancer (simplified approach)
         case "cart-items":
-          const { CartItemListEnhancer } = await import("./CartItemListEnhancer-BXBoV2UH.js");
+          const { CartItemListEnhancer } = await import("./CartItemListEnhancer-6kRiTcaS.js");
           return new CartItemListEnhancer(element);
         case "order-items":
-          const { OrderItemListEnhancer } = await import("./OrderItemListEnhancer-QM12bPyv.js");
+          const { OrderItemListEnhancer } = await import("./OrderItemListEnhancer-38PBhF64.js");
           return new OrderItemListEnhancer(element);
         case "quantity":
           const { QuantityControlEnhancer } = await import("./QuantityControlEnhancer-CP4_B0w_.js");
@@ -1203,7 +1203,7 @@ class AttributeScanner {
           return new RemoveItemEnhancer(element);
         // 'order' case removed - order display now handled via data-next-display="order.xxx" pattern
         case "upsell":
-          const { UpsellEnhancer } = await import("./UpsellEnhancer-o4lsJXqU.js");
+          const { UpsellEnhancer } = await import("./UpsellEnhancer-z9Euk156.js");
           return new UpsellEnhancer(element);
         case "coupon":
           const { CouponEnhancer } = await import("./CouponEnhancer-BbSiLjYs.js");
@@ -1897,20 +1897,20 @@ if (typeof window !== "undefined") {
   window.addEventListener("next:ready", () => {
     if ("requestIdleCallback" in window) {
       requestIdleCallback(() => {
-        import("./CartDisplayEnhancer-DPz6aOro.js");
+        import("./CartDisplayEnhancer-C-m56fX9.js");
         import("./CartToggleEnhancer-BLVL5Il3.js");
         import("./PackageSelectorEnhancer-awZI0JRt.js");
-        import("./ProductDisplayEnhancer-Bny4kfSZ.js");
-        import("./SelectionDisplayEnhancer-BHF30Xsj.js");
+        import("./ProductDisplayEnhancer-BWfN-8oL.js");
+        import("./SelectionDisplayEnhancer-nGVyEhnV.js");
         import("./TimerEnhancer-g3k1EB3U.js");
       }, { timeout: 5e3 });
       requestIdleCallback(() => {
         import("./CheckoutFormEnhancer-BV23qqUv.js");
         import("./ExpressCheckoutContainerEnhancer-C-ug3TKl.js");
-        import("./OrderDisplayEnhancer-CHUPzv1n.js");
-        import("./UpsellEnhancer-o4lsJXqU.js");
+        import("./OrderDisplayEnhancer-CHbCfP9S.js");
+        import("./UpsellEnhancer-z9Euk156.js");
         import("./utils-CXZ9QiRP.js").then((n) => n.A);
-        import("./CartItemListEnhancer-BXBoV2UH.js");
+        import("./CartItemListEnhancer-6kRiTcaS.js");
         import("./QuantityControlEnhancer-CP4_B0w_.js");
       }, { timeout: 5e3 });
       requestIdleCallback(() => {
@@ -1920,8 +1920,8 @@ if (typeof window !== "undefined") {
       }, { timeout: 5e3 });
     } else {
       setTimeout(() => {
-        import("./CartDisplayEnhancer-DPz6aOro.js");
-        import("./ProductDisplayEnhancer-Bny4kfSZ.js");
+        import("./CartDisplayEnhancer-C-m56fX9.js");
+        import("./ProductDisplayEnhancer-BWfN-8oL.js");
         import("./utils-CXZ9QiRP.js").then((n) => n.I);
       }, 1e3);
     }
