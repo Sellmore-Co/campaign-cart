@@ -78,7 +78,7 @@ export class CheckoutOrderManager {
       lines: cartStore.items.map(item => ({
         package_id: item.packageId,
         quantity: item.quantity,
-        is_upsell: false
+        is_upsell: item.is_upsell || false
       })),
       shipping_address: shippingAddress,
       ...(billingAddress && { billing_address: billingAddress }),
@@ -121,7 +121,7 @@ export class CheckoutOrderManager {
       lines: cartStore.items.map(item => ({
         package_id: item.packageId,
         quantity: item.quantity,
-        is_upsell: false
+        is_upsell: item.is_upsell || false
       })),
       payment_detail: {
         payment_method: paymentMethod
