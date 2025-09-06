@@ -2318,7 +2318,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         last_name: checkoutStore.formData.lname || '',
         language: 'en',
         phone_number: checkoutStore.formData.phone,
-        accepts_marketing: checkoutStore.formData.accepts_marketing || false
+        accepts_marketing: checkoutStore.formData.accepts_marketing ?? true
       },
       vouchers: vouchers,
       attribution: attribution,
@@ -2487,7 +2487,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           last_name: 'Order',
           language: 'en',
           phone_number: '+14807581224',
-          accepts_marketing: false
+          accepts_marketing: true
         },
         
         vouchers: vouchers,
@@ -3653,7 +3653,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           province: 'AZ',
           postal: '85281',
           country: 'US',
-          accepts_marketing: false
+          accepts_marketing: true
         };
         
         checkoutStore.clearAllErrors();

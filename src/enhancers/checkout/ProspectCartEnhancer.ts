@@ -399,7 +399,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         first_name: firstName,
         last_name: lastName,
         language: 'en',
-        accepts_marketing: false
+        accepts_marketing: true
       };
       
       // Add email only if it exists

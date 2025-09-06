@@ -75,7 +75,7 @@ export class OrderBuilder {
         last_name: checkoutFormData.lname || '',
         language: 'en',
         phone_number: checkoutFormData.phone,
-        accepts_marketing: checkoutFormData.accepts_marketing || false
+        accepts_marketing: checkoutFormData.accepts_marketing ?? true
       },
       vouchers: vouchers,
       attribution: attribution,
@@ -152,7 +152,7 @@ export class OrderBuilder {
         last_name: 'Order',
         language: 'en',
         phone_number: '+14807581224',
-        accepts_marketing: false
+        accepts_marketing: true
       },
       
       vouchers: vouchers,
