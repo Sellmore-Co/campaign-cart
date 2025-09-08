@@ -8,7 +8,8 @@
       "Bash(curl:*)",
       "Bash(npm run test:critical:*)",
       "Bash(cat:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

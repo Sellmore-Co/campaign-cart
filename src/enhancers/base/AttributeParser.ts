@@ -126,6 +126,16 @@ export class AttributeParser {
     if (element.hasAttribute('data-next-cart-items')) {
       types.push('cart-items');
     }
+    
+    // Check for profile switcher enhancer
+    if (element.hasAttribute('data-next-profile')) {
+      types.push('profile-switcher');
+    }
+    
+    // Check for profile selector enhancer (dropdown)
+    if (element.hasAttribute('data-next-profile-selector')) {
+      types.push('profile-selector');
+    }
 
     // Check for order items list enhancer
     if (element.hasAttribute('data-next-order-items')) {

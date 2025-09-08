@@ -74,19 +74,32 @@ const cartStoreInstance = create<CartState & CartActions>()(
 
       addItem: async (item: Partial<CartItem> & { isUpsell: boolean | undefined }) => {
         const { useCampaignStore } = await import('./campaignStore');
+        const { useProfileStore } = await import('./profileStore');
         const campaignStore = useCampaignStore.getState();
+        const profileStore = useProfileStore.getState();
+        
+        // Apply profile mapping if active (unless it's already a mapped ID)
+        let finalPackageId = item.packageId ?? 0;
+        if (!item.originalPackageId && profileStore.activeProfileId) {
+          const mappedId = profileStore.getMappedPackageId(finalPackageId);
+          if (mappedId !== finalPackageId) {
+            logger.debug(`Applying profile mapping: ${finalPackageId} -> ${mappedId}`);
+            finalPackageId = mappedId;
+          }
+        }
         
         // Get package data from campaign
-        const packageData = campaignStore.getPackage(item.packageId ?? 0);
+        const packageData = campaignStore.getPackage(finalPackageId);
         
         if (!packageData) {
-          throw new Error(`Package ${item.packageId} not found in campaign data`);
+          throw new Error(`Package ${finalPackageId} not found in campaign data`);
         }
         
         set(state => {
           const newItem: CartItem = {
             id: Date.now(),
-            packageId: item.packageId ?? 0,
+            packageId: finalPackageId,
+            originalPackageId: item.originalPackageId || (finalPackageId !== (item.packageId ?? 0) ? item.packageId : undefined),
             quantity: item.quantity ?? 1,
             price: parseFloat(packageData.price_total), // Use total package price, not per-unit
             title: item.title ?? packageData.name,

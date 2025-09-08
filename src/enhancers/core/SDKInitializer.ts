@@ -148,6 +148,9 @@ export class SDKInitializer {
     
     // Process forceShippingId parameter after campaign data is available
     await this.processForceShippingId();
+    
+    // Process profile parameter after campaign data is available
+    await this.processProfileParameter();
   }
 
   private static async processForcePackageId(): Promise<void> {
@@ -212,6 +215,45 @@ export class SDKInitializer {
     } catch (error) {
       this.logger.error('Error processing forcePackageId parameter:', error);
       // Don't throw - this shouldn't break SDK initialization
+    }
+  }
+
+  private static async processProfileParameter(): Promise<void> {
+    const urlParams = new URLSearchParams(window.location.search);
+    const profileParam = urlParams.get('profile') || 
+                        urlParams.get('forceProfile') ||
+                        urlParams.get('packageProfile');
+    
+    if (profileParam) {
+      this.logger.info('Profile parameter detected:', profileParam);
+      
+      try {
+        const { ProfileManager } = await import('@/core/ProfileManager');
+        const profileManager = ProfileManager.getInstance();
+        const clearCart = urlParams.get('forceProfile') !== null;
+        
+        await profileManager.applyProfile(profileParam, { clearCart });
+        this.logger.info(`Profile "${profileParam}" applied successfully`);
+      } catch (error) {
+        this.logger.error('Failed to apply profile from URL:', error);
+        // Don't throw - this shouldn't break SDK initialization
+      }
+    }
+    
+    // Check for default profile in config (only if no URL param)
+    if (!profileParam) {
+      const configStore = useConfigStore.getState();
+      if (configStore.defaultProfile) {
+        try {
+          this.logger.info('Applying default profile:', configStore.defaultProfile);
+          const { ProfileManager } = await import('@/core/ProfileManager');
+          const profileManager = ProfileManager.getInstance();
+          await profileManager.applyProfile(configStore.defaultProfile);
+        } catch (error) {
+          this.logger.error('Failed to apply default profile:', error);
+          // Don't throw - this shouldn't break SDK initialization
+        }
+      }
     }
   }
 
