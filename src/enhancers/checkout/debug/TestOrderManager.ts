@@ -91,7 +91,7 @@ export class TestOrderManager {
         province: 'AZ',
         postal: '85281',
         country: 'US',
-        accepts_marketing: false
+        accepts_marketing: true
       };
       
       // Clear any existing errors
