@@ -2486,6 +2486,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       },
       vouchers: vouchers,
       attribution: attribution,
+      currency: this.getCurrency(),
       success_url: this.getSuccessUrl(),
       payment_failed_url: this.getFailureUrl()
     };

@@ -52,24 +52,58 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       // Get the selected currency from config store
       const { useConfigStore } = await import('./configStore');
       const configStore = useConfigStore.getState();
-      const currency = configStore.selectedCurrency || configStore.detectedCurrency || 'USD';
+      const requestedCurrency = configStore.selectedCurrency || configStore.detectedCurrency || 'USD';
       
-      // Create cache key that includes currency
-      const cacheKey = `${CAMPAIGN_STORAGE_KEY}_${currency}`;
-      
-      // Check for cached data first
-      const cachedData = sessionStorageManager.get<CachedCampaignData>(cacheKey);
       const now = Date.now();
       
-      // Use cache if it exists, is for the same API key and currency, and hasn't expired
+      // IMPROVED: Check cache for BOTH requested and potential fallback currencies
+      const requestedCacheKey = `${CAMPAIGN_STORAGE_KEY}_${requestedCurrency}`;
+      const fallbackCacheKey = `${CAMPAIGN_STORAGE_KEY}_USD`;
+      
+      // Try requested currency cache first
+      let cachedData = sessionStorageManager.get<CachedCampaignData>(requestedCacheKey);
+      
+      // If not found and requested isn't USD, check USD cache (common fallback)
+      if (!cachedData && requestedCurrency !== 'USD') {
+        cachedData = sessionStorageManager.get<CachedCampaignData>(fallbackCacheKey);
+        
+        if (cachedData) {
+          logger.info(`No cache for ${requestedCurrency}, checking USD cache as potential fallback`);
+        }
+      }
+      
+      // Use cache if valid
       if (cachedData && 
           cachedData.apiKey === apiKey && 
           (now - cachedData.timestamp) < CACHE_EXPIRY_MS) {
         
-        logger.info(`🎯 Using cached campaign data for ${currency} (expires in ` + 
+        const cachedCurrency = cachedData.campaign.currency;
+        logger.info(`🎯 Using cached campaign data for ${cachedCurrency} (expires in ` + 
           Math.round((CACHE_EXPIRY_MS - (now - cachedData.timestamp)) / 1000) + ' seconds)');
         
-        // Update config store with payment_env_key from cached data
+        // IMPORTANT: Sync config if cached currency differs from requested
+        if (cachedCurrency !== requestedCurrency) {
+          logger.warn(`⚠️ Requested ${requestedCurrency} but using cached ${cachedCurrency} (fallback)`);
+          
+          // Update config to reflect reality
+          configStore.updateConfig({ 
+            selectedCurrency: cachedCurrency,
+            currencyFallbackOccurred: true 
+          });
+          
+          // Update session storage to maintain consistency
+          sessionStorage.setItem('next_selected_currency', cachedCurrency);
+          
+          // Emit event for UI notification
+          const { EventBus } = await import('@/utils/events');
+          EventBus.getInstance().emit('currency:fallback', {
+            requested: requestedCurrency,
+            actual: cachedCurrency,
+            reason: 'cached'
+          });
+        }
+        
+        // Update payment key
         if (cachedData.campaign.payment_env_key) {
           configStore.setSpreedlyEnvironmentKey(cachedData.campaign.payment_env_key);
         }
@@ -84,51 +118,55 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       }
       
       // Cache miss or expired - fetch from API
-      logger.info(`🌐 Fetching fresh campaign data from API with currency: ${currency}...`);
+      logger.info(`🌐 Fetching campaign data from API with currency: ${requestedCurrency}...`);
       const { ApiClient } = await import('@/api/client');
       const client = new ApiClient(apiKey);
       
-      let campaign;
-      let actualCurrency = currency;
-      
-      try {
-        campaign = await client.getCampaigns(currency);
-      } catch (currencyError) {
-        // If the specific currency fails (CORS, 400, etc), fallback to USD
-        if (currency !== 'USD') {
-          logger.warn(`Failed to fetch campaign for ${currency}, falling back to USD:`, currencyError);
-          
-          // Update the currency in config store to USD
-          const { useConfigStore } = await import('./configStore');
-          const configStore = useConfigStore.getState();
-          configStore.updateConfig({ selectedCurrency: 'USD' });
-          
-          // Try with USD
-          actualCurrency = 'USD';
-          campaign = await client.getCampaigns('USD');
-          
-          // Clear the session storage for the failed currency
-          sessionStorage.removeItem('next_selected_currency');
-          
-          logger.info('✅ Successfully fetched campaign data with USD fallback');
-        } else {
-          // If even USD fails, re-throw the error
-          throw currencyError;
-        }
-      }
+      // API now handles currency fallback automatically
+      const campaign = await client.getCampaigns(requestedCurrency);
       
       if (!campaign) {
         throw new Error('Campaign data not found');
       }
       
-      // Update config store with payment_env_key from fresh data
+      // Check actual currency returned
+      const actualCurrency = campaign.currency || requestedCurrency;
+      
+      // Handle fallback scenario
+      if (actualCurrency !== requestedCurrency) {
+        logger.warn(`⚠️ API Fallback: Requested ${requestedCurrency}, received ${actualCurrency}`);
+        
+        // Update config to reflect actual currency
+        configStore.updateConfig({ 
+          selectedCurrency: actualCurrency,
+          currencyFallbackOccurred: true
+        });
+        
+        // Update session storage to prevent confusion
+        sessionStorage.setItem('next_selected_currency', actualCurrency);
+        
+        // Emit event for UI notification
+        const { EventBus } = await import('@/utils/events');
+        EventBus.getInstance().emit('currency:fallback', {
+          requested: requestedCurrency,
+          actual: actualCurrency,
+          reason: 'api'
+        });
+      } else {
+        // Clear fallback flag if currency matches
+        configStore.updateConfig({ 
+          currencyFallbackOccurred: false 
+        });
+      }
+      
+      // Update payment key
       if (campaign.payment_env_key) {
         configStore.setSpreedlyEnvironmentKey(campaign.payment_env_key);
         logger.info('💳 Spreedly environment key updated from campaign API: ' + campaign.payment_env_key);
       }
       
-      // Cache the fresh data with the actual currency that was fetched
-      const actualCacheKey = actualCurrency !== currency ? `${CAMPAIGN_STORAGE_KEY}_${actualCurrency}` : cacheKey;
+      // Cache with ACTUAL currency key
+      const actualCacheKey = `${CAMPAIGN_STORAGE_KEY}_${actualCurrency}`;
       const cacheData: CachedCampaignData = {
         campaign,
         timestamp: now,
@@ -137,13 +175,32 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       
       sessionStorageManager.set(actualCacheKey, cacheData);
       logger.info(`💾 Campaign data cached for ${actualCurrency} (10 minutes)`);
-
+      
+      // Also clear conflicting cache if fallback occurred
+      if (actualCurrency !== requestedCurrency) {
+        sessionStorage.removeItem(requestedCacheKey);
+        logger.debug(`Cleared invalid cache for ${requestedCurrency}`);
+      }
+      
       set({
         data: campaign,
         packages: campaign.packages,
         isLoading: false,
         error: null,
       });
+      
+      // Check if cart needs price refresh due to currency change
+      const { useCartStore } = await import('./cartStore');
+      const cartStore = useCartStore.getState();
+      if (!cartStore.isEmpty && cartStore.lastCurrency && cartStore.lastCurrency !== actualCurrency) {
+        logger.info('Currency changed, refreshing cart prices...');
+        await cartStore.refreshItemPrices();
+        cartStore.setLastCurrency(actualCurrency);
+      } else if (!cartStore.lastCurrency) {
+        // Set initial currency
+        cartStore.setLastCurrency(actualCurrency);
+      }
+      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load campaign';
       set({
@@ -152,6 +209,7 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
         isLoading: false,
         error: errorMessage,
       });
+      logger.error('Campaign load failed:', error);
       throw error;
     }
   },

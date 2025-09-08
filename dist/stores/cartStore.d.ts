@@ -22,6 +22,7 @@ interface CartActions {
     getTotalWeight: () => number;
     getTotalItemCount: () => number;
     reset: () => void;
+    setLastCurrency: (currency: string) => void;
     applyCoupon: (code: string) => Promise<{
         success: boolean;
         message: string;

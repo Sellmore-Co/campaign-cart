@@ -31,6 +31,7 @@ interface CartActions {
   getTotalWeight: () => number;
   getTotalItemCount: () => number;
   reset: () => void;
+  setLastCurrency: (currency: string) => void;
   
   // Coupon methods
   applyCoupon: (code: string) => Promise<{ success: boolean; message: string }>;
@@ -814,6 +815,10 @@ const cartStoreInstance = create<CartState & CartActions>()(
 
       reset: () => {
         set(initialState);
+      },
+
+      setLastCurrency: (currency: string) => {
+        set({ lastCurrency: currency });
       },
     })),
     {

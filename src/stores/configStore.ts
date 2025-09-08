@@ -64,6 +64,7 @@ const initialState: ConfigState = {
   selectedCurrency: '',
   locationData: null as any, // Cache the entire location response
   currencyBehavior: 'auto' as 'auto' | 'manual', // Default to auto-switch currency on country change
+  currencyFallbackOccurred: false, // Track if currency fallback happened
   
   // Error monitoring removed - add externally via HTML/scripts
 };

@@ -11,7 +11,8 @@
       "Bash(grep:*)",
       "Bash(npm ls:*)",
       "Bash(npm run typecheck:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

@@ -35,6 +35,11 @@ export interface EventMap {
         order: any;
     };
     'error:occurred': ErrorData;
+    'currency:fallback': {
+        requested: string;
+        actual: string;
+        reason: 'cached' | 'api';
+    };
     'timer:expired': {
         persistenceId: string;
     };
@@ -272,6 +277,7 @@ export interface CartState {
     enrichedItems: EnrichedCartLine[];
     totals: CartTotals;
     swapInProgress?: boolean;
+    lastCurrency?: string;
 }
 export interface CartTotals {
     subtotal: {
@@ -419,6 +425,7 @@ export interface ConfigState {
     selectedCurrency?: string;
     locationData?: any;
     currencyBehavior?: 'auto' | 'manual';
+    currencyFallbackOccurred?: boolean;
     autoInit: boolean | undefined;
     rateLimit: number | undefined;
     cacheTtl: number | undefined;
