@@ -71,7 +71,7 @@ export declare const cartStore: import('zustand').UseBoundStore<Omit<Omit<import
     subscribe: {
         (listener: (selectedState: CartState & CartActions, previousSelectedState: CartState & CartActions) => void): () => void;
         <U>(selector: (state: CartState & CartActions) => U, listener: (selectedState: U, previousSelectedState: U) => void, options?: {
-            equalityFn?: (a: U, b: U) => boolean;
+            equalityFn?: ((a: U, b: U) => boolean) | undefined;
             fireImmediately?: boolean;
         } | undefined): () => void;
     };
@@ -114,7 +114,7 @@ export declare const useCartStore: import('zustand').UseBoundStore<Omit<Omit<imp
     subscribe: {
         (listener: (selectedState: CartState & CartActions, previousSelectedState: CartState & CartActions) => void): () => void;
         <U>(selector: (state: CartState & CartActions) => U, listener: (selectedState: U, previousSelectedState: U) => void, options?: {
-            equalityFn?: (a: U, b: U) => boolean;
+            equalityFn?: ((a: U, b: U) => boolean) | undefined;
             fireImmediately?: boolean;
         } | undefined): () => void;
     };

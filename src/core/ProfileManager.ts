@@ -7,7 +7,6 @@ import { EventBus } from '@/utils/events';
 import { useProfileStore } from '@/stores/profileStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
-import { ProfileMapper } from '@/utils/profiles/ProfileMapper';
 import type { Profile } from '@/stores/profileStore';
 import type { CartItem } from '@/types/global';
 import type { Package } from '@/types/campaign';
@@ -29,7 +28,6 @@ export class ProfileManager {
   private static instance: ProfileManager;
   private logger = createLogger('ProfileManager');
   private eventBus = EventBus.getInstance();
-  private mapper = ProfileMapper.getInstance();
   
   private constructor() {}
   
@@ -104,12 +102,15 @@ export class ProfileManager {
     profileStore.activateProfile(profileId);
     
     // Add to mapping history
-    profileStore.addMappingEvent({
+    const event: any = {
       profileId,
       action: 'applied',
       itemsAffected: mappedItems.length,
-      previousProfileId: profileStore.previousProfileId || undefined,
-    });
+    };
+    if (profileStore.previousProfileId) {
+      event.previousProfileId = profileStore.previousProfileId;
+    }
+    profileStore.addMappingEvent(event);
     
     // Emit events
     this.eventBus.emit('profile:applied', {
@@ -281,12 +282,15 @@ export class ProfileManager {
     await this.applyProfile(toProfileId, options);
     
     const profileStore = useProfileStore.getState();
-    profileStore.addMappingEvent({
+    const switchEvent: any = {
       profileId: toProfileId,
       action: 'switched',
       itemsAffected: useCartStore.getState().items.length,
-      previousProfileId: fromProfileId || undefined,
-    });
+    };
+    if (fromProfileId) {
+      switchEvent.previousProfileId = fromProfileId;
+    }
+    profileStore.addMappingEvent(switchEvent);
   }
   
   /**

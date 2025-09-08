@@ -3,6 +3,7 @@
  */
 
 import { create } from 'zustand';
+import { useProfileStore } from '@/stores/profileStore';
 import type { 
   ConfigState, 
   PageType, 
@@ -212,14 +213,13 @@ export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
       
       // Register profiles with ProfileStore if they exist
       if (updates.profiles) {
-        const { useProfileStore } = require('@/stores/profileStore');
         const profileStore = useProfileStore.getState();
         
         Object.entries(updates.profiles).forEach(([id, config]) => {
           profileStore.registerProfile({
             id,
             name: config.name,
-            description: config.description,
+            description: config.description || '',
             packageMappings: config.packageMappings,
           });
         });
@@ -233,14 +233,13 @@ export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
       return;
     }
     
-    const { useProfileStore } = require('@/stores/profileStore');
     const profileStore = useProfileStore.getState();
     
     Object.entries(state.profiles).forEach(([id, config]) => {
       profileStore.registerProfile({
         id,
         name: config.name,
-        description: config.description,
+        description: config.description || '',
         packageMappings: config.packageMappings,
       });
     });

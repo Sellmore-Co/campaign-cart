@@ -2411,16 +2411,13 @@ console.log('loadeds');
     window.addEventListener('next:initialized', function() {
       console.log('SDK initialized, setting up exit intent...');
       
-      // Super simple exit intent setup
+      // Exit intent setup with profile switching
       next.exitIntent({
         image: 'https://cdn.prod.website-files.com/6894e401ee6c8582aece90a0/68bed75cd9973567c4ab6a25_modal-bare-earth.png',
         action: async () => {
-          const result = await next.applyCoupon('SAVE10');
-          if (result.success) {
-            alert('Coupon applied successfully: ' + result.message);
-          } else {
-            alert('Coupon failed: ' + result.message);
-          }
+          // Apply the exit_10 profile for 10% discount on ALL items (all tiers)
+          await next.setProfile('exit_10');
+          console.log('Exit 10% discount profile applied - all tiers updated');
         }
       });
 
@@ -2435,6 +2432,11 @@ console.log('loadeds');
 
       next.on('exit-intent:dismissed', (data) => {
         console.log('Exit intent popup dismissed:', data.imageUrl);
+      });
+      
+      // Listen for profile change events
+      next.on('profile:applied', (data) => {
+        console.log(`Profile ${data.profileId} applied, ${data.itemsSwapped} items updated`);
       });
     });
   

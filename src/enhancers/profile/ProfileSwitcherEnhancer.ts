@@ -23,7 +23,7 @@ export class ProfileSwitcherEnhancer extends BaseEnhancer {
     this.validateElement();
     
     // Get profile ID
-    this.profileId = this.getAttribute('data-next-profile');
+    this.profileId = this.getAttribute('data-next-profile') || undefined;
     if (!this.profileId) {
       this.logger.error('Profile ID is required for profile switcher', this.element);
       return;
@@ -205,7 +205,9 @@ export class ProfileSelectorEnhancer extends BaseEnhancer {
       const option = document.createElement('option');
       option.value = profile.id;
       option.textContent = profile.name;
-      this.selectElement.appendChild(option);
+      if (this.selectElement) {
+        this.selectElement.appendChild(option);
+      }
     });
   }
   

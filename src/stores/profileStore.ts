@@ -244,7 +244,7 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
           if (!str) return null;
           
           // Convert Map back from array
-          const stored = JSON.parse(str);
+          const stored = JSON.parse(str as string);
           if (stored.state?.profiles) {
             stored.state.profiles = new Map(stored.state.profiles);
           }
@@ -255,7 +255,7 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
           // Convert Map to array for serialization
           const toStore = { ...value };
           if (toStore.state?.profiles instanceof Map) {
-            toStore.state.profiles = Array.from(toStore.state.profiles.entries());
+            (toStore.state as any).profiles = Array.from(toStore.state.profiles.entries());
           }
           
           sessionStorageManager.set(name, JSON.stringify(toStore));
@@ -264,12 +264,8 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
           sessionStorageManager.remove(name);
         },
       },
-      partialize: (state) => ({
-        activeProfileId: state.activeProfileId,
-        previousProfileId: state.previousProfileId,
-        // Don't persist profiles (they come from config)
-        // Don't persist cart snapshot or history
-      }),
+      // Only persist the active and previous profile IDs
+      // Don't persist profiles (they come from config) or cart snapshot
     }
   )
 );

@@ -9,6 +9,7 @@ export declare class SDKInitializer {
     private static loadConfiguration;
     private static loadCampaignData;
     private static processForcePackageId;
+    private static processProfileParameter;
     private static processForceShippingId;
     private static initializeAttribution;
     private static setupAttributionListeners;
