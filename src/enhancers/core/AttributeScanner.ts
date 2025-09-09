@@ -59,6 +59,8 @@ export class AttributeScanner {
         '[data-next-timer]',
         '[data-next-show]',
         '[data-next-hide]',
+        '[data-next-show-if-profile]',
+        '[data-next-hide-if-profile]',
         'form[data-next-checkout]',
         '[data-next-express-checkout]',
         '[data-next-timer-display]',

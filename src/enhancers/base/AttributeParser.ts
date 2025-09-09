@@ -100,7 +100,10 @@ export class AttributeParser {
     }
 
     // Check for conditional display enhancer
-    if (element.hasAttribute('data-next-show') || element.hasAttribute('data-next-hide')) {
+    if (element.hasAttribute('data-next-show') || 
+        element.hasAttribute('data-next-hide') ||
+        element.hasAttribute('data-next-show-if-profile') ||
+        element.hasAttribute('data-next-hide-if-profile')) {
       types.push('conditional');
     }
 

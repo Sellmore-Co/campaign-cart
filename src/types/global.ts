@@ -91,6 +91,9 @@ export interface EventMap {
   // FOMO Events
   'fomo:shown': { customer: string; product: string; image: string };
   
+  // SDK Events
+  'sdk:url-parameters-processed': {};
+  
   // Profile Events
   'profile:applied': { 
     profileId: string; 

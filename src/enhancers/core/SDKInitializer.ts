@@ -95,8 +95,17 @@ export class SDKInitializer {
   private static async loadConfiguration(): Promise<void> {
     const configStore = useConfigStore.getState();
     
-    // Check URL parameters for debug mode, forcePackageId, and forceShippingId
+    // Check for reset parameter first
     const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('reset') === 'true') {
+      await this.clearAllStorage();
+      // Remove the reset parameter from URL to avoid infinite loop
+      urlParams.delete('reset');
+      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+    
+    // Check URL parameters for debug mode, forcePackageId, and forceShippingId
     const debugMode = urlParams.get('debugger') === 'true';
     const forcePackageId = urlParams.get('forcePackageId');
     const forceShippingId = urlParams.get('forceShippingId');
@@ -151,6 +160,12 @@ export class SDKInitializer {
     
     // Process profile parameter after campaign data is available
     await this.processProfileParameter();
+    
+    // Emit event to notify enhancers that URL parameters have been processed
+    // This allows enhancers to re-evaluate their conditions after profiles are applied
+    const eventBus = EventBus.getInstance();
+    eventBus.emit('sdk:url-parameters-processed', {});
+    this.logger.debug('Emitted sdk:url-parameters-processed event');
   }
 
   private static async processForcePackageId(): Promise<void> {
@@ -814,5 +829,42 @@ export class SDKInitializer {
       retryAttempts: this.retryAttempts,
       ...(this.attributeScanner && { scannerStats: this.attributeScanner.getStats() })
     };
+  }
+
+  private static async clearAllStorage(): Promise<void> {
+    this.logger.info('Clearing all Next Campaign Cart storage...');
+    
+    // Clear sessionStorage items
+    const sessionKeys = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && (key.startsWith('next-') || key.startsWith('_next'))) {
+        sessionKeys.push(key);
+      }
+    }
+    sessionKeys.forEach(key => sessionStorage.removeItem(key));
+    
+    // Clear localStorage items
+    const localKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('next-') || key.startsWith('_next'))) {
+        localKeys.push(key);
+      }
+    }
+    localKeys.forEach(key => localStorage.removeItem(key));
+    
+    // Clear cookies (only those we can access)
+    document.cookie.split(';').forEach(cookie => {
+      const eqPos = cookie.indexOf('=');
+      const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+      if (name.startsWith('next_') || name.startsWith('_next')) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname};`;
+      }
+    });
+    
+    this.logger.info(`Cleared ${sessionKeys.length} sessionStorage items, ${localKeys.length} localStorage items`);
   }
 }

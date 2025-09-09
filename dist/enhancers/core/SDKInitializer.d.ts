@@ -31,5 +31,6 @@ export declare class SDKInitializer {
         retryAttempts: number;
         scannerStats?: ReturnType<AttributeScanner['getStats']>;
     };
+    private static clearAllStorage;
 }
 //# sourceMappingURL=SDKInitializer.d.ts.map

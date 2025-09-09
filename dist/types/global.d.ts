@@ -228,6 +228,7 @@ export interface EventMap {
         product: string;
         image: string;
     };
+    'sdk:url-parameters-processed': {};
     'profile:applied': {
         profileId: string;
         previousProfileId?: string | null;

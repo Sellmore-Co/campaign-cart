@@ -48,6 +48,22 @@ export class ProfileManager {
     
     const profileStore = useProfileStore.getState();
     const cartStore = useCartStore.getState();
+    
+    // Special handling for "default" profile - just clear profile without mappings
+    if (profileId === 'default') {
+      const previousProfileId = profileStore.activeProfileId;
+      
+      // If already on default, nothing to do
+      if (!previousProfileId || previousProfileId === 'default') {
+        this.logger.info('Already on default profile');
+        return;
+      }
+      
+      // Revert to original cart if we have a snapshot
+      await this.revertProfile();
+      return;
+    }
+    
     const profile = profileStore.getProfileById(profileId);
     
     if (!profile) {

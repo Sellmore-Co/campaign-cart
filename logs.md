@@ -1,149 +1,80 @@
-next.setProfile('exit_10');
-Promise {<pending>}
-logger.ts:69 [ProfileManager] Applying profile: exit_10 {}
-logger.ts:59 [CheckoutFormEnhancer] Cart is empty
-warn @ logger.ts:59
-warn @ logger.ts:92
-handleCartUpdate @ CheckoutFormEnhancer.ts:3726
-(anonymous) @ zustand.js?v=f6c95799:1125
-setState @ zustand.js?v=f6c95799:1125
-(anonymous) @ zustand_middleware.js?v=f6c95799:478
-clear @ cartStore.ts:292
-applyMappedItems @ ProfileManager.ts:183
-applyProfile @ ProfileManager.ts:99
-await in applyProfile
-setProfile @ NextCommerce.ts:659
-await in setProfile
-(anonymous) @ VM19669:1Understand this warning
-logger.ts:79 [UserDataTracker] Cart store changed, tracking user data
-logger.ts:79 [UserDataTracker] Tracked user data: {hasUserId: false, hasEmail: false, cartValue: 0, cartItems: 0}
-logger.ts:79 [StorageManager] Stored value for key: next-cart-state
-logger.ts:69 [ProfileManager] Applied 0 mapped items to cart
-logger.ts:79 [ProductDisplayEnhancer] Profile store changed, active profile: exit_10
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Profile store changed, active profile: exit_10
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package 17
-logger.ts:79 [ProfileStore] Mapped package 17 -> 74 (profile: exit_10)
-logger.ts:79 [ProductDisplayEnhancer] Profile mapping applied: 17 -> 74
-logger.ts:79 [ProductDisplayEnhancer] Package prices - Original #17: retail=219.98, sale=109.99 | Mapped #74: retail=219.98, sale=98.99
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package 17
-logger.ts:79 [ProductDisplayEnhancer] Profile store changed, active profile: exit_10
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Profile store changed, active profile: exit_10
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package 25
-logger.ts:79 [ProfileStore] Mapped package 25 -> 98 (profile: exit_10)
-logger.ts:79 [ProductDisplayEnhancer] Profile mapping applied: 25 -> 98
-logger.ts:79 [ProductDisplayEnhancer] Package prices - Original #25: retail=219.98, sale=98.99 | Mapped #98: retail=219.98, sale=98.99
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package 25
-logger.ts:79 [ProductDisplayEnhancer] Profile store changed, active profile: exit_10
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Profile store changed, active profile: exit_10
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package 49
-logger.ts:79 [ProfileStore] Mapped package 49 -> 122 (profile: exit_10)
-logger.ts:79 [ProductDisplayEnhancer] Profile mapping applied: 49 -> 122
-logger.ts:79 [ProductDisplayEnhancer] Package prices - Original #49: retail=219.98, sale=87.99 | Mapped #122: retail=219.98, sale=98.99
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package 49
-logger.ts:79 [StorageManager] Stored value for key: next-profile-store
-logger.ts:69 [ProfileStore] Profile "exit_10" activated
-logger.ts:79 [ProductDisplayEnhancer] Profile store changed, active profile: exit_10
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Profile store changed, active profile: exit_10
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package 17
-logger.ts:79 [ProfileStore] Mapped package 17 -> 74 (profile: exit_10)
-logger.ts:79 [ProductDisplayEnhancer] Profile mapping applied: 17 -> 74
-logger.ts:79 [ProductDisplayEnhancer] Package prices - Original #17: retail=219.98, sale=109.99 | Mapped #74: retail=219.98, sale=98.99
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package 17
-logger.ts:79 [ProductDisplayEnhancer] Profile store changed, active profile: exit_10
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Profile store changed, active profile: exit_10
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package 25
-logger.ts:79 [ProfileStore] Mapped package 25 -> 98 (profile: exit_10)
-logger.ts:79 [ProductDisplayEnhancer] Profile mapping applied: 25 -> 98
-logger.ts:79 [ProductDisplayEnhancer] Package prices - Original #25: retail=219.98, sale=98.99 | Mapped #98: retail=219.98, sale=98.99
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package 25
-logger.ts:79 [ProductDisplayEnhancer] Profile store changed, active profile: exit_10
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Profile store changed, active profile: exit_10
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package 49
-logger.ts:79 [ProfileStore] Mapped package 49 -> 122 (profile: exit_10)
-logger.ts:79 [ProductDisplayEnhancer] Profile mapping applied: 49 -> 122
-logger.ts:79 [ProductDisplayEnhancer] Package prices - Original #49: retail=219.98, sale=87.99 | Mapped #122: retail=219.98, sale=98.99
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package 49
-logger.ts:79 [StorageManager] Stored value for key: next-profile-store
-logger.ts:79 [ProductDisplayEnhancer] Profile applied event received: exit_10 for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Profile applied event received: exit_10 for package 17
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package 17
-logger.ts:79 [ProfileStore] Mapped package 17 -> 74 (profile: exit_10)
-logger.ts:79 [ProductDisplayEnhancer] Profile mapping applied: 17 -> 74
-logger.ts:79 [ProductDisplayEnhancer] Package prices - Original #17: retail=219.98, sale=109.99 | Mapped #74: retail=219.98, sale=98.99
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package 17
-logger.ts:79 [ProductDisplayEnhancer] Profile applied event received: exit_10 for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Profile applied event received: exit_10 for package 25
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package 25
-logger.ts:79 [ProfileStore] Mapped package 25 -> 98 (profile: exit_10)
-logger.ts:79 [ProductDisplayEnhancer] Profile mapping applied: 25 -> 98
-logger.ts:79 [ProductDisplayEnhancer] Package prices - Original #25: retail=219.98, sale=98.99 | Mapped #98: retail=219.98, sale=98.99
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package 25
-logger.ts:79 [ProductDisplayEnhancer] Profile applied event received: exit_10 for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package undefined
-logger.ts:79 [ProductDisplayEnhancer] Profile applied event received: exit_10 for package 49
-logger.ts:79 [ProductDisplayEnhancer] Profile update detected for package 49
-logger.ts:79 [ProfileStore] Mapped package 49 -> 122 (profile: exit_10)
-logger.ts:79 [ProductDisplayEnhancer] Profile mapping applied: 49 -> 122
-logger.ts:79 [ProductDisplayEnhancer] Package prices - Original #49: retail=219.98, sale=87.99 | Mapped #122: retail=219.98, sale=98.99
-logger.ts:79 [ProductDisplayEnhancer] Display updated after profile change for package 49
-grounded-footwear.js:2537 Profile exit_10 applied, 0 items updated
-logger.ts:69 [ProfileManager] Profile "exit_10" applied successfully, swapped 0 items
-logger.ts:69 [NextCommerce] Profile "exit_10" applied via API
-logger.ts:59 [CheckoutFormEnhancer] Cart is empty
-warn @ logger.ts:59
-warn @ logger.ts:92
-handleCartUpdate @ CheckoutFormEnhancer.ts:3726
-(anonymous) @ zustand.js?v=f6c95799:1125
-setState @ zustand.js?v=f6c95799:1125
-(anonymous) @ zustand_middleware.js?v=f6c95799:478
-calculateTotals @ cartStore.ts:387
-await in calculateTotals
-clear @ cartStore.ts:298
-applyMappedItems @ ProfileManager.ts:183
-applyProfile @ ProfileManager.ts:99
-await in applyProfile
-setProfile @ NextCommerce.ts:659
-await in setProfile
-(anonymous) @ VM19669:1Understand this warning
-logger.ts:79 [UserDataTracker] Cart store changed, tracking user data
-logger.ts:79 [UserDataTracker] User data tracking debounced
-logger.ts:79 [StorageManager] Stored value for key: next-cart-state
-logger.ts:59 [CheckoutFormEnhancer] Cart is empty
-warn @ logger.ts:59
-warn @ logger.ts:92
-handleCartUpdate @ CheckoutFormEnhancer.ts:3726
-(anonymous) @ zustand.js?v=f6c95799:1125
-setState @ zustand.js?v=f6c95799:1125
-(anonymous) @ zustand_middleware.js?v=f6c95799:478
-calculateEnrichedItems @ cartStore.ts:623
-await in calculateEnrichedItems
-calculateTotals @ cartStore.ts:398
-await in calculateTotals
-clear @ cartStore.ts:298
-applyMappedItems @ ProfileManager.ts:183
-applyProfile @ ProfileManager.ts:99
-await in applyProfile
-setProfile @ NextCommerce.ts:659
-await in setProfile
-(anonymous) @ VM19669:1Understand this warning
-logger.ts:79 [UserDataTracker] Cart store changed, tracking user data
-logger.ts:79 [UserDataTracker] User data tracking debounced
-logger.ts:79 [StorageManager] Stored value for key: next-cart-state
-DebugOverlay.ts:99 [Debug] Event added: event-timeline Active panel: cart Expanded: false
+Using page-provided nextConfig in debug mode
+grounded-footwear.js:854 [Debug] SDK not ready, waiting...
+logger.ts:69 [SDKInitializer] Initializing 29Next Campaign Cart SDK v2...
+logger.ts:69 [ProfileStore] Profile "exit_10" registered with 72 mappings
+logger.ts:69 [SDKInitializer] Initializing attribution...
+VM3009:29 Next Commerce Campaign-Cart SDK v0.2.20 — DEV build loaded
+VM3009:30 Load time: 399.10ms
+VM3009:31 Try nextDebug.cartStore() or nextDebug.orderStore()
+grounded-footwear.js:854 [Debug] SDK not ready, waiting...
+logger.ts:69 [CampaignStore] 🎯 Using cached campaign data (expires in 154 seconds)
+logger.ts:69 [SDKInitializer] Initializing analytics v2 (lazy)...
+AttributeScanner.ts:40 🐛 AttributeScanner: Debug mode enabled for performance tracking
+grounded-footwear.js:854 [Debug] SDK not ready, waiting...
+main.js:1 Unable to track. Missing "offer_id" or "transaction_id" parameter.
+grounded-footwear.js:1777 [Debug] Checking for preselected values...
+grounded-footwear.js:1787 [Debug] Slot 1 - Color dropdown: 
+grounded-footwear.js:1788 [Debug] Slot 1 - Size dropdown: 
+grounded-footwear.js:1799 [Debug] Slot 1 color value: obsidian-grey
+grounded-footwear.js:1807 [Debug] Set color for slot 1: obsidian-grey
+grounded-footwear.js:1817 [Debug] Slot 1 size value: single
+grounded-footwear.js:1825 [Debug] Set size for slot 1: single
+grounded-footwear.js:1830 [Debug] Slot 1 has preselection, checking completion
+grounded-footwear.js:1787 [Debug] Slot 2 - Color dropdown: 
+grounded-footwear.js:1788 [Debug] Slot 2 - Size dropdown: 
+grounded-footwear.js:1799 [Debug] Slot 2 color value: obsidian-grey
+grounded-footwear.js:1807 [Debug] Set color for slot 2: obsidian-grey
+grounded-footwear.js:1817 [Debug] Slot 2 size value: single
+grounded-footwear.js:1825 [Debug] Set size for slot 2: single
+grounded-footwear.js:1830 [Debug] Slot 2 has preselection, checking completion
+grounded-footwear.js:854 [Debug] SDK not ready, waiting...
+grounded-footwear.js:1870 [Debug] updateCampaignCart called: 
+{slotNumber: 1, variant: 25}
+errorHandler.ts:33 [Debug] window.next is undefined
+grounded-footwear.js:1870 [Debug] updateCampaignCart called: 
+{slotNumber: 2, variant: 25}
+errorHandler.ts:33 [Debug] window.next is undefined
+logger.ts:69 [NextCampaignAdapter] NextCampaign adapter initializing...
+logger.ts:69 [NextCampaignAdapter] API key from config store: found
+logger.ts:69 [NextCampaignAdapter] NextCampaign API key found: UEJRnPJx...Dtkl
+3
+logger.ts:59 [ProductDisplayEnhancer] No package context found - package ID required
+grounded-footwear.js:854 [Debug] SDK not ready, waiting...
+logger.ts:69 [ExpressCheckoutContainerEnhancer] Payment capabilities detected: 
+{applePay: true, googlePay: true, paypal: true, userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb…KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36', platform: 'Win32'}
+grounded-footwear.js:854 [Debug] SDK not ready, waiting...
+CheckoutFormEnhancer.ts:555 [PROD] Setting initial billing state 
+{toggleFound: true, sectionFound: true, toggleChecked: true, currentHeight: '', currentOverflow: '', …}
+logger.ts:69 [CheckoutFormEnhancer] [Billing] Setting initial state 
+{toggleFound: true, sectionFound: true, toggleChecked: true, currentHeight: '', currentOverflow: '', …}
+logger.ts:69 [CheckoutFormEnhancer] [Billing] Initial state: COLLAPSED (checkbox checked)
+logger.ts:69 [ProspectCartEnhancer] Initializing ProspectCartEnhancer 
+{element: 'FORM', config: {…}}
+grounded-footwear.js:854 [Debug] SDK not ready, waiting...
+logger.ts:69 [NextCampaignAdapter] Initial page_view event sent to NextCampaign
+logger.ts:69 [NextCampaignAdapter] NextCampaign SDK loaded and initialized successfully ✅
+logger.ts:69 [NextAnalytics] NextCampaign adapter initialized
+logger.ts:69 [NextAnalytics] Facebook Pixel adapter initialized 
+{blockedEvents: Array(2), storeName: undefined}
+logger.ts:69 [ViewItemListTracker] ViewItemListTracker initialized
+logger.ts:69 [UserDataTracker] UserDataTracker initialized
+logger.ts:69 [AutoEventListener] AutoEventListener initialized
+logger.ts:69 [NextAnalytics] Auto-tracking initialized
+logger.ts:69 [NextAnalytics] NextAnalytics initialized successfully 
+{providers: Array(2), mode: 'auto'}
+AttributeScanner.ts:509 🚀 Enhancement Performance Report
+AttributeScanner.ts:522 
+(index)
+Enhancer
+Total Time (ms)
+Average Time (ms)
+Count
+Impact
+0	'checkout'	'36.90'	'36.90'	1	'🟡 Medium'
+1	'display'	'4.60'	'0.38'	12	'🟢 Low'
+2	'conditional'	'2.50'	'0.83'	3	'🟢 Low'
+3	'express-checkout-container'	'1.40'	'1.40'	1	'🟢 Low'
+4	'cart-items'	'0.50'	'0.50'	1	'🟢 Low'
+5	'tooltip'	'0.20'	'0.10'	2	'🟢 Low'
+Array(6)
+﻿

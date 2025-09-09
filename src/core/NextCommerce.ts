@@ -25,6 +25,7 @@ import { useCheckoutStore } from '@/stores/checkoutStore';
 import { useOrderStore } from '@/stores/orderStore';
 import { useConfigStore } from '@/stores/configStore';
 import { useAttributionStore } from '@/stores/attributionStore';
+import { useProfileStore } from '@/stores/profileStore';
 import { EventBus } from '@/utils/events';
 import { Logger } from '@/utils/logger';
 import { ApiClient } from '@/api/client';
@@ -677,13 +678,11 @@ export class NextCommerce {
   }
   
   public getActiveProfile(): string | null {
-    const { useProfileStore } = require('@/stores/profileStore');
     const profileStore = useProfileStore.getState();
     return profileStore.activeProfileId;
   }
   
   public getProfileInfo(profileId?: string): any | null {
-    const { useProfileStore } = require('@/stores/profileStore');
     const profileStore = useProfileStore.getState();
     return profileId 
       ? profileStore.getProfileById(profileId)
@@ -691,31 +690,26 @@ export class NextCommerce {
   }
   
   public getMappedPackageId(originalId: number): number {
-    const { useProfileStore } = require('@/stores/profileStore');
     const profileStore = useProfileStore.getState();
     return profileStore.getMappedPackageId(originalId);
   }
   
   public getOriginalPackageId(mappedId: number): number | null {
-    const { useProfileStore } = require('@/stores/profileStore');
     const profileStore = useProfileStore.getState();
     return profileStore.getOriginalPackageId(mappedId);
   }
   
   public listProfiles(): string[] {
-    const { useProfileStore } = require('@/stores/profileStore');
     const profileStore = useProfileStore.getState();
     return Array.from(profileStore.profiles.keys());
   }
   
   public hasProfile(profileId: string): boolean {
-    const { useProfileStore } = require('@/stores/profileStore');
     const profileStore = useProfileStore.getState();
     return profileStore.hasProfile(profileId);
   }
   
   public registerProfile(profile: { id: string; name: string; description?: string; packageMappings: Record<number, number> }): void {
-    const { useProfileStore } = require('@/stores/profileStore');
     const profileStore = useProfileStore.getState();
     profileStore.registerProfile(profile);
     this.logger.info(`Profile "${profile.id}" registered via API`);
