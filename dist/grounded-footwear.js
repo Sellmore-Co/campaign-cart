@@ -868,6 +868,7 @@ class TierController {
     this.initializeColorSwatches();
     this.initializeSlotImages();
     this.setupCampaignCartListeners();
+    this.setupProfileListeners();
     
     // Apply campaign prices if available
     this.refreshPricesFromCampaign();
@@ -876,18 +877,129 @@ class TierController {
     this.updateCTAButtons();
   }
   
+  setupProfileListeners() {
+    console.log('[Grounded] Setting up profile change listeners');
+    
+    // Store last known profile to detect changes
+    this.lastKnownProfile = this.getCurrentProfile();
+    console.log('[Grounded] Initial profile state:', this.lastKnownProfile);
+    
+    // Listen for profile events
+    document.addEventListener('profile:applied', (event) => {
+      console.log('[Grounded] Profile applied event received:', event.detail);
+      this.refreshPricesFromCampaign();
+    });
+    
+    document.addEventListener('profile:reverted', () => {
+      console.log('[Grounded] Profile reverted event received');
+      this.refreshPricesFromCampaign();
+    });
+    
+    // Listen for storage changes (cross-tab sync)
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'next-profile-store') {
+        console.log('[Grounded] Profile store changed via storage');
+        this.refreshPricesFromCampaign();
+      }
+    });
+    
+    // Polling fallback to detect profile changes
+    this.profileCheckInterval = setInterval(() => {
+      const currentProfile = this.getCurrentProfile();
+      if (currentProfile !== this.lastKnownProfile) {
+        console.log(`[Grounded] Profile changed from ${this.lastKnownProfile} to ${currentProfile}`);
+        this.lastKnownProfile = currentProfile;
+        this.refreshPricesFromCampaign();
+      }
+    }, 500); // Check more frequently
+  }
+  
+  getCurrentProfile() {
+    try {
+      const profileStoreData = sessionStorage.getItem('next-profile-store');
+      if (profileStoreData) {
+        const profileStore = JSON.parse(profileStoreData);
+        return profileStore?.state?.activeProfileId || null;
+      }
+    } catch (error) {
+      // Silent fail
+    }
+    return null;
+  }
+  
   refreshPricesFromCampaign() {
     console.log('[Grounded] Refreshing prices from campaign data');
     const campaignPrices = getPricesFromCampaign();
     
     if (campaignPrices) {
       console.log('[Grounded] Found campaign prices, updating variants');
-      // Update all variants with campaign prices
-      groundedSheetsVariants = enhanceVariantsWithPrices(groundedSheetsVariantsOriginal, campaignPrices);
+      
+      // Check for active profile
+      const profileStoreData = sessionStorage.getItem('next-profile-store');
+      let profileMappings = null;
+      
+      if (profileStoreData) {
+        try {
+          const profileStore = JSON.parse(profileStoreData);
+          const activeProfileId = profileStore?.state?.activeProfileId;
+          
+          if (activeProfileId && window.nextConfig?.profiles?.[activeProfileId]) {
+            profileMappings = window.nextConfig.profiles[activeProfileId].packageMappings;
+            console.log(`[Grounded] Active profile: ${activeProfileId}, will apply mappings`);
+          }
+        } catch (error) {
+          console.warn('[Grounded] Could not parse profile store:', error);
+        }
+      }
+      
+      // Create profile-aware price map
+      const profileAwarePrices = {};
+      
+      // For each variant, check if there's a profile mapping
+      let activeProfileId = null;
+      
+      if (profileStoreData) {
+        try {
+          const profileStore = JSON.parse(profileStoreData);
+          activeProfileId = profileStore?.state?.activeProfileId;
+        } catch (error) {
+          // Silent fail
+        }
+      }
+      
+      groundedSheetsVariantsOriginal.forEach(variant => {
+        // Get base prices first
+        let basePrices = campaignPrices[variant.id];
+        
+        // If profile is active and it's exit_10, apply 10% discount
+        if (activeProfileId === 'exit_10' && profileMappings && profileMappings[variant.id]) {
+          console.log(`[Grounded] Applying Exit 10% discount to variant ${variant.id}`);
+          
+          if (basePrices) {
+            // Apply 10% discount to the sale price
+            profileAwarePrices[variant.id] = {
+              salePrice: basePrices.salePrice * 0.9,  // 10% off
+              regularPrice: basePrices.regularPrice    // Keep retail price same
+            };
+          }
+        } else if (basePrices) {
+          // Use original prices if no profile or different profile
+          profileAwarePrices[variant.id] = basePrices;
+        }
+      });
+      
+      // Update all variants with profile-aware prices
+      groundedSheetsVariants = enhanceVariantsWithPrices(groundedSheetsVariantsOriginal, profileAwarePrices);
       
       // Refresh all dropdowns to show updated prices
       this.populateAllDropdowns();
-      console.log('[Grounded] Prices refreshed from campaign data');
+      
+      // Update pricing for all active slots
+      for (let i = 1; i <= this.currentTier; i++) {
+        this.updateSlotPricing(i);
+      }
+      
+      console.log('[Grounded] Prices refreshed with profile awareness');
     } else {
       console.log('[Grounded] No campaign prices found, using fallback prices');
       // Use fallback prices
@@ -1574,7 +1686,7 @@ class TierController {
     
     console.log(`[Grounded] Looking for variant - Color: ${colorName}, Size: ${sizeName}, Quantity: ${this.currentTier}`);
     
-    // Find the matching variant
+    // Find the matching variant (prices are already profile-aware from refreshPricesFromCampaign)
     const matchingVariant = groundedSheetsVariants.find(v => 
       v.color === colorName && 
       v.size === sizeName && 
@@ -1582,7 +1694,7 @@ class TierController {
     );
     
     if (matchingVariant && matchingVariant.regularPrice && matchingVariant.salePrice) {
-      console.log(`[Grounded] Found matching variant:`, matchingVariant);
+      console.log(`[Grounded] Found matching variant with profile-aware prices:`, matchingVariant);
       
       // Update price elements in the slot
       const regPriceElement = slot.querySelector('[data-option="reg"]');
@@ -1602,7 +1714,7 @@ class TierController {
         savingPctElement.textContent = `${savingPct}%`;
       }
       
-      console.log(`[Grounded] Updated slot ${slotNumber} pricing:`, matchingVariant);
+      console.log(`[Grounded] Updated slot ${slotNumber} pricing`);
     } else {
       console.log(`[Grounded] No matching variant found or missing prices`);
     }
