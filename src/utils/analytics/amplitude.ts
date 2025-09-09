@@ -161,7 +161,8 @@ function getCoreProperties(): Record<string, any> {
     page_url: window.location.href,
     page_path: window.location.pathname,
     sdk_version: (window as any).__NEXT_SDK_VERSION__ || 'unknown',
-    api_key_hash: hashApiKey(configStore.apiKey), // Only send hashed version
+    api_key: configStore.apiKey || 'unknown', // Send actual API key - it's public
+    api_key_hash: hashApiKey(configStore.apiKey), // Keep hash for backwards compatibility
     session_id: (window as any).__amplitude_session_id,
     timestamp: Date.now(),
     
@@ -475,11 +476,13 @@ export async function trackCheckoutStarted(data: {
   cartValue: number;
   itemsCount: number;
   detectedCountry: string;
+  paymentMethod: string;
 }): Promise<void> {
   await trackEvent('checkout_started', {
     cart_value: data.cartValue,
     items_count: data.itemsCount,
-    detected_country: data.detectedCountry
+    detected_country: data.detectedCountry,
+    payment_method: data.paymentMethod
   });
 }
 
@@ -489,13 +492,31 @@ export async function trackCheckoutSubmitted(data: {
   country: string;
   paymentMethod: string;
   timeOnPage: number;
+  state?: string;
+  city?: string;
+  postalCode?: string;
+  email?: string;
+  sameAsShipping?: boolean;
+  billingCountry?: string;
+  billingState?: string;
+  billingCity?: string;
+  billingPostalCode?: string;
 }): Promise<void> {
   await trackEvent('checkout_submitted', {
     cart_value: data.cartValue,
     items_count: data.itemsCount,
     country: data.country,
+    state: data.state || null,
+    city: data.city || null,
+    postal_code: data.postalCode || null,
+    email: data.email || null,
     payment_method: data.paymentMethod,
-    time_on_page_ms: data.timeOnPage
+    time_on_page_ms: data.timeOnPage,
+    same_as_shipping: data.sameAsShipping !== undefined ? data.sameAsShipping : true,
+    billing_country: data.billingCountry || null,
+    billing_state: data.billingState || null,
+    billing_city: data.billingCity || null,
+    billing_postal_code: data.billingPostalCode || null
   });
 }
 
@@ -505,13 +526,19 @@ export async function trackCheckoutValidationFailed(data: {
   firstErrorField: string;
   country: string;
   paymentMethod: string;
+  errorDetails?: Record<string, { value: any; error: string; category?: string; errorType?: string }>;
+  formValues?: Record<string, any>;
+  errorsByCategory?: Record<string, string[]>;
 }): Promise<void> {
   await trackEvent('checkout_validation_failed', {
     validation_errors: data.validationErrors,
     error_count: data.errorCount,
     first_error_field: data.firstErrorField,
     country: data.country,
-    payment_method: data.paymentMethod
+    payment_method: data.paymentMethod,
+    error_details: data.errorDetails || null,
+    form_values: data.formValues || null,
+    errors_by_category: data.errorsByCategory || null
   });
 }
 
@@ -522,14 +549,84 @@ export async function trackCheckoutCompleted(data: {
   country: string;
   paymentMethod: string;
   timeToComplete: number;
+  state?: string;
+  city?: string;
+  postalCode?: string;
+  email?: string;
+  sameAsShipping?: boolean;
+  billingCountry?: string;
+  billingState?: string;
+  billingCity?: string;
+  billingPostalCode?: string;
 }): Promise<void> {
   await trackEvent('checkout_completed', {
     order_ref_id: data.orderRefId,
     order_value: data.orderValue,
     items_count: data.itemsCount,
     country: data.country,
+    state: data.state || null,
+    city: data.city || null,
+    postal_code: data.postalCode || null,
+    email: data.email || null,
     payment_method: data.paymentMethod,
-    time_to_complete_ms: data.timeToComplete
+    time_to_complete_ms: data.timeToComplete,
+    same_as_shipping: data.sameAsShipping !== undefined ? data.sameAsShipping : true,
+    billing_country: data.billingCountry || null,
+    billing_state: data.billingState || null,
+    billing_city: data.billingCity || null,
+    billing_postal_code: data.billingPostalCode || null
+  });
+}
+
+export async function trackCheckoutFailed(data: {
+  errorMessage: string;
+  errorType: 'payment' | 'api' | 'validation' | 'network' | 'unknown';
+  paymentResponseCode?: string;
+  cartValue: number;
+  itemsCount: number;
+  country: string;
+  paymentMethod: string;
+  timeOnPage: number;
+}): Promise<void> {
+  await trackEvent('checkout_failed', {
+    error_message: data.errorMessage,
+    error_type: data.errorType,
+    payment_response_code: data.paymentResponseCode || null,
+    cart_value: data.cartValue,
+    items_count: data.itemsCount,
+    country: data.country,
+    payment_method: data.paymentMethod,
+    time_on_page_ms: data.timeOnPage
+  });
+}
+
+/**
+ * Track empty cart checkout attempt
+ */
+export async function trackEmptyCartCheckoutAttempt(data: {
+  paymentMethod: string;
+  buttonLocation?: string;
+}): Promise<void> {
+  await trackEvent('empty_cart_checkout_attempt', {
+    payment_method: data.paymentMethod,
+    button_location: data.buttonLocation || 'express_checkout'
+  });
+}
+
+/**
+ * Track duplicate order prevention
+ */
+export async function trackDuplicateOrderPrevention(data: {
+  orderRefId: string;
+  orderNumber: string;
+  userAction: 'close' | 'back';
+  timeOnPage?: number;
+}): Promise<void> {
+  await trackEvent('duplicate_order_prevention', {
+    order_ref_id: data.orderRefId,
+    order_number: data.orderNumber,
+    user_action: data.userAction,
+    time_on_page_ms: data.timeOnPage || null
   });
 }
 
@@ -580,6 +677,9 @@ export const AmplitudeAnalytics = {
   trackCheckoutSubmitted,
   trackCheckoutValidationFailed,
   trackCheckoutCompleted,
+  trackCheckoutFailed,
+  trackEmptyCartCheckoutAttempt,
+  trackDuplicateOrderPrevention,
   trackUpsellPageView,
   trackUpsellAction
 };
