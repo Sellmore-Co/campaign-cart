@@ -41,6 +41,7 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
+    "@amplitude/analytics-browser": "^2.23.7",
     "@floating-ui/dom": "^1.5.3",
     "@sentry/browser": "^7.99.0",
     "country-state-city": "^3.2.1",

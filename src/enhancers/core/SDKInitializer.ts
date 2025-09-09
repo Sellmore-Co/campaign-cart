@@ -17,6 +17,7 @@ import { testModeManager } from '@/utils/testMode';
 import { EventBus } from '@/utils/events';
 import { ApiClient } from '@/api/client';
 import { CART_STORAGE_KEY } from '@/utils/storage';
+import * as AmplitudeAnalytics from '@/utils/analytics/amplitude';
 
 export class SDKInitializer {
   private static logger = createLogger('SDKInitializer');
@@ -24,6 +25,10 @@ export class SDKInitializer {
   private static attributeScanner: AttributeScanner | null = null;
   private static retryAttempts = 0;
   private static maxRetries = 3;
+  private static initStartTime = 0;
+  private static campaignLoadStartTime = 0;
+  private static campaignLoadTime = 0;
+  private static campaignFromCache = false;
 
   public static async initialize(): Promise<void> {
     if (this.initialized) {
@@ -33,6 +38,10 @@ export class SDKInitializer {
 
     try {
       this.logger.info('Initializing 29Next Campaign Cart SDK v2...');
+      this.initStartTime = Date.now();
+      
+      // Track page view first
+      queueMicrotask(() => AmplitudeAnalytics.trackPageView());
 
       // Wait for DOM to be ready
       await this.waitForDOM();
@@ -69,14 +78,45 @@ export class SDKInitializer {
       await this.initializeDebugMode();
 
       this.initialized = true;
-      this.retryAttempts = 0;
+      const initTime = Date.now() - this.initStartTime;
       this.logger.info('SDK initialization complete ✅');
+      
+      // Track successful initialization
+      const configStore = useConfigStore.getState();
+      const stats = this.attributeScanner?.getStats();
+      queueMicrotask(() => {
+        AmplitudeAnalytics.trackSDKInitialized({
+          initializationTime: initTime,
+          campaignLoadTime: this.campaignLoadTime,
+          fromCache: this.campaignFromCache,
+          retryAttempts: this.retryAttempts,
+          elementsEnhanced: stats?.enhancedElements || 0,
+          debugMode: configStore.debug || false,
+          forcePackageId: (window as any)._nextForcePackageId || null,
+          forceShippingId: (window as any)._nextForceShippingId || null
+        });
+      });
+      
+      this.retryAttempts = 0;
       
       // Emit initialization event
       this.emitInitializedEvent();
       
     } catch (error) {
       this.logger.error('SDK initialization failed:', error);
+      
+      // Track initialization failure
+      let errorStage: 'config_load' | 'campaign_load' | 'dom_scan' | 'attribution' = 'config_load';
+      if (this.campaignLoadStartTime > 0) errorStage = 'campaign_load';
+      if (this.attributeScanner) errorStage = 'dom_scan';
+      
+      queueMicrotask(() => {
+        AmplitudeAnalytics.trackSDKInitializationFailed({
+          errorMessage: error instanceof Error ? error.message : String(error),
+          errorStage,
+          retryAttempt: this.retryAttempts
+        });
+      });
       
       // Retry logic
       if (this.retryAttempts < this.maxRetries) {
@@ -140,7 +180,28 @@ export class SDKInitializer {
     // Campaign ID is deprecated and not used by the API - only the API key is needed
     // No need to check or warn about it anymore
 
+    this.campaignLoadStartTime = Date.now();
     await campaignStore.loadCampaign(configStore.apiKey);
+    this.campaignLoadTime = Date.now() - this.campaignLoadStartTime;
+    this.campaignFromCache = campaignStore.isFromCache || false;
+    
+    // Track campaign loaded event
+    if (campaignStore.data) {
+      queueMicrotask(() => {
+        const trackData: any = {
+          loadTime: this.campaignLoadTime,
+          fromCache: this.campaignFromCache,
+          packageCount: campaignStore.data?.packages?.length || 0,
+          shippingMethodsCount: campaignStore.data?.shipping_methods?.length || 0,
+          currency: campaignStore.data?.currency || 'USD'
+        };
+        if (campaignStore.cacheAge !== undefined) {
+          trackData.cacheAge = campaignStore.cacheAge;
+        }
+        AmplitudeAnalytics.trackCampaignLoaded(trackData);
+      });
+    }
+    
     this.logger.debug('Campaign data loaded');
     
     // Process forcePackageId parameter after campaign data is available
@@ -721,6 +782,7 @@ export class SDKInitializer {
     
     if (storedData) {
       this.logger.debug('Waiting for cart store rehydration...');
+      const rehydrationStartTime = Date.now();
       
       // Give the store time to rehydrate and recalculate totals
       // The store's onRehydrateStorage callback calls calculateTotals()
@@ -734,10 +796,22 @@ export class SDKInitializer {
       // Force a recalculation to ensure everything is up to date
       await cartStore.calculateTotals();
       
+      const rehydrationTime = Date.now() - rehydrationStartTime;
+      
       this.logger.debug('Cart store rehydration complete', {
         itemCount: cartStore.items.length,
         total: cartStore.total,
         isEmpty: cartStore.isEmpty
+      });
+      
+      // Track cart loaded event
+      queueMicrotask(() => {
+        AmplitudeAnalytics.trackCartLoaded({
+          itemsCount: cartStore.items.length,
+          cartValue: cartStore.total,
+          loadTime: rehydrationTime,
+          fromStorage: true
+        });
       });
     } else {
       this.logger.debug('No cart data to rehydrate');
