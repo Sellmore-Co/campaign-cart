@@ -2415,9 +2415,9 @@ console.log('loadeds');
       next.exitIntent({
         image: 'https://cdn.prod.website-files.com/6894e401ee6c8582aece90a0/68bed75cd9973567c4ab6a25_modal-bare-earth.png',
         action: async () => {
-          // Apply the exit_10 profile for 10% discount
+          // Apply the exit_10 profile for 10% discount on ALL items (all tiers)
           await next.setProfile('exit_10');
-          console.log('Exit 10% discount profile applied');
+          console.log('Exit 10% discount profile applied - all tiers updated');
         }
       });
 
