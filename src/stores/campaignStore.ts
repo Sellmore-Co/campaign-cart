@@ -62,11 +62,17 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       const requestedCacheKey = `${CAMPAIGN_STORAGE_KEY}_${requestedCurrency}`;
       const fallbackCacheKey = `${CAMPAIGN_STORAGE_KEY}_USD`;
       
+      // Check if URL parameter is forcing a specific currency
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlCurrency = urlParams.get('currency');
+      const isUrlCurrencyOverride = urlCurrency && urlCurrency === requestedCurrency;
+      
       // Try requested currency cache first
       let cachedData = sessionStorageManager.get<CachedCampaignData>(requestedCacheKey);
       
       // If not found and requested isn't USD, check USD cache (common fallback)
-      if (!cachedData && requestedCurrency !== 'USD') {
+      // BUT skip fallback if URL is explicitly requesting a currency
+      if (!cachedData && requestedCurrency !== 'USD' && !isUrlCurrencyOverride) {
         cachedData = sessionStorageManager.get<CachedCampaignData>(fallbackCacheKey);
         
         if (cachedData) {
@@ -74,10 +80,11 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
         }
       }
       
-      // Use cache if valid
+      // Use cache if valid, but skip cache if URL is forcing a different currency
       if (cachedData && 
           cachedData.apiKey === apiKey && 
-          (now - cachedData.timestamp) < CACHE_EXPIRY_MS) {
+          (now - cachedData.timestamp) < CACHE_EXPIRY_MS &&
+          (!isUrlCurrencyOverride || cachedData.campaign.currency === requestedCurrency)) {
         
         const cachedCurrency = cachedData.campaign.currency;
         logger.info(`🎯 Using cached campaign data for ${cachedCurrency} (expires in ` + 
@@ -119,6 +126,11 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
           cacheAge: now - cachedData.timestamp
         });
         return;
+      }
+      
+      // If URL is forcing a currency, log it
+      if (isUrlCurrencyOverride && cachedData?.campaign.currency !== requestedCurrency) {
+        logger.info(`🔄 URL parameter forcing fresh fetch for currency: ${requestedCurrency} (cache had ${cachedData?.campaign.currency || 'none'})`);
       }
       
       // Cache miss or expired - fetch from API
