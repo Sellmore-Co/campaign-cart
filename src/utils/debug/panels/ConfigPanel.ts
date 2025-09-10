@@ -43,6 +43,9 @@ export class ConfigPanel implements DebugPanel {
 
   private getOverviewContent(): string {
     const config = useConfigStore.getState();
+    const sdkVersion = typeof window !== 'undefined' && (window as any).__NEXT_SDK_VERSION__ 
+      ? (window as any).__NEXT_SDK_VERSION__ 
+      : '1.0.0';
     
     return `
       <div class="enhanced-panel">
@@ -69,10 +72,10 @@ export class ConfigPanel implements DebugPanel {
             </div>
           </div>
           <div class="metric-card">
-            <div class="metric-icon">📋</div>
+            <div class="metric-icon">📦</div>
             <div class="metric-content">
-              <div class="metric-value">${config.campaignId || 'NONE'}</div>
-              <div class="metric-label">Campaign ID</div>
+              <div class="metric-value">${sdkVersion}</div>
+              <div class="metric-label">SDK Version</div>
             </div>
           </div>
         </div>
@@ -82,6 +85,9 @@ export class ConfigPanel implements DebugPanel {
 
   private getSettingsContent(): string {
     const config = useConfigStore.getState();
+    const sdkVersion = typeof window !== 'undefined' && (window as any).__NEXT_SDK_VERSION__ 
+      ? (window as any).__NEXT_SDK_VERSION__ 
+      : '1.0.0';
     
     return `
       <div class="enhanced-panel">
@@ -91,8 +97,8 @@ export class ConfigPanel implements DebugPanel {
               <h4 class="config-group-title">Core Settings</h4>
               <div class="config-items">
                 <div class="config-item">
-                  <span class="config-key">Campaign ID:</span>
-                  <span class="config-value">${config.campaignId || 'Not set'}</span>
+                  <span class="config-key">SDK Version:</span>
+                  <span class="config-value">${sdkVersion}</span>
                 </div>
                 <div class="config-item">
                   <span class="config-key">API Key:</span>
