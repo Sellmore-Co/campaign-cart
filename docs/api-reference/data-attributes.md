@@ -136,6 +136,7 @@ Comprehensive reference of all Next Commerce JS SDK HTML data attributes.
 | `data-format` | Value format | `currency`, `number` |
 | `data-hide-if-zero` | Hide if zero | `true` |
 | `data-hide-if-false` | Hide if false | `true` |
+| `data-hide-zero-cents` | Hide cents if .00 | `true` |
 | `data-multiply-by` | Multiply value | Number |
 | `data-divide-by` | Divide value | Number |
 

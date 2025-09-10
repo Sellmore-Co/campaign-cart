@@ -14,6 +14,7 @@ Control how values are displayed with formatting attributes.
 ```html
 <span data-hide-if-zero="true" data-next-display="cart.shipping">Hide element if value is 0</span>
 <span data-hide-if-false="true" data-next-display="package.isRecurring">Hide element if value is false</span>
+<span data-hide-zero-cents="true" data-next-display="package.price">Hide cents if .00 (shows $199 instead of $199.00)</span>
 ```
 
 ## Mathematical Transformations
