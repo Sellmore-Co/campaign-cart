@@ -9,7 +9,7 @@ import { useConfigStore } from '@/stores/configStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useAttributionStore } from '@/stores/attributionStore';
 import { ApiClient } from '@/api/client';
-import type { CartBase, UserCreateCart, AddressCart } from '@/types/api';
+import type { CartBase, UserCreateCart } from '@/types/api';
 import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
 
 export interface ProspectCartConfig {
@@ -359,13 +359,8 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       // Get phone in E.164 format if possible
       const phone = this.getFormattedPhoneNumber();
       
-      // Get address data if available
-      const address1 = (this.element.querySelector('[data-next-checkout-field="address1"], [os-checkout-field="address1"], input[name="address1"]') as HTMLInputElement)?.value || '';
-      const address2 = (this.element.querySelector('[data-next-checkout-field="address2"], [os-checkout-field="address2"], input[name="address2"]') as HTMLInputElement)?.value || '';
-      const city = (this.element.querySelector('[data-next-checkout-field="city"], [os-checkout-field="city"], input[name="city"]') as HTMLInputElement)?.value || '';
-      const state = (this.element.querySelector('[data-next-checkout-field="province"], [os-checkout-field="province"], select[name="province"]') as HTMLInputElement)?.value || '';
-      const postal = (this.element.querySelector('[data-next-checkout-field="postal"], [os-checkout-field="postal"], input[name="postal"]') as HTMLInputElement)?.value || '';
-      const country = (this.element.querySelector('[data-next-checkout-field="country"], [os-checkout-field="country"], select[name="country"]') as HTMLSelectElement)?.value || '';
+      // NOTE: Address data collection is intentionally disabled
+      // We do not send address data with prospect carts
       
       // Get attribution from the attribution store (this has all the tracking data)
       const attributionStore = useAttributionStore.getState();
@@ -405,7 +400,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         first_name: firstName,
         last_name: lastName,
         language: 'en',
-        accepts_marketing: false
+        accepts_marketing: true
       };
       
       // Add email only if it exists
@@ -429,26 +424,9 @@ export class ProspectCartEnhancer extends BaseEnhancer {
         currency: this.getCurrency()
       };
       
-      // Only add address data if we have the required fields (first_name, last_name, line1, line4/city, and country)
-      // The API requires these fields to be non-empty if address object is included
-      if (firstName && lastName && address1 && city && country) {
-        const addressData: AddressCart = {
-          first_name: firstName,
-          last_name: lastName,
-          line1: address1,
-          line4: city, // API expects city in line4
-          country: country
-        };
-        
-        // Only add optional fields if they have values
-        if (address2) addressData.line2 = address2;
-        if (state) addressData.state = state;
-        if (postal) addressData.postcode = postal;
-        // Use E.164 formatted phone for address
-        if (phone) addressData.phone_number = phone;
-        
-        cartData.address = addressData;
-      }
+      // ADDRESS DATA IS INTENTIONALLY NOT INCLUDED
+      // We do not send address data with prospect carts to avoid any potential issues
+      // Address will be collected and sent only during the actual checkout process
       
       // Add attribution if it has data
       if (attribution && Object.keys(attribution).length > 0) {
@@ -456,12 +434,11 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       }
 
       this.logger.debug('Creating prospect cart with data:', {
-        hasAddress: !!cartData.address,
+        hasAddress: false, // Address is intentionally excluded
         hasAttribution: !!cartData.attribution,
         attribution: attribution,
         userData: cartData.user,
-        itemCount: cartData.lines.length,
-        addressData: cartData.address
+        itemCount: cartData.lines.length
       });
 
       // Create cart using standard API
@@ -582,10 +559,10 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   }
 
   private isValidEmail(email: string): boolean {
-    // More robust email validation regex that prevents multiple dots and ensures proper TLD
-    // Matches: user@domain.com, user.name@domain.co.uk
-    // Rejects: test@test....com, user@domain.c, spaces, etc.
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    // More robust email validation regex that supports all valid TLDs
+    // Matches: user@domain.com, user.name@domain.co.uk, user@example.co
+    // Rejects: test@test....com, spaces, etc.
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
     
     // Additional validation rules
     if (!emailRegex.test(email)) {

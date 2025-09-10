@@ -18,6 +18,8 @@ export declare class ApiClient {
     getProspectCart(cartId: string): Promise<any>;
     abandonProspectCart(cartId: string): Promise<any>;
     convertProspectCart(cartId: string): Promise<any>;
+    private getRequestType;
+    private getErrorType;
     private request;
     setApiKey(apiKey: string): void;
     getApiKey(): string;

@@ -14,9 +14,13 @@ export declare class EventTimelinePanel implements DebugPanel {
     private static readonly EVENTS_STORAGE_KEY;
     private static readonly SHOW_INTERNAL_KEY;
     private static readonly MAX_STORED_EVENTS;
+    private static readonly STORAGE_EXPIRY_KEY;
+    private static readonly STORAGE_EXPIRY_HOURS;
     constructor();
     private loadSavedState;
+    private checkAndCleanExpiredStorage;
     private saveEvents;
+    private safeStringify;
     toggleInternalEvents(): void;
     private initializeEventWatching;
     private watchDataLayer;

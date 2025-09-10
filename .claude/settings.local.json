@@ -10,6 +10,7 @@
       "Bash(cat:*)",
       "Bash(grep:*)",
       "Bash(npm ls:*)",
+      "Bash(npm install:*)",
       "Bash(npm run typecheck:*)",
       "Bash(npm run type-check:*)",
       "Bash(npm test:*)"

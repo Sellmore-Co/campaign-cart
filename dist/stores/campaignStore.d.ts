@@ -4,6 +4,8 @@ interface CampaignState {
     packages: Package[];
     isLoading: boolean;
     error: string | null;
+    isFromCache?: boolean;
+    cacheAge?: number;
 }
 interface CampaignActions {
     loadCampaign: (apiKey: string) => Promise<void>;

@@ -77,7 +77,7 @@ export class OrderBuilder {
       lines: cartItems.map(item => ({
         package_id: item.packageId,
         quantity: item.quantity,
-        is_upsell: false
+        is_upsell: item.is_upsell || false
       })),
       shipping_address: shippingAddress,
       ...(billingAddressData && { billing_address: billingAddressData }),
@@ -90,7 +90,7 @@ export class OrderBuilder {
         last_name: checkoutFormData.lname || '',
         language: 'en',
         phone_number: checkoutFormData.phone,
-        accepts_marketing: checkoutFormData.accepts_marketing || false
+        accepts_marketing: checkoutFormData.accepts_marketing ?? true
       },
       vouchers: vouchers,
       attribution: attribution,
@@ -116,7 +116,7 @@ export class OrderBuilder {
       lines: cartItems.map(item => ({
         package_id: item.packageId,
         quantity: item.quantity,
-        is_upsell: false
+        is_upsell: item.is_upsell || false
       })),
       payment_detail: {
         payment_method: paymentMethod
@@ -139,7 +139,7 @@ export class OrderBuilder {
         ? cartItems.map(item => ({
             package_id: item.packageId,
             quantity: item.quantity,
-            is_upsell: false
+            is_upsell: item.is_upsell || false
           }))
         : [{ package_id: 1, quantity: 1, is_upsell: false }], // Default package if cart empty
       
@@ -169,7 +169,7 @@ export class OrderBuilder {
         last_name: 'Order',
         language: 'en',
         phone_number: '+14807581224',
-        accepts_marketing: false
+        accepts_marketing: true
       },
       
       vouchers: vouchers,
