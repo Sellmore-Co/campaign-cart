@@ -121,9 +121,15 @@ export class EventTimelinePanel implements DebugPanel {
   private static readonly MAX_STORED_EVENTS = 500;
 
   constructor() {
-    this.loadSavedState();
-    this.initializeEventWatching();
-    EventTimelinePanel.instance = this;
+    // Check if debug mode is actually enabled before initializing
+    const urlParams = new URLSearchParams(window.location.search);
+    const isDebugMode = urlParams.get('debugger') === 'true' || urlParams.get('debug') === 'true';
+    
+    if (isDebugMode) {
+      this.loadSavedState();
+      this.initializeEventWatching();
+      EventTimelinePanel.instance = this;
+    }
   }
 
   private loadSavedState(): void {
@@ -160,11 +166,47 @@ export class EventTimelinePanel implements DebugPanel {
       try {
         // Only save the most recent events to avoid localStorage limits
         const eventsToSave = this.events.slice(0, EventTimelinePanel.MAX_STORED_EVENTS);
-        localStorage.setItem(EventTimelinePanel.EVENTS_STORAGE_KEY, JSON.stringify(eventsToSave));
+        // Use safe serialization to handle circular references
+        const serialized = this.safeStringify(eventsToSave);
+        localStorage.setItem(EventTimelinePanel.EVENTS_STORAGE_KEY, serialized);
       } catch (error) {
         console.error('Failed to save events:', error);
       }
     }, 500); // Debounce for 500ms
+  }
+
+  private safeStringify(obj: any): string {
+    const seen = new WeakSet();
+    return JSON.stringify(obj, (_key, value) => {
+      // Handle circular references
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) {
+          return '[Circular Reference]';
+        }
+        seen.add(value);
+      }
+      
+      // Filter out DOM elements and Window objects
+      if (value instanceof Window) return '[Window]';
+      if (value instanceof Document) return '[Document]';
+      if (value instanceof HTMLElement) return '[HTMLElement]';
+      if (value instanceof Node) return '[Node]';
+      if (value instanceof Event) {
+        // Extract safe properties from Event objects
+        return {
+          type: value.type,
+          target: value.target ? '[EventTarget]' : undefined,
+          timeStamp: value.timeStamp,
+          bubbles: value.bubbles,
+          cancelable: value.cancelable
+        };
+      }
+      
+      // Filter out functions
+      if (typeof value === 'function') return '[Function]';
+      
+      return value;
+    });
   }
   
   public toggleInternalEvents(): void {
@@ -239,6 +281,11 @@ export class EventTimelinePanel implements DebugPanel {
   private watchInternalEvents(): void {
     // Subscribe to all EventBus events
     const eventHandler = (eventName: string, data: any) => {
+      // Skip error events to prevent infinite loops
+      if (eventName.includes('error') || eventName.includes('Error')) {
+        return;
+      }
+      
       if (this.isRecording) {
         this.addEvent({
           type: 'internal',
@@ -263,32 +310,66 @@ export class EventTimelinePanel implements DebugPanel {
 
     const eventsToWatch = [
       'click', 'submit', 'change', 'focus', 'blur',
-      'scroll', 'resize', 'load', 'error'
+      'scroll', 'resize', 'load'
+      // Removed 'error' to prevent infinite loops
     ];
     
-    // Events to ignore (debug panel internal events)
+    // Events to ignore (debug panel internal events and Webflow events)
     const eventsToIgnore = [
       'debug:event-added',
       'debug:update-content',
-      'debug:panel-switched'
+      'debug:panel-switched',
+      // Webflow interaction events
+      'ix2-animation-started',
+      'ix2-animation-stopped',
+      'ix2-animation-completed',
+      'ix2-animation-paused',
+      'ix2-animation-resumed',
+      'ix2-animation',
+      'ix2-element-hover',
+      'ix2-element-unhover',
+      'ix2-element-click',
+      'ix2-page-start',
+      'ix2-page-finish',
+      'ix2-scroll',
+      'ix2-tabs-change',
+      'ix2-slider-change',
+      'ix2-dropdown-open',
+      'ix2-dropdown-close',
+      // Other Webflow events
+      'w-close',
+      'w-open',
+      'w-tab-active',
+      'w-tab-inactive',
+      'w-slider-move',
+      'w-dropdown-toggle'
     ];
 
     // Override dispatchEvent for CustomEvents
     const originalDispatch = EventTarget.prototype.dispatchEvent;
     EventTarget.prototype.dispatchEvent = function(event: Event) {
+      // Skip error events, debug events, and Webflow events to prevent infinite loops and noise
       if (event instanceof CustomEvent && 
           !eventsToWatch.includes(event.type) && 
           !eventsToIgnore.includes(event.type) &&
-          !event.type.startsWith('debug:')) {
+          !event.type.startsWith('debug:') &&
+          !event.type.startsWith('ix2-') &&
+          !event.type.startsWith('w-') &&
+          !event.type.includes('error') &&
+          !event.type.includes('Error')) {
         const self = EventTimelinePanel.getInstance();
         if (self && self.isRecording) {
-          self.addEvent({
-            type: 'dom',
-            name: event.type,
-            data: event.detail || {},
-            source: 'DOM CustomEvent',
-            isInternal: INTERNAL_EVENT_PATTERNS.includes(event.type)
-          });
+          try {
+            self.addEvent({
+              type: 'dom',
+              name: event.type,
+              data: event.detail || {},
+              source: 'DOM CustomEvent',
+              isInternal: INTERNAL_EVENT_PATTERNS.includes(event.type)
+            });
+          } catch (e) {
+            // Silently ignore errors in event tracking to prevent loops
+          }
         }
       }
       return originalDispatch.call(this, event);
@@ -498,7 +579,7 @@ export class EventTimelinePanel implements DebugPanel {
                   Copy JSON
                 </button>
               </div>
-              <pre class="event-modal-data-content">${JSON.stringify(selectedEvent.data, null, 2)}</pre>
+              <pre class="event-modal-data-content">${this.safeStringify(selectedEvent.data)}</pre>
             </div>
           </div>
         </div>
@@ -516,7 +597,7 @@ export class EventTimelinePanel implements DebugPanel {
       (window as any).eventTimelinePanel_copyData = (eventId: string) => {
         const event = this.events.find(e => e.id === eventId);
         if (event) {
-          navigator.clipboard.writeText(JSON.stringify(event.data, null, 2));
+          navigator.clipboard.writeText(this.safeStringify(event.data));
           // Show feedback
           const button = document.querySelector('.event-modal-copy');
           if (button) {
@@ -874,7 +955,7 @@ export class EventTimelinePanel implements DebugPanel {
                     <td class="event-time">${this.formatTimestamp(event.timestamp)}</td>
                     <td>
                       <div class="event-data" onclick="event.stopPropagation(); window.eventTimelinePanel_showModal('${event.id}')">
-                        ${JSON.stringify(event.data, null, 2)}
+                        ${this.safeStringify(event.data)}
                       </div>
                     </td>
                   </tr>
