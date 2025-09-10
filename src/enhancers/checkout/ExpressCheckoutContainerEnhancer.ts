@@ -22,6 +22,7 @@ import { ExpressCheckoutProcessor } from './processors/ExpressCheckoutProcessor'
 import { PAYPAL_SVG, APPLE_PAY_SVG, GOOGLE_PAY_SVG } from './constants/payment-icons';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { isApplePayAvailable, isGooglePayAvailable, isPayPalAvailable, getPaymentCapabilities } from '@/utils/paymentAvailability';
+import * as AmplitudeAnalytics from '@/utils/analytics/amplitude';
 import type { PaymentConfig, CartState } from '@/types/global';
 import type { PaymentMethodOption } from '@/types/api';
 
@@ -279,6 +280,32 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
     
     const cartStore = useCartStore.getState();
     const checkoutStore = useCheckoutStore.getState();
+    
+    // Track checkout events based on cart state
+    if (cartStore.isEmpty) {
+      // Track empty cart checkout attempt
+      queueMicrotask(() => {
+        AmplitudeAnalytics.trackEmptyCartCheckoutAttempt({
+          paymentMethod: method,
+          buttonLocation: 'express_checkout'
+        });
+      });
+    } else {
+      // Track normal checkout started
+      queueMicrotask(() => {
+        // Try to get country from checkout form if available, otherwise use default
+        const country = checkoutStore.formData?.country || 
+                       useConfigStore.getState().addressConfig?.defaultCountry || 
+                       'US';
+        
+        AmplitudeAnalytics.trackCheckoutStarted({
+          cartValue: cartStore.total,
+          itemsCount: cartStore.totalQuantity,
+          detectedCountry: country,
+          paymentMethod: method // Pass the actual method (paypal, apple_pay, google_pay)
+        });
+      });
+    }
     
     // let hasError = false;
     
