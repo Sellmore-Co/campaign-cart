@@ -181,7 +181,7 @@ function getCoreProperties(): Record<string, any> {
     
     // Meta tags - spread all next- prefixed meta tags
     ...Object.keys(nextMetaTags).reduce((acc, key) => {
-      acc[`meta_${key}`] = nextMetaTags[key];
+      acc[`meta_${key}`] = nextMetaTags[key] as string;
       return acc;
     }, {} as Record<string, string>),
     

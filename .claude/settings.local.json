@@ -9,7 +9,9 @@
       "Bash(npm run test:critical:*)",
       "Bash(cat:*)",
       "Bash(grep:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

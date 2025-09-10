@@ -2584,23 +2584,29 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // @ts-ignore - Using Date.now() is fine here
       const checkoutStartTime = (window as any)._checkoutStartTime || Date.now();
       const timeToComplete = Date.now() - checkoutStartTime;
-      AmplitudeAnalytics.trackCheckoutCompleted({
+      const trackData: Parameters<typeof AmplitudeAnalytics.trackCheckoutCompleted>[0] = {
         orderRefId: order.ref_id || 'unknown',
         orderValue: order.total_amount || cartStore.total,
         itemsCount: cartStore.totalQuantity,
         country: checkoutStore.formData.country || 'US',
-        state: checkoutStore.formData.province,
-        city: checkoutStore.formData.city,
-        postalCode: checkoutStore.formData.postal,
-        email: checkoutStore.formData.email,
         paymentMethod: checkoutStore.paymentMethod,
         timeToComplete: timeToComplete,
-        sameAsShipping: checkoutStore.sameAsShipping,
-        billingCountry: !checkoutStore.sameAsShipping ? checkoutStore.billingAddress?.country : undefined,
-        billingState: !checkoutStore.sameAsShipping ? checkoutStore.billingAddress?.province : undefined,
-        billingCity: !checkoutStore.sameAsShipping ? checkoutStore.billingAddress?.city : undefined,
-        billingPostalCode: !checkoutStore.sameAsShipping ? checkoutStore.billingAddress?.postal : undefined
-      });
+        sameAsShipping: checkoutStore.sameAsShipping
+      };
+      
+      if (checkoutStore.formData.province) trackData.state = checkoutStore.formData.province;
+      if (checkoutStore.formData.city) trackData.city = checkoutStore.formData.city;
+      if (checkoutStore.formData.postal) trackData.postalCode = checkoutStore.formData.postal;
+      if (checkoutStore.formData.email) trackData.email = checkoutStore.formData.email;
+      
+      if (!checkoutStore.sameAsShipping && checkoutStore.billingAddress) {
+        if (checkoutStore.billingAddress.country) trackData.billingCountry = checkoutStore.billingAddress.country;
+        if (checkoutStore.billingAddress.province) trackData.billingState = checkoutStore.billingAddress.province;
+        if (checkoutStore.billingAddress.city) trackData.billingCity = checkoutStore.billingAddress.city;
+        if (checkoutStore.billingAddress.postal) trackData.billingPostalCode = checkoutStore.billingAddress.postal;
+      }
+      
+      AmplitudeAnalytics.trackCheckoutCompleted(trackData);
     });
     
     let redirectUrl: string | undefined;
@@ -2893,7 +2899,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
                 // Determine the actual value for this field
                 let fieldValue = '';
                 if (field.startsWith('billing-')) {
-                  const billingField = field.replace('billing-', '');
+                  const billingField = field.replace('billing-', '') as keyof typeof checkoutStore.billingAddress;
                   fieldValue = checkoutStore.billingAddress?.[billingField] || '';
                 } else if (field === 'cc-number' || field === 'cvv') {
                   fieldValue = '[REDACTED]'; // Don't log sensitive payment data
@@ -2961,8 +2967,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
               
               // Add billing values if different from shipping
               if (!checkoutStore.sameAsShipping && checkoutStore.billingAddress) {
-                formValues.billing_fname = checkoutStore.billingAddress.fname || '';
-                formValues.billing_lname = checkoutStore.billingAddress.lname || '';
+                formValues.billing_fname = checkoutStore.billingAddress.first_name || '';
+                formValues.billing_lname = checkoutStore.billingAddress.last_name || '';
                 formValues.billing_address1 = checkoutStore.billingAddress.address1 || '';
                 formValues.billing_address2 = checkoutStore.billingAddress.address2 || '';
                 formValues.billing_city = checkoutStore.billingAddress.city || '';
@@ -3055,22 +3061,28 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           // Track checkout submitted event for Amplitude with full form data
           queueMicrotask(() => {
             const timeOnPage = Date.now() - checkoutStartTime;
-            AmplitudeAnalytics.trackCheckoutSubmitted({
+            const submitData: Parameters<typeof AmplitudeAnalytics.trackCheckoutSubmitted>[0] = {
               cartValue: cartStore.total,
               itemsCount: cartStore.totalQuantity,
               country: checkoutStore.formData.country || 'US',
-              state: checkoutStore.formData.province,
-              city: checkoutStore.formData.city,
-              postalCode: checkoutStore.formData.postal,
-              email: checkoutStore.formData.email,
               paymentMethod: checkoutStore.paymentMethod,
               timeOnPage: timeOnPage,
-              sameAsShipping: checkoutStore.sameAsShipping,
-              billingCountry: !checkoutStore.sameAsShipping ? checkoutStore.billingAddress?.country : undefined,
-              billingState: !checkoutStore.sameAsShipping ? checkoutStore.billingAddress?.province : undefined,
-              billingCity: !checkoutStore.sameAsShipping ? checkoutStore.billingAddress?.city : undefined,
-              billingPostalCode: !checkoutStore.sameAsShipping ? checkoutStore.billingAddress?.postal : undefined
-            });
+              sameAsShipping: checkoutStore.sameAsShipping
+            };
+            
+            if (checkoutStore.formData.province) submitData.state = checkoutStore.formData.province;
+            if (checkoutStore.formData.city) submitData.city = checkoutStore.formData.city;
+            if (checkoutStore.formData.postal) submitData.postalCode = checkoutStore.formData.postal;
+            if (checkoutStore.formData.email) submitData.email = checkoutStore.formData.email;
+            
+            if (!checkoutStore.sameAsShipping && checkoutStore.billingAddress) {
+              if (checkoutStore.billingAddress.country) submitData.billingCountry = checkoutStore.billingAddress.country;
+              if (checkoutStore.billingAddress.province) submitData.billingState = checkoutStore.billingAddress.province;
+              if (checkoutStore.billingAddress.city) submitData.billingCity = checkoutStore.billingAddress.city;
+              if (checkoutStore.billingAddress.postal) submitData.billingPostalCode = checkoutStore.billingAddress.postal;
+            }
+            
+            AmplitudeAnalytics.trackCheckoutSubmitted(submitData);
           });
           
           this.emit('checkout:started', {
