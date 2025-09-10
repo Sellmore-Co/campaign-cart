@@ -5,6 +5,10 @@ export declare class SDKInitializer {
     private static attributeScanner;
     private static retryAttempts;
     private static maxRetries;
+    private static initStartTime;
+    private static campaignLoadStartTime;
+    private static campaignLoadTime;
+    private static campaignFromCache;
     static initialize(): Promise<void>;
     private static loadConfiguration;
     private static loadCampaignData;
