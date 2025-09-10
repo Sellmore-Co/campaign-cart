@@ -21,6 +21,7 @@ import { ExpressCheckoutProcessor } from './processors/ExpressCheckoutProcessor'
 import { OrderManager } from './managers/OrderManager';
 import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
 import { userDataStorage } from '@/utils/analytics/userDataStorage';
+import * as AmplitudeAnalytics from '@/utils/analytics/amplitude';
 
 // Consolidated constants
 const FIELD_SELECTORS = ['[data-next-checkout-field]', '[os-checkout-field]'] as const;
@@ -2208,6 +2209,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         refId: order.ref_id
       });
       
+      // Track modal shown time for duration calculation
+      const modalShownTime = Date.now();
+      
       // Ensure checkout is not in processing state before showing modal
       const checkoutStore = useCheckoutStore.getState();
       checkoutStore.setProcessing(false);
@@ -2225,6 +2229,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Mark this order as shown
       shownOrders.push(order.ref_id);
       sessionStorage.setItem('next-shown-order-warnings', JSON.stringify(shownOrders));
+      
+      // Track the duplicate order prevention event with user action
+      const timeOnModal = Date.now() - modalShownTime;
+      queueMicrotask(() => {
+        AmplitudeAnalytics.trackDuplicateOrderPrevention({
+          orderRefId: order.ref_id,
+          orderNumber: order.number,
+          userAction: action === 'confirm' ? 'back' : 'close',
+          timeOnPage: timeOnModal
+        });
+      });
       
       if (action === 'confirm') {
         // Handle back button - navigate to the success URL
@@ -2399,6 +2414,24 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             payment_response_code: responseData.payment_response_code
           });
           
+          // Track checkout failed event for Amplitude
+          const checkoutStore = useCheckoutStore.getState();
+          const cartStore = useCartStore.getState();
+          queueMicrotask(() => {
+            const checkoutStartTime = (window as any)._checkoutStartTime || Date.now();
+            const timeOnPage = Date.now() - checkoutStartTime;
+            AmplitudeAnalytics.trackCheckoutFailed({
+              errorMessage: responseData.payment_details || 'Payment failed',
+              errorType: 'payment',
+              paymentResponseCode: responseData.payment_response_code,
+              cartValue: cartStore.total,
+              itemsCount: cartStore.totalQuantity,
+              country: checkoutStore.formData.country || 'US',
+              paymentMethod: checkoutStore.paymentMethod,
+              timeOnPage: timeOnPage
+            });
+          });
+          
           // Display payment error in the UI
           this.displayPaymentError(responseData.payment_details || 'Payment failed. Please check your payment information.');
           
@@ -2423,6 +2456,24 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
               return messages;
             })
             .join('. ');
+          
+          // Track checkout failed event for validation errors
+          const checkoutStore = useCheckoutStore.getState();
+          const cartStore = useCartStore.getState();
+          queueMicrotask(() => {
+            const checkoutStartTime = (window as any)._checkoutStartTime || Date.now();
+            const timeOnPage = Date.now() - checkoutStartTime;
+            AmplitudeAnalytics.trackCheckoutFailed({
+              errorMessage: errorMessages,
+              errorType: 'api',
+              cartValue: cartStore.total,
+              itemsCount: cartStore.totalQuantity,
+              country: checkoutStore.formData.country || 'US',
+              paymentMethod: checkoutStore.paymentMethod,
+              timeOnPage: timeOnPage
+            });
+          });
+          
           this.displayPaymentError(errorMessages);
           throw new Error(errorMessages);
         }
@@ -2526,6 +2577,38 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   private handleOrderRedirect(order: any): void {
+    // Track checkout completed event for Amplitude with full form data
+    const checkoutStore = useCheckoutStore.getState();
+    const cartStore = useCartStore.getState();
+    queueMicrotask(() => {
+      // @ts-ignore - Using Date.now() is fine here
+      const checkoutStartTime = (window as any)._checkoutStartTime || Date.now();
+      const timeToComplete = Date.now() - checkoutStartTime;
+      const trackData: Parameters<typeof AmplitudeAnalytics.trackCheckoutCompleted>[0] = {
+        orderRefId: order.ref_id || 'unknown',
+        orderValue: order.total_amount || cartStore.total,
+        itemsCount: cartStore.totalQuantity,
+        country: checkoutStore.formData.country || 'US',
+        paymentMethod: checkoutStore.paymentMethod,
+        timeToComplete: timeToComplete,
+        sameAsShipping: checkoutStore.sameAsShipping
+      };
+      
+      if (checkoutStore.formData.province) trackData.state = checkoutStore.formData.province;
+      if (checkoutStore.formData.city) trackData.city = checkoutStore.formData.city;
+      if (checkoutStore.formData.postal) trackData.postalCode = checkoutStore.formData.postal;
+      if (checkoutStore.formData.email) trackData.email = checkoutStore.formData.email;
+      
+      if (!checkoutStore.sameAsShipping && checkoutStore.billingAddress) {
+        if (checkoutStore.billingAddress.country) trackData.billingCountry = checkoutStore.billingAddress.country;
+        if (checkoutStore.billingAddress.province) trackData.billingState = checkoutStore.billingAddress.province;
+        if (checkoutStore.billingAddress.city) trackData.billingCity = checkoutStore.billingAddress.city;
+        if (checkoutStore.billingAddress.postal) trackData.billingPostalCode = checkoutStore.billingAddress.postal;
+      }
+      
+      AmplitudeAnalytics.trackCheckoutCompleted(trackData);
+    });
+    
     let redirectUrl: string | undefined;
     
     if (order.payment_complete_url) {
@@ -2723,6 +2806,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           const expressPaymentMethods = ['paypal', 'apple_pay', 'google_pay'];
           const isExpressPayment = expressPaymentMethods.includes(checkoutStore.paymentMethod);
           
+          // Track checkout started event for Amplitude
+          const checkoutStartTime = Date.now();
+          // Store the start time globally so we can calculate time to complete later
+          (window as any)._checkoutStartTime = checkoutStartTime;
+          queueMicrotask(() => {
+            const country = checkoutStore.formData.country || 'US';
+            AmplitudeAnalytics.trackCheckoutStarted({
+              cartValue: cartStore.total,
+              itemsCount: cartStore.totalQuantity,
+              detectedCountry: country,
+              paymentMethod: checkoutStore.paymentMethod || 'credit-card'
+            });
+          });
+          
           // Check if validation is required for express payments
           const config = useConfigStore.getState();
           const requireExpressValidation = config.paymentConfig?.expressCheckout?.requireValidation;
@@ -2784,6 +2881,113 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           }
           
           if (!validation.isValid) {
+            
+            // Track validation failed event for Amplitude with error details and values
+            queueMicrotask(() => {
+              const errorFields = Object.keys(validation.errors || {});
+              
+              // Build error details with field value, error message, and categorization
+              const errorDetails: Record<string, { value: any; error: string; category: string; errorType: string }> = {};
+              const errorsByCategory = {
+                shipping: [] as string[],
+                billing: [] as string[],
+                payment: [] as string[],
+                contact: [] as string[]
+              };
+              
+              errorFields.forEach(field => {
+                // Determine the actual value for this field
+                let fieldValue = '';
+                if (field.startsWith('billing-')) {
+                  const billingField = field.replace('billing-', '') as keyof typeof checkoutStore.billingAddress;
+                  fieldValue = checkoutStore.billingAddress?.[billingField] || '';
+                } else if (field === 'cc-number' || field === 'cvv') {
+                  fieldValue = '[REDACTED]'; // Don't log sensitive payment data
+                } else if (field === 'exp-month' || field === 'cc-month') {
+                  fieldValue = checkoutStore.formData['cc-month'] || checkoutStore.formData['exp-month'] || '';
+                } else if (field === 'exp-year' || field === 'cc-year') {
+                  fieldValue = checkoutStore.formData['cc-year'] || checkoutStore.formData['exp-year'] || '';
+                } else {
+                  fieldValue = checkoutStore.formData[field] || '';
+                }
+                
+                // Categorize the error
+                let category = 'shipping';
+                if (field.startsWith('billing-')) {
+                  category = 'billing';
+                } else if (['cc-number', 'cvv', 'exp-month', 'exp-year', 'cc-month', 'cc-year'].includes(field)) {
+                  category = 'payment';
+                } else if (['email', 'phone'].includes(field)) {
+                  category = 'contact';
+                }
+                
+                // Determine error type
+                const errorMessage = validation.errors[field] as string;
+                let errorType = 'other';
+                if (errorMessage.toLowerCase().includes('required') || errorMessage.toLowerCase().includes('is required')) {
+                  errorType = 'required';
+                } else if (errorMessage.toLowerCase().includes('valid') || errorMessage.toLowerCase().includes('invalid')) {
+                  errorType = 'format';
+                } else if (errorMessage.toLowerCase().includes('match')) {
+                  errorType = 'mismatch';
+                }
+                
+                errorDetails[field] = {
+                  value: fieldValue,
+                  error: errorMessage,
+                  category: category,
+                  errorType: errorType
+                };
+                
+                errorsByCategory[category as keyof typeof errorsByCategory].push(field);
+              });
+              
+              // Include ALL form values for complete context
+              const formValues: Record<string, any> = {
+                // Contact info
+                email: checkoutStore.formData.email || '',
+                phone: checkoutStore.formData.phone || '',
+                // Shipping address
+                shipping_fname: checkoutStore.formData.fname || '',
+                shipping_lname: checkoutStore.formData.lname || '',
+                shipping_address1: checkoutStore.formData.address1 || '',
+                shipping_address2: checkoutStore.formData.address2 || '',
+                shipping_city: checkoutStore.formData.city || '',
+                shipping_province: checkoutStore.formData.province || '',
+                shipping_postal: checkoutStore.formData.postal || '',
+                shipping_country: checkoutStore.formData.country || 'US',
+                // Payment info (redacted)
+                has_cc_number: !!checkoutStore.formData['cc-number'],
+                has_cvv: !!checkoutStore.formData['cvv'],
+                exp_month: checkoutStore.formData['cc-month'] || checkoutStore.formData['exp-month'] || '',
+                exp_year: checkoutStore.formData['cc-year'] || checkoutStore.formData['exp-year'] || '',
+                // Billing settings
+                same_as_shipping: checkoutStore.sameAsShipping
+              };
+              
+              // Add billing values if different from shipping
+              if (!checkoutStore.sameAsShipping && checkoutStore.billingAddress) {
+                formValues.billing_fname = checkoutStore.billingAddress.first_name || '';
+                formValues.billing_lname = checkoutStore.billingAddress.last_name || '';
+                formValues.billing_address1 = checkoutStore.billingAddress.address1 || '';
+                formValues.billing_address2 = checkoutStore.billingAddress.address2 || '';
+                formValues.billing_city = checkoutStore.billingAddress.city || '';
+                formValues.billing_province = checkoutStore.billingAddress.province || '';
+                formValues.billing_postal = checkoutStore.billingAddress.postal || '';
+                formValues.billing_country = checkoutStore.billingAddress.country || '';
+              }
+              
+              AmplitudeAnalytics.trackCheckoutValidationFailed({
+                validationErrors: errorFields,
+                errorCount: errorFields.length,
+                firstErrorField: validation.firstErrorField || errorFields[0] || 'unknown',
+                country: checkoutStore.formData.country || 'US',
+                paymentMethod: checkoutStore.paymentMethod,
+                errorDetails: errorDetails,
+                formValues: formValues,
+                errorsByCategory: errorsByCategory
+              } as any);
+            });
             
             // Log validation errors for debugging
             this.logger.warn('Validation failed', {
@@ -2853,6 +3057,33 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           }
           
           // span?.setAttribute('validation.passed', true);
+          
+          // Track checkout submitted event for Amplitude with full form data
+          queueMicrotask(() => {
+            const timeOnPage = Date.now() - checkoutStartTime;
+            const submitData: Parameters<typeof AmplitudeAnalytics.trackCheckoutSubmitted>[0] = {
+              cartValue: cartStore.total,
+              itemsCount: cartStore.totalQuantity,
+              country: checkoutStore.formData.country || 'US',
+              paymentMethod: checkoutStore.paymentMethod,
+              timeOnPage: timeOnPage,
+              sameAsShipping: checkoutStore.sameAsShipping
+            };
+            
+            if (checkoutStore.formData.province) submitData.state = checkoutStore.formData.province;
+            if (checkoutStore.formData.city) submitData.city = checkoutStore.formData.city;
+            if (checkoutStore.formData.postal) submitData.postalCode = checkoutStore.formData.postal;
+            if (checkoutStore.formData.email) submitData.email = checkoutStore.formData.email;
+            
+            if (!checkoutStore.sameAsShipping && checkoutStore.billingAddress) {
+              if (checkoutStore.billingAddress.country) submitData.billingCountry = checkoutStore.billingAddress.country;
+              if (checkoutStore.billingAddress.province) submitData.billingState = checkoutStore.billingAddress.province;
+              if (checkoutStore.billingAddress.city) submitData.billingCity = checkoutStore.billingAddress.city;
+              if (checkoutStore.billingAddress.postal) submitData.billingPostalCode = checkoutStore.billingAddress.postal;
+            }
+            
+            AmplitudeAnalytics.trackCheckoutSubmitted(submitData);
+          });
           
           this.emit('checkout:started', {
             formData: checkoutStore.formData,

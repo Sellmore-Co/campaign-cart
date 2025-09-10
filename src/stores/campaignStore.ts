@@ -23,6 +23,8 @@ interface CampaignState {
   packages: Package[];
   isLoading: boolean;
   error: string | null;
+  isFromCache?: boolean;
+  cacheAge?: number;
 }
 
 interface CampaignActions {
@@ -72,6 +74,8 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
           packages: cachedData.campaign.packages,
           isLoading: false,
           error: null,
+          isFromCache: true,
+          cacheAge: now - cachedData.timestamp
         });
         return;
       }
@@ -109,6 +113,8 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
         packages: campaign.packages,
         isLoading: false,
         error: null,
+        isFromCache: false,
+        cacheAge: 0
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load campaign';
