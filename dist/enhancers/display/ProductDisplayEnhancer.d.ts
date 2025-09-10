@@ -1,0 +1,41 @@
+import { BaseDisplayEnhancer } from './DisplayEnhancerCore';
+export declare class ProductDisplayEnhancer extends BaseDisplayEnhancer {
+    private campaignState?;
+    private packageId?;
+    private contextPackageId?;
+    private packageData?;
+    private multiplyByQuantity;
+    private currentQuantity;
+    private quantitySelectorId?;
+    initialize(): Promise<void>;
+    protected setupStoreSubscriptions(): void;
+    private handleCampaignUpdate;
+    private handleCartUpdate;
+    protected setupCurrencyChangeListener(): void;
+    private setupQuantityListeners;
+    private detectPackageContext;
+    private loadPackageData;
+    protected getPropertyValue(): any;
+    private isPriceProperty;
+    private parseNumericValue;
+    protected updateElementContent(value: string): void;
+    protected hideElement(): void;
+    protected showElement(): void;
+    update(data?: any): void;
+    private getCalculatedProperty;
+    private calculatePackageDiscountAmount;
+    private calculateDiscountedPrice;
+    private calculateDiscountedPriceTotal;
+    private calculateFinalPrice;
+    private calculateFinalPriceTotal;
+    private calculateTotalSavingsAmount;
+    private calculateTotalSavingsAmountRaw;
+    private calculateTotalSavingsPercentage;
+    private calculateTotalSavingsPercentageRaw;
+    private calculateHasTotalSavings;
+    private getPackageValue;
+    private getCampaignProperty;
+    getPackageProperty(property: string): any;
+    setPackageContext(packageId: number): void;
+}
+//# sourceMappingURL=ProductDisplayEnhancer.d.ts.map

@@ -1,0 +1,1 @@
+{"version":3,"file":"LoadingOverlay.d.ts","sourceRoot":"","sources":["../../src/components/LoadingOverlay.ts"],"names":[],"mappings":"AAAA,qBAAa,cAAc;IACzB,OAAO,CAAC,OAAO,CAA4B;IAC3C,OAAO,CAAC,QAAQ,CAAa;IAEtB,IAAI,IAAI,IAAI;IA2CZ,IAAI,CAAC,SAAS,GAAE,OAAe,GAAG,IAAI;CAoB9C"}

@@ -1,0 +1,52 @@
+import { BaseEnhancer } from '../base/BaseEnhancer';
+export declare class ExitIntentEnhancer extends BaseEnhancer {
+    private isEnabled;
+    private triggerCount;
+    private lastTriggerTime;
+    private maxTriggers;
+    private cooldownPeriod;
+    private imageUrl;
+    private templateName;
+    private templateElement;
+    private action;
+    private popupElement;
+    private overlayElement;
+    private mouseLeaveHandler;
+    private scrollHandler;
+    private disableOnMobile;
+    private mobileScrollTrigger;
+    private sessionStorageKey;
+    private useSessionStorage;
+    private overlayClosable;
+    private showCloseButton;
+    constructor();
+    initialize(): Promise<void>;
+    update(data?: any): Promise<void>;
+    setup(options: {
+        image?: string;
+        template?: string;
+        action?: () => void | Promise<void>;
+        disableOnMobile?: boolean;
+        mobileScrollTrigger?: boolean;
+        maxTriggers?: number;
+        useSessionStorage?: boolean;
+        sessionStorageKey?: string;
+        overlayClosable?: boolean;
+        showCloseButton?: boolean;
+    }): void;
+    disable(): void;
+    reset(): void;
+    private setupEventListeners;
+    private isMobileDevice;
+    private shouldTrigger;
+    private triggerExitIntent;
+    private saveToSessionStorage;
+    private showPopup;
+    private createTemplatePopup;
+    private processTemplateActions;
+    private createImagePopup;
+    hidePopup(): void;
+    protected cleanupEventListeners(): void;
+    destroy(): void;
+}
+//# sourceMappingURL=SimpleExitIntentEnhancer.d.ts.map
