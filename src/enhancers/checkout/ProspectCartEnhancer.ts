@@ -545,10 +545,10 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   }
 
   private isValidEmail(email: string): boolean {
-    // More robust email validation regex that prevents multiple dots and ensures proper TLD
-    // Matches: user@domain.com, user.name@domain.co.uk
-    // Rejects: test@test....com, user@domain.c, spaces, etc.
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    // More robust email validation regex that supports all valid TLDs
+    // Matches: user@domain.com, user.name@domain.co.uk, user@example.co
+    // Rejects: test@test....com, spaces, etc.
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
     
     // Additional validation rules
     if (!emailRegex.test(email)) {
