@@ -118,7 +118,9 @@ export class EventTimelinePanel implements DebugPanel {
   // Storage keys
   private static readonly EVENTS_STORAGE_KEY = 'debug-events-history';
   private static readonly SHOW_INTERNAL_KEY = 'debug-events-show-internal';
-  private static readonly MAX_STORED_EVENTS = 500;
+  private static readonly MAX_STORED_EVENTS = 100; // Reduced from 500 to keep localStorage smaller
+  private static readonly STORAGE_EXPIRY_KEY = 'debug-events-expiry';
+  private static readonly STORAGE_EXPIRY_HOURS = 2; // Clear after 2 hours
 
   constructor() {
     // Check if debug mode is actually enabled before initializing
@@ -133,6 +135,9 @@ export class EventTimelinePanel implements DebugPanel {
   }
 
   private loadSavedState(): void {
+    // Check if stored events have expired
+    this.checkAndCleanExpiredStorage();
+    
     // Load show internal events preference
     const savedShowInternal = localStorage.getItem(EventTimelinePanel.SHOW_INTERNAL_KEY);
     if (savedShowInternal !== null) {
@@ -145,14 +150,39 @@ export class EventTimelinePanel implements DebugPanel {
       if (savedEvents) {
         const parsed = JSON.parse(savedEvents);
         if (Array.isArray(parsed)) {
-          this.events = parsed.map(event => ({
-            ...event,
-            relativeTime: this.formatRelativeTime(event.timestamp)
-          }));
+          // Only load recent events (last hour)
+          const oneHourAgo = Date.now() - (60 * 60 * 1000);
+          this.events = parsed
+            .filter(event => event.timestamp > oneHourAgo)
+            .slice(0, EventTimelinePanel.MAX_STORED_EVENTS)
+            .map(event => ({
+              ...event,
+              relativeTime: this.formatRelativeTime(event.timestamp)
+            }));
         }
       }
     } catch (error) {
       console.error('Failed to load saved events:', error);
+      // Clear corrupted data
+      localStorage.removeItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
+    }
+  }
+  
+  private checkAndCleanExpiredStorage(): void {
+    try {
+      const expiryTime = localStorage.getItem(EventTimelinePanel.STORAGE_EXPIRY_KEY);
+      const now = Date.now();
+      
+      if (!expiryTime || parseInt(expiryTime) < now) {
+        // Clear expired events
+        localStorage.removeItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
+        
+        // Set new expiry time
+        const newExpiry = now + (EventTimelinePanel.STORAGE_EXPIRY_HOURS * 60 * 60 * 1000);
+        localStorage.setItem(EventTimelinePanel.STORAGE_EXPIRY_KEY, newExpiry.toString());
+      }
+    } catch (error) {
+      console.error('Failed to check storage expiry:', error);
     }
   }
   
@@ -164,13 +194,51 @@ export class EventTimelinePanel implements DebugPanel {
     
     this.saveTimeout = setTimeout(() => {
       try {
-        // Only save the most recent events to avoid localStorage limits
-        const eventsToSave = this.events.slice(0, EventTimelinePanel.MAX_STORED_EVENTS);
-        // Use safe serialization to handle circular references
-        const serialized = this.safeStringify(eventsToSave);
-        localStorage.setItem(EventTimelinePanel.EVENTS_STORAGE_KEY, serialized);
+        // Filter out old events (only keep last hour) and limit count
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        const recentEvents = this.events
+          .filter(event => event.timestamp > oneHourAgo)
+          .slice(0, EventTimelinePanel.MAX_STORED_EVENTS);
+        
+        // Only save if we have events
+        if (recentEvents.length > 0) {
+          // Simplify event data to reduce size
+          const simplifiedEvents = recentEvents.map(event => ({
+            id: event.id,
+            timestamp: event.timestamp,
+            type: event.type,
+            name: event.name,
+            // Limit data size to first 200 chars if it's a string
+            data: typeof event.data === 'string' && event.data.length > 200 
+              ? event.data.substring(0, 200) + '...' 
+              : event.data,
+            source: event.source,
+            isInternal: event.isInternal
+          }));
+          
+          const serialized = this.safeStringify(simplifiedEvents);
+          
+          // Check size before saving (localStorage typically has 5-10MB limit)
+          if (serialized.length > 500000) { // 500KB limit per key
+            // If still too large, save only half the events
+            const halfEvents = simplifiedEvents.slice(0, Math.floor(simplifiedEvents.length / 2));
+            localStorage.setItem(EventTimelinePanel.EVENTS_STORAGE_KEY, this.safeStringify(halfEvents));
+          } else {
+            localStorage.setItem(EventTimelinePanel.EVENTS_STORAGE_KEY, serialized);
+          }
+        }
+        
+        // Update expiry if not set
+        if (!localStorage.getItem(EventTimelinePanel.STORAGE_EXPIRY_KEY)) {
+          const expiry = Date.now() + (EventTimelinePanel.STORAGE_EXPIRY_HOURS * 60 * 60 * 1000);
+          localStorage.setItem(EventTimelinePanel.STORAGE_EXPIRY_KEY, expiry.toString());
+        }
       } catch (error) {
         console.error('Failed to save events:', error);
+        // If we hit quota exceeded, clear the events
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+          localStorage.removeItem(EventTimelinePanel.EVENTS_STORAGE_KEY);
+        }
       }
     }, 500); // Debounce for 500ms
   }
