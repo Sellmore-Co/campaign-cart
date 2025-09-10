@@ -33,7 +33,7 @@ export class DebugOverlay {
   private updateInterval: number | null = null;
   private logger = new Logger('DebugOverlay');
   
-  private eventManager: DebugEventManager;
+  private eventManager: DebugEventManager | null = null;
   private panels: DebugPanel[] = [];
   
   // Storage keys
@@ -49,26 +49,32 @@ export class DebugOverlay {
   }
 
   private constructor() {
-    this.eventManager = new DebugEventManager();
-    this.initializePanels();
-    this.setupEventListeners();
+    // Only initialize if debug mode is enabled
+    const urlParams = new URLSearchParams(window.location.search);
+    const isDebugMode = urlParams.get('debugger') === 'true' || urlParams.get('debug') === 'true';
     
-    // Restore saved state from localStorage
-    const savedExpandedState = localStorage.getItem(DebugOverlay.EXPANDED_STORAGE_KEY);
-    if (savedExpandedState === 'true') {
-      this.isExpanded = true;
-    }
-    
-    // Restore active panel
-    const savedPanel = localStorage.getItem(DebugOverlay.ACTIVE_PANEL_KEY);
-    if (savedPanel) {
-      this.activePanel = savedPanel;
-    }
-    
-    // Restore active tab
-    const savedTab = localStorage.getItem(DebugOverlay.ACTIVE_TAB_KEY);
-    if (savedTab) {
-      this.activePanelTab = savedTab;
+    if (isDebugMode) {
+      this.eventManager = new DebugEventManager();
+      this.initializePanels();
+      this.setupEventListeners();
+      
+      // Restore saved state from localStorage
+      const savedExpandedState = localStorage.getItem(DebugOverlay.EXPANDED_STORAGE_KEY);
+      if (savedExpandedState === 'true') {
+        this.isExpanded = true;
+      }
+      
+      // Restore active panel
+      const savedPanel = localStorage.getItem(DebugOverlay.ACTIVE_PANEL_KEY);
+      if (savedPanel) {
+        this.activePanel = savedPanel;
+      }
+      
+      // Restore active tab
+      const savedTab = localStorage.getItem(DebugOverlay.ACTIVE_TAB_KEY);
+      if (savedTab) {
+        this.activePanelTab = savedTab;
+      }
     }
   }
 
@@ -425,12 +431,12 @@ export class DebugOverlay {
   }
 
   // Public API for external access
-  public getEventManager(): DebugEventManager {
-    return this.eventManager;
+  public getEventManager(): DebugEventManager | null {
+    return this.eventManager || null;
   }
 
   public getPanels(): DebugPanel[] {
-    return this.panels;
+    return this.panels || [];
   }
 
   public setActivePanel(panelId: string): void {
@@ -445,7 +451,9 @@ export class DebugOverlay {
   }
 
   public logEvent(type: string, data: any, source: string = 'Manual'): void {
-    this.eventManager.logEvent(type, data, source);
+    if (this.eventManager) {
+      this.eventManager.logEvent(type, data, source);
+    }
   }
 
   // Enhanced debug methods for global access
@@ -459,7 +467,7 @@ export class DebugOverlay {
       timestamp: new Date().toISOString(),
       cart: useCartStore.getState(),
       config: useConfigStore.getState(),
-      events: this.eventManager.getEvents(),
+      events: this.eventManager ? this.eventManager.getEvents() : [],
       url: window.location.href,
       userAgent: navigator.userAgent
     };
@@ -613,7 +621,9 @@ export class DebugOverlay {
     }
     
     // Log event
-    this.eventManager.logEvent('debug:xray-toggled', { active: isActive }, 'Debug');
+    if (this.eventManager) {
+      this.eventManager.logEvent('debug:xray-toggled', { active: isActive }, 'Debug');
+    }
   }
 
   private updateButtonStates(): void {

@@ -10,8 +10,8 @@ import { CreditCardService, type CreditCardData } from '../services/CreditCardSe
 
 // Centralized validation patterns and constants
 export const VALIDATION_PATTERNS = {
-  // Enhanced email validation - prevents multiple dots, ensures proper TLD
-  EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+  // Enhanced email validation - supports all valid TLDs including .co, .uk, etc.
+  EMAIL: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/,
   PHONE: /^[\d\s\-\+\(\)]+$/,
   NAME: /^[A-Za-zÀ-ÿ]+(?:[' -][A-Za-zÀ-ÿ]+)*$/,
   // City validation - allows any Unicode letter, spaces, periods, apostrophes (both straight and curly), and hyphens
@@ -392,16 +392,23 @@ export class CheckoutValidator {
       return false;
     }
     
-    // Check for common incomplete domains
+    // Check for common incomplete domains (single letter TLDs)
+    // Note: .co is a valid TLD for Colombia and many services, so we don't block it
     const incompletePatterns = [
-      /\.c$/,     // gmail.c, yahoo.c
-      /\.co$/,    // incomplete .com
+      /\.c$/,     // gmail.c, yahoo.c (but not .co)
       /\.n$/,     // incomplete .net
       /\.o$/,     // incomplete .org
     ];
     
-    if (incompletePatterns.some(pattern => pattern.test(email.toLowerCase()))) {
-      return false;
+    // Only apply incomplete pattern check if it's truly a single letter TLD
+    const domainLower = email.toLowerCase();
+    if (incompletePatterns.some(pattern => pattern.test(domainLower))) {
+      // Make sure we're not blocking valid 2-letter TLDs
+      const parts = domainPart.split('.');
+      const tld = parts[parts.length - 1];
+      if (tld && tld.length === 1) {
+        return false;
+      }
     }
     
     return true;

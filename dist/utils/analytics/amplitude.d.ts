@@ -50,6 +50,14 @@ export declare function trackCheckoutStarted(data: {
     itemsCount: number;
     detectedCountry: string;
     paymentMethod: string;
+    cartItems?: Array<{
+        product_id: number | string;
+        name: string;
+        price: number;
+        quantity: number;
+        category?: string;
+        sku?: string;
+    }>;
 }): Promise<void>;
 export declare function trackCheckoutSubmitted(data: {
     cartValue: number;
@@ -66,6 +74,14 @@ export declare function trackCheckoutSubmitted(data: {
     billingState?: string;
     billingCity?: string;
     billingPostalCode?: string;
+    cartItems?: Array<{
+        product_id: number | string;
+        name: string;
+        price: number;
+        quantity: number;
+        category?: string;
+        sku?: string;
+    }>;
 }): Promise<void>;
 export declare function trackCheckoutValidationFailed(data: {
     validationErrors: string[];
@@ -98,6 +114,14 @@ export declare function trackCheckoutCompleted(data: {
     billingState?: string;
     billingCity?: string;
     billingPostalCode?: string;
+    orderItems?: Array<{
+        product_id: number | string;
+        name: string;
+        price: number;
+        quantity: number;
+        category?: string;
+        sku?: string;
+    }>;
 }): Promise<void>;
 export declare function trackCheckoutFailed(data: {
     errorMessage: string;

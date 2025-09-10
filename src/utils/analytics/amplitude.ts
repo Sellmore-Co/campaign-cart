@@ -477,12 +477,22 @@ export async function trackCheckoutStarted(data: {
   itemsCount: number;
   detectedCountry: string;
   paymentMethod: string;
+  cartItems?: Array<{
+    product_id: number | string;
+    name: string;
+    price: number;
+    quantity: number;
+    category?: string;
+    sku?: string;
+  }>;
 }): Promise<void> {
   await trackEvent('checkout_started', {
     cart_value: data.cartValue,
     items_count: data.itemsCount,
     detected_country: data.detectedCountry,
-    payment_method: data.paymentMethod
+    payment_method: data.paymentMethod,
+    // Include cart items as array for Amplitude cart analysis
+    products: data.cartItems || []
   });
 }
 
@@ -501,6 +511,14 @@ export async function trackCheckoutSubmitted(data: {
   billingState?: string;
   billingCity?: string;
   billingPostalCode?: string;
+  cartItems?: Array<{
+    product_id: number | string;
+    name: string;
+    price: number;
+    quantity: number;
+    category?: string;
+    sku?: string;
+  }>;
 }): Promise<void> {
   await trackEvent('checkout_submitted', {
     cart_value: data.cartValue,
@@ -516,7 +534,9 @@ export async function trackCheckoutSubmitted(data: {
     billing_country: data.billingCountry || null,
     billing_state: data.billingState || null,
     billing_city: data.billingCity || null,
-    billing_postal_code: data.billingPostalCode || null
+    billing_postal_code: data.billingPostalCode || null,
+    // Include cart items as array for Amplitude cart analysis
+    products: data.cartItems || []
   });
 }
 
@@ -530,15 +550,55 @@ export async function trackCheckoutValidationFailed(data: {
   formValues?: Record<string, any>;
   errorsByCategory?: Record<string, string[]>;
 }): Promise<void> {
+  // Convert error details to array format for Amplitude cart analysis
+  const errorDetailsArray = data.errorDetails 
+    ? Object.entries(data.errorDetails).map(([field, details]) => ({
+        field_name: field,
+        field_value: details.value,
+        error_message: details.error,
+        error_category: details.category || 'unknown',
+        error_type: details.errorType || 'unknown'
+      }))
+    : [];
+
+  // Convert validation errors to object array format
+  const validationErrorsArray = data.validationErrors.map((field, index) => ({
+    field_name: field,
+    error_position: index + 1,
+    is_first_error: index === 0
+  }));
+
+  // Convert errors by category to array format
+  const errorsByCategoryArray = data.errorsByCategory 
+    ? Object.entries(data.errorsByCategory).flatMap(([category, fields]) => 
+        fields.map(field => ({
+          category: category,
+          field_name: field
+        }))
+      )
+    : [];
+
+  // Convert form values to array format for better analysis
+  const formFieldsArray = data.formValues
+    ? Object.entries(data.formValues).map(([field, value]) => ({
+        field_name: field,
+        has_value: value !== null && value !== undefined && value !== '',
+        value_type: typeof value
+      }))
+    : [];
+
   await trackEvent('checkout_validation_failed', {
-    validation_errors: data.validationErrors,
+    // Keep simple properties
     error_count: data.errorCount,
     first_error_field: data.firstErrorField,
     country: data.country,
     payment_method: data.paymentMethod,
-    error_details: data.errorDetails || null,
-    form_values: data.formValues || null,
-    errors_by_category: data.errorsByCategory || null
+    
+    // Use array formats for Amplitude cart analysis feature
+    validation_errors: validationErrorsArray,  // Array of error objects
+    error_details: errorDetailsArray,          // Array of detailed error info
+    errors_by_category: errorsByCategoryArray, // Array of category-field pairs
+    form_fields: formFieldsArray               // Array of form field states
   });
 }
 
@@ -558,6 +618,14 @@ export async function trackCheckoutCompleted(data: {
   billingState?: string;
   billingCity?: string;
   billingPostalCode?: string;
+  orderItems?: Array<{
+    product_id: number | string;
+    name: string;
+    price: number;
+    quantity: number;
+    category?: string;
+    sku?: string;
+  }>;
 }): Promise<void> {
   await trackEvent('checkout_completed', {
     order_ref_id: data.orderRefId,
@@ -574,7 +642,9 @@ export async function trackCheckoutCompleted(data: {
     billing_country: data.billingCountry || null,
     billing_state: data.billingState || null,
     billing_city: data.billingCity || null,
-    billing_postal_code: data.billingPostalCode || null
+    billing_postal_code: data.billingPostalCode || null,
+    // Include order items as array for Amplitude cart analysis
+    products: data.orderItems || []
   });
 }
 
@@ -639,11 +709,24 @@ export async function trackUpsellPageView(data: {
   orderValue: number;
   upsellsCompleted: string[];
 }): Promise<void> {
+  // Convert upsell package IDs to object array for better analysis
+  const upsellPackagesArray = data.upsellPackageIds.map((id, index) => ({
+    package_id: id,
+    display_order: index + 1
+  }));
+
+  // Convert completed upsells to object array
+  const completedUpsellsArray = data.upsellsCompleted.map((id, index) => ({
+    upsell_id: id,
+    completion_order: index + 1
+  }));
+
   await trackEvent('upsell_page_view', {
     order_ref_id: data.orderRefId,
-    upsell_package_ids: data.upsellPackageIds,
     order_value: data.orderValue,
-    upsells_completed: data.upsellsCompleted
+    // Use array formats for Amplitude cart analysis
+    upsell_packages: upsellPackagesArray,
+    completed_upsells: completedUpsellsArray
   });
 }
 

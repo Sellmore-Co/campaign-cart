@@ -33,7 +33,7 @@ export declare class DebugOverlay {
     private updateBodyHeight;
     private startAutoUpdate;
     private stopAutoUpdate;
-    getEventManager(): DebugEventManager;
+    getEventManager(): DebugEventManager | null;
     getPanels(): DebugPanel[];
     setActivePanel(panelId: string): void;
     logEvent(type: string, data: any, source?: string): void;
