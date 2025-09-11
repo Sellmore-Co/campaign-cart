@@ -869,6 +869,10 @@ class CheckoutValidator {
     const baseRequiredFields = ["email", "fname", "lname", "address1", "city"];
     const countryConfig = countryConfigs.get(formData.country);
     const requiredFields = [...baseRequiredFields];
+    const phoneField = document.querySelector('[name="phone"]');
+    if (phoneField && (phoneField.hasAttribute("required") || phoneField.dataset.nextRequired === "true")) {
+      requiredFields.push("phone");
+    }
     if (countryConfig?.stateRequired) {
       requiredFields.push("province");
     }

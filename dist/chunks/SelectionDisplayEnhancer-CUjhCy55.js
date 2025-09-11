@@ -1,4 +1,4 @@
-import { B as BaseDisplayEnhancer, P as PropertyResolver } from "./DisplayEnhancerCore-Dqbl3Gzv.js";
+import { B as BaseDisplayEnhancer, P as PropertyResolver } from "./DisplayEnhancerCore-DY-LejJm.js";
 import { a as useCampaignStore, u as useCartStore, o as PriceCalculator } from "./utils-BzySd55V.js";
 class SelectionDisplayEnhancer extends BaseDisplayEnhancer {
   constructor() {

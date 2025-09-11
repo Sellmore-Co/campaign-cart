@@ -94,7 +94,7 @@ export class CheckoutValidator {
     this.rules.set('city', [requiredRule, cityRule]);
     this.rules.set('postal', [requiredRule]);
     this.rules.set('country', [requiredRule]);
-    this.rules.set('phone', [phoneRule]); // Phone is optional but validated if present
+    this.rules.set('phone', [phoneRule]); // Phone validation rules (required is conditional)
   }
 
   // ============================================================================
@@ -149,6 +149,12 @@ export class CheckoutValidator {
     
     const countryConfig = countryConfigs.get(formData.country);
     const requiredFields = [...baseRequiredFields];
+    
+    // Check if phone field is marked as required in HTML
+    const phoneField = document.querySelector('[name="phone"]') as HTMLInputElement;
+    if (phoneField && (phoneField.hasAttribute('required') || phoneField.dataset.nextRequired === 'true')) {
+      requiredFields.push('phone');
+    }
     
     if (countryConfig?.stateRequired) {
       requiredFields.push('province');
