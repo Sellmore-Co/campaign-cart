@@ -2,6 +2,7 @@
       // Profile configurations for Grounded Sheets
   profiles: {
     // Default profile doesn't need to be defined - SDK handles it automatically
+    // Note: buy_1, buy_2, buy_3 profiles are not needed as they're just tier selections
     
     // Exit 10% Profile - Maps ALL packages (all tiers) to their Exit 10% variants
     "exit_10": {

@@ -100,7 +100,10 @@
 
                         <div data-progress-trigger="color" class="form-section form-section--first">
                           <h2 class="form-section__title">Select your color and size</h2>
-                          <div data-next-component="tier-slots" class="os-slots"></div><template data-next-template="tier-slot" class="show-template"><next-tier-slot data-next-tier-slot="{slot-number}" id="" class="os-slot new-slot active">
+                          <div data-next-component="tier-slots" class="os-slots">
+                            <!-- Slots will be created dynamically by JavaScript -->
+                          </div>
+                          <template data-next-template="tier-slot" class="show-template"><next-tier-slot data-next-tier-slot="{slot-number}" id="" class="os-slot new-slot active">
                               <div class="os-slot__step cc-new">
                                 <div>Set {slot-number-formatted}</div>
                               </div>
