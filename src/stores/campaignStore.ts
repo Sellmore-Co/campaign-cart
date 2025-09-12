@@ -25,6 +25,15 @@ interface CampaignState {
   error: string | null;
 }
 
+interface PricingTier {
+  packageRefId: number;
+  name: string;
+  price: string;
+  retailPrice?: string;
+  quantity: number;
+  tierType?: string; // e.g., "Buy 1", "Buy 2", "Subscription"
+}
+
 interface VariantGroup {
   productId: number;
   productName: string;
@@ -43,6 +52,23 @@ interface VariantGroup {
   attributeTypes: string[]; // e.g., ['color', 'size']
 }
 
+interface ProductVariantGroup {
+  productId: number;
+  productName: string;
+  attributeTypes: string[]; // e.g., ['color', 'size']
+  variants: Map<string, {
+    variantId: number;
+    variantName: string;
+    attributes: VariantAttribute[];
+    sku?: string | null;
+    availability: {
+      purchase: string;
+      inventory: string;
+    };
+    pricingTiers: PricingTier[];
+  }>;
+}
+
 interface CampaignActions {
   loadCampaign: (apiKey: string) => Promise<void>;
   getPackage: (id: number) => Package | null;
@@ -57,6 +83,11 @@ interface CampaignActions {
   getAvailableVariantAttributes: (productId: number, attributeCode: string) => string[];
   getPackageByVariantSelection: (productId: number, selectedAttributes: Record<string, string>) => Package | null;
   processPackagesWithVariants: (packages: Package[]) => Package[];
+  
+  // Enhanced methods for pricing tiers
+  getProductVariantsWithPricing: (productId: number) => ProductVariantGroup | null;
+  getVariantPricingTiers: (productId: number, variantKey: string) => PricingTier[];
+  getLowestPriceForVariant: (productId: number, variantKey: string) => PricingTier | null;
 }
 
 const initialState: CampaignState = {
@@ -297,6 +328,99 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       
       return true;
     }) ?? null;
+  },
+
+  getProductVariantsWithPricing: (productId: number): ProductVariantGroup | null => {
+    const { packages } = get();
+    
+    // Filter packages by product ID
+    const productPackages = packages.filter(pkg => pkg.product_id === productId);
+    
+    if (productPackages.length === 0) {
+      return null;
+    }
+    
+    // Group packages by variant (using variant attributes as key)
+    const variantsMap = new Map<string, any>();
+    const attributeTypes = new Set<string>();
+    
+    productPackages.forEach(pkg => {
+      // Create a key from variant attributes
+      const variantKey = pkg.product_variant_attribute_values
+        ?.map(attr => `${attr.code}:${attr.value}`)
+        .sort()
+        .join('|') || '';
+      
+      // Track attribute types
+      pkg.product_variant_attribute_values?.forEach(attr => {
+        attributeTypes.add(attr.code);
+      });
+      
+      if (!variantsMap.has(variantKey)) {
+        variantsMap.set(variantKey, {
+          variantId: pkg.product_variant_id || 0,
+          variantName: pkg.product_variant_name || '',
+          attributes: pkg.product_variant_attribute_values || [],
+          sku: pkg.product_sku,
+          availability: {
+            purchase: pkg.product_purchase_availability || 'available',
+            inventory: pkg.product_inventory_availability || 'untracked'
+          },
+          pricingTiers: []
+        });
+      }
+      
+      // Extract tier type from package name (e.g., "Buy 1", "Buy 2")
+      const tierMatch = pkg.name.match(/^(Buy \d+|Subscribe)/i);
+      const tierType = tierMatch ? tierMatch[1] : 'Standard';
+      
+      // Add pricing tier
+      variantsMap.get(variantKey).pricingTiers.push({
+        packageRefId: pkg.ref_id,
+        name: pkg.name,
+        price: pkg.price,
+        retailPrice: pkg.price_retail,
+        quantity: pkg.qty,
+        tierType
+      });
+    });
+    
+    // Sort pricing tiers by price
+    variantsMap.forEach(variant => {
+      variant.pricingTiers.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+    });
+    
+    const firstPackage = productPackages[0];
+    return {
+      productId,
+      productName: firstPackage.product_name || '',
+      attributeTypes: Array.from(attributeTypes),
+      variants: variantsMap
+    };
+  },
+
+  getVariantPricingTiers: (productId: number, variantKey: string): PricingTier[] => {
+    const productGroup = get().getProductVariantsWithPricing(productId);
+    
+    if (!productGroup) {
+      return [];
+    }
+    
+    const variant = productGroup.variants.get(variantKey);
+    return variant ? variant.pricingTiers : [];
+  },
+
+  getLowestPriceForVariant: (productId: number, variantKey: string): PricingTier | null => {
+    const pricingTiers = get().getVariantPricingTiers(productId, variantKey);
+    
+    if (pricingTiers.length === 0) {
+      return null;
+    }
+    
+    // Return the tier with the lowest price
+    return pricingTiers.reduce((lowest, current) => 
+      parseFloat(current.price) < parseFloat(lowest.price) ? current : lowest
+    );
   },
 }));
 

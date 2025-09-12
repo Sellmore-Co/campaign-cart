@@ -151,6 +151,30 @@ export class NextCommerce {
     return campaignStore.getPackageByVariantSelection(productId, selectedAttributes);
   }
 
+  // Enhanced pricing tier methods
+  public getProductVariantsWithPricing(productId: number): any | null {
+    const campaignStore = useCampaignStore.getState();
+    return campaignStore.getProductVariantsWithPricing(productId);
+  }
+
+  public getVariantPricingTiers(productId: number, variantKey: string): any[] {
+    const campaignStore = useCampaignStore.getState();
+    return campaignStore.getVariantPricingTiers(productId, variantKey);
+  }
+
+  public getLowestPriceForVariant(productId: number, variantKey: string): any | null {
+    const campaignStore = useCampaignStore.getState();
+    return campaignStore.getLowestPriceForVariant(productId, variantKey);
+  }
+
+  public createVariantKey(attributes: Record<string, string>): string {
+    // Helper method to create consistent variant keys
+    return Object.entries(attributes)
+      .map(([code, value]) => `${code}:${value}`)
+      .sort()
+      .join('|');
+  }
+
   // Event and callback registration
   public on<K extends keyof EventMap>(event: K, handler: (data: EventMap[K]) => void): void {
     this.eventBus.on(event, handler);
