@@ -135,6 +135,22 @@ export class NextCommerce {
     return campaignStore.getPackage(id);
   }
 
+  // Product variant methods
+  public getVariantsByProductId(productId: number): any | null {
+    const campaignStore = useCampaignStore.getState();
+    return campaignStore.getVariantsByProductId(productId);
+  }
+
+  public getAvailableVariantAttributes(productId: number, attributeCode: string): string[] {
+    const campaignStore = useCampaignStore.getState();
+    return campaignStore.getAvailableVariantAttributes(productId, attributeCode);
+  }
+
+  public getPackageByVariantSelection(productId: number, selectedAttributes: Record<string, string>): any | null {
+    const campaignStore = useCampaignStore.getState();
+    return campaignStore.getPackageByVariantSelection(productId, selectedAttributes);
+  }
+
   // Event and callback registration
   public on<K extends keyof EventMap>(event: K, handler: (data: EventMap[K]) => void): void {
     this.eventBus.on(event, handler);
