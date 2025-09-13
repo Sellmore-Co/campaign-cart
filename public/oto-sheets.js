@@ -123,16 +123,24 @@ class OSDropdown extends ConversionElement {
     toggle.classList.add('active');
     toggle.setAttribute('aria-expanded', 'true');
 
-    // Show menu with proper styles
+    // Show menu with animation
+    menu.style.transition = 'opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease';
     menu.style.display = 'block';
-    menu.style.opacity = '1';
-    menu.style.visibility = 'visible';
     menu.style.position = 'absolute';
     menu.style.zIndex = '1000';
     menu.style.top = '100%';
     menu.style.left = '0';
     menu.style.width = '100%';
     menu.style.marginTop = '8px';
+    menu.style.transform = 'translateY(-4px)';
+
+    // Trigger reflow before animation
+    menu.offsetHeight;
+
+    // Animate in
+    menu.style.opacity = '1';
+    menu.style.visibility = 'visible';
+    menu.style.transform = 'translateY(0)';
 
     OSDropdown.openDropdowns.add(this);
   }
@@ -144,10 +152,17 @@ class OSDropdown extends ConversionElement {
     toggle.classList.remove('active');
     toggle.setAttribute('aria-expanded', 'false');
 
-    // Hide menu
-    menu.style.display = 'none';
+    // Animate out
     menu.style.opacity = '0';
     menu.style.visibility = 'hidden';
+    menu.style.transform = 'translateY(-4px)';
+
+    // Hide after animation completes
+    setTimeout(() => {
+      if (menu.style.opacity === '0') {
+        menu.style.display = 'none';
+      }
+    }, 200);
 
     OSDropdown.openDropdowns.delete(this);
   }
