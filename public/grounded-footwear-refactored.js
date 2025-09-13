@@ -1007,17 +1007,9 @@ class TierController {
     if (elements.reg) elements.reg.textContent = `$${displayRetailPrice.toFixed(2)}`;
     if (elements.price) elements.price.textContent = `$${displayPrice.toFixed(2)}`;
 
-    // Update the price label based on tier
+    // Always show "/ea" regardless of tier or bundle
     if (elements.priceContainer) {
-      const isBundlePackage = pkg.name && (pkg.name.includes('Buy 2') || pkg.name.includes('Buy 3'));
-      if (isBundlePackage) {
-        // For bundles, show the bundle quantity
-        const bundleQty = pkg.name.includes('Buy 3') ? 3 : 2;
-        elements.priceContainer.innerHTML = `<span data-option="price">$${displayPrice.toFixed(2)}</span>/${bundleQty} pack`;
-      } else {
-        // For single items, show "/ea"
-        elements.priceContainer.innerHTML = `<span data-option="price">$${displayPrice.toFixed(2)}</span>/ea`;
-      }
+      elements.priceContainer.innerHTML = `<span data-option="price">$${displayPrice.toFixed(2)}</span>/ea`;
     }
 
     // Calculate the savings percentage
