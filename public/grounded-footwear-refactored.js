@@ -874,28 +874,13 @@ class TierController {
         await window.next.swapCart(itemsToSwap);
       } catch (error) {
         console.error('Failed to swap cart:', error);
-        await this._reprocessAllSelections();
-      }
-    }
-  }
-
-  async _reprocessAllSelections() {
-    await window.next.clearCart();
-    
-    for (let i = 1; i <= this.currentTier; i++) {
-      const slotVariants = this.selectedVariants.get(i);
-      if (slotVariants?.color && slotVariants?.size) {
-        const matchingPackage = window.next.getPackageByVariantSelection(
-          this.productId,
-          { color: slotVariants.color, size: slotVariants.size }
-        );
-
-        if (matchingPackage) {
-          try {
-            await window.next.addItem({ packageId: matchingPackage.ref_id, quantity: 1 });
-          } catch (error) {
-            console.error(`Failed to add item for slot ${i}:`, error);
-          }
+        // Retry once with a small delay
+        try {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          await window.next.swapCart(itemsToSwap);
+        } catch (retryError) {
+          console.error('Retry failed:', retryError);
+          // If both attempts fail, the cart remains unchanged which is safer
         }
       }
     }
