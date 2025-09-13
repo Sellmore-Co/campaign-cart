@@ -176,9 +176,13 @@ class OSDropdown extends ConversionElement {
   _initializeState() {
     const value = this.getAttribute('value');
     const selectedItem = this.querySelector('os-dropdown-item[selected]');
-    
+
     if (value) {
-      this.value = value;
+      this._value = value;
+      // Defer toggle content update until after items are populated
+      requestAnimationFrame(() => {
+        this._updateToggleContent();
+      });
     } else if (selectedItem) {
       this._value = selectedItem.value;
       this._updateToggleContent();
@@ -419,6 +423,10 @@ class TierController {
     this.currentProfile = null;
     this.exitDiscountActive = false; // Track if exit discount is active
     this._cachedElements = new Map();
+    this._domCache = new Map(); // Cache DOM queries
+    this._cartUpdateTimer = null; // Debounce timer for cart updates
+    this._cartUpdateDelay = 300; // Debounce delay in ms
+    this._eventCleanup = []; // Track event listeners for cleanup
 
     this.init();
   }
@@ -440,6 +448,22 @@ class TierController {
     this._displaySavingsPercentages();
   }
 
+  // Cache DOM queries for performance
+  _getCachedElements(selector, forceRefresh = false) {
+    if (!this._domCache.has(selector) || forceRefresh) {
+      this._domCache.set(selector, document.querySelectorAll(selector));
+    }
+    return this._domCache.get(selector);
+  }
+
+  _getCachedElement(selector, forceRefresh = false) {
+    const key = `single_${selector}`;
+    if (!this._domCache.has(key) || forceRefresh) {
+      this._domCache.set(key, document.querySelector(selector));
+    }
+    return this._domCache.get(key);
+  }
+
   _restoreExitDiscountState() {
     // Check if exit discount was activated in this session
     const exitDiscountStored = sessionStorage.getItem('grounded-exit-discount-active');
@@ -448,17 +472,20 @@ class TierController {
       console.log('Restoring exit discount state from previous session');
 
       // Apply the exit profile for current tier without re-showing the popup
-      setTimeout(async () => {
-        await this._applyTierProfile(this.currentTier);
+      // Use promise instead of timeout
+      this._applyTierProfile(this.currentTier).then(() => {
         this._getProductIdFromCampaign();
 
-        // Update all pricing displays
-        for (let i = 1; i <= this.currentTier; i++) {
-          this._updateSlotPricing(i);
-        }
-        this._displaySavingsPercentages();
-        await this._swapCartWithSelections();
-      }, 500);
+        // Batch update all pricing displays
+        requestAnimationFrame(() => {
+          for (let i = 1; i <= this.currentTier; i++) {
+            this._updateSlotPricing(i);
+          }
+          this._displaySavingsPercentages();
+        });
+
+        this._debouncedCartUpdate();
+      });
     }
   }
 
@@ -495,16 +522,31 @@ class TierController {
   }
 
   _bindEvents() {
-    // Tier selection
-    document.querySelectorAll('[data-next-tier]').forEach(card => {
-      card.addEventListener('click', () => {
+    // Tier selection with cleanup tracking
+    const tierCards = this._getCachedElements('[data-next-tier]');
+    tierCards.forEach(card => {
+      const handler = () => {
         const tier = parseInt(card.getAttribute('data-next-tier'));
         this.selectTier(tier);
-      });
+      };
+      card.addEventListener('click', handler);
+      this._eventCleanup.push(() => card.removeEventListener('click', handler));
     });
 
-    // Variant selection
-    document.addEventListener('variantSelected', e => this._handleVariantSelection(e.detail));
+    // Variant selection with cleanup tracking
+    const variantHandler = e => this._handleVariantSelection(e.detail);
+    document.addEventListener('variantSelected', variantHandler);
+    this._eventCleanup.push(() => document.removeEventListener('variantSelected', variantHandler));
+  }
+
+  // Cleanup method for removing all event listeners
+  cleanup() {
+    this._eventCleanup.forEach(cleanup => cleanup());
+    this._eventCleanup = [];
+    if (this._cartUpdateTimer) {
+      clearTimeout(this._cartUpdateTimer);
+      this._cartUpdateTimer = null;
+    }
   }
 
   async selectTier(tierNumber) {
@@ -519,27 +561,34 @@ class TierController {
     const currentSelections = new Map(this.selectedVariants);
     await this._applyTierProfile(tierNumber);
 
-    // Give more time for profile to be fully applied
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // After profile is applied, update product ID from campaign
+    // Update product ID from campaign immediately after profile application
     this._getProductIdFromCampaign();
 
-    // Force refresh all slot pricing after profile change
+    // Batch all slot updates in a single frame
+    const updates = [];
     for (let i = 1; i <= tierNumber; i++) {
       if (currentSelections.has(i)) {
         // Restore previous selection for this slot
         this.selectedVariants.set(i, currentSelections.get(i));
       } else if (i > previousTier) {
         // Only auto-select for NEW slots that appear when increasing tier
-        await this._autoSelectFirstOptions(i);
+        updates.push(this._autoSelectFirstOptions(i));
       }
-
-      // Update pricing for all visible slots with the new profile prices
-      this._updateSlotPricing(i);
     }
 
-    await this._swapCartWithSelections();
+    // Wait for auto-selections if any
+    if (updates.length > 0) {
+      await Promise.all(updates);
+    }
+
+    // Batch pricing updates in next frame
+    requestAnimationFrame(() => {
+      for (let i = 1; i <= tierNumber; i++) {
+        this._updateSlotPricing(i);
+      }
+    });
+
+    this._debouncedCartUpdate();
     this._updateCTAButtons();
   }
 
@@ -550,12 +599,12 @@ class TierController {
 
     if (profile) {
       await window.next.setProfile(profile);
-      // Wait for profile to be fully applied and campaign data to update
-      await new Promise(resolve => setTimeout(resolve, 100));
     } else {
       await window.next.revertProfile();
-      await new Promise(resolve => setTimeout(resolve, 100));
     }
+
+    // Wait one frame for DOM updates instead of arbitrary timeout
+    await new Promise(resolve => requestAnimationFrame(resolve));
   }
 
   async activateExitDiscount() {
@@ -568,22 +617,22 @@ class TierController {
     // Re-apply the current tier profile with exit discount
     await this._applyTierProfile(this.currentTier);
 
-    // Small wait for profile to be applied
-    await new Promise(resolve => setTimeout(resolve, 200));
-
     // Update product ID and refresh pricing
     this._getProductIdFromCampaign();
 
-    // Refresh all slot pricing with new discounted prices
-    for (let i = 1; i <= this.currentTier; i++) {
-      this._updateSlotPricing(i);
-    }
+    // Batch all UI updates in next frame
+    requestAnimationFrame(() => {
+      // Refresh all slot pricing with new discounted prices
+      for (let i = 1; i <= this.currentTier; i++) {
+        this._updateSlotPricing(i);
+      }
 
-    // Update the tier card savings percentages
-    this._displaySavingsPercentages();
+      // Update the tier card savings percentages
+      this._displaySavingsPercentages();
+    });
 
-    // Update cart with new discounted packages
-    await this._swapCartWithSelections();
+    // Update cart with new discounted packages (debounced)
+    this._debouncedCartUpdate();
 
     // Optional: Add visual indicator for exit discount
     this._showExitDiscountIndicator();
@@ -623,10 +672,11 @@ class TierController {
   }
 
   _updateSlotStates(tierNumber) {
-    document.querySelectorAll('[next-tier-slot]').forEach(slot => {
+    const slots = this._getCachedElements('[next-tier-slot]');
+    slots.forEach(slot => {
       const slotNumber = parseInt(slot.getAttribute('next-tier-slot'));
       const isActive = slotNumber <= tierNumber;
-      
+
       slot.classList.toggle('active', isActive);
       slot.style.display = isActive ? 'flex' : 'none';
     });
@@ -769,12 +819,24 @@ class TierController {
     const slotVariants = this.selectedVariants.get(slotNumber);
     const hasColor = slotVariants?.color && slotVariants.color !== 'select-color';
     const hasSize = slotVariants?.size && slotVariants.size !== 'select-size';
-    
+
     if (hasColor && hasSize) {
-      await this._swapCartWithSelections();
+      this._debouncedCartUpdate();
     }
     this._updateCTAButtons();
     return hasColor && hasSize;
+  }
+
+  // Debounced cart update to prevent excessive API calls
+  _debouncedCartUpdate() {
+    if (this._cartUpdateTimer) {
+      clearTimeout(this._cartUpdateTimer);
+    }
+
+    this._cartUpdateTimer = setTimeout(() => {
+      this._swapCartWithSelections();
+      this._cartUpdateTimer = null;
+    }, this._cartUpdateDelay);
   }
 
   async _swapCartWithSelections() {
@@ -841,13 +903,18 @@ class TierController {
 
   _populateAllDropdowns() {
     if (!this.productId) return;
-    
-    document.querySelectorAll('[next-tier-slot]').forEach(slot => {
-      const slotNumber = parseInt(slot.getAttribute('next-tier-slot'));
-      if (slotNumber <= this.currentTier) {
-        this._populateSlotDropdowns(slot, slotNumber);
-        this._updateSlotPricing(slotNumber);
-      }
+
+    const slots = this._getCachedElements('[next-tier-slot]');
+
+    // Batch DOM updates
+    requestAnimationFrame(() => {
+      slots.forEach(slot => {
+        const slotNumber = parseInt(slot.getAttribute('next-tier-slot'));
+        if (slotNumber <= this.currentTier) {
+          this._populateSlotDropdowns(slot, slotNumber);
+          this._updateSlotPricing(slotNumber);
+        }
+      });
     });
   }
 
@@ -879,6 +946,11 @@ class TierController {
     sortedOptions.forEach(option => {
       menu.appendChild(itemCreator(option, slotNumber));
     });
+
+    // Update the toggle display if dropdown has a value
+    if (dropdown._value) {
+      dropdown._updateToggleContent();
+    }
   }
 
   _sortOptionsByDisplayOrder(options, variantType) {
@@ -1060,12 +1132,16 @@ class TierController {
   }
 
   _initializeUI() {
-    this._initializeColorSwatches();
-    this._initializeSlotImages();
+    // Batch all UI initialization in a single frame
+    requestAnimationFrame(() => {
+      this._initializeColorSwatches();
+      this._initializeSlotImages();
+    });
   }
 
   _initializeColorSwatches() {
-    document.querySelectorAll('os-dropdown[next-variant-option="color"]').forEach(dropdown => {
+    const colorDropdowns = this._getCachedElements('os-dropdown[next-variant-option="color"]');
+    colorDropdowns.forEach(dropdown => {
       const currentValue = dropdown.getAttribute('value');
       if (currentValue && currentValue !== 'select-color') {
         this._updateColorSwatch(dropdown, currentValue);
@@ -1074,7 +1150,8 @@ class TierController {
   }
 
   _initializeSlotImages() {
-    document.querySelectorAll('[next-tier-slot]').forEach(slot => {
+    const slots = this._getCachedElements('[next-tier-slot]');
+    slots.forEach(slot => {
       const slotNumber = parseInt(slot.getAttribute('next-tier-slot'));
       if (slotNumber <= this.currentTier) {
         const colorDropdown = slot.querySelector('os-dropdown[next-variant-option="color"]');
@@ -1226,15 +1303,17 @@ class TierController {
     });
   }
 
-  _isVariantOutOfStock(slotNumber, partialVariant) {
-    // Get the current selections for this slot
-    const slotVariants = this.selectedVariants.get(slotNumber) || {};
-
-    // Merge partial variant with current selections
-    const fullVariant = {
-      color: partialVariant.color || slotVariants.color,
-      size: partialVariant.size || slotVariants.size
-    };
+  // Consolidated stock checking method
+  _checkStockStatus(slotNumber, variant, isPartial = false) {
+    // Handle partial variants by merging with current selections
+    let fullVariant = variant;
+    if (isPartial) {
+      const slotVariants = this.selectedVariants.get(slotNumber) || {};
+      fullVariant = {
+        color: variant.color || slotVariants.color,
+        size: variant.size || slotVariants.size
+      };
+    }
 
     // If we don't have both color and size, we can't determine stock status
     if (!fullVariant.color || !fullVariant.size ||
@@ -1253,30 +1332,19 @@ class TierController {
 
     // Check if package exists and its stock status
     if (matchingPackage) {
-      const isOutOfStock = matchingPackage.product_inventory_availability === 'out_of_stock' ||
-                          matchingPackage.product_purchase_availability === 'unavailable';
-      return isOutOfStock;
-    }
-
-    return false;
-  }
-
-  _isCompleteVariantOutOfStock(slotNumber, fullVariant) {
-    // Check if a complete variant (both color and size) is out of stock
-    if (!fullVariant.color || !fullVariant.size ||
-        fullVariant.color === 'select-color' || fullVariant.size === 'select-size') {
-      return false;
-    }
-
-    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
-    const matchingPackage = window.next.getPackageByVariantSelection(productIdToUse, fullVariant);
-
-    if (matchingPackage) {
       return matchingPackage.product_inventory_availability === 'out_of_stock' ||
              matchingPackage.product_purchase_availability === 'unavailable';
     }
 
     return false;
+  }
+
+  _isVariantOutOfStock(slotNumber, partialVariant) {
+    return this._checkStockStatus(slotNumber, partialVariant, true);
+  }
+
+  _isCompleteVariantOutOfStock(slotNumber, fullVariant) {
+    return this._checkStockStatus(slotNumber, fullVariant, false);
   }
 
   _findAvailableAlternative(slotNumber, changedType, newValue, previousValue) {
@@ -1358,8 +1426,8 @@ class TierController {
 
   _updateCTAButtons() {
     const allComplete = this._checkAllSelectionsComplete();
-    const pendingCTA = document.querySelector('[data-cta="selection-pending"]');
-    const completeCTA = document.querySelector('[data-cta="selection-complete"]');
+    const pendingCTA = this._getCachedElement('[data-cta="selection-pending"]');
+    const completeCTA = this._getCachedElement('[data-cta="selection-complete"]');
 
     if (pendingCTA && completeCTA) {
       pendingCTA.classList.toggle('active', !allComplete);
@@ -1423,7 +1491,8 @@ class TierController {
 
   _displaySavingsPercentages() {
     // Update savings percentage for each tier card
-    document.querySelectorAll('[data-next-tier]').forEach(card => {
+    const tierCards = this._getCachedElements('[data-next-tier]');
+    tierCards.forEach(card => {
       const tierNumber = parseInt(card.getAttribute('data-next-tier'));
       const savingsElement = card.querySelector('[data-next-display*="bestSavingsPercentage"]');
 
@@ -1470,7 +1539,8 @@ class ProgressBarController {
   init() {
     this._resetAllSteps();
     this._setupScrollListener();
-    setTimeout(() => this._checkVisibility(), 100);
+    // Use requestAnimationFrame instead of setTimeout
+    requestAnimationFrame(() => this._checkVisibility());
   }
 
   _resetAllSteps() {
