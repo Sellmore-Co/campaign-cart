@@ -1,87 +1,42 @@
-// Grounded Footwear - Optimized Version
-// Maintains exact same functionality with performance improvements
+// Grounded Sheets Upsell System
+// Dynamic row creation based on quantity selection with upsell handling
 
-// Static configurations
-const CONFIG = {
-  colors: {
-    images: {
-      'obsidian-grey': 'https://cdn.29next.store/media/bareearth/uploads/obsidian-grey.png',
-      'chateau-ivory': 'https://cdn.29next.store/media/bareearth/uploads/chateau-ivory.png',
-      'scribe-blue': 'https://cdn.29next.store/media/bareearth/uploads/scribe-blue.png',
-      'verdant-sage': 'https://cdn.29next.store/media/bareearth/uploads/verdant-sage.png',
-    },
-    styles: {
-      'obsidian-grey': '#9699a6',
-      'chateau-ivory': '#e4e4e5',
-      'scribe-blue': '#4a90e2',
-      'verdant-sage': '#87a96b',
-    }
-  },
-  profiles: { 1: 'default', 2: '2_pack', 3: '3_pack' },
-  exitProfiles: { 1: 'exit_10', 2: 'exit_10_2pack', 3: 'exit_10_3pack' },
-  autoSelectAvailable: true,
-  displayOrder: {
-    sizes: ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King'],
-    colors: ['Obsidian Grey', 'Chateau Ivory', 'Scribe Blue', 'Verdant Sage']
-  },
-  sizePreferenceOrder: [
-    ['King', 'California King', 'Queen', 'Double', 'Single', 'Twin'],
-    ['California King', 'King', 'Queen', 'Double', 'Single', 'Twin'],
-    ['Queen', 'King', 'California King', 'Double', 'Single', 'Twin'],
-    ['Double', 'Queen', 'King', 'Single', 'Twin', 'California King'],
-    ['Single', 'Twin', 'Double', 'Queen', 'King', 'California King'],
-    ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King']
-  ]
-};
-
-// Optimized base element class
+// Base element class for custom elements
 class ConversionElement extends HTMLElement {
   constructor() {
     super();
     this._mounted = false;
-    this._abortController = null;
   }
 
   connectedCallback() {
     if (!this._mounted) {
-      this._abortController = new AbortController();
-      this.mount(this._abortController.signal);
+      this.mount();
       this._mounted = true;
     }
   }
 
   disconnectedCallback() {
-    this._abortController?.abort();
-    this._abortController = null;
     this._mounted = false;
   }
 
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue !== newValue) this.onAttributeChange?.(name, oldValue, newValue);
-  }
-
   mount() {}
-  onAttributeChange() {}
 }
 
-// Optimized dropdown with reduced DOM queries
-const { computePosition, flip, offset, autoUpdate, arrow } = window.FloatingUIDOM;
-
+// Dropdown component
 class OSDropdown extends ConversionElement {
-  static observedAttributes = ['value', 'name', 'disabled', 'animate-selection', 'animation-duration'];
+  static observedAttributes = ['value', 'name', 'disabled'];
   static openDropdowns = new Set();
 
   constructor() {
     super();
     this._elements = {};
     this._value = null;
-    this.cleanupAutoUpdate = null;
   }
 
   mount() {
     this._cacheElements();
     if (!this._elements.toggle || !this._elements.menu) return;
-    
+
     this._setupEventListeners();
     this._initializeState();
     this._setupAccessibility();
@@ -89,35 +44,25 @@ class OSDropdown extends ConversionElement {
 
   _cacheElements() {
     this._elements.toggle = this.querySelector('button, [role="button"]');
-    this._elements.menu = this.querySelector('os-dropdown-menu') || this._createMenuFromLegacy();
-    this._elements.arrow = this._elements.menu?.querySelector('.dropdown-arrow') || this._createArrow();
-  }
-
-  _createMenuFromLegacy() {
-    const legacyMenu = this.querySelector('[os-element="dropdown-menu"]');
-    if (!legacyMenu) return null;
-    
-    const menu = document.createElement('os-dropdown-menu');
-    menu.append(...legacyMenu.childNodes);
-    legacyMenu.replaceWith(menu);
-    return menu;
-  }
-
-  _createArrow() {
-    if (!this._elements.menu) return null;
-    const arrow = document.createElement('div');
-    arrow.className = 'dropdown-arrow';
-    this._elements.menu.appendChild(arrow);
-    return arrow;
+    this._elements.menu = this.querySelector('os-dropdown-menu');
   }
 
   _setupEventListeners() {
     const { toggle } = this._elements;
-    
-    toggle.addEventListener('click', e => { e.stopPropagation(); this.toggleDropdown(); });
-    toggle.addEventListener('keydown', this._handleKeyboard.bind(this));
+
+    toggle.addEventListener('click', e => {
+      e.stopPropagation();
+      this.toggleDropdown();
+    });
+
     this.addEventListener('dropdown-item-select', this._handleItemSelect.bind(this));
-    document.addEventListener('click', e => !this.contains(e.target) && this.isOpen && this.closeDropdown());
+
+    // Close on outside click
+    document.addEventListener('click', e => {
+      if (!this.contains(e.target) && this.isOpen) {
+        this.closeDropdown();
+      }
+    });
   }
 
   _handleItemSelect(e) {
@@ -153,14 +98,9 @@ class OSDropdown extends ConversionElement {
 
   _initializeState() {
     const value = this.getAttribute('value');
-    const selectedItem = this.querySelector('os-dropdown-item[selected]');
-
     if (value) {
       this._value = value;
       requestAnimationFrame(() => this._updateToggleContent());
-    } else if (selectedItem) {
-      this._value = selectedItem.value;
-      this._updateToggleContent();
     }
   }
 
@@ -171,210 +111,67 @@ class OSDropdown extends ConversionElement {
     toggle.setAttribute('aria-expanded', 'false');
   }
 
-  async _updateDropdownPosition() {
-    if (!this.isOpen) return;
-
-    const { toggle, menu, arrow } = this._elements;
-
-    // On mobile, make dropdown full width of parent
-    const isMobile = window.innerWidth <= 768;
-
-    if (isMobile) {
-      // Use parent's width for full-width dropdown on mobile
-      const toggleRect = toggle.getBoundingClientRect();
-      const parentRect = this.getBoundingClientRect();
-
-      // Calculate available space
-      const spaceBelow = window.innerHeight - toggleRect.bottom;
-      const spaceAbove = toggleRect.top;
-      const menuHeight = menu.scrollHeight || 300; // Estimate if not yet rendered
-
-      // Determine if we should flip to top
-      const shouldFlipToTop = spaceBelow < menuHeight + 20 && spaceAbove > spaceBelow;
-
-      const styles = {
-        left: '0',
-        right: '0',
-        width: `${parentRect.width}px`,
-        maxWidth: 'calc(100vw - 32px)',
-        transform: 'none'
-      };
-
-      if (shouldFlipToTop) {
-        // Position above the toggle
-        styles.bottom = `${toggleRect.height + 8}px`;
-        styles.top = 'auto';
-        menu.className = menu.className.replace(/placement-\w+/g, '') + ' placement-top';
-      } else {
-        // Position below the toggle (default)
-        styles.top = `${toggleRect.height + 8}px`;
-        styles.bottom = 'auto';
-        menu.className = menu.className.replace(/placement-\w+/g, '') + ' placement-bottom';
-      }
-
-      Object.assign(menu.style, styles);
-      return;
-    }
-
-    // Desktop: use FloatingUI for positioning but maintain full width
-    const toggleRect = toggle.getBoundingClientRect();
-    const parentRect = this.getBoundingClientRect();
-
-    const middleware = [
-      offset(8),
-      flip({ fallbackPlacements: ['top-start', 'bottom-end', 'top-end'] }),
-    ];
-
-    if (arrow && window.FloatingUIDOM.arrow) {
-      middleware.push(window.FloatingUIDOM.arrow({ element: arrow }));
-    }
-
-    const { x, y, placement, middlewareData } = await computePosition(toggle, menu, {
-      placement: 'bottom-start',
-      middleware,
-    });
-
-    // Use FloatingUI for vertical positioning but set width to match parent
-    Object.assign(menu.style, {
-      left: `${x}px`,
-      top: `${y}px`,
-      width: `${parentRect.width}px`, // Full width of parent
-      minWidth: `${parentRect.width}px`, // Ensure minimum width
-      transform: 'none'
-    });
-    menu.className = menu.className.replace(/placement-\w+/g, '') + ` placement-${placement.split('-')[0]}`;
-
-    if (arrow && middlewareData.arrow) {
-      this._updateArrowPosition(arrow, middlewareData.arrow, placement);
-    }
-  }
-
-  _updateArrowPosition(arrow, arrowData, placement) {
-    const { x: arrowX, y: arrowY } = arrowData;
-    const side = placement.split('-')[0];
-    const oppositeSide = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' }[side];
-
-    Object.assign(arrow.style, {
-      left: arrowX != null ? `${arrowX}px` : '',
-      top: arrowY != null ? `${arrowY}px` : '',
-      right: '', bottom: '',
-      [oppositeSide]: '-4px',
-    });
-  }
-
   toggleDropdown() {
     this.isOpen ? this.closeDropdown() : this.openDropdown();
   }
 
-  async openDropdown() {
+  openDropdown() {
     OSDropdown.closeAllDropdowns();
 
     const { toggle, menu } = this._elements;
     this.setAttribute('open', '');
     toggle.classList.add('active');
-
-    // Set initial visibility state
-    menu.style.opacity = '1';
-    menu.style.visibility = 'visible';
-    menu.classList.add('show');
     toggle.setAttribute('aria-expanded', 'true');
 
-    await this._updateDropdownPosition();
-
-    // Use autoUpdate on desktop, and add scroll listener on mobile
-    if (window.innerWidth > 768) {
-      this.cleanupAutoUpdate = autoUpdate(toggle, menu, () => this._updateDropdownPosition());
-    } else {
-      // On mobile, update position on scroll to handle viewport changes
-      this._scrollHandler = () => this._updateDropdownPosition();
-      window.addEventListener('scroll', this._scrollHandler, { passive: true });
-    }
+    // Show menu with proper styles
+    menu.style.display = 'block';
+    menu.style.opacity = '1';
+    menu.style.visibility = 'visible';
+    menu.style.position = 'absolute';
+    menu.style.zIndex = '1000';
+    menu.style.top = '100%';
+    menu.style.left = '0';
+    menu.style.width = '100%';
+    menu.style.marginTop = '8px';
 
     OSDropdown.openDropdowns.add(this);
-    this.querySelector('os-dropdown-item:not([disabled])')?.focus();
   }
 
   closeDropdown() {
-    const { toggle, menu, arrow } = this._elements;
+    const { toggle, menu } = this._elements;
 
     this.removeAttribute('open');
     toggle.classList.remove('active');
-    menu.classList.remove('show');
     toggle.setAttribute('aria-expanded', 'false');
 
-    // Reset visibility state (keep position until fully hidden)
+    // Hide menu
+    menu.style.display = 'none';
     menu.style.opacity = '0';
     menu.style.visibility = 'hidden';
 
-    // Clean up event listeners
-    this.cleanupAutoUpdate?.();
-    this.cleanupAutoUpdate = null;
-
-    if (this._scrollHandler) {
-      window.removeEventListener('scroll', this._scrollHandler);
-      this._scrollHandler = null;
-    }
-
-    // Delay position reset until after transition completes
-    setTimeout(() => {
-      if (!this.isOpen) {  // Only reset if still closed
-        menu.className = menu.className.replace(/placement-\w+/g, '');
-        Object.assign(menu.style, {
-          left: '',
-          top: '',
-          right: '',
-          bottom: '',
-          width: '',
-          transform: ''
-        });
-
-        if (arrow) Object.assign(arrow.style, { left: '', top: '', right: '', bottom: '' });
-      }
-    }, 200); // Match transition duration
-
     OSDropdown.openDropdowns.delete(this);
-    toggle.focus();
   }
 
   _updateToggleContent() {
     if (!this._elements.toggle || this._value === null) return;
 
     const selectedItem = this.querySelector(`os-dropdown-item[value="${this._value}"]`);
-    const itemContent = selectedItem?.querySelector('.os-card__toggle-option');
-    const existingContent = this._elements.toggle.querySelector('.os-card__toggle-option');
+    const toggleText = this._elements.toggle.querySelector('.os-card__variant-toggle-name');
 
-    if (existingContent && itemContent) {
-      const newContent = itemContent.cloneNode(true);
-      newContent.classList.remove('os--distribute');
-      newContent.classList.add('os--main');
-      existingContent.replaceWith(newContent);
+    if (toggleText && selectedItem) {
+      const itemText = selectedItem.querySelector('.os-card__variant-toggle-name')?.textContent;
+      if (itemText) {
+        toggleText.textContent = itemText;
+      }
     }
-  }
 
-  _handleKeyboard(e) {
-    const actions = {
-      'Enter': () => !this.isOpen && this.openDropdown(),
-      ' ': () => !this.isOpen && this.openDropdown(),
-      'Escape': () => this.isOpen && this.closeDropdown(),
-      'ArrowDown': () => this.isOpen && this._navigateItems(1),
-      'ArrowUp': () => this.isOpen && this._navigateItems(-1),
-    };
-
-    const action = actions[e.key];
-    if (action) {
-      e.preventDefault();
-      action();
-    }
-  }
-
-  _navigateItems(direction) {
-    const items = Array.from(this.querySelectorAll('os-dropdown-item:not([disabled])'));
-    const currentIndex = items.findIndex(item => item.selected);
-    const newIndex = Math.max(0, Math.min(items.length - 1, currentIndex + direction));
-
-    if (newIndex !== currentIndex && items[newIndex]) {
-      items[newIndex].focus();
-      this._handleItemSelect({ detail: { item: items[newIndex] } });
+    // Update image if this is a color dropdown
+    if (this.getAttribute('next-variant-option') === 'color') {
+      const imgElement = this._elements.toggle.querySelector('img');
+      const colorKey = this._value?.toLowerCase().replace(/\s+/g, '-');
+      if (imgElement && CONFIG.colors.images[colorKey]) {
+        imgElement.src = CONFIG.colors.images[colorKey];
+      }
     }
   }
 
@@ -385,39 +182,30 @@ class OSDropdown extends ConversionElement {
   get value() { return this._value; }
   set value(val) {
     this._updateValue(val);
-    this._updateSelection(this.querySelector(`os-dropdown-item[value="${val}"]`));
-    this._updateToggleContent();
+    const item = this.querySelector(`os-dropdown-item[value="${val}"]`);
+    if (item) {
+      this._updateSelection(item);
+      this._updateToggleContent();
+    }
   }
 
   get isOpen() { return this.hasAttribute('open'); }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    if (this.isOpen) this.closeDropdown();
-    this.cleanupAutoUpdate?.();
-    OSDropdown.openDropdowns.delete(this);
-  }
 }
 
-// Simplified dropdown menu and item classes
+// Dropdown menu component
 class OSDropdownMenu extends ConversionElement {
   mount() {
     this.setAttribute('role', 'listbox');
-    this.classList.add('os-dropdown-menu');
-
-    // Apply initial styles but don't override mobile-specific positioning
-    const initialStyles = {
-      position: 'absolute',
-      zIndex: '1000',
-      transition: 'opacity 0.2s ease, visibility 0.2s ease',
-      opacity: '0',
-      visibility: 'hidden'
-    };
-
-    Object.assign(this.style, initialStyles);
+    // Initial hidden state
+    this.style.display = 'none';
+    this.style.position = 'absolute';
+    this.style.zIndex = '1000';
+    this.style.opacity = '0';
+    this.style.visibility = 'hidden';
   }
 }
 
+// Dropdown item component
 class OSDropdownItem extends ConversionElement {
   static observedAttributes = ['value', 'selected', 'disabled'];
 
@@ -430,16 +218,10 @@ class OSDropdownItem extends ConversionElement {
   mount() {
     this.setAttribute('role', 'option');
     this.setAttribute('tabindex', '-1');
-    
-    this.addEventListener('click', () => !this.disabled && this._select());
-    this.addEventListener('keydown', e => {
-      if ((e.key === 'Enter' || e.key === ' ') && !this.disabled) {
-        e.preventDefault();
-        this._select();
-      }
-    });
 
-    this._value = this.getAttribute('value') || this.getAttribute('data-value') || '';
+    this.addEventListener('click', () => !this.disabled && this._select());
+
+    this._value = this.getAttribute('value') || '';
     if (this.hasAttribute('selected')) {
       this._selected = true;
       this.setAttribute('aria-selected', 'true');
@@ -470,31 +252,93 @@ class OSDropdownItem extends ConversionElement {
   }
 
   get disabled() { return this.hasAttribute('disabled'); }
-
-  onAttributeChange(name, _oldValue, newValue) {
-    switch (name) {
-      case 'value': this._value = newValue || ''; break;
-      case 'selected': this.selected = newValue !== null; break;
-      case 'disabled': 
-        this.setAttribute('aria-disabled', String(newValue !== null));
-        this.classList.toggle('disabled', newValue !== null);
-        break;
-    }
-  }
 }
 
-// Optimized Tier Controller with reduced redundancy
-class TierController {
+// Register custom elements
+customElements.define('os-dropdown', OSDropdown);
+customElements.define('os-dropdown-menu', OSDropdownMenu);
+customElements.define('os-dropdown-item', OSDropdownItem);
+
+// Static configurations
+const CONFIG = {
+  colors: {
+    images: {
+      'obsidian-grey': 'https://cdn.29next.store/media/bareearth/uploads/obsidian-grey.png',
+      'chateau-ivory': 'https://cdn.29next.store/media/bareearth/uploads/chateau-ivory.png',
+      'scribe-blue': 'https://cdn.29next.store/media/bareearth/uploads/scribe-blue.png',
+      'verdant-sage': 'https://cdn.29next.store/media/bareearth/uploads/verdant-sage.png',
+    },
+    styles: {
+      'obsidian-grey': '#9699a6',
+      'chateau-ivory': '#e4e4e5',
+      'scribe-blue': '#4a90e2',
+      'verdant-sage': '#87a96b',
+    }
+  },
+  displayOrder: {
+    sizes: ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King'],
+    colors: ['Obsidian Grey', 'Chateau Ivory', 'Scribe Blue', 'Verdant Sage']
+  },
+  // Package mapping for upsells based on color/size combinations
+  packageMapping: {
+    'obsidian-grey': {
+      'twin': 146,
+      'single': 166,
+      'double': 150,
+      'queen': 154,
+      'king': 158,
+      'california king': 162,
+      'cali king': 162
+    },
+    'chateau-ivory': {
+      'twin': 147,
+      'single': 167,
+      'double': 151,
+      'queen': 155,
+      'king': 159,
+      'california king': 163,
+      'cali king': 163
+    },
+    'scribe-blue': {
+      'twin': 148,
+      'single': 168,
+      'double': 152,
+      'queen': 156,
+      'king': 160,
+      'california king': 164,
+      'cali king': 164
+    },
+    'verdant-sage': {
+      'twin': 149,
+      'single': 169,
+      'double': 153,
+      'queen': 157,
+      'king': 161,
+      'california king': 165,
+      'cali king': 165
+    }
+  },
+  // Pricing per size (for display)
+  pricing: {
+    'twin': { retail: 299.98, sale: 74.99 },
+    'single': { retail: 219.98, sale: 54.99 },
+    'double': { retail: 339.98, sale: 84.99 },
+    'queen': { retail: 339.98, sale: 84.99 },
+    'king': { retail: 379.98, sale: 94.99 },
+    'california king': { retail: 379.98, sale: 94.99 },
+    'cali king': { retail: 379.98, sale: 94.99 }
+  }
+};
+
+// Upsell Controller Class
+class UpsellController {
   constructor() {
-    this.currentTier = 1;
+    this.currentQuantity = 1;
     this.selectedVariants = new Map();
+    this.variantsContainer = null;
+    this.quantityButtons = null;
+    this.acceptButton = null;
     this.productId = null;
-    this.baseProductId = null;
-    this.currentProfile = null;
-    this.exitDiscountActive = false;
-    this._domCache = new Map();
-    this._cartUpdateTimer = null;
-    this._cartUpdateDelay = 300;
     this._eventCleanup = [];
 
     this.init();
@@ -502,60 +346,23 @@ class TierController {
 
   async init() {
     await this._waitForSDK();
-    await window.next.clearCart();
-    await window.next.revertProfile();
-
     this._getProductIdFromCampaign();
+    this._cacheElements();
     this._bindEvents();
-    this._initializeDefaultState();
-    this._restoreExitDiscountState();
-    this._populateAllDropdowns();
-    await this._setInitialSelections();
-    this._initializeUI();
-    this._setupProfileListeners();
-    this._updateCTAButtons();
-    this._displaySavingsPercentages();
-  }
-
-  _getCachedElements(selector, forceRefresh = false) {
-    if (!this._domCache.has(selector) || forceRefresh) {
-      this._domCache.set(selector, document.querySelectorAll(selector));
-    }
-    return this._domCache.get(selector);
-  }
-
-  _getCachedElement(selector, forceRefresh = false) {
-    const key = `single_${selector}`;
-    if (!this._domCache.has(key) || forceRefresh) {
-      this._domCache.set(key, document.querySelector(selector));
-    }
-    return this._domCache.get(key);
-  }
-
-  _restoreExitDiscountState() {
-    const exitDiscountStored = sessionStorage.getItem('grounded-exit-discount-active');
-    if (exitDiscountStored === 'true') {
-      this.exitDiscountActive = true;
-      console.log('Restoring exit discount state from previous session');
-
-      this._applyTierProfile(this.currentTier).then(() => {
-        this._getProductIdFromCampaign();
-
-        requestAnimationFrame(() => {
-          for (let i = 1; i <= this.currentTier; i++) {
-            this._updateSlotPricing(i);
-          }
-          this._displaySavingsPercentages();
-        });
-
-        this._debouncedCartUpdate();
-      });
-    }
+    this._populateDropdowns();
+    this._initializeFirstRow();
+    this._updatePricing();
   }
 
   _waitForSDK() {
     return new Promise(resolve => {
-      const check = () => window.next?.getCampaignData ? resolve() : setTimeout(check, 100);
+      const check = () => {
+        if (window.next?.addUpsell && window.next?.getCampaignData) {
+          resolve();
+        } else {
+          setTimeout(check, 100);
+        }
+      };
       check();
     });
   }
@@ -565,6 +372,7 @@ class TierController {
     this.productId = campaign?.packages?.[0]?.product_id;
 
     if (!this.productId) {
+      // Try to get from cache
       try {
         const cache = JSON.parse(sessionStorage.getItem('next-campaign-cache') || '{}');
         this.productId = cache.campaign?.packages?.[0]?.product_id;
@@ -573,585 +381,216 @@ class TierController {
       }
     }
 
-    if (!this.baseProductId && this.productId) {
-      this.baseProductId = this.productId;
-    }
-
     if (!this.productId) {
       console.error('Warning: Product ID not found. Some features may not work correctly.');
     }
   }
 
+  _cacheElements() {
+    this.variantsContainer = document.querySelector('.os-card__variant-options');
+    this.quantityButtons = document.querySelectorAll('[data-next-upsell-quantity-toggle]');
+    this.acceptButton = document.querySelector('[data-next-upsell-action="add"]');
+    this.originalPriceElement = document.getElementById('originalPrice');
+    this.currentPriceElement = document.getElementById('currentPrice');
+    this.savingsElement = document.querySelector('[data-next-display="package.savingsPercentage"]');
+  }
+
   _bindEvents() {
-    const tierCards = this._getCachedElements('[data-next-tier]');
-    tierCards.forEach(card => {
-      const handler = () => {
-        const tier = parseInt(card.getAttribute('data-next-tier'));
-        this.selectTier(tier);
-      };
-      card.addEventListener('click', handler);
-      this._eventCleanup.push(() => card.removeEventListener('click', handler));
-    });
-
-    const variantHandler = e => this._handleVariantSelection(e.detail);
-    document.addEventListener('variantSelected', variantHandler);
-    this._eventCleanup.push(() => document.removeEventListener('variantSelected', variantHandler));
-  }
-
-  cleanup() {
-    this._eventCleanup.forEach(cleanup => cleanup());
-    this._eventCleanup = [];
-    if (this._cartUpdateTimer) {
-      clearTimeout(this._cartUpdateTimer);
-      this._cartUpdateTimer = null;
-    }
-  }
-
-  async selectTier(tierNumber) {
-    if (tierNumber === this.currentTier) return;
-
-    const previousTier = this.currentTier;
-    this.currentTier = tierNumber;
-
-    this._updateTierCardStates(tierNumber);
-    this._updateSlotStates(tierNumber);
-
-    const currentSelections = new Map(this.selectedVariants);
-
-    await this._applyTierProfile(tierNumber);
-    this._getProductIdFromCampaign();
-
-    const updates = [];
-    for (let i = 1; i <= tierNumber; i++) {
-      if (currentSelections.has(i)) {
-        this.selectedVariants.set(i, currentSelections.get(i));
-      } else if (i > previousTier) {
-        const slot1Selection = this.selectedVariants.get(1);
-        if (slot1Selection && slot1Selection.color && slot1Selection.size) {
-          this.selectedVariants.set(i, { ...slot1Selection });
-          const newSlot = document.querySelector(`[next-tier-slot="${i}"]`);
-          if (newSlot) {
-            this._updateDropdownValue(newSlot, 'color', slot1Selection.color);
-            this._updateDropdownValue(newSlot, 'size', slot1Selection.size);
-            this._updateColorSwatch(newSlot.querySelector('os-dropdown[next-variant-option="color"]'), slot1Selection.color);
-            this._updateSlotImage(newSlot, slot1Selection.color);
-          }
-        } else {
-          updates.push(this._autoSelectFirstOptions(i));
-        }
-      }
-    }
-
-    if (updates.length > 0) {
-      await Promise.all(updates);
-    }
-
-    await this._swapCartWithSelections();
-
-    requestAnimationFrame(() => {
-      for (let i = 1; i <= tierNumber; i++) {
-        this._updateSlotPricing(i);
-      }
-    });
-
-    this._updateCTAButtons();
-  }
-
-  async _applyTierProfile(tierNumber) {
-    const profileConfig = this.exitDiscountActive ? CONFIG.exitProfiles : CONFIG.profiles;
-    const profile = profileConfig[tierNumber];
-
-    if (profile) {
-      await window.next.setProfile(profile);
-    } else {
-      await window.next.revertProfile();
-    }
-
-    await new Promise(resolve => requestAnimationFrame(resolve));
-  }
-
-  async activateExitDiscount() {
-    this.exitDiscountActive = true;
-    sessionStorage.setItem('grounded-exit-discount-active', 'true');
-    console.log('Exit discount activated - applying 10% off to current tier');
-
-    await this._applyTierProfile(this.currentTier);
-    this._getProductIdFromCampaign();
-
-    requestAnimationFrame(() => {
-      for (let i = 1; i <= this.currentTier; i++) {
-        this._updateSlotPricing(i);
-      }
-      this._displaySavingsPercentages();
-    });
-
-    this._debouncedCartUpdate();
-    this._showExitDiscountIndicator();
-  }
-
-  _showExitDiscountIndicator() {
-    const indicator = document.createElement('div');
-    indicator.className = 'exit-discount-badge';
-    indicator.innerHTML = '🎉 Extra 10% OFF Applied!';
-    indicator.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #4CAF50;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 5px;
-      z-index: 9999;
-      animation: slideIn 0.5s ease;
-    `;
-    document.body.appendChild(indicator);
-    setTimeout(() => indicator.remove(), 5000);
-  }
-
-  _updateTierCardStates(selectedTier) {
-    document.querySelectorAll('[data-next-tier]').forEach(card => {
-      const tier = parseInt(card.getAttribute('data-next-tier'));
-      const isSelected = tier === selectedTier;
-      
-      card.classList.toggle('next-selected', isSelected);
-      const radioButton = card.querySelector('.radio-style-1');
-      radioButton?.setAttribute('data-selected', String(isSelected));
-    });
-  }
-
-  _updateSlotStates(tierNumber) {
-    const slots = this._getCachedElements('[next-tier-slot]');
-    slots.forEach(slot => {
-      const slotNumber = parseInt(slot.getAttribute('next-tier-slot'));
-      const isActive = slotNumber <= tierNumber;
-
-      slot.classList.toggle('active', isActive);
-      slot.style.display = isActive ? 'flex' : 'none';
-    });
-  }
-
-  async _autoSelectFirstOptions(slotNumber) {
-    const slot = document.querySelector(`[next-tier-slot="${slotNumber}"]`);
-    if (!slot) return;
-
-    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
-
-    const availableColors = window.next.getAvailableVariantAttributes(productIdToUse, 'color');
-    const availableSizes = window.next.getAvailableVariantAttributes(productIdToUse, 'size');
-
-    if (!this.selectedVariants.has(slotNumber)) {
-      this.selectedVariants.set(slotNumber, {});
-    }
-    const slotVariants = this.selectedVariants.get(slotNumber);
-
-    if (availableColors.length > 0 && !slotVariants.color) {
-      const selectedColor = availableColors.find(color => 
-        color.toLowerCase().includes('obsidian')
-      ) || availableColors[0];
-      
-      slotVariants.color = selectedColor;
-      this._updateDropdownValue(slot, 'color', selectedColor);
-      this._updateColorSwatch(slot.querySelector('os-dropdown[next-variant-option="color"]'), selectedColor);
-      this._updateSlotImage(slot, selectedColor);
-    }
-
-    if (availableSizes.length > 0 && !slotVariants.size) {
-      const selectedSize = availableSizes.find(size =>
-        size.toLowerCase() === 'king'
-      ) || availableSizes[0];
-
-      slotVariants.size = selectedSize;
-      this._updateDropdownValue(slot, 'size', selectedSize);
-    }
-
-    this._updateSlotPricing(slotNumber);
-
-    if (slotVariants.color && slotVariants.size) {
-      this._updateDropdownStockStatus(slot, 'color', slotNumber);
-      this._updateDropdownStockStatus(slot, 'size', slotNumber);
-    }
-  }
-
-  _updateDropdownValue(slot, variantType, value) {
-    const dropdown = slot.querySelector(`os-dropdown[next-variant-option="${variantType}"]`);
-    if (dropdown) dropdown.value = value;
-  }
-
-  _handleVariantSelection({ value, component }) {
-    const slot = component.closest('[next-tier-slot]');
-    if (!slot) return;
-
-    const slotNumber = parseInt(slot.getAttribute('next-tier-slot'));
-    const variantType = component.getAttribute('next-variant-option');
-
-    if (!this.selectedVariants.has(slotNumber)) {
-      this.selectedVariants.set(slotNumber, {});
-    }
-
-    const slotVariants = this.selectedVariants.get(slotNumber);
-    const previousValue = slotVariants[variantType];
-    slotVariants[variantType] = value;
-
-    if (CONFIG.autoSelectAvailable && slotVariants.color && slotVariants.size) {
-      const isOOS = this._isCompleteVariantOutOfStock(slotNumber, slotVariants);
-
-      if (isOOS) {
-        const alternative = this._findAvailableAlternative(slotNumber, variantType, value, previousValue);
-
-        if (alternative) {
-          console.log(`Auto-selecting available ${variantType === 'color' ? 'size' : 'color'}: ${alternative}`);
-          const otherType = variantType === 'color' ? 'size' : 'color';
-          slotVariants[otherType] = alternative;
-          this._updateDropdownValue(slot, otherType, alternative);
-
-          if (otherType === 'color') {
-            const colorDropdown = slot.querySelector(`os-dropdown[next-variant-option="color"]`);
-            this._updateColorSwatch(colorDropdown, alternative);
-            this._updateSlotImage(slot, alternative);
-          }
-
-          this._notifyAutoSelection(variantType, value, otherType, alternative);
-        }
-      }
-    }
-
-    if (variantType === 'color') {
-      this._updateColorSwatch(component, value);
-      this._updateSlotImage(slot, value);
-    }
-
-    this._updateDropdownStockStatus(slot, 'color', slotNumber);
-    this._updateDropdownStockStatus(slot, 'size', slotNumber);
-
-    this._updateSlotPricing(slotNumber);
-    this._checkCompleteSelection(slotNumber);
-  }
-
-  _updateColorSwatch(dropdown, colorValue) {
-    const swatch = dropdown.querySelector('.os-card__variant-swatch');
-    if (swatch && colorValue) {
-      const colorKey = colorValue.toLowerCase().replace(/\s+/g, '-');
-      swatch.className = 'os-card__variant-swatch';
-      if (CONFIG.colors.styles[colorKey]) {
-        swatch.style.backgroundColor = CONFIG.colors.styles[colorKey];
-      }
-    }
-  }
-
-  _updateSlotImage(slot, colorValue) {
-    const imageElement = slot.querySelector('[next-tier-slot-element="image"]');
-    if (imageElement && colorValue) {
-      const colorKey = colorValue.toLowerCase().replace(/\s+/g, '-');
-      if (CONFIG.colors.images[colorKey]) {
-        Object.assign(imageElement.style, { transition: 'opacity 0.3s ease-in-out', opacity: '0.5' });
-        imageElement.src = CONFIG.colors.images[colorKey];
-        imageElement.onload = () => imageElement.style.opacity = '1';
-      }
-    }
-  }
-
-  async _checkCompleteSelection(slotNumber) {
-    const slotVariants = this.selectedVariants.get(slotNumber);
-    const hasColor = slotVariants?.color && slotVariants.color !== 'select-color';
-    const hasSize = slotVariants?.size && slotVariants.size !== 'select-size';
-
-    if (hasColor && hasSize) {
-      this._debouncedCartUpdate();
-    }
-    this._updateCTAButtons();
-    return hasColor && hasSize;
-  }
-
-  _debouncedCartUpdate() {
-    if (this._cartUpdateTimer) {
-      clearTimeout(this._cartUpdateTimer);
-    }
-
-    this._cartUpdateTimer = setTimeout(() => {
-      this._swapCartWithSelections();
-      this._cartUpdateTimer = null;
-    }, this._cartUpdateDelay);
-  }
-
-  async _swapCartWithSelections() {
-    const itemsToSwap = [];
-    this._getProductIdFromCampaign();
-
-    for (let i = 1; i <= this.currentTier; i++) {
-      const slotVariants = this.selectedVariants.get(i);
-      const hasValidColor = slotVariants?.color && slotVariants.color !== 'select-color';
-      const hasValidSize = slotVariants?.size && slotVariants.size !== 'select-size';
-
-      if (hasValidColor && hasValidSize) {
-        const productIdToUse = this.baseProductId || this.productId;
-
-        const matchingPackage = window.next.getPackageByVariantSelection(
-          productIdToUse,
-          { color: slotVariants.color, size: slotVariants.size }
-        );
-
-        if (matchingPackage) {
-          console.log(`Slot ${i} - Found package:`, matchingPackage);
-          console.log(`Adding to cart: Package ID ${matchingPackage.ref_id} - ${slotVariants.color} / ${slotVariants.size}`);
-          itemsToSwap.push({ packageId: matchingPackage.ref_id, quantity: 1 });
-        } else {
-          console.log(`Slot ${i} - No package found for:`, slotVariants.color, slotVariants.size);
-        }
-      }
-    }
-
-    if (itemsToSwap.length > 0) {
-      try {
-        await window.next.swapCart(itemsToSwap);
-      } catch (error) {
-        console.error('Failed to swap cart:', error);
-        try {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          await window.next.swapCart(itemsToSwap);
-        } catch (retryError) {
-          console.error('Retry failed:', retryError);
-        }
-      }
-    }
-  }
-
-  _populateAllDropdowns() {
-    if (!this.productId) return;
-
-    const slots = this._getCachedElements('[next-tier-slot]');
-
-    requestAnimationFrame(() => {
-      slots.forEach(slot => {
-        const slotNumber = parseInt(slot.getAttribute('next-tier-slot'));
-        if (slotNumber <= this.currentTier) {
-          this._populateSlotDropdowns(slot, slotNumber);
-          this._updateSlotPricing(slotNumber);
-        }
+    // Quantity button clicks
+    this.quantityButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const quantity = parseInt(button.getAttribute('data-next-upsell-quantity-toggle'));
+        this.selectQuantity(quantity);
       });
     });
-  }
 
-  _populateSlotDropdowns(slot, slotNumber) {
-    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
-
-    const availableColors = window.next.getAvailableVariantAttributes(productIdToUse, 'color');
-    const availableSizes = window.next.getAvailableVariantAttributes(productIdToUse, 'size');
-
-    this._populateDropdown(slot, 'color', availableColors, this._createColorItem.bind(this));
-    this._populateDropdown(slot, 'size', availableSizes, this._createSizeItem.bind(this));
-  }
-
-  _populateDropdown(slot, variantType, options, itemCreator) {
-    const dropdown = slot.querySelector(`os-dropdown[next-variant-option="${variantType}"]`);
-    const menu = dropdown?.querySelector('os-dropdown-menu');
-    if (!menu) return;
-
-    const slotNumber = parseInt(slot.getAttribute('next-tier-slot'));
-
-    menu.querySelectorAll('os-dropdown-item, .dropdown-arrow').forEach(el => el.remove());
-
-    const sortedOptions = this._sortOptionsByDisplayOrder(options, variantType);
-
-    sortedOptions.forEach(option => {
-      menu.appendChild(itemCreator(option, slotNumber));
-    });
-
-    if (dropdown._value) {
-      dropdown._updateToggleContent();
-    }
-  }
-
-  _sortOptionsByDisplayOrder(options, variantType) {
-    const orderConfig = CONFIG.displayOrder[variantType === 'color' ? 'colors' : 'sizes'];
-
-    if (!orderConfig || orderConfig.length === 0) {
-      return options;
+    // Accept button click
+    if (this.acceptButton) {
+      this.acceptButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await this.acceptUpsell();
+      });
     }
 
-    const orderMap = new Map();
-    orderConfig.forEach((item, index) => {
-      orderMap.set(item.toLowerCase(), index);
-    });
-
-    return [...options].sort((a, b) => {
-      const aIndex = orderMap.get(a.toLowerCase());
-      const bIndex = orderMap.get(b.toLowerCase());
-
-      if (aIndex !== undefined && bIndex !== undefined) {
-        return aIndex - bIndex;
-      }
-
-      if (aIndex !== undefined) return -1;
-      if (bIndex !== undefined) return 1;
-
-      return 0;
-    });
+    // Listen for variant selections from dropdowns
+    document.addEventListener('variantSelected', (e) => this._handleVariantSelection(e.detail));
   }
 
-  _createColorItem(color, slotNumber) {
-    const item = document.createElement('os-dropdown-item');
-    const colorKey = color.toLowerCase().replace(/\s+/g, '-');
-
-    item.setAttribute('value', color);
-
-    const isOutOfStock = this._isVariantOutOfStock(slotNumber, { color });
-    if (isOutOfStock) {
-      item.classList.add('next-oos');
-    }
-
-    item.innerHTML = `
-      <div class="os-card__toggle-option os--distribute">
-        <div class="os-card__variant-toggle-info">
-          <div data-swatch="color" class="os-card__variant-swatch" style="background-color: ${CONFIG.colors.styles[colorKey] || '#ccc'}"></div>
-          <div class="os-card__variant-toggle-name">${color}</div>
-        </div>
-      </div>
-    `;
-
-    return item;
-  }
-
-  _createSizeItem(size, slotNumber) {
-    const item = document.createElement('os-dropdown-item');
-    item.setAttribute('value', size);
-
-    const isOutOfStock = this._isVariantOutOfStock(slotNumber, { size });
-    if (isOutOfStock) {
-      item.classList.add('next-oos');
-    }
-
-    item.innerHTML = `
-      <div class="os-card__toggle-option os--distribute">
-        <div class="os-card__variant-toggle-info">
-          <div class="os-card__variant-toggle-name">${size}</div>
-        </div>
-      </div>
-    `;
-
-    return item;
-  }
-
-  _updateSlotPricing(slotNumber) {
-    const slot = document.querySelector(`[next-tier-slot="${slotNumber}"]`);
-    if (!slot) return;
-
-    const slotVariants = this.selectedVariants.get(slotNumber);
-
-    if (!slotVariants?.color || !slotVariants?.size) {
-      this._resetSlotPricing(slot);
+  _populateDropdowns() {
+    if (!this.productId) {
+      console.error('Cannot populate dropdowns without product ID');
       return;
     }
 
-    let matchingPackage;
-
-    const basePackage = window.next.getPackageByVariantSelection(
-      this.baseProductId || this.productId,
-      { color: slotVariants.color, size: slotVariants.size }
-    );
-
-    if (basePackage) {
-      if (this.currentTier === 1 && !this.exitDiscountActive) {
-        matchingPackage = basePackage;
-      } else {
-        let profileName;
-
-        if (this.exitDiscountActive) {
-          if (this.currentTier === 1) {
-            profileName = 'exit_10';
-          } else if (this.currentTier === 2) {
-            profileName = 'exit_10_2pack';
-          } else {
-            profileName = 'exit_10_3pack';
-          }
-        } else {
-          profileName = this.currentTier === 2 ? '2_pack' : '3_pack';
-        }
-
-        if (window.nextConfig?.profiles?.[profileName]?.packageMappings) {
-          const mappedPackageId = window.nextConfig.profiles[profileName].packageMappings[basePackage.ref_id];
-          if (mappedPackageId) {
-            matchingPackage = window.next.getPackage(mappedPackageId);
-          }
-        }
-      }
-    }
-
-    if (matchingPackage) {
-      this._setPricing(slot, matchingPackage);
-    } else {
-      this._resetSlotPricing(slot);
-    }
-  }
-
-  _setPricing(slot, pkg) {
-    const elements = {
-      reg: slot.querySelector('[data-option="reg"]'),
-      price: slot.querySelector('[data-option="price"]'),
-      savingPct: slot.querySelector('[data-option="savingPct"]'),
-      priceContainer: slot.querySelector('.os-card__price.os--current')
-    };
-
-    const displayPrice = parseFloat(pkg.price);
-    const displayRetailPrice = parseFloat(pkg.price_retail);
-
-    if (elements.reg) elements.reg.textContent = `$${displayRetailPrice.toFixed(2)}`;
-    if (elements.price) elements.price.textContent = `$${displayPrice.toFixed(2)}`;
-
-    if (elements.priceContainer) {
-      elements.priceContainer.innerHTML = `<span data-option="price">$${displayPrice.toFixed(2)}</span>/ea`;
-    }
-
-    if (elements.savingPct && pkg.price_retail && pkg.price) {
-      const savingPct = Math.round(((displayRetailPrice - displayPrice) / displayRetailPrice) * 100);
-      elements.savingPct.textContent = `${savingPct}%`;
-    }
-  }
-
-  _resetSlotPricing(slot) {
-    const selectors = ['[data-option="reg"]', '[data-option="price"]', '[data-option="savingPct"]'];
-    const values = ['$XX.XX', '$XX.XX', 'XX%'];
-    
-    selectors.forEach((selector, i) => {
-      const element = slot.querySelector(selector);
-      if (element) element.textContent = values[i];
-    });
-  }
-
-  _initializeUI() {
-    requestAnimationFrame(() => {
-      this._initializeColorSwatches();
-      this._initializeSlotImages();
-    });
-  }
-
-  _initializeColorSwatches() {
-    const colorDropdowns = this._getCachedElements('os-dropdown[next-variant-option="color"]');
-    colorDropdowns.forEach(dropdown => {
-      const currentValue = dropdown.getAttribute('value');
-      if (currentValue && currentValue !== 'select-color') {
-        this._updateColorSwatch(dropdown, currentValue);
-      }
-    });
-  }
-
-  _initializeSlotImages() {
-    const slots = this._getCachedElements('[next-tier-slot]');
-    slots.forEach(slot => {
-      const slotNumber = parseInt(slot.getAttribute('next-tier-slot'));
-      if (slotNumber <= this.currentTier) {
-        const colorDropdown = slot.querySelector('os-dropdown[next-variant-option="color"]');
-        const currentColor = colorDropdown?.getAttribute('value');
-        if (currentColor && currentColor !== 'select-color') {
-          this._updateSlotImage(slot, currentColor);
-        }
-      }
-    });
-  }
-
-  async _setInitialSelections() {
+    // Get available variants from SDK
     const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
     const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
 
+    // Populate color dropdowns
+    const colorDropdowns = document.querySelectorAll('os-dropdown[next-variant-option="color"]');
+    colorDropdowns.forEach(dropdown => {
+      const menu = dropdown.querySelector('os-dropdown-menu');
+      if (menu) {
+        // Clear existing items
+        menu.innerHTML = '';
+
+        // Add color options based on available variants
+        availableColors.forEach(color => {
+          const colorKey = color.toLowerCase().replace(/\s+/g, '-');
+          const item = document.createElement('os-dropdown-item');
+          item.setAttribute('value', color);
+          item.innerHTML = `
+            <div class="os-card__toggle-option">
+              <div class="os-card__variant-toggle-info">
+                <div class="os-card__variant-swatch" style="background-color: ${CONFIG.colors.styles[colorKey] || '#ccc'}"></div>
+                <div class="os-card__variant-toggle-name">${color}</div>
+              </div>
+            </div>
+          `;
+          menu.appendChild(item);
+        });
+      }
+    });
+
+    // Populate size dropdowns
+    const sizeDropdowns = document.querySelectorAll('os-dropdown[next-variant-option="size"]');
+    sizeDropdowns.forEach(dropdown => {
+      const menu = dropdown.querySelector('os-dropdown-menu');
+      if (menu) {
+        // Clear existing items
+        menu.innerHTML = '';
+
+        // Add size options based on available variants
+        availableSizes.forEach(size => {
+          const item = document.createElement('os-dropdown-item');
+          item.setAttribute('value', size);
+          item.innerHTML = `
+            <div class="os-card__toggle-option">
+              <div class="os-card__variant-toggle-info">
+                <div class="os-card__variant-toggle-name">${size}</div>
+              </div>
+            </div>
+          `;
+          menu.appendChild(item);
+        });
+      }
+    });
+  }
+
+  selectQuantity(quantity) {
+    if (quantity === this.currentQuantity) return;
+
+    this.currentQuantity = quantity;
+
+    // Update button states
+    this.quantityButtons.forEach(btn => {
+      const btnQty = parseInt(btn.getAttribute('data-next-upsell-quantity-toggle'));
+      btn.classList.toggle('next-selected', btnQty === quantity);
+    });
+
+    // Update rows
+    this._updateRows(quantity);
+
+    // Update pricing
+    this._updatePricing();
+  }
+
+  _updateRows(quantity) {
+    const existingRows = this.variantsContainer.querySelectorAll('.os-card__upsell-grid');
+    const currentCount = existingRows.length;
+
+    if (quantity > currentCount) {
+      // Add new rows
+      for (let i = currentCount + 1; i <= quantity; i++) {
+        this._createRow(i);
+      }
+    } else {
+      // Hide extra rows
+      existingRows.forEach((row, index) => {
+        row.style.display = index < quantity ? 'grid' : 'none';
+      });
+    }
+  }
+
+  _createRow(rowNumber) {
+    const templateRow = this.variantsContainer.querySelector('.os-card__upsell-grid');
+    if (!templateRow) return;
+
+    const newRow = templateRow.cloneNode(true);
+
+    // Update row number
+    const numberElement = newRow.querySelector('.os-card__variant-number div');
+    if (numberElement) {
+      numberElement.textContent = `#${rowNumber}`;
+    }
+
+    // Get available variants from SDK
+    const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
+    const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
+
+    // Populate dropdowns for new row
+    const colorDropdown = newRow.querySelector('os-dropdown[next-variant-option="color"]');
+    const sizeDropdown = newRow.querySelector('os-dropdown[next-variant-option="size"]');
+
+    if (colorDropdown) {
+      const menu = colorDropdown.querySelector('os-dropdown-menu');
+      if (menu) {
+        menu.innerHTML = '';
+        availableColors.forEach(color => {
+          const colorKey = color.toLowerCase().replace(/\s+/g, '-');
+          const item = document.createElement('os-dropdown-item');
+          item.setAttribute('value', color);
+          item.innerHTML = `
+            <div class="os-card__toggle-option">
+              <div class="os-card__variant-toggle-info">
+                <div class="os-card__variant-swatch" style="background-color: ${CONFIG.colors.styles[colorKey] || '#ccc'}"></div>
+                <div class="os-card__variant-toggle-name">${color}</div>
+              </div>
+            </div>
+          `;
+          menu.appendChild(item);
+        });
+      }
+    }
+
+    if (sizeDropdown) {
+      const menu = sizeDropdown.querySelector('os-dropdown-menu');
+      if (menu) {
+        menu.innerHTML = '';
+        availableSizes.forEach(size => {
+          const item = document.createElement('os-dropdown-item');
+          item.setAttribute('value', size);
+          item.innerHTML = `
+            <div class="os-card__toggle-option">
+              <div class="os-card__variant-toggle-info">
+                <div class="os-card__variant-toggle-name">${size}</div>
+              </div>
+            </div>
+          `;
+          menu.appendChild(item);
+        });
+      }
+    }
+
+    this.variantsContainer.appendChild(newRow);
+
+    // Copy selection from row 1 if it exists
+    const row1Variants = this.selectedVariants.get(1);
+    if (row1Variants) {
+      this.selectedVariants.set(rowNumber, { ...row1Variants });
+      if (colorDropdown) colorDropdown.value = row1Variants.color;
+      if (sizeDropdown) sizeDropdown.value = row1Variants.size;
+    }
+  }
+
+  _initializeFirstRow() {
+    if (!this.productId) return;
+
+    // Get available variants from SDK
+    const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
+    const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
+
+    // Find default selections
     const defaultColor = availableColors.find(color =>
       color.toLowerCase().includes('obsidian')
     ) || availableColors[0];
@@ -1160,447 +599,193 @@ class TierController {
       size.toLowerCase() === 'king'
     ) || availableSizes[0];
 
-    for (let i = 1; i <= this.currentTier; i++) {
-      const slot = document.querySelector(`[next-tier-slot="${i}"]`);
-      if (!slot) continue;
+    // Initialize first row with default selection
+    const firstRow = this.variantsContainer?.querySelector('.os-card__upsell-grid');
+    if (firstRow) {
+      const colorDropdown = firstRow.querySelector('os-dropdown[next-variant-option="color"]');
+      const sizeDropdown = firstRow.querySelector('os-dropdown[next-variant-option="size"]');
 
-      if (!this.selectedVariants.has(i)) {
-        this.selectedVariants.set(i, {});
-      }
-      const slotVariants = this.selectedVariants.get(i);
+      const defaultVariants = {
+        color: defaultColor || 'Obsidian Grey',
+        size: defaultSize || 'Single'
+      };
 
-      if (defaultColor) {
-        slotVariants.color = defaultColor;
-        this._updateDropdownValue(slot, 'color', defaultColor);
-        this._updateColorSwatch(slot.querySelector('os-dropdown[next-variant-option="color"]'), defaultColor);
-        this._updateSlotImage(slot, defaultColor);
-      }
+      this.selectedVariants.set(1, defaultVariants);
 
-      if (defaultSize) {
-        slotVariants.size = defaultSize;
-        this._updateDropdownValue(slot, 'size', defaultSize);
-      }
-
-      this._updateSlotPricing(i);
-
-      if (defaultColor && defaultSize) {
-        this._updateDropdownStockStatus(slot, 'color', i);
-        this._updateDropdownStockStatus(slot, 'size', i);
-      }
-    }
-
-    await this._swapCartWithSelections();
-  }
-
-  _initializeDefaultState() {
-    const defaultSelectedCard = document.querySelector('.os-card.next-selected');
-    if (defaultSelectedCard) {
-      const tier = parseInt(defaultSelectedCard.getAttribute('data-next-tier'));
-      if (tier) {
-        this.currentTier = tier;
-        this._updateSlotStates(tier);
-      }
+      // Set dropdown values
+      if (colorDropdown) colorDropdown.value = defaultVariants.color;
+      if (sizeDropdown) sizeDropdown.value = defaultVariants.size;
     }
   }
 
-  _setupProfileListeners() {
-    window.next.on('profile:applied', (data) => {
-      this.currentProfile = data.profileId;
-      this._handleProfileChange();
-    });
+  _handleVariantSelection({ value, component }) {
+    const row = component.closest('.os-card__upsell-grid');
+    if (!row) return;
 
-    window.next.on('profile:reverted', () => {
-      this.currentProfile = null;
-      this._handleProfileChange();
-    });
-  }
+    // Get row number
+    const rowNumberElement = row.querySelector('.os-card__variant-number div');
+    const rowNumber = parseInt(rowNumberElement?.textContent.replace('#', '') || '1');
 
-  _handleProfileChange() {
-    this._getProductIdFromCampaign();
+    const variantType = component.getAttribute('next-variant-option');
 
-    if (this.currentTier > 1) {
-      this._populateAllDropdowns();
-      for (let i = 1; i <= this.currentTier; i++) {
-        this._updateSlotPricing(i);
-      }
+    if (!this.selectedVariants.has(rowNumber)) {
+      this.selectedVariants.set(rowNumber, {});
     }
+
+    const rowVariants = this.selectedVariants.get(rowNumber);
+    rowVariants[variantType] = value;
+
+    // Update stock status for this row
+    this._updateDropdownStockStatus(row, 'color', rowNumber);
+    this._updateDropdownStockStatus(row, 'size', rowNumber);
+
+    this._updatePricing();
   }
 
-  _checkAllSelectionsComplete() {
-    for (let i = 1; i <= this.currentTier; i++) {
-      const slotVariants = this.selectedVariants.get(i);
-      if (!slotVariants?.color || !slotVariants?.size || 
-          slotVariants.color === 'select-color' || slotVariants.size === 'select-size') {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  _updateDropdownStockStatus(slot, variantType, slotNumber) {
-    const dropdown = slot.querySelector(`os-dropdown[next-variant-option="${variantType}"]`);
+  _updateDropdownStockStatus(row, variantType, rowNumber) {
+    const dropdown = row.querySelector(`os-dropdown[next-variant-option="${variantType}"]`);
     if (!dropdown) return;
 
-    const slotVariants = this.selectedVariants.get(slotNumber) || {};
-    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
-
+    const rowVariants = this.selectedVariants.get(rowNumber) || {};
     const items = dropdown.querySelectorAll('os-dropdown-item');
+
     items.forEach(item => {
       const value = item.getAttribute('value');
 
       let variantToCheck;
       if (variantType === 'color') {
-        variantToCheck = { color: value, size: slotVariants.size };
+        variantToCheck = { color: value, size: rowVariants.size };
       } else {
-        variantToCheck = { color: slotVariants.color, size: value };
+        variantToCheck = { color: rowVariants.color, size: value };
       }
 
-      if (variantToCheck.color && variantToCheck.size &&
-          variantToCheck.color !== 'select-color' && variantToCheck.size !== 'select-size') {
+      if (variantToCheck.color && variantToCheck.size) {
+        const matchingPackage = window.next.getPackageByVariantSelection(
+          this.productId,
+          variantToCheck
+        );
 
-        const matchingPackage = window.next.getPackageByVariantSelection(productIdToUse, variantToCheck);
         const isOutOfStock = !matchingPackage ||
-                            matchingPackage.product_inventory_availability === 'out_of_stock' ||
-                            matchingPackage.product_purchase_availability === 'unavailable';
+          matchingPackage.product_inventory_availability === 'out_of_stock' ||
+          matchingPackage.product_purchase_availability === 'unavailable';
 
         if (isOutOfStock) {
           item.classList.add('next-oos');
         } else {
           item.classList.remove('next-oos');
         }
-      } else {
-        item.classList.remove('next-oos');
       }
     });
   }
 
-  _checkStockStatus(slotNumber, variant, isPartial = false) {
-    let fullVariant = variant;
-    if (isPartial) {
-      const slotVariants = this.selectedVariants.get(slotNumber) || {};
-      fullVariant = {
-        color: variant.color || slotVariants.color,
-        size: variant.size || slotVariants.size
-      };
-    }
+  _updatePricing() {
+    let totalRetail = 0;
+    let totalSale = 0;
 
-    if (!fullVariant.color || !fullVariant.size ||
-        fullVariant.color === 'select-color' || fullVariant.size === 'select-size') {
-      return false;
-    }
+    for (let i = 1; i <= this.currentQuantity; i++) {
+      const variants = this.selectedVariants.get(i);
+      if (variants?.color && variants?.size) {
+        // Get the actual package to get real pricing
+        const matchingPackage = window.next.getPackageByVariantSelection(
+          this.productId,
+          { color: variants.color, size: variants.size }
+        );
 
-    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
-
-    const matchingPackage = window.next.getPackageByVariantSelection(
-      productIdToUse,
-      fullVariant
-    );
-
-    if (matchingPackage) {
-      return matchingPackage.product_inventory_availability === 'out_of_stock' ||
-             matchingPackage.product_purchase_availability === 'unavailable';
-    }
-
-    return false;
-  }
-
-  _isVariantOutOfStock(slotNumber, partialVariant) {
-    return this._checkStockStatus(slotNumber, partialVariant, true);
-  }
-
-  _isCompleteVariantOutOfStock(slotNumber, fullVariant) {
-    return this._checkStockStatus(slotNumber, fullVariant, false);
-  }
-
-  _findAvailableAlternative(slotNumber, changedType, newValue, previousValue) {
-    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
-    const slotVariants = this.selectedVariants.get(slotNumber);
-
-    if (changedType === 'color') {
-      const availableSizes = window.next.getAvailableVariantAttributes(productIdToUse, 'size');
-      const currentSize = slotVariants.size;
-
-      const sizeOrder = this._getSizePreferenceOrder(currentSize, availableSizes);
-
-      for (const size of sizeOrder) {
-        if (!this._isCompleteVariantOutOfStock(slotNumber, { color: newValue, size })) {
-          return size;
-        }
-      }
-    } else if (changedType === 'size') {
-      const availableColors = window.next.getAvailableVariantAttributes(productIdToUse, 'color');
-      const currentColor = slotVariants.color;
-
-      if (!this._isCompleteVariantOutOfStock(slotNumber, { color: currentColor, size: newValue })) {
-        return currentColor;
-      }
-
-      for (const color of availableColors) {
-        if (!this._isCompleteVariantOutOfStock(slotNumber, { color, size: newValue })) {
-          return color;
+        if (matchingPackage) {
+          const salePrice = parseFloat(matchingPackage.price);
+          const retailPrice = parseFloat(matchingPackage.price_retail);
+          totalSale += salePrice;
+          totalRetail += retailPrice;
         }
       }
     }
 
-    return null;
-  }
-
-  _getSizePreferenceOrder(currentSize, availableSizes) {
-    let preferenceOrder = [];
-
-    for (const order of CONFIG.sizePreferenceOrder) {
-      if (order[0].toLowerCase() === currentSize.toLowerCase()) {
-        preferenceOrder = order;
-        break;
-      }
+    // Update price displays
+    if (this.originalPriceElement) {
+      this.originalPriceElement.textContent = `$${totalRetail.toFixed(2)}`;
     }
 
-    if (preferenceOrder.length === 0) {
-      return availableSizes;
+    if (this.currentPriceElement) {
+      this.currentPriceElement.textContent = `$${totalSale.toFixed(2)}`;
     }
 
-    return preferenceOrder.filter(size =>
-      availableSizes.some(availSize => availSize.toLowerCase() === size.toLowerCase())
-    );
-  }
-
-  _notifyAutoSelection(selectedType, selectedValue, autoType, autoValue) {
-    document.dispatchEvent(new CustomEvent('autoVariantSelection', {
-      detail: {
-        selectedType,
-        selectedValue,
-        autoType,
-        autoValue
-      },
-      bubbles: true
-    }));
-  }
-
-  _updateCTAButtons() {
-    const allComplete = this._checkAllSelectionsComplete();
-    const pendingCTA = this._getCachedElement('[data-cta="selection-pending"]');
-    const completeCTA = this._getCachedElement('[data-cta="selection-complete"]');
-
-    if (pendingCTA && completeCTA) {
-      pendingCTA.classList.toggle('active', !allComplete);
-      completeCTA.classList.toggle('active', allComplete);
+    // Update savings percentage
+    if (this.savingsElement && totalRetail > 0) {
+      const savings = Math.round(((totalRetail - totalSale) / totalRetail) * 100);
+      this.savingsElement.textContent = `${savings}%`;
     }
   }
 
-  _calculateHighestSavings(tierNumber) {
-    if (!this.productId) return 0;
+  async acceptUpsell() {
+    // Disable button and show loading
+    this.acceptButton.classList.add('is-submitting');
+    this.acceptButton.disabled = true;
 
-    if (this.exitDiscountActive) {
-      let samplePackageId;
+    try {
+      const upsellItems = [];
 
-      if (tierNumber === 1) {
-        samplePackageId = 90;
-      } else if (tierNumber === 2) {
-        samplePackageId = 114;
-      } else if (tierNumber === 3) {
-        samplePackageId = 138;
-      }
+      // Collect all selected items using actual package IDs from SDK
+      for (let i = 1; i <= this.currentQuantity; i++) {
+        const variants = this.selectedVariants.get(i);
+        if (variants?.color && variants?.size) {
+          // Get the matching package from SDK
+          const matchingPackage = window.next.getPackageByVariantSelection(
+            this.productId,
+            { color: variants.color, size: variants.size }
+          );
 
-      const pkg = window.next.getPackage(samplePackageId);
-      if (pkg && pkg.price_retail && pkg.price) {
-        return Math.round(((pkg.price_retail - pkg.price) / pkg.price_retail) * 100);
-      }
-      return 0;
-    }
-
-    let highestSavingPct = 0;
-    let packageIds = [];
-
-    if (tierNumber === 1) {
-      packageIds = Array.from({ length: 24 }, (_, i) => i + 1);
-    } else {
-      const profileName = tierNumber === 2 ? '2_pack' : '3_pack';
-      if (window.nextConfig?.profiles?.[profileName]?.packageMappings) {
-        packageIds = Object.values(window.nextConfig.profiles[profileName].packageMappings);
-      }
-    }
-
-    packageIds.forEach(packageId => {
-      const pkg = window.next.getPackage(packageId);
-      if (pkg && pkg.price_retail && pkg.price) {
-        const savingPct = Math.round(((pkg.price_retail - pkg.price) / pkg.price_retail) * 100);
-        if (savingPct > highestSavingPct) {
-          highestSavingPct = savingPct;
+          if (matchingPackage) {
+            upsellItems.push({
+              packageId: matchingPackage.ref_id,
+              quantity: 1
+            });
+          }
         }
       }
-    });
 
-    return highestSavingPct;
-  }
-
-  _displaySavingsPercentages() {
-    const tierCards = this._getCachedElements('[data-next-tier]');
-    tierCards.forEach(card => {
-      const tierNumber = parseInt(card.getAttribute('data-next-tier'));
-      const savingsElement = card.querySelector('[data-next-display*="bestSavingsPercentage"]');
-
-      if (savingsElement) {
-        const highestSaving = this._calculateHighestSavings(tierNumber);
-        savingsElement.textContent = highestSaving > 0 ? `${highestSaving}%` : 'XX%';
+      if (upsellItems.length === 0) {
+        console.error('No valid items selected');
+        alert('Please select color and size for all items');
+        return;
       }
-    });
-  }
 
-  handleVerifyButtonClick() {
-    const allComplete = this._checkAllSelectionsComplete();
-    
-    if (!allComplete) {
-      for (let i = 1; i <= this.currentTier; i++) {
-        const slotVariants = this.selectedVariants.get(i);
-        if (!slotVariants?.color || !slotVariants?.size || 
-            slotVariants.color === 'select-color' || slotVariants.size === 'select-size') {
-          document.querySelector(`[next-tier-slot="${i}"]`)?.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
-          });
-          break;
-        }
+      // Add upsells using the Next SDK
+      console.log('Adding upsells:', upsellItems);
+
+      // Call the addUpsell method
+      await window.next.addUpsell(upsellItems);
+
+      // Success - redirect or show success message
+      console.log('Upsells added successfully');
+
+      // If there's a next URL, redirect
+      const nextUrl = this.acceptButton.getAttribute('data-next-url');
+      if (nextUrl) {
+        window.location.href = nextUrl;
       }
+
+    } catch (error) {
+      console.error('Failed to add upsells:', error);
+      alert('Failed to add items to your order. Please try again.');
+    } finally {
+      // Re-enable button
+      this.acceptButton.classList.remove('is-submitting');
+      this.acceptButton.disabled = false;
     }
-    
-    this._updateCTAButtons();
-    return allComplete;
+  }
+
+  cleanup() {
+    this._eventCleanup.forEach(cleanup => cleanup());
+    this._eventCleanup = [];
   }
 }
-
-// Optimized Progress Bar Controller
-class ProgressBarController {
-  constructor() {
-    this.progressItems = document.querySelectorAll('[data-progress]');
-    this.sections = document.querySelectorAll('[data-progress-trigger]');
-    this.currentActiveStep = null;
-    this.completedSteps = new Set();
-    this._ticking = false;
-    this.init();
-  }
-
-  init() {
-    this._resetAllSteps();
-    this._setupScrollListener();
-    requestAnimationFrame(() => this._checkVisibility());
-  }
-
-  _resetAllSteps() {
-    this.progressItems.forEach(item => item.classList.remove('active', 'completed'));
-    this.completedSteps.clear();
-  }
-
-  _setupScrollListener() {
-    const handleScroll = () => {
-      if (!this._ticking) {
-        requestAnimationFrame(() => {
-          this._checkVisibility();
-          this._ticking = false;
-        });
-        this._ticking = true;
-      }
-    };
-    
-    window.addEventListener('scroll', handleScroll);
-    window.addEventListener('resize', handleScroll);
-  }
-
-  _checkVisibility() {
-    const scrollTop = window.pageYOffset;
-    const viewportCenter = scrollTop + window.innerHeight / 2;
-
-    let activeSectionName = this._findActiveSection(viewportCenter, scrollTop);
-    this._markCompletedSteps(viewportCenter, scrollTop);
-
-    if (activeSectionName !== this.currentActiveStep) {
-      this.currentActiveStep = activeSectionName;
-      this._updateProgressBar(activeSectionName);
-    }
-  }
-
-  _findActiveSection(viewportCenter, scrollTop) {
-    for (const section of this.sections) {
-      const rect = section.getBoundingClientRect();
-      const sectionTop = scrollTop + rect.top;
-      const sectionBottom = sectionTop + rect.height;
-
-      if (viewportCenter >= sectionTop && viewportCenter <= sectionBottom) {
-        return section.getAttribute('data-progress-trigger');
-      }
-    }
-
-    if (this.sections.length > 0) {
-      const firstSection = this.sections[0];
-      const firstSectionTop = scrollTop + firstSection.getBoundingClientRect().top;
-      if (viewportCenter < firstSectionTop) {
-        return firstSection.getAttribute('data-progress-trigger');
-      }
-    }
-
-    return null;
-  }
-
-  _markCompletedSteps(viewportCenter, scrollTop) {
-    this.sections.forEach(section => {
-      const rect = section.getBoundingClientRect();
-      const sectionBottom = scrollTop + rect.top + rect.height;
-      const stepName = section.getAttribute('data-progress-trigger');
-
-      if (viewportCenter > sectionBottom) {
-        this.completedSteps.add(stepName);
-      }
-    });
-  }
-
-  _updateProgressBar(activeStepName) {
-    this.progressItems.forEach(item => {
-      const stepName = item.getAttribute('data-progress');
-      item.classList.remove('active', 'completed');
-
-      if (this.completedSteps.has(stepName)) {
-        item.classList.add('completed');
-      } else if (stepName === activeStepName) {
-        item.classList.add('active');
-      }
-    });
-  }
-}
-
-// Register custom elements
-customElements.define('os-dropdown', OSDropdown);
-customElements.define('os-dropdown-menu', OSDropdownMenu);
-customElements.define('os-dropdown-item', OSDropdownItem);
 
 // Initialize when SDK is ready
 window.addEventListener('next:initialized', function() {
-  window.tierController = new TierController();
-  
-  const verifyButton = document.querySelector('[os-checkout="verify-step"]');
-  if (verifyButton) {
-    verifyButton.addEventListener('click', e => {
-      if (window.tierController) {
-        const isComplete = window.tierController.handleVerifyButtonClick();
-        if (!isComplete) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }
-    });
-  }
+  window.upsellController = new UpsellController();
 });
 
-window.progressBarController = new ProgressBarController();
-
-// EXIT INTENT POPUP
-window.addEventListener('next:initialized', function() {
-  window.next.exitIntent({
-    image: 'https://cdn.prod.website-files.com/6894e401ee6c8582aece90a0/68bed75cd9973567c4ab6a25_modal-bare-earth.png',
-    action: async () => {
-      if (window.tierController) {
-        await window.tierController.activateExitDiscount();
-      } else {
-        await window.next.setProfile('exit_10');
-      }
-    },
-  });
-});
+// If SDK is already initialized
+if (window.next?.addUpsell) {
+  window.upsellController = new UpsellController();
+}
