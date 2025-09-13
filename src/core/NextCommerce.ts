@@ -100,6 +100,29 @@ export class NextCommerce {
     await cartStore.clear();
   }
 
+  public async swapCart(items: Array<{ packageId: number; quantity: number }>): Promise<void> {
+    const cartStore = useCartStore.getState();
+    
+    // Use a new method in cartStore if available, or do it manually
+    if (typeof cartStore.swapCart === 'function') {
+      await cartStore.swapCart(items);
+    } else {
+      // Fallback: clear and add all items
+      await cartStore.clear();
+      
+      // Add all new items
+      for (const item of items) {
+        await cartStore.addItem({
+          packageId: item.packageId,
+          quantity: item.quantity,
+          isUpsell: false
+        });
+      }
+    }
+    
+    this.logger.debug(`Cart swapped with ${items.length} items`);
+  }
+
   // Cart data access
   public getCartData(): CallbackData {
     const cartStore = useCartStore.getState();

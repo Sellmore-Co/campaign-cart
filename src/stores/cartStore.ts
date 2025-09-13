@@ -17,6 +17,7 @@ interface CartActions {
   updateQuantity: (packageId: number, quantity: number) => Promise<void>;
   swapPackage: (removePackageId: number, addItem: Partial<CartItem> & { isUpsell: boolean | undefined }) => Promise<void>;
   clear: () => Promise<void>;
+  swapCart: (items: Array<{ packageId: number; quantity: number }>) => Promise<void>;
   syncWithAPI: () => Promise<void>;
   calculateTotals: () => void;
   calculateShipping: () => number;
@@ -296,6 +297,76 @@ const cartStoreInstance = create<CartState & CartActions>()(
         
         // Calculate totals after state update
         get().calculateTotals();
+      },
+
+      swapCart: async (items: Array<{ packageId: number; quantity: number }>) => {
+        const { useCampaignStore } = await import('./campaignStore');
+        const { useProfileStore } = await import('./profileStore');
+        const campaignStore = useCampaignStore.getState();
+        const profileStore = useProfileStore.getState();
+        const eventBus = EventBus.getInstance();
+        
+        logger.debug('Swapping cart with new items:', items);
+        
+        // Build new items array
+        const newItems: CartItem[] = [];
+        
+        for (const item of items) {
+          // Apply profile mapping if active
+          let finalPackageId = item.packageId;
+          if (profileStore.activeProfileId) {
+            const mappedId = profileStore.getMappedPackageId(finalPackageId);
+            if (mappedId !== finalPackageId) {
+              logger.debug(`Applying profile mapping: ${finalPackageId} -> ${mappedId}`);
+              finalPackageId = mappedId;
+            }
+          }
+          
+          // Get package data from campaign
+          const packageData = campaignStore.getPackage(finalPackageId);
+          
+          if (!packageData) {
+            logger.warn(`Package ${finalPackageId} not found in campaign data, skipping`);
+            continue;
+          }
+          
+          const newItem: CartItem = {
+            id: Date.now() + Math.random(), // Ensure unique IDs
+            packageId: finalPackageId,
+            originalPackageId: item.packageId !== finalPackageId ? item.packageId : undefined,
+            productId: packageData.product_id,
+            name: packageData.name,
+            price: parseFloat(packageData.price),
+            comparePrice: parseFloat(packageData.price_retail || packageData.price),
+            quantity: item.quantity,
+            weight: packageData.weight || 0,
+            isUpsell: false,
+            createdAt: Date.now(),
+          };
+          
+          newItems.push(newItem);
+        }
+        
+        // Replace entire cart
+        set(state => ({
+          ...state,
+          items: newItems,
+        }));
+        
+        // Calculate totals after state update
+        get().calculateTotals();
+        
+        // Emit cart swapped event
+        eventBus.emit('cart:swapped', {
+          previousItems: get().items,
+          newItems: newItems,
+          itemCount: newItems.length
+        });
+        
+        // Emit cart updated event
+        eventBus.emit('cart:updated', get());
+        
+        logger.info(`Cart swapped successfully with ${newItems.length} items`);
       },
 
       syncWithAPI: async () => {
