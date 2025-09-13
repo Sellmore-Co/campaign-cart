@@ -130,9 +130,12 @@ class OSDropdown extends ConversionElement {
     menu.style.zIndex = '1000';
     menu.style.top = '100%';
     menu.style.left = '0';
-    menu.style.width = '100%';
+    menu.style.minWidth = '100%';
+    menu.style.width = 'max-content';
+    menu.style.maxWidth = '300px';
     menu.style.marginTop = '8px';
     menu.style.transform = 'translateY(-4px)';
+    menu.style.whiteSpace = 'nowrap';
 
     // Trigger reflow before animation
     menu.offsetHeight;
