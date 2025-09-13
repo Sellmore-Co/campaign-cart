@@ -18,12 +18,12 @@ const CONFIG = {
     }
   },
   profiles: {
-    1: '1_pack', // Use 1_pack profile to keep consistent display
+    1: 'default', // Use 1_pack profile to keep consistent display
     2: '2_pack',
     3: '3_pack'
   },
   exitProfiles: {
-    1: 'exit_10_1pack', // Use exit_10_1pack for consistency
+    1: 'exit_10', // Use exit_10_1pack for consistency
     2: 'exit_10_2pack',
     3: 'exit_10_3pack'
   },
