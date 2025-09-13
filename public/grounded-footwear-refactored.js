@@ -22,11 +22,6 @@ const CONFIG = {
     2: '2_pack',
     3: '3_pack'
   },
-  exitProfiles: {
-    1: 'exit_10', // Use exit_10_1pack for consistency
-    2: 'exit_10_2pack',
-    3: 'exit_10_3pack'
-  },
   autoSelectAvailable: true, // Enable auto-selection of available variants when OOS option is clicked
   // Display order for dropdowns (smallest to largest for sizes, preferred order for colors)
   displayOrder: {
@@ -432,6 +427,7 @@ class TierController {
     this._initializeUI();
     this._setupProfileListeners();
     this._updateCTAButtons();
+    this._displaySavingsPercentages();
   }
 
   _waitForSDK() {
@@ -508,8 +504,7 @@ class TierController {
   }
 
   async _applyTierProfile(tierNumber) {
-    const profileKey = this.currentProfile?.includes('exit_10') ? 'exitProfiles' : 'profiles';
-    const profile = CONFIG[profileKey][tierNumber];
+    const profile = CONFIG.profiles[tierNumber];
 
     if (profile) {
       await window.next.setProfile(profile);
@@ -1220,6 +1215,58 @@ class TierController {
     }
   }
 
+  _calculateHighestSavings(tierNumber) {
+    if (!this.productId) return 0;
+
+    let highestSavingPct = 0;
+
+    // Get the appropriate package IDs based on tier
+    let packageIds = [];
+
+    if (tierNumber === 1) {
+      // For tier 1: check single quantity packages (IDs 1-24)
+      packageIds = Array.from({ length: 24 }, (_, i) => i + 1);
+    } else if (tierNumber === 2) {
+      // For tier 2: check 2-pack packages from config
+      const profile = window.nextConfig?.profiles?.['2_pack'];
+      if (profile && profile.packageMappings) {
+        packageIds = Object.values(profile.packageMappings);
+      }
+    } else if (tierNumber === 3) {
+      // For tier 3: check 3-pack packages from config
+      const profile = window.nextConfig?.profiles?.['3_pack'];
+      if (profile && profile.packageMappings) {
+        packageIds = Object.values(profile.packageMappings);
+      }
+    }
+
+    // Check each package ID for savings
+    packageIds.forEach(packageId => {
+      const pkg = window.next.getPackage(packageId);
+      if (pkg && pkg.price_retail && pkg.price) {
+        const savingPct = Math.round(((pkg.price_retail - pkg.price) / pkg.price_retail) * 100);
+        if (savingPct > highestSavingPct) {
+          highestSavingPct = savingPct;
+        }
+      }
+    });
+
+    return highestSavingPct;
+  }
+
+  _displaySavingsPercentages() {
+    // Update savings percentage for each tier card
+    document.querySelectorAll('[data-next-tier]').forEach(card => {
+      const tierNumber = parseInt(card.getAttribute('data-next-tier'));
+      const savingsElement = card.querySelector('[data-next-display*="bestSavingsPercentage"]');
+
+      if (savingsElement) {
+        const highestSaving = this._calculateHighestSavings(tierNumber);
+        savingsElement.textContent = highestSaving > 0 ? `${highestSaving}%` : 'XX%';
+      }
+    });
+  }
+
   handleVerifyButtonClick() {
     const allComplete = this._checkAllSelectionsComplete();
     
@@ -1366,15 +1413,6 @@ window.addEventListener('next:initialized', function() {
     });
   }
 
-  // Exit intent setup
-  window.next.exitIntent({
-    image: 'https://cdn.prod.website-files.com/6894e401ee6c8582aece90a0/68bed75cd9973567c4ab6a25_modal-bare-earth.png',
-    action: async () => {
-      const profile = CONFIG.exitProfiles[window.tierController?.currentTier || 1];
-      await window.next.setProfile(profile);
-      console.log(`Exit ${window.tierController?.currentTier || 1}-pack discount applied`);
-    },
-  });
 });
 
 window.progressBarController = new ProgressBarController();
