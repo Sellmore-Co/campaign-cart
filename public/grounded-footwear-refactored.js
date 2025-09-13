@@ -480,15 +480,20 @@ class TierController {
 
     const previousTier = this.currentTier;
     this.currentTier = tierNumber;
-    
+
     this._updateTierCardStates(tierNumber);
     this._updateSlotStates(tierNumber);
 
     const currentSelections = new Map(this.selectedVariants);
     await this._applyTierProfile(tierNumber);
-    await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Restore/auto-select variants
+    // Give more time for profile to be fully applied
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // After profile is applied, update product ID from campaign
+    this._getProductIdFromCampaign();
+
+    // Force refresh all slot pricing after profile change
     for (let i = 1; i <= tierNumber; i++) {
       if (currentSelections.has(i)) {
         // Restore previous selection for this slot
@@ -497,6 +502,9 @@ class TierController {
         // Only auto-select for NEW slots that appear when increasing tier
         await this._autoSelectFirstOptions(i);
       }
+
+      // Update pricing for all visible slots with the new profile prices
+      this._updateSlotPricing(i);
     }
 
     await this._swapCartWithSelections();
@@ -508,8 +516,11 @@ class TierController {
 
     if (profile) {
       await window.next.setProfile(profile);
+      // Wait for profile to be fully applied and campaign data to update
+      await new Promise(resolve => setTimeout(resolve, 100));
     } else {
       await window.next.revertProfile();
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 
@@ -682,14 +693,17 @@ class TierController {
   async _swapCartWithSelections() {
     const itemsToSwap = [];
 
+    // Get the current product ID (which reflects the active profile)
+    this._getProductIdFromCampaign();
+
     for (let i = 1; i <= this.currentTier; i++) {
       const slotVariants = this.selectedVariants.get(i);
       const hasValidColor = slotVariants?.color && slotVariants.color !== 'select-color';
       const hasValidSize = slotVariants?.size && slotVariants.size !== 'select-size';
 
       if (hasValidColor && hasValidSize) {
-        // Use base product ID for slot 1 to ensure consistent cart items
-        const productIdToUse = (i === 1 && this.baseProductId) ? this.baseProductId : this.productId;
+        // Use the current product ID which reflects the active profile
+        const productIdToUse = this.productId;
 
         const matchingPackage = window.next.getPackageByVariantSelection(
           productIdToUse,
@@ -868,16 +882,41 @@ class TierController {
       return;
     }
 
-    // Always use base product ID for slot 1 to maintain consistent pricing
-    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
+    // Get the package directly by ID if we're using profiles
+    let matchingPackage;
 
-    const matchingPackage = window.next.getPackageByVariantSelection(
-      productIdToUse,
-      { color: slotVariants.color, size: slotVariants.size }
-    );
+    if (this.currentTier === 1) {
+      // For tier 1, use the base product to get single item packages
+      matchingPackage = window.next.getPackageByVariantSelection(
+        this.baseProductId || this.productId,
+        { color: slotVariants.color, size: slotVariants.size }
+      );
+    } else {
+      // For tiers 2-3, first try to get the single item package
+      const basePackage = window.next.getPackageByVariantSelection(
+        this.baseProductId || this.productId,
+        { color: slotVariants.color, size: slotVariants.size }
+      );
+
+      if (basePackage) {
+        // Then map it through the profile to get the bundle package
+        const profile = CONFIG.profiles[this.currentTier];
+        const profileName = this.currentTier === 2 ? '2_pack' : '3_pack';
+
+        if (profile && window.nextConfig?.profiles?.[profileName]?.packageMappings) {
+          const mappedPackageId = window.nextConfig.profiles[profileName].packageMappings[basePackage.ref_id];
+          if (mappedPackageId) {
+            matchingPackage = window.next.getPackage(mappedPackageId);
+            console.log(`Mapped package ${basePackage.ref_id} to ${mappedPackageId} for tier ${this.currentTier}`);
+          }
+        }
+      }
+    }
 
     if (matchingPackage) {
       this._setPricing(slot, matchingPackage);
+    } else {
+      this._resetSlotPricing(slot);
     }
   }
 
@@ -885,15 +924,39 @@ class TierController {
     const elements = {
       reg: slot.querySelector('[data-option="reg"]'),
       price: slot.querySelector('[data-option="price"]'),
-      savingPct: slot.querySelector('[data-option="savingPct"]')
+      savingPct: slot.querySelector('[data-option="savingPct"]'),
+      priceContainer: slot.querySelector('.os-card__price.os--current')
     };
 
-    if (elements.reg) elements.reg.textContent = `$${parseFloat(pkg.price_retail).toFixed(2)}`;
-    if (elements.price) elements.price.textContent = `$${parseFloat(pkg.price).toFixed(2)}`;
-    
+    console.log(`Setting pricing for slot with package:`, pkg);
+    console.log(`Current tier: ${this.currentTier}, Package name: ${pkg.name}`);
+
+    // Use the package prices directly - they already contain the correct bundle pricing
+    const displayPrice = parseFloat(pkg.price);
+    const displayRetailPrice = parseFloat(pkg.price_retail);
+
+    // Display the prices as-is (bundle total price)
+    if (elements.reg) elements.reg.textContent = `$${displayRetailPrice.toFixed(2)}`;
+    if (elements.price) elements.price.textContent = `$${displayPrice.toFixed(2)}`;
+
+    // Update the price label based on tier
+    if (elements.priceContainer) {
+      const isBundlePackage = pkg.name && (pkg.name.includes('Buy 2') || pkg.name.includes('Buy 3'));
+      if (isBundlePackage) {
+        // For bundles, show the bundle quantity
+        const bundleQty = pkg.name.includes('Buy 3') ? 3 : 2;
+        elements.priceContainer.innerHTML = `<span data-option="price">$${displayPrice.toFixed(2)}</span>/${bundleQty} pack`;
+      } else {
+        // For single items, show "/ea"
+        elements.priceContainer.innerHTML = `<span data-option="price">$${displayPrice.toFixed(2)}</span>/ea`;
+      }
+    }
+
+    // Calculate the savings percentage
     if (elements.savingPct && pkg.price_retail && pkg.price) {
-      const savingPct = Math.round(((pkg.price_retail - pkg.price) / pkg.price_retail) * 100);
+      const savingPct = Math.round(((displayRetailPrice - displayPrice) / displayRetailPrice) * 100);
       elements.savingPct.textContent = `${savingPct}%`;
+      console.log(`Calculated savings: ${savingPct}% (retail: ${displayRetailPrice}, price: ${displayPrice})`);
     }
   }
 
