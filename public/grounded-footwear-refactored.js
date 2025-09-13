@@ -401,9 +401,10 @@ class TierController {
     this.currentTier = 1;
     this.selectedVariants = new Map();
     this.productId = null;
+    this.baseProductId = null; // Store original product ID
     this.currentProfile = null;
     this._cachedElements = new Map();
-    
+
     this.init();
   }
 
@@ -431,7 +432,7 @@ class TierController {
   _getProductIdFromCampaign() {
     const campaign = window.next.getCampaignData();
     this.productId = campaign?.packages?.[0]?.product_id;
-    
+
     if (!this.productId) {
       try {
         const cache = JSON.parse(sessionStorage.getItem('next-campaign-cache') || '{}');
@@ -440,7 +441,12 @@ class TierController {
         console.error('Failed to get product ID from cache:', error);
       }
     }
-    
+
+    // Store the base product ID on first load (before any profile changes)
+    if (!this.baseProductId && this.productId) {
+      this.baseProductId = this.productId;
+    }
+
     if (!this.productId) {
       console.error('Warning: Product ID not found. Some features may not work correctly.');
     }
@@ -523,8 +529,11 @@ class TierController {
     const slot = document.querySelector(`[next-tier-slot="${slotNumber}"]`);
     if (!slot) return;
 
-    const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
-    const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
+    // Use base product for slot 1, current product for others
+    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
+
+    const availableColors = window.next.getAvailableVariantAttributes(productIdToUse, 'color');
+    const availableSizes = window.next.getAvailableVariantAttributes(productIdToUse, 'size');
 
     if (!this.selectedVariants.has(slotNumber)) {
       this.selectedVariants.set(slotNumber, {});
@@ -620,15 +629,18 @@ class TierController {
 
   async _swapCartWithSelections() {
     const itemsToSwap = [];
-    
+
     for (let i = 1; i <= this.currentTier; i++) {
       const slotVariants = this.selectedVariants.get(i);
       const hasValidColor = slotVariants?.color && slotVariants.color !== 'select-color';
       const hasValidSize = slotVariants?.size && slotVariants.size !== 'select-size';
-      
+
       if (hasValidColor && hasValidSize) {
+        // Use base product ID for slot 1 to ensure consistent cart items
+        const productIdToUse = (i === 1 && this.baseProductId) ? this.baseProductId : this.productId;
+
         const matchingPackage = window.next.getPackageByVariantSelection(
-          this.productId,
+          productIdToUse,
           { color: slotVariants.color, size: slotVariants.size }
         );
 
@@ -687,8 +699,11 @@ class TierController {
   }
 
   _populateSlotDropdowns(slot, slotNumber) {
-    const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
-    const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
+    // Always use base product ID for slot 1 to maintain consistency
+    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
+
+    const availableColors = window.next.getAvailableVariantAttributes(productIdToUse, 'color');
+    const availableSizes = window.next.getAvailableVariantAttributes(productIdToUse, 'size');
 
     this._populateDropdown(slot, 'color', availableColors, this._createColorItem.bind(this));
     this._populateDropdown(slot, 'size', availableSizes, this._createSizeItem.bind(this));
@@ -744,14 +759,17 @@ class TierController {
     if (!slot) return;
 
     const slotVariants = this.selectedVariants.get(slotNumber);
-    
+
     if (!slotVariants?.color || !slotVariants?.size) {
       this._resetSlotPricing(slot);
       return;
     }
 
+    // Always use base product ID for slot 1 to maintain consistent pricing
+    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
+
     const matchingPackage = window.next.getPackageByVariantSelection(
-      this.productId,
+      productIdToUse,
       { color: slotVariants.color, size: slotVariants.size }
     );
 
@@ -881,10 +899,16 @@ class TierController {
   }
 
   _handleProfileChange() {
+    // Update the current product ID from campaign
     this._getProductIdFromCampaign();
-    this._populateAllDropdowns();
-    for (let i = 1; i <= this.currentTier; i++) {
-      this._updateSlotPricing(i);
+
+    // Only repopulate dropdowns if we're on tier 2 or 3
+    // For tier 1, keep using the base product to maintain consistency
+    if (this.currentTier > 1) {
+      this._populateAllDropdowns();
+      for (let i = 1; i <= this.currentTier; i++) {
+        this._updateSlotPricing(i);
+      }
     }
   }
 
