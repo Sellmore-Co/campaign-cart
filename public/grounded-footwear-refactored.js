@@ -580,8 +580,22 @@ class TierController {
         // Restore previous selection for this slot
         this.selectedVariants.set(i, currentSelections.get(i));
       } else if (i > previousTier) {
-        // Only auto-select for NEW slots that appear when increasing tier
-        updates.push(this._autoSelectFirstOptions(i));
+        // For NEW slots, copy slot 1's selection if it exists
+        const slot1Selection = this.selectedVariants.get(1);
+        if (slot1Selection && slot1Selection.color && slot1Selection.size) {
+          // Copy slot 1's selection to the new slot
+          this.selectedVariants.set(i, { ...slot1Selection });
+          const newSlot = document.querySelector(`[next-tier-slot="${i}"]`);
+          if (newSlot) {
+            this._updateDropdownValue(newSlot, 'color', slot1Selection.color);
+            this._updateDropdownValue(newSlot, 'size', slot1Selection.size);
+            this._updateColorSwatch(newSlot.querySelector('os-dropdown[next-variant-option="color"]'), slot1Selection.color);
+            this._updateSlotImage(newSlot, slot1Selection.color);
+          }
+        } else {
+          // Fallback to auto-selection if slot 1 has no selection
+          updates.push(this._autoSelectFirstOptions(i));
+        }
       }
     }
 
@@ -1072,7 +1086,7 @@ class TierController {
           const mappedPackageId = window.nextConfig.profiles[profileName].packageMappings[basePackage.ref_id];
           if (mappedPackageId) {
             matchingPackage = window.next.getPackage(mappedPackageId);
-            console.log(`Mapped package ${basePackage.ref_id} to ${mappedPackageId} for tier ${this.currentTier} (${profileName})`);
+            // console.log(`Mapped package ${basePackage.ref_id} to ${mappedPackageId} for tier ${this.currentTier} (${profileName})`);
           }
         }
       }
@@ -1093,8 +1107,8 @@ class TierController {
       priceContainer: slot.querySelector('.os-card__price.os--current')
     };
 
-    console.log(`Setting pricing for slot with package:`, pkg);
-    console.log(`Current tier: ${this.currentTier}, Package name: ${pkg.name}`);
+    // console.log(`Setting pricing for slot with package:`, pkg);
+    // console.log(`Current tier: ${this.currentTier}, Package name: ${pkg.name}`);
 
     // Use the package prices directly - they already contain the correct bundle pricing
     const displayPrice = parseFloat(pkg.price);
@@ -1113,7 +1127,7 @@ class TierController {
     if (elements.savingPct && pkg.price_retail && pkg.price) {
       const savingPct = Math.round(((displayRetailPrice - displayPrice) / displayRetailPrice) * 100);
       elements.savingPct.textContent = `${savingPct}%`;
-      console.log(`Calculated savings: ${savingPct}% (retail: ${displayRetailPrice}, price: ${displayPrice})`);
+      // (`Calculated savings: ${savingPct}% (retail: ${displayRetailPrice}, price: ${displayPrice})`);
     }
   }
 
@@ -1163,8 +1177,8 @@ class TierController {
     const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
     const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
 
-    console.log('Available colors:', availableColors);
-    console.log('Available sizes:', availableSizes);
+   //  console.log('Available colors:', availableColors);
+    // console.log('Available sizes:', availableSizes);
 
     const defaultColor = availableColors.find(color =>
       color.toLowerCase().includes('obsidian')
@@ -1174,7 +1188,7 @@ class TierController {
       size.toLowerCase() === 'king'
     ) || availableSizes[0];
 
-    console.log('Default selections:', { defaultColor, defaultSize });
+   //  console.log('Default selections:', { defaultColor, defaultSize });
 
     for (let i = 1; i <= this.currentTier; i++) {
       const slot = document.querySelector(`[next-tier-slot="${i}"]`);
@@ -1406,7 +1420,7 @@ class TierController {
 
   _notifyAutoSelection(selectedType, selectedValue, autoType, autoValue) {
     // Optional: Implement a toast notification or console log
-    console.log(`Note: ${selectedValue} ${selectedType} is out of stock. Auto-selected ${autoValue} ${autoType} instead.`);
+    // console.log(`Note: ${selectedValue} ${selectedType} is out of stock. Auto-selected ${autoValue} ${autoType} instead.`);
 
     // Dispatch a custom event from the document for UI notifications
     document.dispatchEvent(new CustomEvent('autoVariantSelection', {
@@ -1628,7 +1642,7 @@ customElements.define('os-dropdown-item', OSDropdownItem);
 
 // Initialize when SDK is ready
 window.addEventListener('next:initialized', function() {
-  console.log('SDK initialized, starting Grounded Footwear controller...');
+  // console.log('SDK initialized, starting Grounded Footwear controller...');
   
   window.tierController = new TierController();
   
@@ -1654,7 +1668,7 @@ window.progressBarController = new ProgressBarController();
 
 // Wait for SDK to be fully initialized
 window.addEventListener('next:initialized', function() {
-  console.log('SDK initialized, setting up exit intent...');
+  // console.log('SDK initialized, setting up exit intent...');
 
   // Exit intent setup with profile switching
   window.next.exitIntent({
@@ -1663,31 +1677,13 @@ window.addEventListener('next:initialized', function() {
       // Activate exit discount on the tier controller
       if (window.tierController) {
         await window.tierController.activateExitDiscount();
-        console.log('Exit 10% discount applied to current tier configuration');
+        // console.log('Exit 10% discount applied to current tier configuration');
       } else {
         // Fallback: Apply the base exit_10 profile
         await window.next.setProfile('exit_10');
-        console.log('Exit 10% discount profile applied - all tiers updated');
+        // console.log('Exit 10% discount profile applied - all tiers updated');
       }
     },
   });
 
-  // Optional: Listen to events for analytics
-  window.next.on('exit-intent:shown', data => {
-    console.log('Exit intent popup shown:', data.imageUrl);
-  });
-
-  window.next.on('exit-intent:clicked', data => {
-    console.log('Exit intent popup clicked:', data.imageUrl);
-    // The action callback will handle the profile switching
-  });
-
-  window.next.on('exit-intent:dismissed', data => {
-    console.log('Exit intent popup dismissed:', data.imageUrl);
-  });
-
-  // Listen for profile change events
-  window.next.on('profile:applied', data => {
-    console.log(`Profile ${data.profileId} applied, ${data.itemsSwapped} items updated`);
-  });
 });
