@@ -26,7 +26,16 @@ const CONFIG = {
     1: 'exit_10',
     2: 'exit_10_2pack',
     3: 'exit_10_3pack'
-  }
+  },
+  autoSelectAvailable: true, // Enable auto-selection of available variants when OOS option is clicked
+  sizePreferenceOrder: [ // Order of size preference for auto-selection (closest match first)
+    ['King', 'California King', 'Queen', 'Double', 'Single', 'Twin'],
+    ['California King', 'King', 'Queen', 'Double', 'Single', 'Twin'],
+    ['Queen', 'King', 'California King', 'Double', 'Single', 'Twin'],
+    ['Double', 'Queen', 'King', 'Single', 'Twin', 'California King'],
+    ['Single', 'Twin', 'Double', 'Queen', 'King', 'California King'],
+    ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King']
+  ]
 };
 
 // Optimized base element class
@@ -554,15 +563,21 @@ class TierController {
 
     // Auto-select King or first size
     if (availableSizes.length > 0 && !slotVariants.size) {
-      const selectedSize = availableSizes.find(size => 
+      const selectedSize = availableSizes.find(size =>
         size.toLowerCase() === 'king'
       ) || availableSizes[0];
-      
+
       slotVariants.size = selectedSize;
       this._updateDropdownValue(slot, 'size', selectedSize);
     }
 
     this._updateSlotPricing(slotNumber);
+
+    // Update stock status for both dropdowns after auto-selection
+    if (slotVariants.color && slotVariants.size) {
+      this._updateDropdownStockStatus(slot, 'color', slotNumber);
+      this._updateDropdownStockStatus(slot, 'size', slotNumber);
+    }
   }
 
   _updateDropdownValue(slot, variantType, value) {
@@ -581,12 +596,49 @@ class TierController {
       this.selectedVariants.set(slotNumber, {});
     }
 
-    this.selectedVariants.get(slotNumber)[variantType] = value;
+    const slotVariants = this.selectedVariants.get(slotNumber);
+    const previousValue = slotVariants[variantType];
+    slotVariants[variantType] = value;
+
+    // Check if the selected variant combination is out of stock
+    if (CONFIG.autoSelectAvailable && slotVariants.color && slotVariants.size) {
+      const isOOS = this._isCompleteVariantOutOfStock(slotNumber, slotVariants);
+
+      if (isOOS) {
+        // Try to find an available alternative
+        const alternative = this._findAvailableAlternative(slotNumber, variantType, value, previousValue);
+
+        if (alternative) {
+          // Auto-select the available alternative
+          console.log(`Auto-selecting available ${variantType === 'color' ? 'size' : 'color'}: ${alternative}`);
+          const otherType = variantType === 'color' ? 'size' : 'color';
+          slotVariants[otherType] = alternative;
+          this._updateDropdownValue(slot, otherType, alternative);
+
+          // Update UI elements if we auto-selected a different color
+          if (otherType === 'color') {
+            const colorDropdown = slot.querySelector(`os-dropdown[next-variant-option="color"]`);
+            this._updateColorSwatch(colorDropdown, alternative);
+            this._updateSlotImage(slot, alternative);
+          }
+
+          // Show a subtle notification (optional - you can implement a toast notification here)
+          this._notifyAutoSelection(variantType, value, otherType, alternative);
+        }
+      }
+    }
 
     if (variantType === 'color') {
       this._updateColorSwatch(component, value);
       this._updateSlotImage(slot, value);
+    } else if (variantType === 'size') {
+      // Nothing specific needed here since color updates happen after auto-selection
     }
+
+    // Always update both dropdowns' stock status after any change
+    // This ensures correct OOS marking after auto-selection
+    this._updateDropdownStockStatus(slot, 'color', slotNumber);
+    this._updateDropdownStockStatus(slot, 'size', slotNumber);
 
     this._updateSlotPricing(slotNumber);
     this._checkCompleteSelection(slotNumber);
@@ -714,20 +766,29 @@ class TierController {
     const menu = dropdown?.querySelector('os-dropdown-menu');
     if (!menu) return;
 
+    const slotNumber = parseInt(slot.getAttribute('next-tier-slot'));
+
     // Clear existing items
     menu.querySelectorAll('os-dropdown-item, .dropdown-arrow').forEach(el => el.remove());
-    
+
     // Add new options
     options.forEach(option => {
-      menu.appendChild(itemCreator(option));
+      menu.appendChild(itemCreator(option, slotNumber));
     });
   }
 
-  _createColorItem(color) {
+  _createColorItem(color, slotNumber) {
     const item = document.createElement('os-dropdown-item');
     const colorKey = color.toLowerCase().replace(/\s+/g, '-');
-    
+
     item.setAttribute('value', color);
+
+    // Check if this color option is out of stock for the current slot
+    const isOutOfStock = this._isVariantOutOfStock(slotNumber, { color });
+    if (isOutOfStock) {
+      item.classList.add('next-oos');
+    }
+
     item.innerHTML = `
       <div class="os-card__toggle-option os--distribute">
         <div class="os-card__variant-toggle-info">
@@ -736,13 +797,20 @@ class TierController {
         </div>
       </div>
     `;
-    
+
     return item;
   }
 
-  _createSizeItem(size) {
+  _createSizeItem(size, slotNumber) {
     const item = document.createElement('os-dropdown-item');
     item.setAttribute('value', size);
+
+    // Check if this size option is out of stock for the current slot
+    const isOutOfStock = this._isVariantOutOfStock(slotNumber, { size });
+    if (isOutOfStock) {
+      item.classList.add('next-oos');
+    }
+
     item.innerHTML = `
       <div class="os-card__toggle-option os--distribute">
         <div class="os-card__variant-toggle-info">
@@ -750,7 +818,7 @@ class TierController {
         </div>
       </div>
     `;
-    
+
     return item;
   }
 
@@ -870,6 +938,12 @@ class TierController {
       }
 
       this._updateSlotPricing(i);
+
+      // Update stock status for both dropdowns after initial selections
+      if (defaultColor && defaultSize) {
+        this._updateDropdownStockStatus(slot, 'color', i);
+        this._updateDropdownStockStatus(slot, 'size', i);
+      }
     }
 
     await this._swapCartWithSelections();
@@ -921,6 +995,178 @@ class TierController {
       }
     }
     return true;
+  }
+
+  _updateDropdownStockStatus(slot, variantType, slotNumber) {
+    const dropdown = slot.querySelector(`os-dropdown[next-variant-option="${variantType}"]`);
+    if (!dropdown) return;
+
+    const slotVariants = this.selectedVariants.get(slotNumber) || {};
+    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
+
+    const items = dropdown.querySelectorAll('os-dropdown-item');
+    items.forEach(item => {
+      const value = item.getAttribute('value');
+
+      // Check stock for this specific option with the current selection of the other variant type
+      let variantToCheck;
+      if (variantType === 'color') {
+        // Checking color options - use current size
+        variantToCheck = { color: value, size: slotVariants.size };
+      } else {
+        // Checking size options - use current color
+        variantToCheck = { color: slotVariants.color, size: value };
+      }
+
+      // Only check if we have both attributes
+      if (variantToCheck.color && variantToCheck.size &&
+          variantToCheck.color !== 'select-color' && variantToCheck.size !== 'select-size') {
+
+        const matchingPackage = window.next.getPackageByVariantSelection(productIdToUse, variantToCheck);
+        const isOutOfStock = !matchingPackage ||
+                            matchingPackage.product_inventory_availability === 'out_of_stock' ||
+                            matchingPackage.product_purchase_availability === 'unavailable';
+
+        if (isOutOfStock) {
+          item.classList.add('next-oos');
+        } else {
+          item.classList.remove('next-oos');
+        }
+      } else {
+        // Can't determine stock without both selections
+        item.classList.remove('next-oos');
+      }
+    });
+  }
+
+  _isVariantOutOfStock(slotNumber, partialVariant) {
+    // Get the current selections for this slot
+    const slotVariants = this.selectedVariants.get(slotNumber) || {};
+
+    // Merge partial variant with current selections
+    const fullVariant = {
+      color: partialVariant.color || slotVariants.color,
+      size: partialVariant.size || slotVariants.size
+    };
+
+    // If we don't have both color and size, we can't determine stock status
+    if (!fullVariant.color || !fullVariant.size ||
+        fullVariant.color === 'select-color' || fullVariant.size === 'select-size') {
+      return false;
+    }
+
+    // Use base product ID for slot 1
+    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
+
+    // Get the package for this variant combination
+    const matchingPackage = window.next.getPackageByVariantSelection(
+      productIdToUse,
+      fullVariant
+    );
+
+    // Check if package exists and its stock status
+    if (matchingPackage) {
+      const isOutOfStock = matchingPackage.product_inventory_availability === 'out_of_stock' ||
+                          matchingPackage.product_purchase_availability === 'unavailable';
+      return isOutOfStock;
+    }
+
+    return false;
+  }
+
+  _isCompleteVariantOutOfStock(slotNumber, fullVariant) {
+    // Check if a complete variant (both color and size) is out of stock
+    if (!fullVariant.color || !fullVariant.size ||
+        fullVariant.color === 'select-color' || fullVariant.size === 'select-size') {
+      return false;
+    }
+
+    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
+    const matchingPackage = window.next.getPackageByVariantSelection(productIdToUse, fullVariant);
+
+    if (matchingPackage) {
+      return matchingPackage.product_inventory_availability === 'out_of_stock' ||
+             matchingPackage.product_purchase_availability === 'unavailable';
+    }
+
+    return false;
+  }
+
+  _findAvailableAlternative(slotNumber, changedType, newValue, previousValue) {
+    const productIdToUse = (slotNumber === 1 && this.baseProductId) ? this.baseProductId : this.productId;
+    const slotVariants = this.selectedVariants.get(slotNumber);
+
+    if (changedType === 'color') {
+      // User selected a new color, find an available size
+      const availableSizes = window.next.getAvailableVariantAttributes(productIdToUse, 'size');
+      const currentSize = slotVariants.size;
+
+      // Get the preferred size order based on current size
+      const sizeOrder = this._getSizePreferenceOrder(currentSize, availableSizes);
+
+      // Find first available size in preference order
+      for (const size of sizeOrder) {
+        if (!this._isCompleteVariantOutOfStock(slotNumber, { color: newValue, size })) {
+          return size;
+        }
+      }
+    } else if (changedType === 'size') {
+      // User selected a new size, find an available color
+      const availableColors = window.next.getAvailableVariantAttributes(productIdToUse, 'color');
+      const currentColor = slotVariants.color;
+
+      // Try to keep the current color if it's available with the new size
+      if (!this._isCompleteVariantOutOfStock(slotNumber, { color: currentColor, size: newValue })) {
+        return currentColor;
+      }
+
+      // Otherwise find first available color
+      for (const color of availableColors) {
+        if (!this._isCompleteVariantOutOfStock(slotNumber, { color, size: newValue })) {
+          return color;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  _getSizePreferenceOrder(currentSize, availableSizes) {
+    // Find the preference order for the current size
+    let preferenceOrder = [];
+
+    for (const order of CONFIG.sizePreferenceOrder) {
+      if (order[0].toLowerCase() === currentSize.toLowerCase()) {
+        preferenceOrder = order;
+        break;
+      }
+    }
+
+    // If no preference order found, use available sizes as-is
+    if (preferenceOrder.length === 0) {
+      return availableSizes;
+    }
+
+    // Filter preference order to only include available sizes
+    return preferenceOrder.filter(size =>
+      availableSizes.some(availSize => availSize.toLowerCase() === size.toLowerCase())
+    );
+  }
+
+  _notifyAutoSelection(selectedType, selectedValue, autoType, autoValue) {
+    // Optional: Implement a toast notification or console log
+    console.log(`Note: ${selectedValue} ${selectedType} is out of stock. Auto-selected ${autoValue} ${autoType} instead.`);
+
+    // Dispatch a custom event from the document for UI notifications
+    document.dispatchEvent(new CustomEvent('autoVariantSelection', {
+      detail: {
+        selectedType,
+        selectedValue,
+        autoType,
+        autoValue
+      },
+      bubbles: true
+    }));
   }
 
   _updateCTAButtons() {
