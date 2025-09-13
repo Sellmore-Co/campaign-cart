@@ -297,6 +297,15 @@ const CONFIG = {
     sizes: ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King'],
     colors: ['Obsidian Grey', 'Chateau Ivory', 'Scribe Blue', 'Verdant Sage']
   },
+  // Size preference order - when current size is unavailable, try these sizes in order
+  sizePreferenceOrder: [
+    ['King', 'California King', 'Queen', 'Double', 'Single', 'Twin'],
+    ['California King', 'King', 'Queen', 'Double', 'Single', 'Twin'],
+    ['Queen', 'King', 'California King', 'Double', 'Single', 'Twin'],
+    ['Double', 'Queen', 'King', 'Single', 'Twin', 'California King'],
+    ['Single', 'Twin', 'Double', 'Queen', 'King', 'California King'],
+    ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King']
+  ],
   // Package mapping for upsells based on color/size combinations
   packageMapping: {
     'obsidian-grey': {
@@ -493,6 +502,16 @@ class UpsellController {
         });
       }
     });
+
+    // Update stock status for all populated dropdowns
+    const allRows = document.querySelectorAll('.os-card__upsell-grid');
+    allRows.forEach((row, index) => {
+      const rowNumber = index + 1;
+      if (this.selectedVariants.has(rowNumber)) {
+        this._updateDropdownStockStatus(row, 'color', rowNumber);
+        this._updateDropdownStockStatus(row, 'size', rowNumber);
+      }
+    });
   }
 
   selectQuantity(quantity) {
@@ -631,8 +650,39 @@ class UpsellController {
       this.selectedVariants.set(1, defaultVariants);
 
       // Set dropdown values
-      if (colorDropdown) colorDropdown.value = defaultVariants.color;
+      if (colorDropdown) {
+        colorDropdown.value = defaultVariants.color;
+        this._updateColorSwatchInToggle(colorDropdown, defaultVariants.color);
+      }
       if (sizeDropdown) sizeDropdown.value = defaultVariants.size;
+
+      // Update stock status for both dropdowns after setting initial values
+      this._updateDropdownStockStatus(firstRow, 'color', 1);
+      this._updateDropdownStockStatus(firstRow, 'size', 1);
+    }
+  }
+
+  _updateColorSwatchInToggle(dropdown, colorValue) {
+    if (!dropdown || !colorValue) return;
+
+    const toggle = dropdown.querySelector('button, [role="button"]');
+    if (!toggle) return;
+
+    const swatch = toggle.querySelector('.os-card__variant-swatch');
+    if (swatch) {
+      const colorKey = colorValue.toLowerCase().replace(/\s+/g, '-');
+      if (CONFIG.colors.styles[colorKey]) {
+        swatch.style.backgroundColor = CONFIG.colors.styles[colorKey];
+      }
+    }
+
+    // Also update the image if present
+    const imgElement = toggle.querySelector('img');
+    if (imgElement) {
+      const colorKey = colorValue.toLowerCase().replace(/\s+/g, '-');
+      if (CONFIG.colors.images[colorKey]) {
+        imgElement.src = CONFIG.colors.images[colorKey];
+      }
     }
   }
 
@@ -670,12 +720,22 @@ class UpsellController {
           const otherDropdown = row.querySelector(`os-dropdown[next-variant-option="${otherType}"]`);
           if (otherDropdown) {
             otherDropdown.value = alternative;
+
+            // If we're auto-selecting a color, update the swatch in the toggle
+            if (otherType === 'color') {
+              this._updateColorSwatchInToggle(otherDropdown, alternative);
+            }
           }
 
           // Show notification
           this._notifyAutoSelection(variantType, value, otherType, alternative);
         }
       }
+    }
+
+    // Update visual elements
+    if (variantType === 'color') {
+      this._updateColorSwatchInToggle(component, value);
     }
 
     // Update stock status for this row
@@ -781,7 +841,7 @@ class UpsellController {
     const rowVariants = this.selectedVariants.get(rowNumber);
 
     if (changedType === 'color') {
-      // User changed color, find available size
+      // User changed color, find available size using preference order
       const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
       const currentSize = rowVariants.size;
 
@@ -790,8 +850,11 @@ class UpsellController {
         return currentSize;
       }
 
-      // Find first available size
-      for (const size of availableSizes) {
+      // Get size preference order based on current size
+      const sizeOrder = this._getSizePreferenceOrder(currentSize, availableSizes);
+
+      // Try sizes in preference order (next bigger size first)
+      for (const size of sizeOrder) {
         if (!this._isCompleteVariantOutOfStock(rowNumber, { color: newValue, size })) {
           return size;
         }
@@ -815,6 +878,28 @@ class UpsellController {
     }
 
     return null;
+  }
+
+  _getSizePreferenceOrder(currentSize, availableSizes) {
+    // Find the preference order for the current size
+    let preferenceOrder = [];
+
+    for (const order of CONFIG.sizePreferenceOrder) {
+      if (order[0].toLowerCase() === currentSize.toLowerCase()) {
+        preferenceOrder = order;
+        break;
+      }
+    }
+
+    // If no specific order found, use available sizes as-is
+    if (preferenceOrder.length === 0) {
+      return availableSizes;
+    }
+
+    // Filter preference order to only include available sizes
+    return preferenceOrder.filter(size =>
+      availableSizes.some(availSize => availSize.toLowerCase() === size.toLowerCase())
+    );
   }
 
   _notifyAutoSelection(selectedType, selectedValue, autoType, autoValue) {
