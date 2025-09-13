@@ -1,6 +1,7 @@
-// Grounded Sheets Upsell System
-// Dynamic row creation based on quantity selection with upsell handling
+// Pillow Cover Upsell System
+// Auto-matches sheet selections from previous page
 
+// Keep existing dropdown components (reuse from sheets page)
 // Base element class for custom elements
 class ConversionElement extends HTMLElement {
   constructor() {
@@ -182,15 +183,6 @@ class OSDropdown extends ConversionElement {
         toggleText.textContent = itemText;
       }
     }
-
-    // Update image if this is a color dropdown
-    if (this.getAttribute('next-variant-option') === 'color') {
-      const imgElement = this._elements.toggle.querySelector('img');
-      const colorKey = this._value?.toLowerCase().replace(/\s+/g, '-');
-      if (imgElement && CONFIG.colors.images[colorKey]) {
-        imgElement.src = CONFIG.colors.images[colorKey];
-      }
-    }
   }
 
   static closeAllDropdowns() {
@@ -277,73 +269,7 @@ customElements.define('os-dropdown', OSDropdown);
 customElements.define('os-dropdown-menu', OSDropdownMenu);
 customElements.define('os-dropdown-item', OSDropdownItem);
 
-// Static configurations
-const CONFIG = {
-  colors: {
-    images: {
-      'obsidian-grey': 'https://cdn.29next.store/media/bareearth/uploads/obsidian-grey.png',
-      'chateau-ivory': 'https://cdn.29next.store/media/bareearth/uploads/chateau-ivory.png',
-      'scribe-blue': 'https://cdn.29next.store/media/bareearth/uploads/scribe-blue.png',
-      'verdant-sage': 'https://cdn.29next.store/media/bareearth/uploads/verdant-sage.png',
-    },
-    styles: {
-      'obsidian-grey': '#9699a6',
-      'chateau-ivory': '#e4e4e5',
-      'scribe-blue': '#4a90e2',
-      'verdant-sage': '#87a96b',
-    }
-  },
-  displayOrder: {
-    sizes: ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King'],
-    colors: ['Obsidian Grey', 'Chateau Ivory', 'Scribe Blue', 'Verdant Sage']
-  },
-  // Size preference order - when current size is unavailable, try these sizes in order
-  sizePreferenceOrder: [
-    ['King', 'California King', 'Queen', 'Double', 'Single', 'Twin'],
-    ['California King', 'King', 'Queen', 'Double', 'Single', 'Twin'],
-    ['Queen', 'King', 'California King', 'Double', 'Single', 'Twin'],
-    ['Double', 'Queen', 'King', 'Single', 'Twin', 'California King'],
-    ['Single', 'Twin', 'Double', 'Queen', 'King', 'California King'],
-    ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King']
-  ],
-  // Upsell package mapping - these are specific package IDs for upsells
-  upsellPackageMapping: {
-    'obsidian grey': {
-      'twin': 146,
-      'single': 166,
-      'double': 150,
-      'queen': 154,
-      'king': 158,
-      'california king': 162
-    },
-    'chateau ivory': {
-      'twin': 147,
-      'single': 167,
-      'double': 151,
-      'queen': 155,
-      'king': 159,
-      'california king': 163
-    },
-    'scribe blue': {
-      'twin': 148,
-      'single': 168,
-      'double': 152,
-      'queen': 156,
-      'king': 160,
-      'california king': 164
-    },
-    'verdant sage': {
-      'twin': 149,
-      'single': 169,
-      'double': 153,
-      'queen': 157,
-      'king': 161,
-      'california king': 165
-    }
-  }
-};
-
-// Simple LoadingOverlay implementation (mimics SDK version)
+// Simple LoadingOverlay implementation
 class LoadingOverlay {
   constructor() {
     this.overlay = null;
@@ -393,7 +319,6 @@ class LoadingOverlay {
   hide() {
     if (!this.overlay) return;
 
-    // Hide after a short delay for success feedback
     setTimeout(() => {
       if (this.overlay && this.overlay.parentNode) {
         this.overlay.parentNode.removeChild(this.overlay);
@@ -403,35 +328,54 @@ class LoadingOverlay {
   }
 }
 
-// Upsell Controller Class
-class UpsellController {
+// Pillow Cover Controller - Auto-matches sheet selections
+class PillowCoverController {
   constructor() {
+    this.sheetsQuantity = 0;
     this.currentQuantity = 1;
+    this.sheetSelections = null;
     this.selectedVariants = new Map();
+    this.pillowSize = null;
     this.variantsContainer = null;
     this.quantityButtons = null;
     this.acceptButton = null;
-    this.productId = null;
-    this._eventCleanup = [];
+    this.declineButton = null;
     this.loadingOverlay = new LoadingOverlay();
+
+    // Package mapping for pillow covers
+    this.packageMapping = {
+      'double/queen': {
+        'obsidian grey': 170,
+        'chateau ivory': 171,
+        'scribe blue': 172,
+        'verdant sage': 173
+      },
+      'king': {
+        'obsidian grey': 174,
+        'chateau ivory': 175,
+        'scribe blue': 176,
+        'verdant sage': 177
+      }
+    };
 
     this.init();
   }
 
   async init() {
     await this._waitForSDK();
-    this._getProductIdFromCampaign();
+    this._getSheetSelectionsFromStorage();
+    this._getQuantityFromURL();
+    this._determinePillowSize();
     this._cacheElements();
     this._bindEvents();
-    this._populateDropdowns();
-    this._initializeFirstRow();
+    this._initializeRows();
     this._updatePricing();
   }
 
   _waitForSDK() {
     return new Promise(resolve => {
       const check = () => {
-        if (window.next?.addUpsell && window.next?.getCampaignData) {
+        if (window.next?.addUpsell && window.next?.getPackage) {
           resolve();
         } else {
           setTimeout(check, 100);
@@ -441,29 +385,54 @@ class UpsellController {
     });
   }
 
-  _getProductIdFromCampaign() {
-    const campaign = window.next.getCampaignData();
-    this.productId = campaign?.packages?.[0]?.product_id;
-
-    if (!this.productId) {
-      // Try to get from cache
-      try {
-        const cache = JSON.parse(sessionStorage.getItem('next-campaign-cache') || '{}');
-        this.productId = cache.campaign?.packages?.[0]?.product_id;
-      } catch (error) {
-        console.error('Failed to get product ID from cache:', error);
+  _getSheetSelectionsFromStorage() {
+    try {
+      const stored = sessionStorage.getItem('sheet-selections');
+      if (stored) {
+        this.sheetSelections = JSON.parse(stored);
+        console.log('Retrieved sheet selections from storage:', this.sheetSelections);
       }
+    } catch (error) {
+      console.error('Failed to retrieve sheet selections:', error);
+    }
+  }
+
+  _getQuantityFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    this.sheetsQuantity = parseInt(urlParams.get('quantity')) || 0;
+
+    // If we have sheet selections in storage, use that quantity
+    if (this.sheetSelections?.quantity) {
+      this.sheetsQuantity = this.sheetSelections.quantity;
+      this.currentQuantity = this.sheetsQuantity; // Auto-select same quantity
     }
 
-    if (!this.productId) {
-      console.error('Warning: Product ID not found. Some features may not work correctly.');
+    console.log('Sheets quantity:', this.sheetsQuantity);
+
+    if (this.sheetsQuantity === 0) {
+      console.log('User declined previous offers, redirecting...');
+      this._redirectToNext();
     }
+  }
+
+  _determinePillowSize() {
+    // Based on the rules:
+    // Quantity 1-4: Double/Queen pillows
+    // Quantity 5-6: King pillows
+    if (this.sheetsQuantity >= 5) {
+      this.pillowSize = 'king';
+    } else {
+      this.pillowSize = 'double/queen';
+    }
+
+    console.log('Pillow size determined:', this.pillowSize);
   }
 
   _cacheElements() {
     this.variantsContainer = document.querySelector('.os-card__variant-options');
     this.quantityButtons = document.querySelectorAll('[data-next-upsell-quantity-toggle]');
     this.acceptButton = document.querySelector('[data-next-upsell-action="add"]');
+    this.declineButton = document.querySelector('[data-next-upsell-action="skip"]');
     this.originalPriceElement = document.getElementById('originalPrice');
     this.currentPriceElement = document.getElementById('currentPrice');
     this.savingsElement = document.querySelector('[data-next-display="package.savingsPercentage"]');
@@ -487,91 +456,68 @@ class UpsellController {
     }
 
     // Decline button click
-    const declineButton = document.querySelector('[data-next-upsell-action="skip"]');
-    if (declineButton) {
-      declineButton.addEventListener('click', (e) => {
+    if (this.declineButton) {
+      this.declineButton.addEventListener('click', (e) => {
         e.preventDefault();
         this.declineUpsell();
       });
     }
 
-    // Listen for variant selections from dropdowns
+    // Listen for variant selections
     document.addEventListener('variantSelected', (e) => this._handleVariantSelection(e.detail));
   }
 
-  _populateDropdowns() {
-    if (!this.productId) {
-      console.error('Cannot populate dropdowns without product ID');
-      return;
+  _initializeRows() {
+    // Auto-select quantity button based on sheets quantity
+    this.quantityButtons.forEach(btn => {
+      const btnQty = parseInt(btn.getAttribute('data-next-upsell-quantity-toggle'));
+      btn.classList.toggle('next-selected', btnQty === this.currentQuantity);
+    });
+
+    // Create rows based on quantity
+    this._updateRows(this.currentQuantity);
+
+    // If we have sheet selections, auto-populate the colors
+    if (this.sheetSelections?.selections) {
+      this._autoPopulateFromSheets();
     }
+  }
 
-    // Get available variants from SDK
-    const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
-    const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
+  _autoPopulateFromSheets() {
+    const allRows = this.variantsContainer.querySelectorAll('.os-card__upsell-grid');
 
-    // Populate color dropdowns
-    const colorDropdowns = document.querySelectorAll('os-dropdown[next-variant-option="color"]');
-    colorDropdowns.forEach(dropdown => {
-      const menu = dropdown.querySelector('os-dropdown-menu');
-      if (menu) {
-        // Clear existing items
-        menu.innerHTML = '';
-
-        // Add color options based on available variants
-        availableColors.forEach(color => {
-          const colorKey = color.toLowerCase().replace(/\s+/g, '-');
-          const item = document.createElement('os-dropdown-item');
-          item.setAttribute('value', color);
-          item.innerHTML = `
-            <div class="os-card__toggle-option">
-              <div class="os-card__variant-toggle-info">
-                <div class="os-card__variant-swatch is-upsell" style="background-color: ${CONFIG.colors.styles[colorKey] || '#ccc'}"></div>
-                <div class="os-card__variant-toggle-name">${color}</div>
-              </div>
-            </div>
-          `;
-          menu.appendChild(item);
-        });
-      }
-    });
-
-    // Populate size dropdowns
-    const sizeDropdowns = document.querySelectorAll('os-dropdown[next-variant-option="size"]');
-    sizeDropdowns.forEach(dropdown => {
-      const menu = dropdown.querySelector('os-dropdown-menu');
-      if (menu) {
-        // Clear existing items
-        menu.innerHTML = '';
-
-        // Add size options based on available variants
-        availableSizes.forEach(size => {
-          const item = document.createElement('os-dropdown-item');
-          item.setAttribute('value', size);
-          item.innerHTML = `
-            <div class="os-card__toggle-option">
-              <div class="os-card__variant-toggle-info">
-                <div class="os-card__variant-toggle-name">${size}</div>
-              </div>
-            </div>
-          `;
-          menu.appendChild(item);
-        });
-      }
-    });
-
-    // Update stock status for all populated dropdowns
-    const allRows = document.querySelectorAll('.os-card__upsell-grid');
-    allRows.forEach((row, index) => {
+    this.sheetSelections.selections.forEach((sheetSelection, index) => {
       const rowNumber = index + 1;
-      if (this.selectedVariants.has(rowNumber)) {
-        this._updateDropdownStockStatus(row, 'color', rowNumber);
-        this._updateDropdownStockStatus(row, 'size', rowNumber);
+      const row = allRows[index];
+
+      if (row) {
+        // Store the selection
+        this.selectedVariants.set(rowNumber, {
+          color: sheetSelection.color
+        });
+
+        // Update the color dropdown
+        const colorDropdown = row.querySelector('os-dropdown[next-variant-option="color"]');
+        if (colorDropdown) {
+          // Populate dropdown first
+          this._populateColorDropdown(colorDropdown);
+          // Then set the value
+          colorDropdown.value = sheetSelection.color;
+        }
+
+        console.log(`Auto-populated row ${rowNumber} with color: ${sheetSelection.color}`);
       }
     });
   }
 
   selectQuantity(quantity) {
     if (quantity === this.currentQuantity) return;
+
+    // Limit to sheets quantity
+    if (quantity > this.sheetsQuantity) {
+      alert(`You can only add up to ${this.sheetsQuantity} pillow covers (matching your sheet quantity)`);
+      return;
+    }
 
     this.currentQuantity = quantity;
 
@@ -617,129 +563,67 @@ class UpsellController {
       numberElement.textContent = `#${rowNumber}`;
     }
 
-    // Get available variants from SDK
-    const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
-    const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
-
-    // Populate dropdowns for new row
+    // Populate color dropdown
     const colorDropdown = newRow.querySelector('os-dropdown[next-variant-option="color"]');
-    const sizeDropdown = newRow.querySelector('os-dropdown[next-variant-option="size"]');
-
     if (colorDropdown) {
-      const menu = colorDropdown.querySelector('os-dropdown-menu');
-      if (menu) {
-        menu.innerHTML = '';
-        availableColors.forEach(color => {
-          const colorKey = color.toLowerCase().replace(/\s+/g, '-');
-          const item = document.createElement('os-dropdown-item');
-          item.setAttribute('value', color);
-          item.innerHTML = `
-            <div class="os-card__toggle-option">
-              <div class="os-card__variant-toggle-info">
-                <div class="os-card__variant-swatch" style="background-color: ${CONFIG.colors.styles[colorKey] || '#ccc'}"></div>
-                <div class="os-card__variant-toggle-name">${color}</div>
-              </div>
-            </div>
-          `;
-          menu.appendChild(item);
-        });
-      }
+      this._populateColorDropdown(colorDropdown);
     }
 
+    // Hide size dropdown if it exists (pillow covers only need color)
+    const sizeDropdown = newRow.querySelector('os-dropdown[next-variant-option="size"]');
     if (sizeDropdown) {
-      const menu = sizeDropdown.querySelector('os-dropdown-menu');
-      if (menu) {
-        menu.innerHTML = '';
-        availableSizes.forEach(size => {
-          const item = document.createElement('os-dropdown-item');
-          item.setAttribute('value', size);
-          item.innerHTML = `
-            <div class="os-card__toggle-option">
-              <div class="os-card__variant-toggle-info">
-                <div class="os-card__variant-toggle-name">${size}</div>
-              </div>
-            </div>
-          `;
-          menu.appendChild(item);
-        });
-      }
+      sizeDropdown.style.display = 'none';
     }
 
     this.variantsContainer.appendChild(newRow);
 
-    // Copy selection from row 1 if it exists
-    const row1Variants = this.selectedVariants.get(1);
-    if (row1Variants) {
-      this.selectedVariants.set(rowNumber, { ...row1Variants });
-      if (colorDropdown) colorDropdown.value = row1Variants.color;
-      if (sizeDropdown) sizeDropdown.value = row1Variants.size;
-    }
-  }
+    // Auto-populate from sheet selection if available
+    if (this.sheetSelections?.selections[rowNumber - 1]) {
+      const sheetSelection = this.sheetSelections.selections[rowNumber - 1];
+      this.selectedVariants.set(rowNumber, {
+        color: sheetSelection.color
+      });
 
-  _initializeFirstRow() {
-    if (!this.productId) return;
-
-    // Get available variants from SDK
-    const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
-    const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
-
-    // Find default selections
-    const defaultColor = availableColors.find(color =>
-      color.toLowerCase().includes('obsidian')
-    ) || availableColors[0];
-
-    const defaultSize = availableSizes.find(size =>
-      size.toLowerCase() === 'king'
-    ) || availableSizes[0];
-
-    // Initialize first row with default selection
-    const firstRow = this.variantsContainer?.querySelector('.os-card__upsell-grid');
-    if (firstRow) {
-      const colorDropdown = firstRow.querySelector('os-dropdown[next-variant-option="color"]');
-      const sizeDropdown = firstRow.querySelector('os-dropdown[next-variant-option="size"]');
-
-      const defaultVariants = {
-        color: defaultColor || 'Obsidian Grey',
-        size: defaultSize || 'Single'
-      };
-
-      this.selectedVariants.set(1, defaultVariants);
-
-      // Set dropdown values
       if (colorDropdown) {
-        colorDropdown.value = defaultVariants.color;
-        this._updateColorSwatchInToggle(colorDropdown, defaultVariants.color);
+        colorDropdown.value = sheetSelection.color;
       }
-      if (sizeDropdown) sizeDropdown.value = defaultVariants.size;
-
-      // Update stock status for both dropdowns after setting initial values
-      this._updateDropdownStockStatus(firstRow, 'color', 1);
-      this._updateDropdownStockStatus(firstRow, 'size', 1);
+    } else {
+      // Copy from row 1 if no sheet selection
+      const row1Variants = this.selectedVariants.get(1);
+      if (row1Variants) {
+        this.selectedVariants.set(rowNumber, { ...row1Variants });
+        if (colorDropdown) colorDropdown.value = row1Variants.color;
+      }
     }
   }
 
-  _updateColorSwatchInToggle(dropdown, colorValue) {
-    if (!dropdown || !colorValue) return;
+  _populateColorDropdown(dropdown) {
+    const menu = dropdown.querySelector('os-dropdown-menu');
+    if (!menu) return;
 
-    const toggle = dropdown.querySelector('button, [role="button"]');
-    if (!toggle) return;
+    // Clear existing items
+    menu.innerHTML = '';
 
-    const swatch = toggle.querySelector('.os-card__variant-swatch');
-    if (swatch) {
-      const colorKey = colorValue.toLowerCase().replace(/\s+/g, '-');
-      if (CONFIG.colors.styles[colorKey]) {
-        swatch.style.backgroundColor = CONFIG.colors.styles[colorKey];
-      }
-    }
+    // Color options
+    const colors = [
+      { value: 'Obsidian Grey', display: 'Obsidian Grey' },
+      { value: 'Chateau Ivory', display: 'Chateau Ivory' },
+      { value: 'Scribe Blue', display: 'Scribe Blue' },
+      { value: 'Verdant Sage', display: 'Verdant Sage' }
+    ];
 
-    // Also update the image if present
-    const imgElement = toggle.querySelector('img');
-    if (imgElement) {
-      const colorKey = colorValue.toLowerCase().replace(/\s+/g, '-');
-      if (CONFIG.colors.images[colorKey]) {
-        imgElement.src = CONFIG.colors.images[colorKey];
-      }
-    }
+    colors.forEach(color => {
+      const item = document.createElement('os-dropdown-item');
+      item.setAttribute('value', color.value);
+      item.innerHTML = `
+        <div class="os-card__toggle-option">
+          <div class="os-card__variant-toggle-info">
+            <div class="os-card__variant-toggle-name">${color.display}</div>
+          </div>
+        </div>
+      `;
+      menu.appendChild(item);
+    });
   }
 
   _handleVariantSelection({ value, component }) {
@@ -752,150 +636,39 @@ class UpsellController {
 
     const variantType = component.getAttribute('next-variant-option');
 
-    if (!this.selectedVariants.has(rowNumber)) {
-      this.selectedVariants.set(rowNumber, {});
-    }
-
-    const rowVariants = this.selectedVariants.get(rowNumber);
-    const previousValue = rowVariants[variantType];
-    rowVariants[variantType] = value;
-
-    console.log(`Row ${rowNumber} - Selected ${variantType}: ${value}`);
-
-    // Check if we have both color and size to look up package
-    if (rowVariants.color && rowVariants.size) {
-      // Log the package lookup
-      const testPackage = window.next.getPackageByVariantSelection(
-        this.productId,
-        { color: rowVariants.color, size: rowVariants.size }
-      );
-
-      console.log(`Row ${rowNumber} - Looking up package:`, {
-        productId: this.productId,
-        color: rowVariants.color,
-        size: rowVariants.size,
-        foundPackage: testPackage ? {
-          id: testPackage.ref_id,
-          name: testPackage.name,
-          price: testPackage.price,
-          priceRetail: testPackage.price_retail,
-          inventory: testPackage.product_inventory_availability,
-          availability: testPackage.product_purchase_availability
-        } : 'NO PACKAGE FOUND'
-      });
-
-      const isOOS = this._isCompleteVariantOutOfStock(rowNumber, rowVariants);
-
-      if (isOOS) {
-        const alternative = this._findAvailableAlternative(rowNumber, variantType, value, previousValue);
-
-        if (alternative) {
-          console.log(`Auto-selecting available ${variantType === 'color' ? 'size' : 'color'}: ${alternative}`);
-          const otherType = variantType === 'color' ? 'size' : 'color';
-          rowVariants[otherType] = alternative;
-
-          // Update the other dropdown
-          const otherDropdown = row.querySelector(`os-dropdown[next-variant-option="${otherType}"]`);
-          if (otherDropdown) {
-            otherDropdown.value = alternative;
-
-            // If we're auto-selecting a color, update the swatch in the toggle
-            if (otherType === 'color') {
-              this._updateColorSwatchInToggle(otherDropdown, alternative);
-            }
-          }
-
-          // Show notification
-          this._notifyAutoSelection(variantType, value, otherType, alternative);
-        }
-      }
-    }
-
-    // Update visual elements
     if (variantType === 'color') {
-      this._updateColorSwatchInToggle(component, value);
+      if (!this.selectedVariants.has(rowNumber)) {
+        this.selectedVariants.set(rowNumber, {});
+      }
+
+      const rowVariants = this.selectedVariants.get(rowNumber);
+      rowVariants.color = value;
+
+      console.log(`Row ${rowNumber} - Selected color: ${value}`);
+
+      this._updatePricing();
     }
-
-    // Update stock status for this row
-    this._updateDropdownStockStatus(row, 'color', rowNumber);
-    this._updateDropdownStockStatus(row, 'size', rowNumber);
-
-    this._updatePricing();
-  }
-
-  _updateDropdownStockStatus(row, variantType, rowNumber) {
-    const dropdown = row.querySelector(`os-dropdown[next-variant-option="${variantType}"]`);
-    if (!dropdown) return;
-
-    const rowVariants = this.selectedVariants.get(rowNumber) || {};
-    const items = dropdown.querySelectorAll('os-dropdown-item');
-
-    items.forEach(item => {
-      const value = item.getAttribute('value');
-
-      let variantToCheck;
-      if (variantType === 'color') {
-        variantToCheck = { color: value, size: rowVariants.size };
-      } else {
-        variantToCheck = { color: rowVariants.color, size: value };
-      }
-
-      if (variantToCheck.color && variantToCheck.size) {
-        const matchingPackage = window.next.getPackageByVariantSelection(
-          this.productId,
-          variantToCheck
-        );
-
-        const isOutOfStock = !matchingPackage ||
-          matchingPackage.product_inventory_availability === 'out_of_stock' ||
-          matchingPackage.product_purchase_availability === 'unavailable';
-
-        if (isOutOfStock) {
-          item.classList.add('next-oos');
-        } else {
-          item.classList.remove('next-oos');
-        }
-      }
-    });
   }
 
   _updatePricing() {
     let totalRetail = 0;
     let totalSale = 0;
 
-    for (let i = 1; i <= this.currentQuantity; i++) {
-      const variants = this.selectedVariants.get(i);
-      if (variants?.color && variants?.size) {
-        // Get the upsell package ID from mapping
-        const colorKey = variants.color.toLowerCase();
-        const sizeKey = variants.size.toLowerCase();
-        const upsellPackageId = CONFIG.upsellPackageMapping[colorKey]?.[sizeKey];
+    // Get a sample package to determine pricing
+    const samplePackageId = this.packageMapping[this.pillowSize]?.['obsidian grey'];
+    if (!samplePackageId) return;
 
-        if (upsellPackageId) {
-          // Get the upsell package directly by ID
-          const upsellPackage = window.next.getPackage(upsellPackageId);
-
-          console.log(`Row ${i} - Pricing lookup:`, {
-            color: variants.color,
-            size: variants.size,
-            upsellPackageId: upsellPackageId,
-            upsellPackage: upsellPackage ? {
-              id: upsellPackage.ref_id,
-              name: upsellPackage.name,
-              price: upsellPackage.price,
-              priceRetail: upsellPackage.price_retail
-            } : 'PACKAGE NOT FOUND'
-          });
-
-          if (upsellPackage) {
-            const salePrice = parseFloat(upsellPackage.price);
-            const retailPrice = parseFloat(upsellPackage.price_retail);
-            totalSale += salePrice;
-            totalRetail += retailPrice;
-          }
-        }
-      }
+    const samplePackage = window.next.getPackage(samplePackageId);
+    if (!samplePackage) {
+      console.error('Could not fetch package for pricing:', samplePackageId);
+      return;
     }
+
+    const unitPrice = parseFloat(samplePackage.price);
+    const unitRetailPrice = parseFloat(samplePackage.price_retail);
+
+    totalRetail = unitRetailPrice * this.currentQuantity;
+    totalSale = unitPrice * this.currentQuantity;
 
     // Update price displays
     if (this.originalPriceElement) {
@@ -913,182 +686,44 @@ class UpsellController {
     }
   }
 
-  _isCompleteVariantOutOfStock(rowNumber, fullVariant) {
-    if (!fullVariant.color || !fullVariant.size || !this.productId) {
-      return false;
-    }
-
-    const matchingPackage = window.next.getPackageByVariantSelection(
-      this.productId,
-      { color: fullVariant.color, size: fullVariant.size }
-    );
-
-    if (matchingPackage) {
-      return matchingPackage.product_inventory_availability === 'out_of_stock' ||
-             matchingPackage.product_purchase_availability === 'unavailable';
-    }
-
-    return true; // No package found means it's unavailable
-  }
-
-  _findAvailableAlternative(rowNumber, changedType, newValue, previousValue) {
-    const rowVariants = this.selectedVariants.get(rowNumber);
-
-    if (changedType === 'color') {
-      // User changed color, find available size using preference order
-      const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
-      const currentSize = rowVariants.size;
-
-      // Try to keep current size if available
-      if (!this._isCompleteVariantOutOfStock(rowNumber, { color: newValue, size: currentSize })) {
-        return currentSize;
-      }
-
-      // Get size preference order based on current size
-      const sizeOrder = this._getSizePreferenceOrder(currentSize, availableSizes);
-
-      // Try sizes in preference order (next bigger size first)
-      for (const size of sizeOrder) {
-        if (!this._isCompleteVariantOutOfStock(rowNumber, { color: newValue, size })) {
-          return size;
-        }
-      }
-    } else if (changedType === 'size') {
-      // User changed size, find available color
-      const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
-      const currentColor = rowVariants.color;
-
-      // Try to keep current color if available
-      if (!this._isCompleteVariantOutOfStock(rowNumber, { color: currentColor, size: newValue })) {
-        return currentColor;
-      }
-
-      // Find first available color
-      for (const color of availableColors) {
-        if (!this._isCompleteVariantOutOfStock(rowNumber, { color, size: newValue })) {
-          return color;
-        }
-      }
-    }
-
-    return null;
-  }
-
-  _getSizePreferenceOrder(currentSize, availableSizes) {
-    // Find the preference order for the current size
-    let preferenceOrder = [];
-
-    for (const order of CONFIG.sizePreferenceOrder) {
-      if (order[0].toLowerCase() === currentSize.toLowerCase()) {
-        preferenceOrder = order;
-        break;
-      }
-    }
-
-    // If no specific order found, use available sizes as-is
-    if (preferenceOrder.length === 0) {
-      return availableSizes;
-    }
-
-    // Filter preference order to only include available sizes
-    return preferenceOrder.filter(size =>
-      availableSizes.some(availSize => availSize.toLowerCase() === size.toLowerCase())
-    );
-  }
-
-  _notifyAutoSelection(selectedType, selectedValue, autoType, autoValue) {
-    // Create a subtle notification
-    const notification = document.createElement('div');
-    notification.className = 'auto-selection-notification';
-    notification.textContent = `Updated ${autoType} to ${autoValue} (in stock)`;
-    notification.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #4CAF50;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 4px;
-      z-index: 10000;
-      animation: slideInUp 0.3s ease;
-      font-size: 14px;
-    `;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-      notification.style.animation = 'fadeOut 0.3s ease';
-      setTimeout(() => notification.remove(), 300);
-    }, 3000);
-
-    // Dispatch custom event for tracking
-    document.dispatchEvent(new CustomEvent('autoVariantSelection', {
-      detail: {
-        selectedType,
-        selectedValue,
-        autoType,
-        autoValue
-      },
-      bubbles: true
-    }));
-  }
-
   async acceptUpsell() {
     // Disable button and show loading
     this.acceptButton.classList.add('is-submitting');
     this.acceptButton.disabled = true;
-
-    // Show loading overlay
     this.loadingOverlay.show();
 
     try {
       const upsellItems = [];
 
-      console.log('=== ACCEPT UPSELL - Collecting items ===');
-      console.log('Product ID being used:', this.productId);
-
-      // Collect all selected items using upsell package mapping
+      // Collect all selected items
       for (let i = 1; i <= this.currentQuantity; i++) {
         const variants = this.selectedVariants.get(i);
-        console.log(`Row ${i} variants:`, variants);
 
-        if (variants?.color && variants?.size) {
-          // Use the upsell package mapping instead of SDK lookup
+        if (variants?.color) {
           const colorKey = variants.color.toLowerCase();
-          const sizeKey = variants.size.toLowerCase();
+          const packageId = this.packageMapping[this.pillowSize]?.[colorKey];
 
-          const upsellPackageId = CONFIG.upsellPackageMapping[colorKey]?.[sizeKey];
-
-          console.log(`Row ${i} - Upsell package lookup:`, {
-            color: variants.color,
-            size: variants.size,
-            colorKey: colorKey,
-            sizeKey: sizeKey,
-            upsellPackageId: upsellPackageId || 'NOT FOUND IN MAPPING'
-          });
-
-          if (upsellPackageId) {
+          if (packageId) {
             upsellItems.push({
-              packageId: upsellPackageId,
+              packageId: packageId,
               quantity: 1
             });
-          } else {
-            console.warn(`No upsell package mapping found for ${variants.color} / ${variants.size}`);
+
+            console.log(`Row ${i} - Adding pillow cover:`, {
+              color: variants.color,
+              size: this.pillowSize,
+              packageId: packageId
+            });
           }
         }
       }
 
       if (upsellItems.length === 0) {
-        console.error('No valid items selected');
-        alert('Please select color and size for all items');
-        return;
+        alert('Please select colors for all pillow covers');
+        throw new Error('No valid items selected');
       }
 
       // Add upsells using the Next SDK
-      console.log('=== SENDING UPSELLS TO SDK ===');
-      console.log('Upsell items to add:', upsellItems);
-
-      // Format the data correctly for the SDK
       const upsellData = {
         items: upsellItems.map(item => ({
           packageId: item.packageId,
@@ -1096,46 +731,20 @@ class UpsellController {
         }))
       };
 
-      console.log('📦 Formatted upsell data for SDK:', upsellData);
+      console.log('Adding pillow cover upsells:', upsellData);
 
-      // Call the addUpsell method with correct format
       await window.next.addUpsell(upsellData);
 
-      // Success - redirect or show success message
-      console.log('✅ Upsells added successfully');
+      console.log('✅ Pillow covers added successfully');
 
-      // Get redirect URL from meta tag
-      const acceptUrlMeta = document.querySelector('meta[name="next-upsell-accept-url"]');
-      const acceptUrl = acceptUrlMeta?.getAttribute('content');
-
-      if (acceptUrl) {
-        // Add quantity parameter to URL
-        const url = new URL(acceptUrl, window.location.origin);
-        url.searchParams.set('quantity', this.currentQuantity);
-
-        // Preserve existing parameters
-        const currentParams = new URLSearchParams(window.location.search);
-        ['debug', 'debugger', 'ref_id'].forEach(param => {
-          if (currentParams.has(param)) {
-            url.searchParams.set(param, currentParams.get(param));
-          }
-        });
-
-        const finalUrl = url.pathname + url.search;
-
-        console.log('Redirecting to:', finalUrl);
-        // Keep overlay showing during redirect
-        window.location.href = finalUrl;
-      } else {
-        // Hide overlay after success
-        this.loadingOverlay.hide();
-      }
+      // Redirect to next page
+      this._redirectToNext(true);
 
     } catch (error) {
-      console.error('❌ Failed to add upsells:', error);
-      this.loadingOverlay.hide(); // Hide immediately on error
-      alert('Failed to add items to your order. Please try again.');
-    } finally {
+      console.error('❌ Failed to add pillow covers:', error);
+      this.loadingOverlay.hide();
+      alert('Failed to add pillow covers. Please try again.');
+
       // Re-enable button
       this.acceptButton.classList.remove('is-submitting');
       this.acceptButton.disabled = false;
@@ -1143,14 +752,26 @@ class UpsellController {
   }
 
   declineUpsell() {
-    // Get redirect URL from meta tag
-    const declineUrlMeta = document.querySelector('meta[name="next-upsell-decline-url"]');
-    const declineUrl = declineUrlMeta?.getAttribute('content');
+    console.log('Declining pillow cover offer');
+    this._redirectToNext(false);
+  }
 
-    if (declineUrl) {
-      // Add quantity parameter to URL (0 for decline)
-      const url = new URL(declineUrl, window.location.origin);
-      url.searchParams.set('quantity', '0');
+  _redirectToNext(accepted = false) {
+    // Get redirect URL from meta tag
+    const metaName = accepted ? 'next-upsell-accept-url' : 'next-upsell-decline-url';
+    const urlMeta = document.querySelector(`meta[name="${metaName}"]`);
+    const redirectUrl = urlMeta?.getAttribute('content');
+
+    if (redirectUrl) {
+      const url = new URL(redirectUrl, window.location.origin);
+
+      // Pass the sheets quantity to next page
+      url.searchParams.set('quantity', this.sheetsQuantity);
+
+      // Add pillow cover info if accepted
+      if (accepted) {
+        url.searchParams.set('pillowcovers', this.currentQuantity);
+      }
 
       // Preserve existing parameters
       const currentParams = new URLSearchParams(window.location.search);
@@ -1161,26 +782,20 @@ class UpsellController {
       });
 
       const finalUrl = url.pathname + url.search;
-
-      console.log('Declining upsell, redirecting to:', finalUrl);
+      console.log('Redirecting to:', finalUrl);
       window.location.href = finalUrl;
     } else {
-      console.warn('No decline URL found in meta tags');
+      console.warn('No redirect URL found');
     }
-  }
-
-  cleanup() {
-    this._eventCleanup.forEach(cleanup => cleanup());
-    this._eventCleanup = [];
   }
 }
 
 // Initialize when SDK is ready
 window.addEventListener('next:initialized', function() {
-  window.upsellController = new UpsellController();
+  window.pillowCoverController = new PillowCoverController();
 });
 
 // If SDK is already initialized
 if (window.next?.addUpsell) {
-  window.upsellController = new UpsellController();
+  window.pillowCoverController = new PillowCoverController();
 }

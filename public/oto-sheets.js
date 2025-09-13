@@ -1104,6 +1104,25 @@ class UpsellController {
       // Success - redirect or show success message
       console.log('✅ Upsells added successfully');
 
+      // Store sheet selections in sessionStorage for pillow cover page
+      const sheetSelections = [];
+      for (let i = 1; i <= this.currentQuantity; i++) {
+        const variants = this.selectedVariants.get(i);
+        if (variants?.color && variants?.size) {
+          sheetSelections.push({
+            color: variants.color,
+            size: variants.size
+          });
+        }
+      }
+
+      sessionStorage.setItem('sheet-selections', JSON.stringify({
+        quantity: this.currentQuantity,
+        selections: sheetSelections
+      }));
+
+      console.log('Stored sheet selections:', sheetSelections);
+
       // Get redirect URL from meta tag
       const acceptUrlMeta = document.querySelector('meta[name="next-upsell-accept-url"]');
       const acceptUrl = acceptUrlMeta?.getAttribute('content');
