@@ -187,7 +187,9 @@ class OSDropdown extends ConversionElement {
       flip({ fallbackPlacements: ['top-start', 'bottom-end', 'top-end'] }),
     ];
 
-    if (arrow) middleware.push(arrow({ element: arrow }));
+    if (arrow && window.FloatingUIDOM.arrow) {
+      middleware.push(window.FloatingUIDOM.arrow({ element: arrow }));
+    }
 
     const { x, y, placement, middlewareData } = await computePosition(toggle, menu, {
       placement: 'bottom-start',
@@ -473,8 +475,10 @@ class TierController {
     // Restore/auto-select variants
     for (let i = 1; i <= tierNumber; i++) {
       if (currentSelections.has(i)) {
+        // Restore previous selection for this slot
         this.selectedVariants.set(i, currentSelections.get(i));
-      } else {
+      } else if (i > previousTier) {
+        // Only auto-select for NEW slots that appear when increasing tier
         await this._autoSelectFirstOptions(i);
       }
     }
@@ -629,7 +633,11 @@ class TierController {
         );
 
         if (matchingPackage) {
+          console.log(`Slot ${i} - Found package:`, matchingPackage);
+          console.log(`Adding to cart: Package ID ${matchingPackage.ref_id} - ${slotVariants.color} / ${slotVariants.size}`);
           itemsToSwap.push({ packageId: matchingPackage.ref_id, quantity: 1 });
+        } else {
+          console.log(`Slot ${i} - No package found for:`, slotVariants.color, slotVariants.size);
         }
       }
     }
@@ -809,13 +817,18 @@ class TierController {
     const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
     const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
 
-    const defaultColor = availableColors.find(color => 
+    console.log('Available colors:', availableColors);
+    console.log('Available sizes:', availableSizes);
+
+    const defaultColor = availableColors.find(color =>
       color.toLowerCase().includes('obsidian')
     ) || availableColors[0];
-    
-    const defaultSize = availableSizes.find(size => 
+
+    const defaultSize = availableSizes.find(size =>
       size.toLowerCase() === 'king'
     ) || availableSizes[0];
+
+    console.log('Default selections:', { defaultColor, defaultSize });
 
     for (let i = 1; i <= this.currentTier; i++) {
       const slot = document.querySelector(`[next-tier-slot="${i}"]`);

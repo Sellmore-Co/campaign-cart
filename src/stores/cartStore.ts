@@ -305,8 +305,14 @@ const cartStoreInstance = create<CartState & CartActions>()(
         const campaignStore = useCampaignStore.getState();
         const profileStore = useProfileStore.getState();
         const eventBus = EventBus.getInstance();
-        
+
         logger.debug('Swapping cart with new items:', items);
+
+        // Set swapInProgress flag to prevent auto-sync removal
+        set(state => ({
+          ...state,
+          swapInProgress: true,
+        }));
         
         // Build new items array
         const newItems: CartItem[] = [];
@@ -324,22 +330,23 @@ const cartStoreInstance = create<CartState & CartActions>()(
           
           // Get package data from campaign
           const packageData = campaignStore.getPackage(finalPackageId);
-          
+
           if (!packageData) {
             logger.warn(`Package ${finalPackageId} not found in campaign data, skipping`);
+            logger.debug('Available packages:', campaignStore.data?.packages?.map(p => p.ref_id));
             continue;
           }
+
+          logger.debug(`Package ${finalPackageId} found:`, packageData);
           
           const newItem: CartItem = {
             id: Date.now() + Math.random(), // Ensure unique IDs
             packageId: finalPackageId,
             originalPackageId: item.packageId !== finalPackageId ? item.packageId : undefined,
-            productId: packageData.product_id,
-            name: packageData.name,
+            title: packageData.name || `Package ${finalPackageId}`, // Use 'title' instead of 'name'
             price: parseFloat(packageData.price),
             comparePrice: parseFloat(packageData.price_retail || packageData.price),
             quantity: item.quantity,
-            weight: packageData.weight || 0,
             isUpsell: false,
             createdAt: Date.now(),
           };
@@ -347,22 +354,16 @@ const cartStoreInstance = create<CartState & CartActions>()(
           newItems.push(newItem);
         }
         
-        // Replace entire cart
+        // Replace entire cart and clear swapInProgress flag
         set(state => ({
           ...state,
           items: newItems,
+          swapInProgress: false,
         }));
         
         // Calculate totals after state update
         get().calculateTotals();
-        
-        // Emit cart swapped event
-        eventBus.emit('cart:swapped', {
-          previousItems: get().items,
-          newItems: newItems,
-          itemCount: newItems.length
-        });
-        
+
         // Emit cart updated event
         eventBus.emit('cart:updated', get());
         
