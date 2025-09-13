@@ -1,7 +1,7 @@
 // Grounded Footwear - Refactored to use SDK variant methods
 // This version leverages the SDK's built-in variant handling and profiles
 
-// Color configuration (still needed for UI display)
+// Color configuration (static images and swatch colors)
 const colorConfig = {
   images: {
     'obsidian-grey': 'https://cdn.29next.store/media/bareearth/uploads/obsidian-grey.png',
@@ -504,6 +504,7 @@ class TierController {
     this.bindDropdownEvents();
     this.initializeDefaultState();
     this.populateAllDropdowns();
+    await this.setInitialSelections(); // Set default Obsidian Grey and King
     this.initializeColorSwatches();
     this.initializeSlotImages();
     this.setupProfileListeners();
@@ -622,16 +623,70 @@ class TierController {
     // Wait for profile to be fully applied
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Restore selections for valid slots
+    // Restore selections for valid slots and auto-select first options for new slots
     for (let i = 1; i <= tierNumber; i++) {
       if (currentSelections.has(i)) {
         this.selectedVariants.set(i, currentSelections.get(i));
+      } else {
+        // Auto-select first available options for new slots
+        await this.autoSelectFirstOptions(i);
       }
     }
 
     // Use swapCart to replace entire cart at once
     await this.swapCartWithSelections();
     this.updateCTAButtons();
+  }
+
+  async autoSelectFirstOptions(slotNumber) {
+    const slot = document.querySelector(`[next-tier-slot="${slotNumber}"]`);
+    if (!slot) return;
+
+    // Get available options from SDK
+    const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
+    const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
+
+    // Initialize slot variants if not exists
+    if (!this.selectedVariants.has(slotNumber)) {
+      this.selectedVariants.set(slotNumber, {});
+    }
+    const slotVariants = this.selectedVariants.get(slotNumber);
+
+    // Auto-select Obsidian Grey if available, otherwise first color
+    if (availableColors.length > 0 && !slotVariants.color) {
+      const obsidianGrey = availableColors.find(color =>
+        color.toLowerCase() === 'obsidian grey' ||
+        color.toLowerCase() === 'obsidian gray'
+      );
+      const selectedColor = obsidianGrey || availableColors[0];
+      slotVariants.color = selectedColor;
+
+      // Update the dropdown UI
+      const colorDropdown = slot.querySelector('os-dropdown[next-variant-option="color"]');
+      if (colorDropdown) {
+        colorDropdown.value = selectedColor;
+        this.updateColorSwatch(colorDropdown, selectedColor);
+        this.updateSlotImage(slot, selectedColor);
+      }
+    }
+
+    // Auto-select King if available, otherwise first size
+    if (availableSizes.length > 0 && !slotVariants.size) {
+      const king = availableSizes.find(size =>
+        size.toLowerCase() === 'king'
+      );
+      const selectedSize = king || availableSizes[0];
+      slotVariants.size = selectedSize;
+
+      // Update the dropdown UI
+      const sizeDropdown = slot.querySelector('os-dropdown[next-variant-option="size"]');
+      if (sizeDropdown) {
+        sizeDropdown.value = selectedSize;
+      }
+    }
+
+    // Update pricing for this slot
+    this.updateSlotPricing(slotNumber);
   }
 
   updateTierCardStates(selectedTier) {
@@ -717,7 +772,7 @@ class TierController {
   updateSlotImage(slot, colorValue) {
     const imageElement = slot.querySelector('[next-tier-slot-element="image"]');
     if (imageElement && colorValue) {
-      // Create normalized key for image config lookup
+      // Create normalized key for color config lookup
       const colorKey = colorValue.toLowerCase().replace(/\s+/g, '-');
       if (colorConfig.images[colorKey]) {
         imageElement.style.transition = 'opacity 0.3s ease-in-out';
@@ -858,11 +913,17 @@ class TierController {
 
     const colorDropdown = slot.querySelector('os-dropdown[next-variant-option="color"]');
     if (colorDropdown) {
+      // Reset dropdown value first to clear any malformed state
+      colorDropdown.removeAttribute('value');
+      colorDropdown._value = null;
       this.populateColorDropdown(colorDropdown, availableColors);
     }
 
     const sizeDropdown = slot.querySelector('os-dropdown[next-variant-option="size"]');
     if (sizeDropdown) {
+      // Reset dropdown value first to clear any malformed state
+      sizeDropdown.removeAttribute('value');
+      sizeDropdown._value = null;
       this.populateSizeDropdown(sizeDropdown, availableSizes);
     }
   }
@@ -871,9 +932,13 @@ class TierController {
     const menu = dropdown.querySelector('os-dropdown-menu');
     if (!menu) return;
 
-    // Clear existing items except default
-    const existingItems = menu.querySelectorAll('os-dropdown-item:not([value*="select"])');
+    // Clear ALL existing items (including malformed ones)
+    const existingItems = menu.querySelectorAll('os-dropdown-item');
     existingItems.forEach(item => item.remove());
+
+    // Also remove any misplaced arrow elements
+    const existingArrows = menu.querySelectorAll('.dropdown-arrow');
+    existingArrows.forEach(arrow => arrow.remove());
 
     // Add color options - use the API value directly
     availableColors.forEach(color => {
@@ -901,9 +966,13 @@ class TierController {
     const menu = dropdown.querySelector('os-dropdown-menu');
     if (!menu) return;
 
-    // Clear existing items except default
-    const existingItems = menu.querySelectorAll('os-dropdown-item:not([value*="select"])');
+    // Clear ALL existing items (including malformed ones)
+    const existingItems = menu.querySelectorAll('os-dropdown-item');
     existingItems.forEach(item => item.remove());
+
+    // Also remove any misplaced arrow elements
+    const existingArrows = menu.querySelectorAll('.dropdown-arrow');
+    existingArrows.forEach(arrow => arrow.remove());
 
     // Add size options - use the API value directly
     availableSizes.forEach(size => {
@@ -995,12 +1064,67 @@ class TierController {
         const colorDropdown = slot.querySelector('os-dropdown[next-variant-option="color"]');
         if (colorDropdown) {
           const currentColor = colorDropdown.getAttribute('value');
-          if (currentColor && colorConfig.images[currentColor]) {
+          if (currentColor && currentColor !== 'select-color') {
             this.updateSlotImage(slot, currentColor);
           }
         }
       }
     });
+  }
+
+  async setInitialSelections() {
+    // Set default selections for all active slots on page load
+    for (let i = 1; i <= this.currentTier; i++) {
+      const slot = document.querySelector(`[next-tier-slot="${i}"]`);
+      if (!slot) continue;
+
+      // Get available options from SDK
+      const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
+      const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
+
+      // Initialize slot variants if not exists
+      if (!this.selectedVariants.has(i)) {
+        this.selectedVariants.set(i, {});
+      }
+      const slotVariants = this.selectedVariants.get(i);
+
+      // Set Obsidian Grey as default color
+      const obsidianGrey = availableColors.find(color =>
+        color.toLowerCase() === 'obsidian grey' ||
+        color.toLowerCase() === 'obsidian gray'
+      );
+      const defaultColor = obsidianGrey || availableColors[0];
+
+      if (defaultColor) {
+        slotVariants.color = defaultColor;
+        const colorDropdown = slot.querySelector('os-dropdown[next-variant-option="color"]');
+        if (colorDropdown) {
+          colorDropdown.value = defaultColor;
+          this.updateColorSwatch(colorDropdown, defaultColor);
+          this.updateSlotImage(slot, defaultColor);
+        }
+      }
+
+      // Set King as default size
+      const king = availableSizes.find(size =>
+        size.toLowerCase() === 'king'
+      );
+      const defaultSize = king || availableSizes[0];
+
+      if (defaultSize) {
+        slotVariants.size = defaultSize;
+        const sizeDropdown = slot.querySelector('os-dropdown[next-variant-option="size"]');
+        if (sizeDropdown) {
+          sizeDropdown.value = defaultSize;
+        }
+      }
+
+      // Update pricing for this slot
+      this.updateSlotPricing(i);
+    }
+
+    // Update cart with initial selections
+    await this.swapCartWithSelections();
   }
 
   initializeDefaultState() {
