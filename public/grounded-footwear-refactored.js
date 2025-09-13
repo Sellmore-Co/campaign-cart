@@ -28,6 +28,11 @@ const CONFIG = {
     3: 'exit_10_3pack'
   },
   autoSelectAvailable: true, // Enable auto-selection of available variants when OOS option is clicked
+  // Display order for dropdowns (smallest to largest for sizes, preferred order for colors)
+  displayOrder: {
+    sizes: ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King'],
+    colors: ['Obsidian Grey', 'Chateau Ivory', 'Scribe Blue', 'Verdant Sage']
+  },
   sizePreferenceOrder: [ // Order of size preference for auto-selection (closest match first)
     ['King', 'California King', 'Queen', 'Double', 'Single', 'Twin'],
     ['California King', 'King', 'Queen', 'Double', 'Single', 'Twin'],
@@ -771,9 +776,44 @@ class TierController {
     // Clear existing items
     menu.querySelectorAll('os-dropdown-item, .dropdown-arrow').forEach(el => el.remove());
 
-    // Add new options
-    options.forEach(option => {
+    // Sort options according to display order configuration
+    const sortedOptions = this._sortOptionsByDisplayOrder(options, variantType);
+
+    // Add new options in sorted order
+    sortedOptions.forEach(option => {
       menu.appendChild(itemCreator(option, slotNumber));
+    });
+  }
+
+  _sortOptionsByDisplayOrder(options, variantType) {
+    const orderConfig = CONFIG.displayOrder[variantType === 'color' ? 'colors' : 'sizes'];
+
+    if (!orderConfig || orderConfig.length === 0) {
+      return options; // Return unsorted if no order config
+    }
+
+    // Create a map for order indices (case-insensitive)
+    const orderMap = new Map();
+    orderConfig.forEach((item, index) => {
+      orderMap.set(item.toLowerCase(), index);
+    });
+
+    // Sort options based on the order map
+    return [...options].sort((a, b) => {
+      const aIndex = orderMap.get(a.toLowerCase());
+      const bIndex = orderMap.get(b.toLowerCase());
+
+      // If both are in the order config, sort by their index
+      if (aIndex !== undefined && bIndex !== undefined) {
+        return aIndex - bIndex;
+      }
+
+      // If only one is in the order config, it comes first
+      if (aIndex !== undefined) return -1;
+      if (bIndex !== undefined) return 1;
+
+      // If neither is in the order config, maintain original order
+      return 0;
     });
   }
 
