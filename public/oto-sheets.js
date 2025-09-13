@@ -306,54 +306,40 @@ const CONFIG = {
     ['Single', 'Twin', 'Double', 'Queen', 'King', 'California King'],
     ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King']
   ],
-  // Package mapping for upsells based on color/size combinations
-  packageMapping: {
-    'obsidian-grey': {
+  // Upsell package mapping - these are specific package IDs for upsells
+  upsellPackageMapping: {
+    'obsidian grey': {
       'twin': 146,
       'single': 166,
       'double': 150,
       'queen': 154,
       'king': 158,
-      'california king': 162,
-      'cali king': 162
+      'california king': 162
     },
-    'chateau-ivory': {
+    'chateau ivory': {
       'twin': 147,
       'single': 167,
       'double': 151,
       'queen': 155,
       'king': 159,
-      'california king': 163,
-      'cali king': 163
+      'california king': 163
     },
-    'scribe-blue': {
+    'scribe blue': {
       'twin': 148,
       'single': 168,
       'double': 152,
       'queen': 156,
       'king': 160,
-      'california king': 164,
-      'cali king': 164
+      'california king': 164
     },
-    'verdant-sage': {
+    'verdant sage': {
       'twin': 149,
       'single': 169,
       'double': 153,
       'queen': 157,
       'king': 161,
-      'california king': 165,
-      'cali king': 165
+      'california king': 165
     }
-  },
-  // Pricing per size (for display)
-  pricing: {
-    'twin': { retail: 299.98, sale: 74.99 },
-    'single': { retail: 219.98, sale: 54.99 },
-    'double': { retail: 339.98, sale: 84.99 },
-    'queen': { retail: 339.98, sale: 84.99 },
-    'king': { retail: 379.98, sale: 94.99 },
-    'california king': { retail: 379.98, sale: 94.99 },
-    'cali king': { retail: 379.98, sale: 94.99 }
   }
 };
 
@@ -469,7 +455,7 @@ class UpsellController {
           item.innerHTML = `
             <div class="os-card__toggle-option">
               <div class="os-card__variant-toggle-info">
-                <div class="os-card__variant-swatch" style="background-color: ${CONFIG.colors.styles[colorKey] || '#ccc'}"></div>
+                <div class="os-card__variant-swatch is-upsell" style="background-color: ${CONFIG.colors.styles[colorKey] || '#ccc'}"></div>
                 <div class="os-card__variant-toggle-name">${color}</div>
               </div>
             </div>
@@ -704,8 +690,30 @@ class UpsellController {
     const previousValue = rowVariants[variantType];
     rowVariants[variantType] = value;
 
-    // Check if the new combination is out of stock and auto-select alternative
+    console.log(`Row ${rowNumber} - Selected ${variantType}: ${value}`);
+
+    // Check if we have both color and size to look up package
     if (rowVariants.color && rowVariants.size) {
+      // Log the package lookup
+      const testPackage = window.next.getPackageByVariantSelection(
+        this.productId,
+        { color: rowVariants.color, size: rowVariants.size }
+      );
+
+      console.log(`Row ${rowNumber} - Looking up package:`, {
+        productId: this.productId,
+        color: rowVariants.color,
+        size: rowVariants.size,
+        foundPackage: testPackage ? {
+          id: testPackage.ref_id,
+          name: testPackage.name,
+          price: testPackage.price,
+          priceRetail: testPackage.price_retail,
+          inventory: testPackage.product_inventory_availability,
+          availability: testPackage.product_purchase_availability
+        } : 'NO PACKAGE FOUND'
+      });
+
       const isOOS = this._isCompleteVariantOutOfStock(rowNumber, rowVariants);
 
       if (isOOS) {
@@ -788,17 +796,33 @@ class UpsellController {
     for (let i = 1; i <= this.currentQuantity; i++) {
       const variants = this.selectedVariants.get(i);
       if (variants?.color && variants?.size) {
-        // Get the actual package to get real pricing
-        const matchingPackage = window.next.getPackageByVariantSelection(
-          this.productId,
-          { color: variants.color, size: variants.size }
-        );
+        // Get the upsell package ID from mapping
+        const colorKey = variants.color.toLowerCase();
+        const sizeKey = variants.size.toLowerCase();
+        const upsellPackageId = CONFIG.upsellPackageMapping[colorKey]?.[sizeKey];
 
-        if (matchingPackage) {
-          const salePrice = parseFloat(matchingPackage.price);
-          const retailPrice = parseFloat(matchingPackage.price_retail);
-          totalSale += salePrice;
-          totalRetail += retailPrice;
+        if (upsellPackageId) {
+          // Get the upsell package directly by ID
+          const upsellPackage = window.next.getPackage(upsellPackageId);
+
+          console.log(`Row ${i} - Pricing lookup:`, {
+            color: variants.color,
+            size: variants.size,
+            upsellPackageId: upsellPackageId,
+            upsellPackage: upsellPackage ? {
+              id: upsellPackage.ref_id,
+              name: upsellPackage.name,
+              price: upsellPackage.price,
+              priceRetail: upsellPackage.price_retail
+            } : 'PACKAGE NOT FOUND'
+          });
+
+          if (upsellPackage) {
+            const salePrice = parseFloat(upsellPackage.price);
+            const retailPrice = parseFloat(upsellPackage.price_retail);
+            totalSale += salePrice;
+            totalRetail += retailPrice;
+          }
         }
       }
     }
@@ -947,21 +971,36 @@ class UpsellController {
     try {
       const upsellItems = [];
 
-      // Collect all selected items using actual package IDs from SDK
+      console.log('=== ACCEPT UPSELL - Collecting items ===');
+      console.log('Product ID being used:', this.productId);
+
+      // Collect all selected items using upsell package mapping
       for (let i = 1; i <= this.currentQuantity; i++) {
         const variants = this.selectedVariants.get(i);
-        if (variants?.color && variants?.size) {
-          // Get the matching package from SDK
-          const matchingPackage = window.next.getPackageByVariantSelection(
-            this.productId,
-            { color: variants.color, size: variants.size }
-          );
+        console.log(`Row ${i} variants:`, variants);
 
-          if (matchingPackage) {
+        if (variants?.color && variants?.size) {
+          // Use the upsell package mapping instead of SDK lookup
+          const colorKey = variants.color.toLowerCase();
+          const sizeKey = variants.size.toLowerCase();
+
+          const upsellPackageId = CONFIG.upsellPackageMapping[colorKey]?.[sizeKey];
+
+          console.log(`Row ${i} - Upsell package lookup:`, {
+            color: variants.color,
+            size: variants.size,
+            colorKey: colorKey,
+            sizeKey: sizeKey,
+            upsellPackageId: upsellPackageId || 'NOT FOUND IN MAPPING'
+          });
+
+          if (upsellPackageId) {
             upsellItems.push({
-              packageId: matchingPackage.ref_id,
+              packageId: upsellPackageId,
               quantity: 1
             });
+          } else {
+            console.warn(`No upsell package mapping found for ${variants.color} / ${variants.size}`);
           }
         }
       }
@@ -973,22 +1012,24 @@ class UpsellController {
       }
 
       // Add upsells using the Next SDK
-      console.log('Adding upsells:', upsellItems);
+      console.log('=== SENDING UPSELLS TO SDK ===');
+      console.log('Upsell items to add:', upsellItems);
 
       // Call the addUpsell method
       await window.next.addUpsell(upsellItems);
 
       // Success - redirect or show success message
-      console.log('Upsells added successfully');
+      console.log('✅ Upsells added successfully');
 
       // If there's a next URL, redirect
       const nextUrl = this.acceptButton.getAttribute('data-next-url');
       if (nextUrl) {
+        console.log('Redirecting to:', nextUrl);
         window.location.href = nextUrl;
       }
 
     } catch (error) {
-      console.error('Failed to add upsells:', error);
+      console.error('❌ Failed to add upsells:', error);
       alert('Failed to add items to your order. Please try again.');
     } finally {
       // Re-enable button
