@@ -18,12 +18,12 @@ const CONFIG = {
     }
   },
   profiles: {
-    1: null,
+    1: '1_pack', // Use 1_pack profile to keep consistent display
     2: '2_pack',
     3: '3_pack'
   },
   exitProfiles: {
-    1: 'exit_10',
+    1: 'exit_10_1pack', // Use exit_10_1pack for consistency
     2: 'exit_10_2pack',
     3: 'exit_10_3pack'
   },
@@ -510,7 +510,7 @@ class TierController {
   async _applyTierProfile(tierNumber) {
     const profileKey = this.currentProfile?.includes('exit_10') ? 'exitProfiles' : 'profiles';
     const profile = CONFIG[profileKey][tierNumber];
-    
+
     if (profile) {
       await window.next.setProfile(profile);
     } else {

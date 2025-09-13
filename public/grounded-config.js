@@ -1,8 +1,39 @@
   window.nextConfig = {
       // Profile configurations for Grounded Sheets
   profiles: {
-    // Default profile doesn't need to be defined - SDK handles it automatically
-    
+    // 1-Pack Profile - Maps to itself (identity mapping) to maintain consistent display
+    "1_pack": {
+      name: "1-Pack Single",
+      description: "Single sheet at regular price",
+      packageMappings: {
+        // Identity mappings - each package maps to itself
+        1: 1,   // Twin Obsidian Grey
+        2: 2,   // Twin Chateau Ivory
+        3: 3,   // Double Obsidian Grey
+        4: 4,   // Double Chateau Ivory
+        5: 5,   // Queen Obsidian Grey
+        6: 6,   // King Obsidian Grey
+        7: 7,   // Queen Chateau Ivory
+        8: 8,   // King Chateau Ivory
+        9: 9,   // Twin Scribe Blue
+        10: 10, // Double Scribe Blue
+        11: 11, // Queen Scribe Blue
+        12: 12, // King Scribe Blue
+        13: 13, // Twin Verdant Sage
+        14: 14, // Double Verdant Sage
+        15: 15, // Queen Verdant Sage
+        16: 16, // King Verdant Sage
+        17: 17, // Single Obsidian Grey
+        18: 18, // Cali King Obsidian Grey
+        19: 19, // Single Chateau Ivory
+        20: 20, // Cali King Chateau Ivory
+        21: 21, // Single Scribe Blue
+        22: 22, // Cali King Scribe Blue
+        23: 23, // Single Verdant Sage
+        24: 24  // Cali King Verdant Sage
+      }
+    },
+
     // 2-Pack Profile - Maps single quantity items to 2-pack variants
     "2_pack": {
       name: "2-Pack Bundle",
@@ -151,6 +182,39 @@
         71: 143, // Cali King Chateau Ivory 3-pack → Exit 10%
         72: 144, // Cali King Scribe Blue 3-pack → Exit 10%
         73: 145  // Cali King Verdant Sage 3-pack → Exit 10%
+      }
+    },
+
+    // Exit 10% + 1-Pack Profile - Single items with 10% discount
+    "exit_10_1pack": {
+      name: "Exit 10% Discount - 1 Pack",
+      description: "10% off single items",
+      packageMappings: {
+        // Maps single items to Exit 10% single variants (same as exit_10 first section)
+        1: 78,   // Twin Obsidian Grey → Exit 10%
+        2: 79,   // Twin Chateau Ivory → Exit 10%
+        3: 82,   // Double Obsidian Grey → Exit 10%
+        4: 83,   // Double Chateau Ivory → Exit 10%
+        5: 86,   // Queen Obsidian Grey → Exit 10%
+        6: 90,   // King Obsidian Grey → Exit 10%
+        7: 87,   // Queen Chateau Ivory → Exit 10%
+        8: 91,   // King Chateau Ivory → Exit 10%
+        9: 80,   // Twin Scribe Blue → Exit 10%
+        10: 84,  // Double Scribe Blue → Exit 10%
+        11: 88,  // Queen Scribe Blue → Exit 10%
+        12: 92,  // King Scribe Blue → Exit 10%
+        13: 81,  // Twin Verdant Sage → Exit 10%
+        14: 85,  // Double Verdant Sage → Exit 10%
+        15: 89,  // Queen Verdant Sage → Exit 10%
+        16: 93,  // King Verdant Sage → Exit 10%
+        17: 74,  // Single Obsidian Grey → Exit 10%
+        18: 94,  // Cali King Obsidian Grey → Exit 10%
+        19: 75,  // Single Chateau Ivory → Exit 10%
+        20: 95,  // Cali King Chateau Ivory → Exit 10%
+        21: 76,  // Single Scribe Blue → Exit 10%
+        22: 96,  // Cali King Scribe Blue → Exit 10%
+        23: 77,  // Single Verdant Sage → Exit 10%
+        24: 97   // Cali King Verdant Sage → Exit 10%
       }
     },
 
