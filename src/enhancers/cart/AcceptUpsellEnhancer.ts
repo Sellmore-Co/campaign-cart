@@ -209,7 +209,20 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
 
   private async handleClick(event: Event): Promise<void> {
     event.preventDefault();
-    
+
+    await this.executeAction(
+      async () => {
+        await this.acceptUpsell();
+      },
+      { showLoading: false, disableOnProcess: true } // Use our own loading overlay
+    );
+  }
+
+  /**
+   * Public method to trigger upsell acceptance programmatically
+   * This can be called from external code (like window.next.addUpsell)
+   */
+  public async triggerAcceptUpsell(): Promise<void> {
     await this.executeAction(
       async () => {
         await this.acceptUpsell();
