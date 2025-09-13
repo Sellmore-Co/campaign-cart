@@ -433,6 +433,13 @@ class TierController {
 
   async init() {
     await this._waitForSDK();
+
+    // Reset to default state on page load
+    await window.next.clearCart();
+
+    // Revert any active profile to start fresh with tier 1
+    await window.next.revertProfile();
+
     this._getProductIdFromCampaign();
     this._bindEvents();
     this._initializeDefaultState();
@@ -559,12 +566,14 @@ class TierController {
     this._updateSlotStates(tierNumber);
 
     const currentSelections = new Map(this.selectedVariants);
+
+    // Apply profile first (this changes how packages are mapped)
     await this._applyTierProfile(tierNumber);
 
     // Update product ID from campaign immediately after profile application
     this._getProductIdFromCampaign();
 
-    // Batch all slot updates in a single frame
+    // Prepare all slot selections BEFORE updating cart
     const updates = [];
     for (let i = 1; i <= tierNumber; i++) {
       if (currentSelections.has(i)) {
@@ -581,6 +590,9 @@ class TierController {
       await Promise.all(updates);
     }
 
+    // Now swap cart ONCE with all selections (not debounced for tier changes)
+    await this._swapCartWithSelections();
+
     // Batch pricing updates in next frame
     requestAnimationFrame(() => {
       for (let i = 1; i <= tierNumber; i++) {
@@ -588,7 +600,6 @@ class TierController {
       }
     });
 
-    this._debouncedCartUpdate();
     this._updateCTAButtons();
   }
 
@@ -851,8 +862,8 @@ class TierController {
       const hasValidSize = slotVariants?.size && slotVariants.size !== 'select-size';
 
       if (hasValidColor && hasValidSize) {
-        // Use the current product ID which reflects the active profile
-        const productIdToUse = this.productId;
+        // Always use base product ID - the SDK will handle profile mapping
+        const productIdToUse = this.baseProductId || this.productId;
 
         const matchingPackage = window.next.getPackageByVariantSelection(
           productIdToUse,
