@@ -651,7 +651,32 @@ class UpsellController {
     }
 
     const rowVariants = this.selectedVariants.get(rowNumber);
+    const previousValue = rowVariants[variantType];
     rowVariants[variantType] = value;
+
+    // Check if the new combination is out of stock and auto-select alternative
+    if (rowVariants.color && rowVariants.size) {
+      const isOOS = this._isCompleteVariantOutOfStock(rowNumber, rowVariants);
+
+      if (isOOS) {
+        const alternative = this._findAvailableAlternative(rowNumber, variantType, value, previousValue);
+
+        if (alternative) {
+          console.log(`Auto-selecting available ${variantType === 'color' ? 'size' : 'color'}: ${alternative}`);
+          const otherType = variantType === 'color' ? 'size' : 'color';
+          rowVariants[otherType] = alternative;
+
+          // Update the other dropdown
+          const otherDropdown = row.querySelector(`os-dropdown[next-variant-option="${otherType}"]`);
+          if (otherDropdown) {
+            otherDropdown.value = alternative;
+          }
+
+          // Show notification
+          this._notifyAutoSelection(variantType, value, otherType, alternative);
+        }
+      }
+    }
 
     // Update stock status for this row
     this._updateDropdownStockStatus(row, 'color', rowNumber);
@@ -732,6 +757,101 @@ class UpsellController {
       const savings = Math.round(((totalRetail - totalSale) / totalRetail) * 100);
       this.savingsElement.textContent = `${savings}%`;
     }
+  }
+
+  _isCompleteVariantOutOfStock(rowNumber, fullVariant) {
+    if (!fullVariant.color || !fullVariant.size || !this.productId) {
+      return false;
+    }
+
+    const matchingPackage = window.next.getPackageByVariantSelection(
+      this.productId,
+      { color: fullVariant.color, size: fullVariant.size }
+    );
+
+    if (matchingPackage) {
+      return matchingPackage.product_inventory_availability === 'out_of_stock' ||
+             matchingPackage.product_purchase_availability === 'unavailable';
+    }
+
+    return true; // No package found means it's unavailable
+  }
+
+  _findAvailableAlternative(rowNumber, changedType, newValue, previousValue) {
+    const rowVariants = this.selectedVariants.get(rowNumber);
+
+    if (changedType === 'color') {
+      // User changed color, find available size
+      const availableSizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
+      const currentSize = rowVariants.size;
+
+      // Try to keep current size if available
+      if (!this._isCompleteVariantOutOfStock(rowNumber, { color: newValue, size: currentSize })) {
+        return currentSize;
+      }
+
+      // Find first available size
+      for (const size of availableSizes) {
+        if (!this._isCompleteVariantOutOfStock(rowNumber, { color: newValue, size })) {
+          return size;
+        }
+      }
+    } else if (changedType === 'size') {
+      // User changed size, find available color
+      const availableColors = window.next.getAvailableVariantAttributes(this.productId, 'color');
+      const currentColor = rowVariants.color;
+
+      // Try to keep current color if available
+      if (!this._isCompleteVariantOutOfStock(rowNumber, { color: currentColor, size: newValue })) {
+        return currentColor;
+      }
+
+      // Find first available color
+      for (const color of availableColors) {
+        if (!this._isCompleteVariantOutOfStock(rowNumber, { color, size: newValue })) {
+          return color;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  _notifyAutoSelection(selectedType, selectedValue, autoType, autoValue) {
+    // Create a subtle notification
+    const notification = document.createElement('div');
+    notification.className = 'auto-selection-notification';
+    notification.textContent = `Updated ${autoType} to ${autoValue} (in stock)`;
+    notification.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #4CAF50;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 4px;
+      z-index: 10000;
+      animation: slideInUp 0.3s ease;
+      font-size: 14px;
+    `;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.style.animation = 'fadeOut 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+
+    // Dispatch custom event for tracking
+    document.dispatchEvent(new CustomEvent('autoVariantSelection', {
+      detail: {
+        selectedType,
+        selectedValue,
+        autoType,
+        autoValue
+      },
+      bubbles: true
+    }));
   }
 
   async acceptUpsell() {
