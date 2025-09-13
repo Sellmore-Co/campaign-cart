@@ -22,6 +22,11 @@ const CONFIG = {
     2: '2_pack',
     3: '3_pack'
   },
+  exitProfiles: {
+    1: 'exit_10',
+    2: 'exit_10_2pack',
+    3: 'exit_10_3pack'
+  },
   autoSelectAvailable: true, // Enable auto-selection of available variants when OOS option is clicked
   // Display order for dropdowns (smallest to largest for sizes, preferred order for colors)
   displayOrder: {
@@ -412,6 +417,7 @@ class TierController {
     this.productId = null;
     this.baseProductId = null; // Store original product ID
     this.currentProfile = null;
+    this.exitDiscountActive = false; // Track if exit discount is active
     this._cachedElements = new Map();
 
     this.init();
@@ -512,7 +518,9 @@ class TierController {
   }
 
   async _applyTierProfile(tierNumber) {
-    const profile = CONFIG.profiles[tierNumber];
+    // Use exit profiles if exit discount is active, otherwise use regular profiles
+    const profileConfig = this.exitDiscountActive ? CONFIG.exitProfiles : CONFIG.profiles;
+    const profile = profileConfig[tierNumber];
 
     if (profile) {
       await window.next.setProfile(profile);
@@ -522,6 +530,56 @@ class TierController {
       await window.next.revertProfile();
       await new Promise(resolve => setTimeout(resolve, 100));
     }
+  }
+
+  async activateExitDiscount() {
+    this.exitDiscountActive = true;
+    console.log('Exit discount activated - applying 10% off to current tier');
+
+    // Re-apply the current tier profile with exit discount
+    await this._applyTierProfile(this.currentTier);
+
+    // Small wait for profile to be applied
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Update product ID and refresh pricing
+    this._getProductIdFromCampaign();
+
+    // Refresh all slot pricing with new discounted prices
+    for (let i = 1; i <= this.currentTier; i++) {
+      this._updateSlotPricing(i);
+    }
+
+    // Update the tier card savings percentages
+    this._displaySavingsPercentages();
+
+    // Update cart with new discounted packages
+    await this._swapCartWithSelections();
+
+    // Optional: Add visual indicator for exit discount
+    this._showExitDiscountIndicator();
+  }
+
+  _showExitDiscountIndicator() {
+    // Add a badge or indicator showing exit discount is active
+    const indicator = document.createElement('div');
+    indicator.className = 'exit-discount-badge';
+    indicator.innerHTML = '🎉 Extra 10% OFF Applied!';
+    indicator.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      z-index: 9999;
+      animation: slideIn 0.5s ease;
+    `;
+    document.body.appendChild(indicator);
+
+    // Remove after 5 seconds
+    setTimeout(() => indicator.remove(), 5000);
   }
 
   _updateTierCardStates(selectedTier) {
@@ -885,29 +943,39 @@ class TierController {
     // Get the package directly by ID if we're using profiles
     let matchingPackage;
 
-    if (this.currentTier === 1) {
-      // For tier 1, use the base product to get single item packages
-      matchingPackage = window.next.getPackageByVariantSelection(
-        this.baseProductId || this.productId,
-        { color: slotVariants.color, size: slotVariants.size }
-      );
-    } else {
-      // For tiers 2-3, first try to get the single item package
-      const basePackage = window.next.getPackageByVariantSelection(
-        this.baseProductId || this.productId,
-        { color: slotVariants.color, size: slotVariants.size }
-      );
+    // First get the base package
+    const basePackage = window.next.getPackageByVariantSelection(
+      this.baseProductId || this.productId,
+      { color: slotVariants.color, size: slotVariants.size }
+    );
 
-      if (basePackage) {
-        // Then map it through the profile to get the bundle package
-        const profile = CONFIG.profiles[this.currentTier];
-        const profileName = this.currentTier === 2 ? '2_pack' : '3_pack';
+    if (basePackage) {
+      if (this.currentTier === 1 && !this.exitDiscountActive) {
+        // For tier 1 without exit discount, use the base package as-is
+        matchingPackage = basePackage;
+      } else {
+        // For all other cases, map through the appropriate profile
+        let profileName;
 
-        if (profile && window.nextConfig?.profiles?.[profileName]?.packageMappings) {
+        if (this.exitDiscountActive) {
+          // Use exit discount profiles based on tier
+          if (this.currentTier === 1) {
+            profileName = 'exit_10';
+          } else if (this.currentTier === 2) {
+            profileName = 'exit_10_2pack';
+          } else {
+            profileName = 'exit_10_3pack';
+          }
+        } else {
+          // Use regular profiles for tiers 2-3
+          profileName = this.currentTier === 2 ? '2_pack' : '3_pack';
+        }
+
+        if (window.nextConfig?.profiles?.[profileName]?.packageMappings) {
           const mappedPackageId = window.nextConfig.profiles[profileName].packageMappings[basePackage.ref_id];
           if (mappedPackageId) {
             matchingPackage = window.next.getPackage(mappedPackageId);
-            console.log(`Mapped package ${basePackage.ref_id} to ${mappedPackageId} for tier ${this.currentTier}`);
+            console.log(`Mapped package ${basePackage.ref_id} to ${mappedPackageId} for tier ${this.currentTier} (${profileName})`);
           }
         }
       }
@@ -1281,25 +1349,40 @@ class TierController {
   _calculateHighestSavings(tierNumber) {
     if (!this.productId) return 0;
 
-    let highestSavingPct = 0;
+    // For exit discount, just check one representative package to get the savings
+    if (this.exitDiscountActive) {
+      let samplePackageId;
 
-    // Get the appropriate package IDs based on tier
+      if (tierNumber === 1) {
+        // Use King Obsidian Grey exit_10 package as sample (ID 90)
+        samplePackageId = 90;
+      } else if (tierNumber === 2) {
+        // Use King Obsidian Grey exit_10_2pack package as sample (ID 114)
+        samplePackageId = 114;
+      } else if (tierNumber === 3) {
+        // Use King Obsidian Grey exit_10_3pack package as sample (ID 138)
+        samplePackageId = 138;
+      }
+
+      const pkg = window.next.getPackage(samplePackageId);
+      if (pkg && pkg.price_retail && pkg.price) {
+        return Math.round(((pkg.price_retail - pkg.price) / pkg.price_retail) * 100);
+      }
+      return 0;
+    }
+
+    // For regular profiles, check all packages to find highest savings
+    let highestSavingPct = 0;
     let packageIds = [];
 
     if (tierNumber === 1) {
       // For tier 1: check single quantity packages (IDs 1-24)
       packageIds = Array.from({ length: 24 }, (_, i) => i + 1);
-    } else if (tierNumber === 2) {
-      // For tier 2: check 2-pack packages from config
-      const profile = window.nextConfig?.profiles?.['2_pack'];
-      if (profile && profile.packageMappings) {
-        packageIds = Object.values(profile.packageMappings);
-      }
-    } else if (tierNumber === 3) {
-      // For tier 3: check 3-pack packages from config
-      const profile = window.nextConfig?.profiles?.['3_pack'];
-      if (profile && profile.packageMappings) {
-        packageIds = Object.values(profile.packageMappings);
+    } else {
+      // For tiers 2-3, get from profile config
+      const profileName = tierNumber === 2 ? '2_pack' : '3_pack';
+      if (window.nextConfig?.profiles?.[profileName]?.packageMappings) {
+        packageIds = Object.values(window.nextConfig.profiles[profileName].packageMappings);
       }
     }
 
@@ -1479,3 +1562,45 @@ window.addEventListener('next:initialized', function() {
 });
 
 window.progressBarController = new ProgressBarController();
+
+// EXIT INTENT POPUP
+
+// Wait for SDK to be fully initialized
+window.addEventListener('next:initialized', function() {
+  console.log('SDK initialized, setting up exit intent...');
+
+  // Exit intent setup with profile switching
+  window.next.exitIntent({
+    image: 'https://cdn.prod.website-files.com/6894e401ee6c8582aece90a0/68bed75cd9973567c4ab6a25_modal-bare-earth.png',
+    action: async () => {
+      // Activate exit discount on the tier controller
+      if (window.tierController) {
+        await window.tierController.activateExitDiscount();
+        console.log('Exit 10% discount applied to current tier configuration');
+      } else {
+        // Fallback: Apply the base exit_10 profile
+        await window.next.setProfile('exit_10');
+        console.log('Exit 10% discount profile applied - all tiers updated');
+      }
+    },
+  });
+
+  // Optional: Listen to events for analytics
+  window.next.on('exit-intent:shown', data => {
+    console.log('Exit intent popup shown:', data.imageUrl);
+  });
+
+  window.next.on('exit-intent:clicked', data => {
+    console.log('Exit intent popup clicked:', data.imageUrl);
+    // The action callback will handle the profile switching
+  });
+
+  window.next.on('exit-intent:dismissed', data => {
+    console.log('Exit intent popup dismissed:', data.imageUrl);
+  });
+
+  // Listen for profile change events
+  window.next.on('profile:applied', data => {
+    console.log(`Profile ${data.profileId} applied, ${data.itemsSwapped} items updated`);
+  });
+});
