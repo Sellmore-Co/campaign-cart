@@ -428,12 +428,38 @@ class TierController {
     this._getProductIdFromCampaign();
     this._bindEvents();
     this._initializeDefaultState();
+
+    // Check if exit discount was previously activated
+    this._restoreExitDiscountState();
+
     this._populateAllDropdowns();
     await this._setInitialSelections();
     this._initializeUI();
     this._setupProfileListeners();
     this._updateCTAButtons();
     this._displaySavingsPercentages();
+  }
+
+  _restoreExitDiscountState() {
+    // Check if exit discount was activated in this session
+    const exitDiscountStored = sessionStorage.getItem('grounded-exit-discount-active');
+    if (exitDiscountStored === 'true') {
+      this.exitDiscountActive = true;
+      console.log('Restoring exit discount state from previous session');
+
+      // Apply the exit profile for current tier without re-showing the popup
+      setTimeout(async () => {
+        await this._applyTierProfile(this.currentTier);
+        this._getProductIdFromCampaign();
+
+        // Update all pricing displays
+        for (let i = 1; i <= this.currentTier; i++) {
+          this._updateSlotPricing(i);
+        }
+        this._displaySavingsPercentages();
+        await this._swapCartWithSelections();
+      }, 500);
+    }
   }
 
   _waitForSDK() {
@@ -534,6 +560,9 @@ class TierController {
 
   async activateExitDiscount() {
     this.exitDiscountActive = true;
+
+    // Save exit discount state to session storage
+    sessionStorage.setItem('grounded-exit-discount-active', 'true');
     console.log('Exit discount activated - applying 10% off to current tier');
 
     // Re-apply the current tier profile with exit discount
