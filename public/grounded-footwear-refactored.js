@@ -115,6 +115,7 @@ class OSDropdown extends BaseElement {
     if (!this._toggle || !this._menu) return;
     
     this._value = this.getAttribute('value');
+    this._cleanupFn = null;
     this._setupEvents();
   }
 
@@ -158,15 +159,48 @@ class OSDropdown extends BaseElement {
     OSDropdown.closeAllDropdowns();
     this.setAttribute('open', '');
     this._toggle.classList.add('active');
-    Object.assign(this._menu.style, {
-      opacity: '1',
-      visibility: 'visible',
-      position: 'absolute',
-      top: `${this._toggle.offsetHeight + 8}px`,
-      left: '0',
-      width: `${this.getBoundingClientRect().width}px`,
-      zIndex: '1000'
-    });
+    
+    const updatePosition = () => {
+      const toggleRect = this._toggle.getBoundingClientRect();
+      const menuHeight = 300;
+      const spaceBelow = window.innerHeight - toggleRect.bottom;
+      const spaceAbove = toggleRect.top;
+      const openAbove = spaceBelow < menuHeight && spaceAbove > spaceBelow;
+      
+      Object.assign(this._menu.style, {
+        opacity: '1',
+        visibility: 'visible',
+        position: 'absolute',
+        width: `${this.getBoundingClientRect().width}px`,
+        zIndex: '1000',
+        maxHeight: '300px',
+        overflowY: 'auto',
+        left: '0'
+      });
+      
+      if (openAbove) {
+        // When opening above, position from the top of the toggle minus menu height and gap
+        this._menu.style.top = 'auto';
+        this._menu.style.bottom = `${this.offsetHeight + 8}px`;
+        this._menu.style.transform = 'translateY(0)';
+      } else {
+        // When opening below, position from the bottom of the toggle
+        this._menu.style.top = `${this._toggle.offsetHeight + 8}px`;
+        this._menu.style.bottom = 'auto';
+        this._menu.style.transform = 'translateY(0)';
+      }
+    };
+    
+    updatePosition();
+    
+    // Update position on scroll
+    const handleScroll = () => {
+      if (this.isOpen) updatePosition();
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    this._cleanupFn = () => window.removeEventListener('scroll', handleScroll);
+    
     OSDropdown.openDropdowns.add(this);
   }
 
@@ -174,6 +208,10 @@ class OSDropdown extends BaseElement {
     this.removeAttribute('open');
     this._toggle.classList.remove('active');
     Object.assign(this._menu.style, { opacity: '0', visibility: 'hidden' });
+    if (this._cleanupFn) {
+      this._cleanupFn();
+      this._cleanupFn = null;
+    }
     OSDropdown.openDropdowns.delete(this);
   }
 
@@ -693,7 +731,6 @@ class TierController {
     if (!slot) return;
     
     const v = this.selectedVariants.get(slotNum) || {};
-    const pid = (slotNum === 1 && this.baseProductId) || this.productId;
 
     ['color', 'size'].forEach(type => {
       const dropdown = slot.querySelector(`os-dropdown[next-variant-option="${type}"]`);
