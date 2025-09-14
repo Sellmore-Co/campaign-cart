@@ -18,6 +18,66 @@ const CONFIG = {
   },
   profiles: { 1: 'default', 2: '2_pack', 3: '3_pack' },
   exitProfiles: { 1: 'exit_10', 2: 'exit_10_2pack', 3: 'exit_10_3pack' },
+  // Profile definitions embedded directly
+  profileDefinitions: {
+    '2_pack': {
+      name: '2-Pack Bundle',
+      description: 'Bundle of 2 sheets at a discounted price',
+      packageMappings: {
+        1: 29, 2: 30, 3: 33, 4: 34, 5: 37, 6: 41, 7: 38, 8: 42,
+        9: 31, 10: 35, 11: 39, 12: 43, 13: 32, 14: 36, 15: 40, 16: 44,
+        17: 25, 18: 45, 19: 26, 20: 46, 21: 27, 22: 47, 23: 28, 24: 48
+      }
+    },
+    '3_pack': {
+      name: '3-Pack Bundle',
+      description: 'Bundle of 3 sheets at a discounted price',
+      packageMappings: {
+        1: 53, 2: 54, 3: 58, 4: 59, 5: 62, 6: 66, 7: 63, 8: 67,
+        9: 56, 10: 60, 11: 64, 12: 68, 13: 57, 14: 61, 15: 65, 16: 69,
+        17: 49, 18: 70, 19: 50, 20: 71, 21: 51, 22: 72, 23: 52, 24: 73
+      }
+    },
+    'exit_10': {
+      name: 'Exit 10% Discount',
+      description: '10% off all items',
+      packageMappings: {
+        1: 78, 2: 79, 3: 82, 4: 83, 5: 86, 6: 90, 7: 87, 8: 91,
+        9: 80, 10: 84, 11: 88, 12: 92, 13: 81, 14: 85, 15: 89, 16: 93,
+        17: 74, 18: 94, 19: 75, 20: 95, 21: 76, 22: 96, 23: 77, 24: 97,
+        25: 98, 26: 99, 27: 100, 28: 101, 29: 102, 30: 103, 31: 104, 32: 105,
+        33: 106, 34: 107, 35: 108, 36: 109, 37: 110, 38: 111, 39: 112, 40: 113,
+        41: 114, 42: 115, 43: 116, 44: 117, 45: 118, 46: 119, 47: 120, 48: 121,
+        49: 122, 50: 123, 51: 124, 52: 125, 53: 126, 54: 127, 56: 128, 57: 129,
+        58: 130, 59: 131, 60: 132, 61: 133, 62: 134, 63: 135, 64: 136, 65: 137,
+        66: 138, 67: 139, 68: 140, 69: 141, 70: 142, 71: 143, 72: 144, 73: 145
+      }
+    },
+    'exit_10_2pack': {
+      name: 'Exit 10% - 2 Pack',
+      description: '10% off 2-pack bundles',
+      packageMappings: {
+        1: 102, 2: 103, 3: 106, 4: 107, 5: 110, 6: 114, 7: 111, 8: 115,
+        9: 104, 10: 108, 11: 112, 12: 116, 13: 105, 14: 109, 15: 113, 16: 117,
+        17: 98, 18: 118, 19: 99, 20: 119, 21: 100, 22: 120, 23: 101, 24: 121,
+        25: 98, 26: 99, 27: 100, 28: 101, 29: 102, 30: 103, 31: 104, 32: 105,
+        33: 106, 34: 107, 35: 108, 36: 109, 37: 110, 38: 111, 39: 112, 40: 113,
+        41: 114, 42: 115, 43: 116, 44: 117, 45: 118, 46: 119, 47: 120, 48: 121
+      }
+    },
+    'exit_10_3pack': {
+      name: 'Exit 10% - 3 Pack',  
+      description: '10% off 3-pack bundles',
+      packageMappings: {
+        1: 126, 2: 127, 3: 130, 4: 131, 5: 134, 6: 138, 7: 135, 8: 139,
+        9: 128, 10: 132, 11: 136, 12: 140, 13: 129, 14: 133, 15: 137, 16: 141,
+        17: 122, 18: 142, 19: 123, 20: 143, 21: 124, 22: 144, 23: 125, 24: 145,
+        49: 122, 50: 123, 51: 124, 52: 125, 53: 126, 54: 127, 56: 128, 57: 129,
+        58: 130, 59: 131, 60: 132, 61: 133, 62: 134, 63: 135, 64: 136, 65: 137,
+        66: 138, 67: 139, 68: 140, 69: 141, 70: 142, 71: 143, 72: 144, 73: 145
+      }
+    }
+  },
   autoSelectAvailable: true,
   displayOrder: {
     sizes: ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King'],
@@ -250,9 +310,10 @@ class TierController {
   async init() {
     await this._waitForSDK();
     
-    // SDK will automatically pick up profiles from window.nextConfig
+    // Register profiles with SDK
+    this._registerProfiles();
     
-    // Setup listeners FIRST before any profile changes
+    // Setup event listeners FIRST before any profile changes
     this._setupListeners();
     
     await window.next.clearCart();
@@ -271,22 +332,17 @@ class TierController {
     this._setupDropdowns();
     await this._setDefaults();
     this._updatePrices();
-    
-    // Update savings immediately and after delays
     this._updateSavings();
-    setTimeout(() => this._updateSavings(), 500);
-    setTimeout(() => this._updateSavings(), 1000);
-    
   }
 
   _waitForSDK() {
     return new Promise(resolve => {
       const check = () => {
-        // Wait for both SDK and config to be loaded
-        if (window.next?.getCampaignData && window.next?.getPackage && window.nextConfig) {
-          setTimeout(resolve, 50);
+        // Wait for SDK to be ready
+        if (window.next?.getCampaignData && window.next?.getPackage) {
+          resolve();
         } else {
-          setTimeout(check, 100);
+          setTimeout(check, 50);
         }
       };
       check();
@@ -348,12 +404,8 @@ class TierController {
 
     this._updateSlotVisibility(tier);
 
-    // Apply profile and copy selections
+    // Apply profile - the event listener will handle the UI updates
     await this._applyProfile(tier);
-    this._getProductId();
-    
-    // Re-populate dropdowns with new tier's products
-    this._setupDropdowns();
 
     // Copy selections from slot 1 to new slots
     if (tier > prev) {
@@ -364,11 +416,6 @@ class TierController {
           this._updateSlot(i, slot1);
         }
       }
-    }
-
-    // Force update all prices
-    for (let i = 1; i <= tier; i++) {
-      this._updateSlotPrice(i);
     }
 
     await this._updateCart();
@@ -407,10 +454,18 @@ class TierController {
     const profiles = this.exitDiscountActive ? CONFIG.exitProfiles : CONFIG.profiles;
     const profile = profiles[tier];
     
-    if (profile) {
-      await window.next.setProfile(profile);
-    } else {
-      await window.next.revertProfile();
+    try {
+      if (profile && profile !== 'default') {
+        await window.next.setProfile(profile);
+      } else {
+        await window.next.revertProfile();
+      }
+    } catch (error) {
+      console.warn(`Failed to apply profile ${profile}`, error);
+      // Continue with default pricing rather than breaking
+      try {
+        await window.next.revertProfile();
+      } catch {}
     }
   }
 
@@ -418,10 +473,8 @@ class TierController {
     this.exitDiscountActive = true;
     sessionStorage.setItem('grounded-exit-discount-active', 'true');
     
+    // Apply profile - the event listener will handle the UI updates
     await this._applyProfile(this.currentTier);
-    this._getProductId();
-    this._updatePrices();
-    this._updateSavings();
     this._cartDebounce();
     
     // Show indicator
@@ -446,6 +499,9 @@ class TierController {
 
     const variants = this.selectedVariants.get(slotNum);
     variants[type] = value;
+    
+    // Save selections to localStorage
+    this._saveSelectionsToStorage();
 
     // Auto-select available variant if current selection is out of stock
     if (CONFIG.autoSelectAvailable && variants.color && variants.size) {
@@ -606,6 +662,9 @@ class TierController {
   }
 
   async _setDefaults() {
+    // Try to load saved selections first
+    const savedSelections = this._loadSelectionsFromStorage();
+    
     const colors = window.next.getAvailableVariantAttributes(this.productId, 'color');
     const sizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
     
@@ -618,14 +677,17 @@ class TierController {
       }
       const v = this.selectedVariants.get(i);
       
-      if (defaultColor && !v.color) {
-        v.color = defaultColor;
-        this._updateSlot(i, { color: defaultColor });
+      // Use saved selections if available, otherwise use defaults
+      const saved = savedSelections?.[i];
+      
+      if (!v.color) {
+        v.color = saved?.color || defaultColor;
+        if (v.color) this._updateSlot(i, { color: v.color });
       }
       
-      if (defaultSize && !v.size) {
-        v.size = defaultSize;
-        this._updateSlot(i, { size: defaultSize });
+      if (!v.size) {
+        v.size = saved?.size || defaultSize;
+        if (v.size) this._updateSlot(i, { size: v.size });
       }
       
       this._updateSlotPrice(i);
@@ -633,6 +695,25 @@ class TierController {
     }
 
     await this._updateCart();
+  }
+  
+  _saveSelectionsToStorage() {
+    try {
+      const selections = {};
+      this.selectedVariants.forEach((value, key) => {
+        selections[key] = value;
+      });
+      localStorage.setItem('grounded-selections', JSON.stringify(selections));
+    } catch {}
+  }
+  
+  _loadSelectionsFromStorage() {
+    try {
+      const saved = localStorage.getItem('grounded-selections');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   }
 
   _updatePrices() {
@@ -671,8 +752,8 @@ class TierController {
         ? CONFIG.exitProfiles[this.currentTier]
         : CONFIG.profiles[this.currentTier];
       
-      if (profileName && window.nextConfig?.profiles?.[profileName]?.packageMappings) {
-        const mappedId = window.nextConfig.profiles[profileName].packageMappings[basePkg.ref_id];
+      if (profileName && CONFIG.profileDefinitions[profileName]) {
+        const mappedId = CONFIG.profileDefinitions[profileName].packageMappings[basePkg.ref_id];
         if (mappedId) {
           const mappedPkg = window.next.getPackage(mappedId);
           if (mappedPkg) {
@@ -770,28 +851,52 @@ class TierController {
     return true;
   }
 
+  _registerProfiles() {
+    if (!window.next.registerProfile) return;
+    
+    try {
+      // Register profiles from embedded CONFIG
+      Object.entries(CONFIG.profileDefinitions).forEach(([id, profile]) => {
+        window.next.registerProfile({
+          id,
+          name: profile.name,
+          description: profile.description,
+          packageMappings: profile.packageMappings
+        });
+      });
+    } catch (e) {
+      console.warn('Failed to register profiles:', e);
+    }
+  }
+
   _setupListeners() {
-    window.next.on('profile:applied', async () => {
-      this._getProductId();
-      // Re-setup dropdowns to get new mapped packages
-      this._setupDropdowns();
-      // Update all slot prices with new profile
-      for (let i = 1; i <= this.currentTier; i++) {
-        this._updateSlotPrice(i);
-      }
-      this._updateSavings();
+    // Listen for profile applied event
+    window.next.on('profile:applied', () => {
+      // Profile has been applied, update UI
+      this._onProfileChanged();
     });
     
-    window.next.on('profile:reverted', async () => {
-      this._getProductId();
-      // Re-setup dropdowns to get original packages
-      this._setupDropdowns();
-      // Update all slot prices
-      for (let i = 1; i <= this.currentTier; i++) {
-        this._updateSlotPrice(i);
-      }
-      this._updateSavings();
+    // Listen for profile reverted event
+    window.next.on('profile:reverted', () => {
+      // Profile has been reverted, update UI
+      this._onProfileChanged();
     });
+  }
+  
+  _onProfileChanged() {
+    // Get the new product ID after profile change
+    this._getProductId();
+    
+    // Re-setup dropdowns with new packages
+    this._setupDropdowns();
+    
+    // Update all slot prices with new profile
+    for (let i = 1; i <= this.currentTier; i++) {
+      this._updateSlotPrice(i);
+    }
+    
+    // Update savings display
+    this._updateSavings();
   }
 
   handleVerifyClick() {
@@ -901,12 +1006,13 @@ class TierController {
   }
 }
 
-// Progress Bar
+// Progress Bar with optimized scroll handling
 class ProgressBar {
   constructor() {
     this.items = document.querySelectorAll('[data-progress]');
     this.sections = document.querySelectorAll('[data-progress-trigger]');
     this.completed = new Set();
+    this._ticking = false;
     this._init();
   }
 
@@ -945,10 +1051,20 @@ class ProgressBar {
           item.classList.add('active');
         }
       });
+      
+      this._ticking = false;
     };
     
-    window.addEventListener('scroll', () => requestAnimationFrame(check));
-    window.addEventListener('resize', () => requestAnimationFrame(check));
+    // Debounced scroll handler
+    const handleScroll = () => {
+      if (!this._ticking) {
+        requestAnimationFrame(check);
+        this._ticking = true;
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll, { passive: true });
     check();
   }
 }

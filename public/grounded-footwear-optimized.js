@@ -249,6 +249,19 @@ class TierController {
 
   async init() {
     await this._waitForSDK();
+    
+    // Initialize SDK with profiles if available
+    if (window.nextConfig?.profiles && window.next.registerProfiles) {
+      try {
+        window.next.registerProfiles(window.nextConfig.profiles);
+      } catch (e) {
+        // SDK will pick up profiles automatically from window.nextConfig
+      }
+    }
+    
+    // Setup listeners FIRST before any profile changes
+    this._setupListeners();
+    
     await window.next.clearCart();
     await window.next.revertProfile();
 
@@ -265,21 +278,22 @@ class TierController {
     this._setupDropdowns();
     await this._setDefaults();
     this._updatePrices();
-    this._setupListeners();
     
     // Update savings immediately and after delays
     this._updateSavings();
     setTimeout(() => this._updateSavings(), 500);
     setTimeout(() => this._updateSavings(), 1000);
+    
   }
 
   _waitForSDK() {
     return new Promise(resolve => {
       const check = () => {
-        if (window.next?.getCampaignData && window.next?.getPackage) {
-          setTimeout(resolve, 50);
+        // Wait for SDK and config to be ready
+        if (window.next?.getCampaignData && window.next?.getPackage && window.nextConfig) {
+          resolve();
         } else {
-          setTimeout(check, 100);
+          setTimeout(check, 50);
         }
       };
       check();
@@ -344,6 +358,9 @@ class TierController {
     // Apply profile and copy selections
     await this._applyProfile(tier);
     this._getProductId();
+    
+    // Re-populate dropdowns with new tier's products
+    this._setupDropdowns();
 
     // Copy selections from slot 1 to new slots
     if (tier > prev) {
@@ -356,8 +373,12 @@ class TierController {
       }
     }
 
+    // Force update all prices
+    for (let i = 1; i <= tier; i++) {
+      this._updateSlotPrice(i);
+    }
+
     await this._updateCart();
-    this._updatePrices();
     this._updateCTA();
   }
 
@@ -393,10 +414,24 @@ class TierController {
     const profiles = this.exitDiscountActive ? CONFIG.exitProfiles : CONFIG.profiles;
     const profile = profiles[tier];
     
-    if (profile) {
-      await window.next.setProfile(profile);
-    } else {
-      await window.next.revertProfile();
+    try {
+      if (profile && profile !== 'default') {
+        // Check if profile exists in config before trying to apply
+        if (window.nextConfig?.profiles?.[profile]) {
+          await window.next.setProfile(profile);
+        } else {
+          console.warn(`Profile ${profile} not found in config, using default`);
+          await window.next.revertProfile();
+        }
+      } else {
+        await window.next.revertProfile();
+      }
+    } catch (error) {
+      console.warn(`Failed to apply profile ${profile}, using default pricing`, error);
+      // Continue with default pricing rather than breaking
+      try {
+        await window.next.revertProfile();
+      } catch {}
     }
   }
 
@@ -432,6 +467,24 @@ class TierController {
 
     const variants = this.selectedVariants.get(slotNum);
     variants[type] = value;
+    
+    // Save selections to localStorage
+    this._saveSelectionsToStorage();
+
+    // Auto-select available variant if current selection is out of stock
+    if (CONFIG.autoSelectAvailable && variants.color && variants.size) {
+      const isOOS = this._isCompleteVariantOutOfStock(slotNum, variants);
+      
+      if (isOOS) {
+        const alternative = this._findAvailableAlternative(slotNum, type, value);
+        
+        if (alternative) {
+          const otherType = type === 'color' ? 'size' : 'color';
+          variants[otherType] = alternative;
+          this._updateSlot(slotNum, { [otherType]: alternative });
+        }
+      }
+    }
 
     if (type === 'color') {
       this._updateSwatch(component, value);
@@ -533,6 +586,12 @@ class TierController {
       const item = document.createElement('os-dropdown-item');
       item.setAttribute('value', opt);
       
+      // Check if this option is out of stock
+      const isOutOfStock = this._isVariantOutOfStock(slotNum, { [type]: opt });
+      if (isOutOfStock) {
+        item.classList.add('next-oos');
+      }
+      
       if (type === 'color') {
         const key = opt.toLowerCase().replace(/\s+/g, '-');
         item.innerHTML = `
@@ -571,6 +630,9 @@ class TierController {
   }
 
   async _setDefaults() {
+    // Try to load saved selections first
+    const savedSelections = this._loadSelectionsFromStorage();
+    
     const colors = window.next.getAvailableVariantAttributes(this.productId, 'color');
     const sizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
     
@@ -583,14 +645,17 @@ class TierController {
       }
       const v = this.selectedVariants.get(i);
       
-      if (defaultColor && !v.color) {
-        v.color = defaultColor;
-        this._updateSlot(i, { color: defaultColor });
+      // Use saved selections if available, otherwise use defaults
+      const saved = savedSelections?.[i];
+      
+      if (!v.color) {
+        v.color = saved?.color || defaultColor;
+        if (v.color) this._updateSlot(i, { color: v.color });
       }
       
-      if (defaultSize && !v.size) {
-        v.size = defaultSize;
-        this._updateSlot(i, { size: defaultSize });
+      if (!v.size) {
+        v.size = saved?.size || defaultSize;
+        if (v.size) this._updateSlot(i, { size: v.size });
       }
       
       this._updateSlotPrice(i);
@@ -598,6 +663,25 @@ class TierController {
     }
 
     await this._updateCart();
+  }
+  
+  _saveSelectionsToStorage() {
+    try {
+      const selections = {};
+      this.selectedVariants.forEach((value, key) => {
+        selections[key] = value;
+      });
+      localStorage.setItem('grounded-selections', JSON.stringify(selections));
+    } catch {}
+  }
+  
+  _loadSelectionsFromStorage() {
+    try {
+      const saved = localStorage.getItem('grounded-selections');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   }
 
   _updatePrices() {
@@ -617,6 +701,7 @@ class TierController {
       return;
     }
 
+    // Always use baseProductId for initial lookup
     const basePkg = window.next.getPackageByVariantSelection(
       this.baseProductId || this.productId,
       { color: v.color, size: v.size }
@@ -638,7 +723,10 @@ class TierController {
       if (profileName && window.nextConfig?.profiles?.[profileName]?.packageMappings) {
         const mappedId = window.nextConfig.profiles[profileName].packageMappings[basePkg.ref_id];
         if (mappedId) {
-          pkg = window.next.getPackage(mappedId) || basePkg;
+          const mappedPkg = window.next.getPackage(mappedId);
+          if (mappedPkg) {
+            pkg = mappedPkg;
+          }
         }
       }
     }
@@ -655,6 +743,12 @@ class TierController {
     if (regEl) regEl.textContent = `$${retail.toFixed(2)}`;
     if (pctEl && retail > price) {
       pctEl.textContent = `${Math.round(((retail - price) / retail) * 100)}%`;
+    }
+    
+    // Also update the price container if it has /ea format
+    const priceContainer = slot.querySelector('.os-card__price.os--current');
+    if (priceContainer) {
+      priceContainer.innerHTML = `<span data-option="price">$${price.toFixed(2)}</span>/ea`;
     }
   }
 
@@ -726,14 +820,26 @@ class TierController {
   }
 
   _setupListeners() {
-    window.next.on('profile:applied', () => {
+    window.next.on('profile:applied', async () => {
       this._getProductId();
-      this._updatePrices();
+      // Re-setup dropdowns to get new mapped packages
+      this._setupDropdowns();
+      // Update all slot prices with new profile
+      for (let i = 1; i <= this.currentTier; i++) {
+        this._updateSlotPrice(i);
+      }
+      this._updateSavings();
     });
     
-    window.next.on('profile:reverted', () => {
+    window.next.on('profile:reverted', async () => {
       this._getProductId();
-      this._updatePrices();
+      // Re-setup dropdowns to get original packages
+      this._setupDropdowns();
+      // Update all slot prices
+      for (let i = 1; i <= this.currentTier; i++) {
+        this._updateSlotPrice(i);
+      }
+      this._updateSavings();
     });
   }
 
@@ -753,14 +859,104 @@ class TierController {
     this._updateCTA();
     return this._isComplete();
   }
+  
+  // Helper methods for stock checking and auto-selection
+  _isVariantOutOfStock(slotNum, partialVariant) {
+    const slotVariants = this.selectedVariants.get(slotNum) || {};
+    const fullVariant = {
+      color: partialVariant.color || slotVariants.color,
+      size: partialVariant.size || slotVariants.size
+    };
+    
+    if (!fullVariant.color || !fullVariant.size) {
+      return false;
+    }
+    
+    const pid = (slotNum === 1 && this.baseProductId) || this.productId;
+    const pkg = window.next.getPackageByVariantSelection(pid, fullVariant);
+    
+    if (!pkg) return true;
+    return pkg.product_inventory_availability === 'out_of_stock' ||
+           pkg.product_purchase_availability === 'unavailable';
+  }
+  
+  _isCompleteVariantOutOfStock(slotNum, fullVariant) {
+    if (!fullVariant.color || !fullVariant.size) {
+      return false;
+    }
+    
+    const pid = (slotNum === 1 && this.baseProductId) || this.productId;
+    const pkg = window.next.getPackageByVariantSelection(pid, fullVariant);
+    
+    if (!pkg) return true;
+    return pkg.product_inventory_availability === 'out_of_stock' ||
+           pkg.product_purchase_availability === 'unavailable';
+  }
+  
+  _findAvailableAlternative(slotNum, changedType, newValue) {
+    const pid = (slotNum === 1 && this.baseProductId) || this.productId;
+    const slotVariants = this.selectedVariants.get(slotNum);
+    
+    if (changedType === 'color') {
+      // Find available size for the new color
+      const availableSizes = window.next.getAvailableVariantAttributes(pid, 'size');
+      const currentSize = slotVariants.size;
+      
+      // Try to keep current size if available
+      if (!this._isCompleteVariantOutOfStock(slotNum, { color: newValue, size: currentSize })) {
+        return currentSize;
+      }
+      
+      // Find best alternative size
+      const sizeOrder = this._getSizePreferenceOrder(currentSize, availableSizes);
+      for (const size of sizeOrder) {
+        if (!this._isCompleteVariantOutOfStock(slotNum, { color: newValue, size })) {
+          return size;
+        }
+      }
+    } else if (changedType === 'size') {
+      // Find available color for the new size
+      const availableColors = window.next.getAvailableVariantAttributes(pid, 'color');
+      const currentColor = slotVariants.color;
+      
+      // Try to keep current color if available
+      if (!this._isCompleteVariantOutOfStock(slotNum, { color: currentColor, size: newValue })) {
+        return currentColor;
+      }
+      
+      // Find any available color
+      for (const color of availableColors) {
+        if (!this._isCompleteVariantOutOfStock(slotNum, { color, size: newValue })) {
+          return color;
+        }
+      }
+    }
+    
+    return null;
+  }
+  
+  _getSizePreferenceOrder(currentSize, availableSizes) {
+    // Find matching preference order
+    for (const order of CONFIG.sizePreferenceOrder) {
+      if (order[0].toLowerCase() === currentSize.toLowerCase()) {
+        return order.filter(size => 
+          availableSizes.some(avail => avail.toLowerCase() === size.toLowerCase())
+        );
+      }
+    }
+    
+    // Default to available sizes if no preference found
+    return availableSizes;
+  }
 }
 
-// Progress Bar
+// Progress Bar with optimized scroll handling
 class ProgressBar {
   constructor() {
     this.items = document.querySelectorAll('[data-progress]');
     this.sections = document.querySelectorAll('[data-progress-trigger]');
     this.completed = new Set();
+    this._ticking = false;
     this._init();
   }
 
@@ -799,10 +995,20 @@ class ProgressBar {
           item.classList.add('active');
         }
       });
+      
+      this._ticking = false;
     };
     
-    window.addEventListener('scroll', () => requestAnimationFrame(check));
-    window.addEventListener('resize', () => requestAnimationFrame(check));
+    // Debounced scroll handler
+    const handleScroll = () => {
+      if (!this._ticking) {
+        requestAnimationFrame(check);
+        this._ticking = true;
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll, { passive: true });
     check();
   }
 }
