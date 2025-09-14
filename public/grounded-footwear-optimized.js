@@ -344,9 +344,6 @@ class TierController {
     // Apply profile and copy selections
     await this._applyProfile(tier);
     this._getProductId();
-    
-    // Re-populate dropdowns with new tier's products
-    this._setupDropdowns();
 
     // Copy selections from slot 1 to new slots
     if (tier > prev) {
@@ -435,22 +432,6 @@ class TierController {
 
     const variants = this.selectedVariants.get(slotNum);
     variants[type] = value;
-
-    // Auto-select available variant if current selection is out of stock
-    if (CONFIG.autoSelectAvailable && variants.color && variants.size) {
-      const isOOS = this._isCompleteVariantOutOfStock(slotNum, variants);
-      
-      if (isOOS) {
-        const alternative = this._findAvailableAlternative(slotNum, type, value);
-        
-        if (alternative) {
-          console.log(`Auto-selecting available ${type === 'color' ? 'size' : 'color'}: ${alternative}`);
-          const otherType = type === 'color' ? 'size' : 'color';
-          variants[otherType] = alternative;
-          this._updateSlot(slotNum, { [otherType]: alternative });
-        }
-      }
-    }
 
     if (type === 'color') {
       this._updateSwatch(component, value);
@@ -551,12 +532,6 @@ class TierController {
     sorted.forEach(opt => {
       const item = document.createElement('os-dropdown-item');
       item.setAttribute('value', opt);
-      
-      // Check if this option is out of stock
-      const isOutOfStock = this._isVariantOutOfStock(slotNum, { [type]: opt });
-      if (isOutOfStock) {
-        item.classList.add('next-oos');
-      }
       
       if (type === 'color') {
         const key = opt.toLowerCase().replace(/\s+/g, '-');
@@ -681,12 +656,6 @@ class TierController {
     if (pctEl && retail > price) {
       pctEl.textContent = `${Math.round(((retail - price) / retail) * 100)}%`;
     }
-    
-    // Also update the price container if it has /ea format
-    const priceContainer = slot.querySelector('.os-card__price.os--current');
-    if (priceContainer) {
-      priceContainer.innerHTML = `<span data-option="price">$${price.toFixed(2)}</span>/ea`;
-    }
   }
 
   _resetPrice(slot) {
@@ -757,26 +726,14 @@ class TierController {
   }
 
   _setupListeners() {
-    window.next.on('profile:applied', async () => {
+    window.next.on('profile:applied', () => {
       this._getProductId();
-      // Re-setup dropdowns to get new mapped packages
-      this._setupDropdowns();
-      // Update all slot prices with new profile
-      for (let i = 1; i <= this.currentTier; i++) {
-        this._updateSlotPrice(i);
-      }
-      this._updateSavings();
+      this._updatePrices();
     });
     
-    window.next.on('profile:reverted', async () => {
+    window.next.on('profile:reverted', () => {
       this._getProductId();
-      // Re-setup dropdowns to get original packages
-      this._setupDropdowns();
-      // Update all slot prices
-      for (let i = 1; i <= this.currentTier; i++) {
-        this._updateSlotPrice(i);
-      }
-      this._updateSavings();
+      this._updatePrices();
     });
   }
 
@@ -795,95 +752,6 @@ class TierController {
     }
     this._updateCTA();
     return this._isComplete();
-  }
-  
-  // Helper methods for stock checking and auto-selection
-  _isVariantOutOfStock(slotNum, partialVariant) {
-    const slotVariants = this.selectedVariants.get(slotNum) || {};
-    const fullVariant = {
-      color: partialVariant.color || slotVariants.color,
-      size: partialVariant.size || slotVariants.size
-    };
-    
-    if (!fullVariant.color || !fullVariant.size) {
-      return false;
-    }
-    
-    const pid = (slotNum === 1 && this.baseProductId) || this.productId;
-    const pkg = window.next.getPackageByVariantSelection(pid, fullVariant);
-    
-    if (!pkg) return true;
-    return pkg.product_inventory_availability === 'out_of_stock' ||
-           pkg.product_purchase_availability === 'unavailable';
-  }
-  
-  _isCompleteVariantOutOfStock(slotNum, fullVariant) {
-    if (!fullVariant.color || !fullVariant.size) {
-      return false;
-    }
-    
-    const pid = (slotNum === 1 && this.baseProductId) || this.productId;
-    const pkg = window.next.getPackageByVariantSelection(pid, fullVariant);
-    
-    if (!pkg) return true;
-    return pkg.product_inventory_availability === 'out_of_stock' ||
-           pkg.product_purchase_availability === 'unavailable';
-  }
-  
-  _findAvailableAlternative(slotNum, changedType, newValue) {
-    const pid = (slotNum === 1 && this.baseProductId) || this.productId;
-    const slotVariants = this.selectedVariants.get(slotNum);
-    
-    if (changedType === 'color') {
-      // Find available size for the new color
-      const availableSizes = window.next.getAvailableVariantAttributes(pid, 'size');
-      const currentSize = slotVariants.size;
-      
-      // Try to keep current size if available
-      if (!this._isCompleteVariantOutOfStock(slotNum, { color: newValue, size: currentSize })) {
-        return currentSize;
-      }
-      
-      // Find best alternative size
-      const sizeOrder = this._getSizePreferenceOrder(currentSize, availableSizes);
-      for (const size of sizeOrder) {
-        if (!this._isCompleteVariantOutOfStock(slotNum, { color: newValue, size })) {
-          return size;
-        }
-      }
-    } else if (changedType === 'size') {
-      // Find available color for the new size
-      const availableColors = window.next.getAvailableVariantAttributes(pid, 'color');
-      const currentColor = slotVariants.color;
-      
-      // Try to keep current color if available
-      if (!this._isCompleteVariantOutOfStock(slotNum, { color: currentColor, size: newValue })) {
-        return currentColor;
-      }
-      
-      // Find any available color
-      for (const color of availableColors) {
-        if (!this._isCompleteVariantOutOfStock(slotNum, { color, size: newValue })) {
-          return color;
-        }
-      }
-    }
-    
-    return null;
-  }
-  
-  _getSizePreferenceOrder(currentSize, availableSizes) {
-    // Find matching preference order
-    for (const order of CONFIG.sizePreferenceOrder) {
-      if (order[0].toLowerCase() === currentSize.toLowerCase()) {
-        return order.filter(size => 
-          availableSizes.some(avail => avail.toLowerCase() === size.toLowerCase())
-        );
-      }
-    }
-    
-    // Default to available sizes if no preference found
-    return availableSizes;
   }
 }
 
