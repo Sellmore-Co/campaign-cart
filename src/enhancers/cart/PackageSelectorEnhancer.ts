@@ -82,7 +82,21 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
       return;
     }
 
-    const packageId = parseInt(packageIdAttr, 10);
+    let packageId = parseInt(packageIdAttr, 10);
+    
+    // Check if we should apply profile mapping at the selector level
+    // By default, let the cart store handle profile mapping
+    // Only apply here if explicitly requested via data-next-apply-profile="true"
+    const applyProfileHere = cardElement.getAttribute('data-next-apply-profile') === 'true';
+    if (applyProfileHere) {
+      const { useProfileStore } = require('@/stores/profileStore');
+      const profileStore = useProfileStore.getState();
+      const mappedId = profileStore.getMappedPackageId(packageId);
+      if (mappedId !== packageId) {
+        this.logger.debug(`Selector card pre-mapped package ${packageId} -> ${mappedId}`);
+        packageId = mappedId;
+      }
+    }
     const quantity = parseInt(cardElement.getAttribute('data-next-quantity') || '1', 10);
     const isPreSelected = cardElement.getAttribute('data-next-selected') === 'true';
     const shippingId = cardElement.getAttribute('data-next-shipping-id');

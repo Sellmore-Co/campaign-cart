@@ -6,6 +6,24 @@ export interface Campaign {
     payment_env_key: string;
     shipping_methods: ShippingOption[];
 }
+export interface VariantAttribute {
+    code: string;
+    name: string;
+    value: string;
+}
+export interface ProductVariant {
+    id: number;
+    name: string;
+    attributes: VariantAttribute[];
+    sku?: string | null;
+}
+export interface Product {
+    id: number;
+    name: string;
+    variant: ProductVariant;
+    purchase_availability: 'available' | 'unavailable' | string;
+    inventory_availability: 'untracked' | 'tracked' | 'out_of_stock' | string;
+}
 export interface Package {
     ref_id: number;
     external_id: number;
@@ -21,6 +39,15 @@ export interface Package {
     is_recurring: boolean;
     interval?: 'day' | 'month' | null;
     interval_count?: number | null;
+    product?: Product;
+    product_variant_id?: number;
+    product_variant_name?: string;
+    product_id?: number;
+    product_name?: string;
+    product_sku?: string | null;
+    product_purchase_availability?: string;
+    product_inventory_availability?: string;
+    product_variant_attribute_values?: VariantAttribute[];
 }
 export interface ShippingOption {
     ref_id: number;

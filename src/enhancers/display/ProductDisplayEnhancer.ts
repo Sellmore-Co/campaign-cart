@@ -11,6 +11,7 @@ import { DisplayContextProvider } from './DisplayContextProvider';
 import { PriceCalculator } from '@/utils/calculations/PriceCalculator';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useCartStore } from '@/stores/cartStore';
+import { useProfileStore } from '@/stores/profileStore';
 import type { Package } from '@/types/global';
 
 export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
@@ -18,6 +19,7 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
   private packageId?: number;
   private contextPackageId?: number | undefined;
   private packageData?: Package;
+  private originalPackageData?: Package; // Store original package data for profile-aware calculations
   private multiplyByQuantity: boolean = false;
   private currentQuantity: number = 1;
   private quantitySelectorId?: string;
@@ -35,6 +37,7 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     
     this.setupStoreSubscriptions();
     this.setupQuantityListeners();
+    this.setupProfileEventListeners();
     await this.performInitialUpdate();
     this.logger.debug(`ProductDisplayEnhancer initialized with package ${this.packageId}, path: ${this.displayPath}, format: ${this.formatType}, multiplyByQuantity: ${this.multiplyByQuantity}`);
   }
@@ -46,8 +49,18 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     // Also subscribe to cart store for discount changes
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
     
+    // Subscribe to profile store for profile changes
+    this.subscribe(useProfileStore, (state) => {
+      this.logger.debug(`Profile store changed, active profile: ${state.activeProfileId}`);
+      this.handleProfileUpdate();
+    });
+    
     // Get initial state
     this.campaignState = useCampaignStore.getState();
+    // Ensure we have access to all packages from the start
+    if (!this.campaignState.packages && this.campaignState.data?.packages) {
+      this.campaignState.packages = this.campaignState.data.packages;
+    }
     
     // Load package data
     this.loadPackageData();
@@ -55,6 +68,10 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
 
   private handleCampaignUpdate(campaignState: any): void {
     this.campaignState = campaignState;
+    // Ensure we have access to all packages
+    if (!this.campaignState.packages && campaignState.data?.packages) {
+      this.campaignState.packages = campaignState.data.packages;
+    }
     this.loadPackageData();
     this.updateDisplay();
   }
@@ -62,6 +79,28 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
   private handleCartUpdate(): void {
     // Update display when cart changes (discount codes might affect package price)
     this.updateDisplay();
+  }
+  
+  private handleProfileUpdate(): void {
+    this.logger.debug(`Profile update detected for package ${this.packageId}`);
+    // Reload package data with new profile mapping
+    this.loadPackageData();
+    // Update display with new package data
+    this.updateDisplay();
+    this.logger.debug(`Display updated after profile change for package ${this.packageId}`);
+  }
+  
+  private setupProfileEventListeners(): void {
+    // Listen for profile events from the event bus
+    this.eventBus.on('profile:applied', (data) => {
+      this.logger.debug(`Profile applied event received: ${data.profileId} for package ${this.packageId}`);
+      this.handleProfileUpdate();
+    });
+    
+    this.eventBus.on('profile:reverted', (data) => {
+      this.logger.debug(`Profile reverted event received for package ${this.packageId}`);
+      this.handleProfileUpdate();
+    });
   }
   
   private setupQuantityListeners(): void {
@@ -158,9 +197,46 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
   private loadPackageData(): void {
     if (!this.packageId || !this.campaignState) return;
     
-    this.packageData = this.campaignState.packages?.find((pkg: Package) => pkg.ref_id === this.packageId);
+    // Always load the original package data first
+    this.originalPackageData = this.campaignState.packages?.find((pkg: Package) => pkg.ref_id === this.packageId);
+    
+    // Apply profile mapping if active
+    const profileStore = useProfileStore.getState();
+    const mappedPackageId = profileStore.getMappedPackageId(this.packageId);
+    
+    // If package ID was mapped, use the mapped ID to find the package
+    const targetPackageId = mappedPackageId !== this.packageId ? mappedPackageId : this.packageId;
+    
+    if (mappedPackageId !== this.packageId) {
+      this.logger.debug(`Profile mapping applied: ${this.packageId} -> ${mappedPackageId}`);
+    }
+    
+    // First try to find in campaign packages
+    this.packageData = this.campaignState.packages?.find((pkg: Package) => pkg.ref_id === targetPackageId);
+    
+    // If not found and it's a mapped package, try to get it from the campaign store directly
+    if (!this.packageData && mappedPackageId !== this.packageId) {
+      const campaignStore = useCampaignStore.getState();
+      // Try to get the package from all packages if available
+      if (campaignStore.data?.packages) {
+        this.packageData = campaignStore.data.packages.find((pkg: Package) => pkg.ref_id === targetPackageId);
+        if (this.packageData) {
+          this.logger.debug(`Found package ${targetPackageId} in full campaign data`);
+        }
+      }
+    }
+    
     if (!this.packageData) {
-      this.logger.warn(`Package ${this.packageId} not found in campaign data`);
+      this.logger.warn(`Package ${targetPackageId} not found in campaign data (original: ${this.packageId})`);
+      // Log available package IDs for debugging
+      const availableIds = this.campaignState.packages?.map((p: Package) => p.ref_id).join(', ');
+      this.logger.debug(`Available package IDs in campaign state: ${availableIds}`);
+      // If mapped package not found, fall back to original
+      this.packageData = this.originalPackageData;
+      this.logger.warn(`Falling back to original package ${this.packageId}`);
+    } else if (mappedPackageId !== this.packageId) {
+      // Log the price comparison
+      this.logger.debug(`Package prices - Original #${this.packageId}: retail=${this.originalPackageData?.price_retail}, sale=${this.originalPackageData?.price} | Mapped #${targetPackageId}: retail=${this.packageData.price_retail}, sale=${this.packageData.price}`);
     }
   }
 
@@ -335,6 +411,14 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
         return metrics.totalSavings;
       
       case 'savingsPercentage':
+        // Check if we should use profile-aware calculation
+        if (this.originalPackageData && this.packageData && this.originalPackageData.ref_id !== this.packageData.ref_id) {
+          // Profile is active, calculate savings based on original retail price
+          const profileSavings = this.calculateProfileAwareSavingsPercentage();
+          this.logger.debug(`Profile-aware savings percentage: ${profileSavings}% (was ${metrics.totalSavingsPercentage}%)`);
+          return profileSavings;
+        }
+        this.logger.debug(`Standard savings percentage: ${metrics.totalSavingsPercentage}%`);
         return metrics.totalSavingsPercentage;
       
       case 'unitPrice':
@@ -556,6 +640,29 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     // Check if there's any savings (retail or discount)
     const totalSavings = this.calculateTotalSavingsAmount();
     return totalSavings > 0;
+  }
+  
+  private calculateProfileAwareSavingsPercentage(): number {
+    if (!this.originalPackageData || !this.packageData) return 0;
+    
+    // Use total prices for bundles, unit prices for singles
+    const originalRetailTotal = parseFloat(this.originalPackageData.price_retail_total || '0') || 
+                                parseFloat(this.originalPackageData.price_retail || '0');
+    const currentSaleTotal = parseFloat(this.packageData.price_total || '0') || 
+                            parseFloat(this.packageData.price || '0');
+    
+    if (originalRetailTotal <= 0) {
+      this.logger.warn(`No retail price for original package ${this.originalPackageData.ref_id}`);
+      return 0;
+    }
+    
+    // Calculate the percentage difference between original retail and current sale price
+    const savings = originalRetailTotal - currentSaleTotal;
+    const percentage = (savings / originalRetailTotal) * 100;
+    
+    this.logger.debug(`Profile-aware calculation for package ${this.originalPackageData.ref_id}→${this.packageData.ref_id}: Original retail: $${originalRetailTotal}, Current sale: $${currentSaleTotal}, Savings: ${percentage.toFixed(1)}% (rounded: ${Math.round(percentage)}%)`);
+    
+    return Math.min(100, Math.max(0, Math.round(percentage)));
   }
 
   private getPackageValue(packageData: Package, property: string): any {

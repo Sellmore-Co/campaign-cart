@@ -7,6 +7,7 @@ The Next Commerce JS SDK exposes methods through the `window.next` object after 
 - [Getting Started](#getting-started)
 - [Cart Methods](#cart-methods)
 - [Campaign & Package Methods](#campaign--package-methods)
+- [Profile Methods](#profile-methods)
 - [Coupon Methods](#coupon-methods)
 - [Tracking & Analytics Methods](#tracking--analytics-methods)
 - [Shipping Methods](#shipping-methods)
@@ -219,6 +220,62 @@ if (package) {
 - `id` (number): Package ID
 
 **Returns:** `Package | null`
+
+## Profile Methods
+
+Profile methods enable dynamic package ID mapping for different pricing tiers, promotions, and customer segments. See the [complete Profile API documentation](./profiles.md) for detailed information.
+
+### setProfile
+
+Applies a pricing profile to swap package IDs.
+
+```javascript
+// Basic usage
+await next.setProfile('black_friday');
+
+// With options
+await next.setProfile('vip', {
+  clearCart: true,
+  preserveQuantities: false
+});
+```
+
+### revertProfile
+
+Reverts to original packages.
+
+```javascript
+await next.revertProfile();
+```
+
+### getActiveProfile
+
+Gets the currently active profile ID.
+
+```javascript
+const profile = next.getActiveProfile();
+console.log(profile); // "black_friday" or null
+```
+
+### getMappedPackageId
+
+Gets the mapped package ID for the active profile.
+
+```javascript
+const mappedId = next.getMappedPackageId(1);
+console.log(mappedId); // 101 (if profile maps 1 -> 101)
+```
+
+### listProfiles
+
+Lists all configured profiles.
+
+```javascript
+const profiles = next.listProfiles();
+console.log(profiles); // ["regular", "black_friday", "vip"]
+```
+
+See [Profile API Reference](./profiles.md) for complete documentation including events, data attributes, and configuration.
 
 ## Coupon Methods
 

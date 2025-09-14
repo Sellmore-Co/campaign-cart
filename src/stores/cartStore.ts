@@ -17,6 +17,7 @@ interface CartActions {
   updateQuantity: (packageId: number, quantity: number) => Promise<void>;
   swapPackage: (removePackageId: number, addItem: Partial<CartItem> & { isUpsell: boolean | undefined }) => Promise<void>;
   clear: () => Promise<void>;
+  swapCart: (items: Array<{ packageId: number; quantity: number }>) => Promise<void>;
   syncWithAPI: () => Promise<void>;
   calculateTotals: () => void;
   calculateShipping: () => number;
@@ -74,19 +75,32 @@ const cartStoreInstance = create<CartState & CartActions>()(
 
       addItem: async (item: Partial<CartItem> & { isUpsell: boolean | undefined }) => {
         const { useCampaignStore } = await import('./campaignStore');
+        const { useProfileStore } = await import('./profileStore');
         const campaignStore = useCampaignStore.getState();
+        const profileStore = useProfileStore.getState();
+        
+        // Apply profile mapping if active (unless it's already a mapped ID)
+        let finalPackageId = item.packageId ?? 0;
+        if (!item.originalPackageId && profileStore.activeProfileId) {
+          const mappedId = profileStore.getMappedPackageId(finalPackageId);
+          if (mappedId !== finalPackageId) {
+            logger.debug(`Applying profile mapping: ${finalPackageId} -> ${mappedId}`);
+            finalPackageId = mappedId;
+          }
+        }
         
         // Get package data from campaign
-        const packageData = campaignStore.getPackage(item.packageId ?? 0);
+        const packageData = campaignStore.getPackage(finalPackageId);
         
         if (!packageData) {
-          throw new Error(`Package ${item.packageId} not found in campaign data`);
+          throw new Error(`Package ${finalPackageId} not found in campaign data`);
         }
         
         set(state => {
           const newItem: CartItem = {
             id: Date.now(),
-            packageId: item.packageId ?? 0,
+            packageId: finalPackageId,
+            originalPackageId: item.originalPackageId || (finalPackageId !== (item.packageId ?? 0) ? item.packageId : undefined),
             quantity: item.quantity ?? 1,
             price: parseFloat(packageData.price_total), // Use total package price, not per-unit
             title: item.title ?? packageData.name,
@@ -283,6 +297,82 @@ const cartStoreInstance = create<CartState & CartActions>()(
         
         // Calculate totals after state update
         get().calculateTotals();
+      },
+
+      swapCart: async (items: Array<{ packageId: number; quantity: number }>) => {
+        const { useCampaignStore } = await import('./campaignStore');
+        const { useProfileStore } = await import('./profileStore');
+        const campaignStore = useCampaignStore.getState();
+        const profileStore = useProfileStore.getState();
+        const eventBus = EventBus.getInstance();
+
+        logger.debug('Swapping cart with new items:', items);
+
+        // Set swapInProgress flag to prevent auto-sync removal
+        set(state => ({
+          ...state,
+          swapInProgress: true,
+        }));
+        
+        // Build new items array
+        const newItems: CartItem[] = [];
+        
+        for (const item of items) {
+          // Apply profile mapping if active
+          let finalPackageId = item.packageId;
+          if (profileStore.activeProfileId) {
+            const mappedId = profileStore.getMappedPackageId(finalPackageId);
+            if (mappedId !== finalPackageId) {
+              logger.debug(`Applying profile mapping: ${finalPackageId} -> ${mappedId}`);
+              finalPackageId = mappedId;
+            }
+          }
+          
+          // Get package data from campaign
+          const packageData = campaignStore.getPackage(finalPackageId);
+
+          if (!packageData) {
+            logger.warn(`Package ${finalPackageId} not found in campaign data, skipping`);
+            logger.debug('Available packages:', campaignStore.data?.packages?.map(p => p.ref_id));
+            continue;
+          }
+
+          logger.debug(`Package ${finalPackageId} found:`, packageData);
+          
+          const newItem: CartItem = {
+            id: Date.now() + Math.random(), // Ensure unique IDs
+            packageId: finalPackageId,
+            originalPackageId: item.packageId !== finalPackageId ? item.packageId : undefined,
+            title: packageData.name || `Package ${finalPackageId}`, // Use 'title' instead of 'name'
+            price: parseFloat(packageData.price),
+            price_retail: packageData.price_retail,
+            quantity: item.quantity,
+            is_upsell: false,
+            image: packageData.image,
+            sku: undefined,
+            qty: packageData.qty,
+            price_total: packageData.price_total,
+            price_retail_total: packageData.price_retail_total,
+            price_per_unit: packageData.price,
+          };
+          
+          newItems.push(newItem);
+        }
+        
+        // Replace entire cart and clear swapInProgress flag
+        set(state => ({
+          ...state,
+          items: newItems,
+          swapInProgress: false,
+        }));
+        
+        // Calculate totals after state update
+        get().calculateTotals();
+
+        // Emit cart updated event
+        eventBus.emit('cart:updated', get());
+        
+        logger.info(`Cart swapped successfully with ${newItems.length} items`);
       },
 
       syncWithAPI: async () => {

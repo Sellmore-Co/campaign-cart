@@ -16,6 +16,7 @@ Welcome to the Next Commerce JS SDK documentation. This SDK enables developers t
 
 - **Attribute-driven architecture** - Build cart functionality with HTML attributes
 - **Cart management** - Add to cart, selectors, quantity controls
+- **Profile-based pricing** - Dynamic package mapping for different pricing tiers
 - **Post-purchase upsells** - Maximize order value with upsell flows
 - **Dynamic content** - Display prices, totals, and product data
 - **Conversion tools** - FOMO notifications and exit intent popups
@@ -73,6 +74,7 @@ Welcome to the Next Commerce JS SDK documentation. This SDK enables developers t
   - [Advanced Customization](examples/advanced-customization.md) - Complex scenarios
 
 - [Guides](guides/best-practices.md) - Best practices and optimization
+  - [Profiles](guides/profiles.md) - Dynamic package mapping system
   - [Migration](guides/migration.md) - Upgrading from older versions
   - [Best Practices](guides/best-practices.md) - Recommended patterns
   - [Performance](guides/performance.md) - Optimization tips

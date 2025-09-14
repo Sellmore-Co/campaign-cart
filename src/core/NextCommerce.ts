@@ -25,6 +25,7 @@ import { useCheckoutStore } from '@/stores/checkoutStore';
 import { useOrderStore } from '@/stores/orderStore';
 import { useConfigStore } from '@/stores/configStore';
 import { useAttributionStore } from '@/stores/attributionStore';
+import { useProfileStore } from '@/stores/profileStore';
 import { EventBus } from '@/utils/events';
 import { Logger } from '@/utils/logger';
 import { ApiClient } from '@/api/client';
@@ -99,6 +100,29 @@ export class NextCommerce {
     await cartStore.clear();
   }
 
+  public async swapCart(items: Array<{ packageId: number; quantity: number }>): Promise<void> {
+    const cartStore = useCartStore.getState();
+    
+    // Use a new method in cartStore if available, or do it manually
+    if (typeof cartStore.swapCart === 'function') {
+      await cartStore.swapCart(items);
+    } else {
+      // Fallback: clear and add all items
+      await cartStore.clear();
+      
+      // Add all new items
+      for (const item of items) {
+        await cartStore.addItem({
+          packageId: item.packageId,
+          quantity: item.quantity,
+          isUpsell: false
+        });
+      }
+    }
+    
+    this.logger.debug(`Cart swapped with ${items.length} items`);
+  }
+
   // Cart data access
   public getCartData(): CallbackData {
     const cartStore = useCartStore.getState();
@@ -132,6 +156,46 @@ export class NextCommerce {
   public getPackage(id: number): any | null {
     const campaignStore = useCampaignStore.getState();
     return campaignStore.getPackage(id);
+  }
+
+  // Product variant methods
+  public getVariantsByProductId(productId: number): any | null {
+    const campaignStore = useCampaignStore.getState();
+    return campaignStore.getVariantsByProductId(productId);
+  }
+
+  public getAvailableVariantAttributes(productId: number, attributeCode: string): string[] {
+    const campaignStore = useCampaignStore.getState();
+    return campaignStore.getAvailableVariantAttributes(productId, attributeCode);
+  }
+
+  public getPackageByVariantSelection(productId: number, selectedAttributes: Record<string, string>): any | null {
+    const campaignStore = useCampaignStore.getState();
+    return campaignStore.getPackageByVariantSelection(productId, selectedAttributes);
+  }
+
+  // Enhanced pricing tier methods
+  public getProductVariantsWithPricing(productId: number): any | null {
+    const campaignStore = useCampaignStore.getState();
+    return campaignStore.getProductVariantsWithPricing(productId);
+  }
+
+  public getVariantPricingTiers(productId: number, variantKey: string): any[] {
+    const campaignStore = useCampaignStore.getState();
+    return campaignStore.getVariantPricingTiers(productId, variantKey);
+  }
+
+  public getLowestPriceForVariant(productId: number, variantKey: string): any | null {
+    const campaignStore = useCampaignStore.getState();
+    return campaignStore.getLowestPriceForVariant(productId, variantKey);
+  }
+
+  public createVariantKey(attributes: Record<string, string>): string {
+    // Helper method to create consistent variant keys
+    return Object.entries(attributes)
+      .map(([code, value]) => `${code}:${value}`)
+      .sort()
+      .join('|');
   }
 
   // Event and callback registration
@@ -649,5 +713,68 @@ export class NextCommerce {
     );
     
     return acceptedInJourney;
+  }
+  
+  // Profile Management Methods
+  public async setProfile(profileId: string, options?: { clearCart?: boolean; preserveQuantities?: boolean }): Promise<void> {
+    try {
+      const { ProfileManager } = await import('@/core/ProfileManager');
+      const profileManager = ProfileManager.getInstance();
+      await profileManager.applyProfile(profileId, options);
+      this.logger.info(`Profile "${profileId}" applied via API`);
+    } catch (error) {
+      this.logger.error(`Failed to set profile "${profileId}":`, error);
+      throw error;
+    }
+  }
+  
+  public async revertProfile(): Promise<void> {
+    try {
+      const { ProfileManager } = await import('@/core/ProfileManager');
+      const profileManager = ProfileManager.getInstance();
+      await profileManager.revertProfile();
+      this.logger.info('Profile reverted via API');
+    } catch (error) {
+      this.logger.error('Failed to revert profile:', error);
+      throw error;
+    }
+  }
+  
+  public getActiveProfile(): string | null {
+    const profileStore = useProfileStore.getState();
+    return profileStore.activeProfileId;
+  }
+  
+  public getProfileInfo(profileId?: string): any | null {
+    const profileStore = useProfileStore.getState();
+    return profileId 
+      ? profileStore.getProfileById(profileId)
+      : profileStore.getActiveProfile();
+  }
+  
+  public getMappedPackageId(originalId: number): number {
+    const profileStore = useProfileStore.getState();
+    return profileStore.getMappedPackageId(originalId);
+  }
+  
+  public getOriginalPackageId(mappedId: number): number | null {
+    const profileStore = useProfileStore.getState();
+    return profileStore.getOriginalPackageId(mappedId);
+  }
+  
+  public listProfiles(): string[] {
+    const profileStore = useProfileStore.getState();
+    return Array.from(profileStore.profiles.keys());
+  }
+  
+  public hasProfile(profileId: string): boolean {
+    const profileStore = useProfileStore.getState();
+    return profileStore.hasProfile(profileId);
+  }
+  
+  public registerProfile(profile: { id: string; name: string; description?: string; packageMappings: Record<number, number> }): void {
+    const profileStore = useProfileStore.getState();
+    profileStore.registerProfile(profile);
+    this.logger.info(`Profile "${profile.id}" registered via API`);
   }
 }

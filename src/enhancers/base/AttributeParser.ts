@@ -100,7 +100,10 @@ export class AttributeParser {
     }
 
     // Check for conditional display enhancer
-    if (element.hasAttribute('data-next-show') || element.hasAttribute('data-next-hide')) {
+    if (element.hasAttribute('data-next-show') || 
+        element.hasAttribute('data-next-hide') ||
+        element.hasAttribute('data-next-show-if-profile') ||
+        element.hasAttribute('data-next-hide-if-profile')) {
       types.push('conditional');
     }
 
@@ -125,6 +128,16 @@ export class AttributeParser {
     // Check for cart items list enhancer
     if (element.hasAttribute('data-next-cart-items')) {
       types.push('cart-items');
+    }
+    
+    // Check for profile switcher enhancer
+    if (element.hasAttribute('data-next-profile')) {
+      types.push('profile-switcher');
+    }
+    
+    // Check for profile selector enhancer (dropdown)
+    if (element.hasAttribute('data-next-profile-selector')) {
+      types.push('profile-selector');
     }
 
     // Check for order items list enhancer

@@ -90,12 +90,39 @@ export interface EventMap {
   
   // FOMO Events
   'fomo:shown': { customer: string; product: string; image: string };
+  
+  // SDK Events
+  'sdk:url-parameters-processed': {};
+  
+  // Profile Events
+  'profile:applied': { 
+    profileId: string; 
+    previousProfileId?: string | null; 
+    itemsSwapped: number;
+    originalItems?: number;
+    cleared?: boolean;
+    profile?: any;
+  };
+  'profile:reverted': { 
+    previousProfileId?: string | null;
+    itemsRestored: number;
+  };
+  'profile:switched': {
+    fromProfileId?: string | null;
+    toProfileId: string;
+    itemsAffected: number;
+  };
+  'profile:registered': {
+    profileId: string;
+    mappingsCount: number;
+  };
 }
 
 // Basic cart types
 export interface CartItem {
   id: number;
   packageId: number;
+  originalPackageId?: number; // Original package ID before profile mapping
   quantity: number;
   price: number; // Total package price (price_total from campaign)
   image: string | undefined;
@@ -316,6 +343,15 @@ export interface ConfigState {
   
   // Error monitoring configuration - removed
   // Error tracking can be added externally via HTML/scripts
+  
+  // Profile configuration
+  profiles?: Record<string, {
+    name: string;
+    description?: string;
+    packageMappings: Record<number, number>;
+  }>;
+  defaultProfile?: string;
+  activeProfile?: string;
 }
 
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';

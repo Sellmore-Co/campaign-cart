@@ -1,12 +1,32 @@
-/node_modules
-# /dist
-.DS_Store
-.claude
+# Dependencies
+node_modules/
 
-# Debug files - not pushed to GitHub
-/public/debug/
-public/debug/*.js
-public/debug/*.html
-public/debug/*.css
-*.debug.js
-*.debug.html
+# Build output
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Test coverage
+coverage/
+
+# Temporary files
+*.tmp
+.cache/
+
+# Public folder - ignore everything except loader.js
+public/*
+!public/loader.js
