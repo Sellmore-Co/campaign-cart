@@ -13,6 +13,7 @@ export declare class SDKInitializer {
     private static loadConfiguration;
     private static loadCampaignData;
     private static processForcePackageId;
+    private static processProfileParameter;
     private static processForceShippingId;
     private static initializeAttribution;
     private static setupAttributionListeners;
@@ -34,5 +35,6 @@ export declare class SDKInitializer {
         retryAttempts: number;
         scannerStats?: ReturnType<AttributeScanner['getStats']>;
     };
+    private static clearAllStorage;
 }
 //# sourceMappingURL=SDKInitializer.d.ts.map

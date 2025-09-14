@@ -1,0 +1,275 @@
+Navigated to https://grounded-bareearth.webflow.io/bareearth/checkout---staging?debug=true&debugger=true&test=true&forceProfile=default
+loader.js:68 Using page-provided nextConfig in debug mode
+grounded-footwear.js:1351 [Debug] SDK not ready, window.next is undefined
+grounded-footwear.js:1351 [Debug] SDK not ready, window.next is undefined
+main.js:1 Unable to track. Missing "offer_id" or "transaction_id" parameter.
+value @ main.js:1
+(anonymous) @ VM23181:1
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:607
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:608
+script
+Kc @ gtm.js?id=GTM-MCGB3JBM:113
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:607
+LO @ gtm.js?id=GTM-MCGB3JBM:609
+KO @ gtm.js?id=GTM-MCGB3JBM:606
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:222
+k.apply @ gtm.js?id=GTM-MCGB3JBM:130
+Za @ gtm.js?id=GTM-MCGB3JBM:94
+Ya @ gtm.js?id=GTM-MCGB3JBM:93
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:154
+k.apply @ gtm.js?id=GTM-MCGB3JBM:130
+Za @ gtm.js?id=GTM-MCGB3JBM:94
+k.Vo @ gtm.js?id=GTM-MCGB3JBM:96
+cf @ gtm.js?id=GTM-MCGB3JBM:165
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:559
+ag @ gtm.js?id=GTM-MCGB3JBM:186
+e @ gtm.js?id=GTM-MCGB3JBM:509
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:100
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:510
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:510
+KA @ gtm.js?id=GTM-MCGB3JBM:510
+OA @ gtm.js?id=GTM-MCGB3JBM:515
+IB @ gtm.js?id=GTM-MCGB3JBM:534
+KB @ gtm.js?id=GTM-MCGB3JBM:536
+setTimeout
+Rc @ gtm.js?id=GTM-MCGB3JBM:115
+LB @ gtm.js?id=GTM-MCGB3JBM:539
+qm @ gtm.js?id=GTM-MCGB3JBM:669
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:674
+c @ gtm.js?id=GTM-MCGB3JBM:672
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:674
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:674
+(anonymous) @ gtm.js?id=GTM-MCGB3JBM:676
+logger.ts:69 [SDKInitializer] Initializing 29Next Campaign Cart SDK v2...
+logger.ts:69 [ProfileStore] Profile "exit_10" registered with 72 mappings
+logger.ts:69 [SDKInitializer] Initializing attribution...
+VM23131:29 Next Commerce Campaign-Cart SDK v0.2.20 — DEV build loaded
+VM23131:30 Load time: 227.50ms
+VM23131:31 Try nextDebug.cartStore() or nextDebug.orderStore()
+grounded-footwear.js:1351 [Debug] SDK not ready, window.next is undefined
+logger.ts:69 [CampaignStore] 🎯 Using cached campaign data (expires in 14 seconds)
+logger.ts:69 [SDKInitializer] Profile parameter detected: default
+logger.ts:69 [ProfileManager] Applying profile: default {clearCart: true}
+logger.ts:69 [ProfileManager] Already on default profile
+logger.ts:69 [SDKInitializer] Profile "default" applied successfully
+logger.ts:69 [SDKInitializer] Initializing analytics v2 (lazy)...
+AttributeScanner.ts:40 🐛 AttributeScanner: Debug mode enabled for performance tracking
+grounded-footwear.js:1351 [Debug] SDK not ready, window.next is undefined
+grounded-footwear.js:1351 [Debug] SDK not ready, window.next is undefined
+logger.ts:59 [ProductDisplayEnhancer] No package context found - package ID required
+warn @ logger.ts:59
+warn @ logger.ts:92
+detectPackageContext @ ProductDisplayEnhancer.ts:193
+initialize @ ProductDisplayEnhancer.ts:36
+enhanceElement @ AttributeScanner.ts:192
+await in enhanceElement
+scanAndEnhance @ AttributeScanner.ts:104
+scanAndEnhanceDOM @ SDKInitializer.ts:469
+initialize @ SDKInitializer.ts:63
+await in initialize
+(anonymous) @ index.ts:61
+logger.ts:59 [ProductDisplayEnhancer] No package context found - package ID required
+warn @ logger.ts:59
+warn @ logger.ts:92
+detectPackageContext @ ProductDisplayEnhancer.ts:193
+initialize @ ProductDisplayEnhancer.ts:36
+enhanceElement @ AttributeScanner.ts:192
+await in enhanceElement
+scanAndEnhance @ AttributeScanner.ts:104
+scanAndEnhanceDOM @ SDKInitializer.ts:469
+initialize @ SDKInitializer.ts:63
+await in initialize
+(anonymous) @ index.ts:61
+logger.ts:59 [ProductDisplayEnhancer] No package context found - package ID required
+warn @ logger.ts:59
+warn @ logger.ts:92
+detectPackageContext @ ProductDisplayEnhancer.ts:193
+initialize @ ProductDisplayEnhancer.ts:36
+enhanceElement @ AttributeScanner.ts:192
+await in enhanceElement
+scanAndEnhance @ AttributeScanner.ts:104
+scanAndEnhanceDOM @ SDKInitializer.ts:469
+initialize @ SDKInitializer.ts:63
+await in initialize
+(anonymous) @ index.ts:61
+logger.ts:69 [NextCampaignAdapter] NextCampaign adapter initializing...
+logger.ts:69 [NextCampaignAdapter] API key from config store: found
+logger.ts:69 [NextCampaignAdapter] NextCampaign API key found: UEJRnPJx...Dtkl
+logger.ts:69 [ExpressCheckoutContainerEnhancer] Payment capabilities detected: {applePay: true, googlePay: true, paypal: true, userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb…KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36', platform: 'Win32'}
+CheckoutFormEnhancer.ts:555 [PROD] Setting initial billing state {toggleFound: true, sectionFound: true, toggleChecked: true, currentHeight: '', currentOverflow: '', …}
+logger.ts:69 [CheckoutFormEnhancer] [Billing] Setting initial state {toggleFound: true, sectionFound: true, toggleChecked: true, currentHeight: '', currentOverflow: '', …}
+logger.ts:69 [CheckoutFormEnhancer] [Billing] Initial state: COLLAPSED (checkbox checked)
+logger.ts:69 [ProspectCartEnhancer] Initializing ProspectCartEnhancer {element: 'FORM', config: {…}}
+grounded-footwear.js:1351 [Debug] SDK not ready, window.next is undefined
+AttributeScanner.ts:509 🚀 Enhancement Performance Report
+AttributeScanner.ts:522 (index)EnhancerTotal Time (ms)Average Time (ms)CountImpact(index)EnhancerTotal Time (ms)Average Time (ms)CountImpact0'checkout''27.50''27.50'1'🟡 Medium'1'conditional''9.00''3.00'3'🟢 Low'2'display''4.10''0.34'12'🟢 Low'3'cart-items''2.10''2.10'1'🟢 Low'4'express-checkout-container''1.70''1.70'1'🟢 Low'5'tooltip''0.10''0.05'2'🟢 Low'Array(6)
+AttributeScanner.ts:527 🐌 Slowest enhancers:
+AttributeScanner.ts:529 1. checkout: 27.50ms (1 instances)
+AttributeScanner.ts:529 2. conditional: 9.00ms (3 instances)
+AttributeScanner.ts:529 3. display: 4.10ms (12 instances)
+AttributeScanner.ts:538 📊 Total enhancement time: 44.50ms across 20 enhancers
+logger.ts:69 [SDKInitializer] DOM scanning and enhancement complete {enhancedElements: 20, queuedElements: 0, isObserving: true, isScanning: false, performanceStats: {…}}
+logger.ts:69 [SDKInitializer] Debug mode enabled - initializing debug utilities
+logger.ts:69 [SDKInitializer] Logger level set to DEBUG
+logger.ts:79 [NextCampaignAdapter] NextCampaign script loaded
+grounded-footwear.js:1343 [Debug] SDK fully ready with all methods
+grounded-footwear.js:1368 [Debug] SDK ready, processing preselected values
+grounded-footwear.js:1372 [Debug] Executing pending cart clear
+logger.ts:79 [StorageManager] Stored value for key: next-cart-state
+grounded-footwear.js:2446 [Debug] Checking for preselected values (SDK is ready)...
+grounded-footwear.js:2460 [Debug] Slot 1 - Color dropdown: <os-dropdown value=​"obsidian-grey" next-variant-option=​"color" class=​"os-variant-dropdown">​…​</os-dropdown>​
+grounded-footwear.js:2464 [Debug] Slot 1 - Size dropdown: <os-dropdown value=​"single" next-variant-option=​"size" class=​"os-variant-dropdown">​…​</os-dropdown>​
+grounded-footwear.js:2479 [Debug] Slot 1 color value: obsidian-grey
+grounded-footwear.js:2491 [Debug] Set color for slot 1: obsidian-grey
+grounded-footwear.js:2505 [Debug] Slot 1 size value: single
+grounded-footwear.js:2513 [Debug] Set size for slot 1: single
+grounded-footwear.js:2518 [Debug] Slot 1 has preselection, checking completion
+grounded-footwear.js:2557 [Debug] updateCampaignCart called: {slotNumber: 1, variant: 25}
+grounded-footwear.js:2574 [Debug] Previous variant for slot: undefined
+grounded-footwear.js:2594 [Debug] Adding item to cart: {packageId: 25, quantity: 1}
+grounded-footwear.js:2596 [Debug] Add item result: Promise {<pending>}
+grounded-footwear.js:2460 [Debug] Slot 2 - Color dropdown: <os-dropdown value=​"obsidian-grey" next-variant-option=​"color" class=​"os-variant-dropdown">​…​</os-dropdown>​
+grounded-footwear.js:2464 [Debug] Slot 2 - Size dropdown: <os-dropdown value=​"single" next-variant-option=​"size" class=​"os-variant-dropdown">​…​</os-dropdown>​
+grounded-footwear.js:2479 [Debug] Slot 2 color value: obsidian-grey
+grounded-footwear.js:2491 [Debug] Set color for slot 2: obsidian-grey
+grounded-footwear.js:2505 [Debug] Slot 2 size value: single
+grounded-footwear.js:2513 [Debug] Set size for slot 2: single
+grounded-footwear.js:2518 [Debug] Slot 2 has preselection, checking completion
+grounded-footwear.js:2557 [Debug] updateCampaignCart called: {slotNumber: 2, variant: 25}
+grounded-footwear.js:2574 [Debug] Previous variant for slot: undefined
+grounded-footwear.js:2594 [Debug] Adding item to cart: {packageId: 25, quantity: 1}
+grounded-footwear.js:2596 [Debug] Add item result: Promise {<pending>}
+logger.ts:59 [CheckoutFormEnhancer] Cart is empty
+warn @ logger.ts:59
+warn @ logger.ts:92
+handleCartUpdate @ CheckoutFormEnhancer.ts:3726
+(anonymous) @ zustand.js?v=f6c95799:1125
+setState @ zustand.js?v=f6c95799:1125
+(anonymous) @ zustand_middleware.js?v=f6c95799:478
+calculateTotals @ cartStore.ts:387
+await in calculateTotals
+clear @ cartStore.ts:298
+clearCart @ NextCommerce.ts:100
+(anonymous) @ grounded-footwear.js:1373
+Promise.then
+initializeWithSDK @ grounded-footwear.js:1367
+init @ grounded-footwear.js:1260
+TierController @ grounded-footwear.js:1246
+checkForCampaignPrices @ grounded-footwear.js:2731
+(anonymous) @ grounded-footwear.js:2769
+logger.ts:79 [StorageManager] Stored value for key: next-cart-state
+logger.ts:69 [DebugOverlay] Debug overlay initialized
+logger.ts:69 [SDKInitializer] Debug utilities initialized ✅
+logger.ts:69 [SDKInitializer] SDK initialization complete ✅
+grounded-footwear.js:2911 SDK initialized, setting up exit intent...
+logger.ts:59 [CheckoutFormEnhancer] Cart is empty
+warn @ logger.ts:59
+warn @ logger.ts:92
+handleCartUpdate @ CheckoutFormEnhancer.ts:3726
+(anonymous) @ zustand.js?v=f6c95799:1125
+setState @ zustand.js?v=f6c95799:1125
+(anonymous) @ zustand_middleware.js?v=f6c95799:478
+calculateEnrichedItems @ cartStore.ts:623
+await in calculateEnrichedItems
+calculateTotals @ cartStore.ts:398
+await in calculateTotals
+clear @ cartStore.ts:298
+clearCart @ NextCommerce.ts:100
+(anonymous) @ grounded-footwear.js:1373
+Promise.then
+initializeWithSDK @ grounded-footwear.js:1367
+init @ grounded-footwear.js:1260
+TierController @ grounded-footwear.js:1246
+checkForCampaignPrices @ grounded-footwear.js:2731
+(anonymous) @ grounded-footwear.js:2769
+logger.ts:79 [StorageManager] Stored value for key: next-cart-state
+logger.ts:59 [CheckoutFormEnhancer] Cart is empty
+warn @ logger.ts:59
+warn @ logger.ts:92
+handleCartUpdate @ CheckoutFormEnhancer.ts:3726
+(anonymous) @ zustand.js?v=f6c95799:1125
+setState @ zustand.js?v=f6c95799:1125
+(anonymous) @ zustand_middleware.js?v=f6c95799:478
+addItem @ cartStore.ts:98
+await in addItem
+addItem @ NextCommerce.ts:71
+updateCampaignCart @ grounded-footwear.js:2595
+checkCompleteSelection @ grounded-footwear.js:2369
+(anonymous) @ grounded-footwear.js:2522
+initializePreselectedValues @ grounded-footwear.js:2449
+(anonymous) @ grounded-footwear.js:1383
+Promise.then
+initializeWithSDK @ grounded-footwear.js:1367
+init @ grounded-footwear.js:1260
+TierController @ grounded-footwear.js:1246
+checkForCampaignPrices @ grounded-footwear.js:2731
+(anonymous) @ grounded-footwear.js:2769
+logger.ts:79 [StorageManager] Stored value for key: next-cart-state
+logger.ts:79 [SDKInitializer] Updated attribution with conversion timestamp
+logger.ts:59 [CheckoutFormEnhancer] Cart is empty
+warn @ logger.ts:59
+warn @ logger.ts:92
+handleCartUpdate @ CheckoutFormEnhancer.ts:3726
+(anonymous) @ zustand.js?v=f6c95799:1125
+setState @ zustand.js?v=f6c95799:1125
+(anonymous) @ zustand_middleware.js?v=f6c95799:478
+addItem @ cartStore.ts:98
+await in addItem
+addItem @ NextCommerce.ts:71
+updateCampaignCart @ grounded-footwear.js:2595
+checkCompleteSelection @ grounded-footwear.js:2369
+(anonymous) @ grounded-footwear.js:2522
+initializePreselectedValues @ grounded-footwear.js:2449
+(anonymous) @ grounded-footwear.js:1383
+Promise.then
+initializeWithSDK @ grounded-footwear.js:1367
+init @ grounded-footwear.js:1260
+TierController @ grounded-footwear.js:1246
+checkForCampaignPrices @ grounded-footwear.js:2731
+(anonymous) @ grounded-footwear.js:2769
+logger.ts:79 [StorageManager] Stored value for key: next-cart-state
+logger.ts:79 [SDKInitializer] Updated attribution with conversion timestamp
+logger.ts:79 [ExitIntentEnhancer] Simple exit intent setup complete
+logger.ts:79 [NextCommerce] Exit intent configured with image: https://cdn.prod.website-files.com/6894e401ee6c8582aece90a0/68bed75cd9973567c4ab6a25_modal-bare-earth.png
+logger.ts:79 [StorageManager] Stored value for key: next-cart-state
+logger.ts:79 [CartItemListEnhancer] Enhanced 0 quantity buttons and 0 remove buttons
+logger.ts:79 [StorageManager] Stored value for key: next-cart-state
+logger.ts:79 [CartItemListEnhancer] Enhanced 0 quantity buttons and 0 remove buttons
+logger.ts:79 [StorageManager] Stored value for key: next-cart-state
+logger.ts:79 [CartItemListEnhancer] Enhanced 0 quantity buttons and 0 remove buttons
+logger.ts:79 [StorageManager] Stored value for key: next-cart-state
+logger.ts:79 [CartItemListEnhancer] Enhanced 0 quantity buttons and 0 remove buttons
+logger.ts:79 [NextCampaignAdapter] NextCampaign configured with API key
+logger.ts:69 [NextCampaignAdapter] Initial page_view event sent to NextCampaign
+logger.ts:69 [NextCampaignAdapter] NextCampaign SDK loaded and initialized successfully ✅
+logger.ts:69 [NextAnalytics] NextCampaign adapter initialized
+logger.ts:69 [NextAnalytics] Facebook Pixel adapter initialized {blockedEvents: Array(2), storeName: undefined}
+logger.ts:79 [PendingEventsHandler] No pending analytics events to process
+logger.ts:79 [ListAttributionTracker] ListAttributionTracker initialized
+logger.ts:79 [ViewItemListTracker] Mutation observer set up
+logger.ts:69 [ViewItemListTracker] ViewItemListTracker initialized
+logger.ts:79 [UserDataTracker] Tracked user data: {hasUserId: false, hasEmail: false, cartValue: 197.98, cartItems: 2}
+logger.ts:79 [UserDataTracker] User data tracking listeners set up
+logger.ts:69 [UserDataTracker] UserDataTracker initialized
+logger.ts:69 [AutoEventListener] AutoEventListener initialized
+logger.ts:69 [NextAnalytics] Auto-tracking initialized
+logger.ts:69 [NextAnalytics] NextAnalytics initialized successfully {providers: Array(2), mode: 'auto'}
+logger.ts:79 [SDKInitializer] Analytics v2 initialized successfully (lazy)
+DebugOverlay.ts:99 [Debug] Event added: event-timeline Active panel: cart Expanded: false
+logger.ts:79 [ViewItemListTracker] No products found on page
+grounded-footwear.js:1397 [Debug] Rechecking all slots for cart additions
+grounded-footwear.js:1417 [Debug] Slot 1 has complete selection, adding to cart
+grounded-footwear.js:2557 [Debug] updateCampaignCart called: {slotNumber: 1, variant: 25}
+grounded-footwear.js:2574 [Debug] Previous variant for slot: 25
+grounded-footwear.js:2583 [Debug] Same variant, no change needed
+grounded-footwear.js:1417 [Debug] Slot 2 has complete selection, adding to cart
+grounded-footwear.js:2557 [Debug] updateCampaignCart called: {slotNumber: 2, variant: 25}
+grounded-footwear.js:2574 [Debug] Previous variant for slot: 25
+grounded-footwear.js:2583 [Debug] Same variant, no change needed
+DebugOverlay.ts:99 [Debug] Event added: event-timeline Active panel: cart Expanded: false
+logger.ts:69 [CreditCardService] [Spreedly Event: ready] iFrame initialized and ready for configuration
+logger.ts:79 [CreditCardService] Spreedly configuration applied
+logger.ts:79 [CheckoutFormEnhancer] [Spreedly] Credit card service ready
+DebugOverlay.ts:99 [Debug] Event added: event-timeline Active panel: cart Expanded: false
+checkout---staging?debug=true&debugger=true&test=true&forceProfile=default:1 Unchecked runtime.lastError: The message port closed before a response was received.
+checkout---staging?debug=true&debugger=true&test=true&forceProfile=default:1 Unchecked runtime.lastError: The message port closed before a response was received.

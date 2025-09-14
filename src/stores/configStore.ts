@@ -3,6 +3,7 @@
  */
 
 import { create } from 'zustand';
+import { useProfileStore } from '@/stores/profileStore';
 import type { 
   ConfigState, 
   PageType, 
@@ -12,12 +13,19 @@ import type {
   DiscountDefinition
 } from '../types/global.js';
 
+interface ProfileConfig {
+  name: string;
+  description?: string;
+  packageMappings: Record<number, number>;
+}
+
 interface ConfigActions {
   loadFromMeta: () => void;
   loadFromWindow: () => void;
   updateConfig: (config: Partial<ConfigState>) => void;
   setSpreedlyEnvironmentKey: (key: string) => void;
   reset: () => void;
+  loadProfiles: () => void;
 }
 
 const initialState: ConfigState = {
@@ -57,6 +65,11 @@ const initialState: ConfigState = {
   
   // Tracking configuration
   tracking: 'auto', // 'auto', 'manual', 'disabled'
+  
+  // Profile configuration
+  profiles: {},
+  defaultProfile: undefined,
+  activeProfile: undefined,
   
   // Error monitoring removed - add externally via HTML/scripts
 };
@@ -182,9 +195,54 @@ export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
       updates.utmTransfer = windowConfig.utmTransfer;
     }
     
+    // Load profile configuration
+    if (windowConfig.profiles && typeof windowConfig.profiles === 'object') {
+      updates.profiles = windowConfig.profiles as Record<string, ProfileConfig>;
+    }
+    
+    if (typeof windowConfig.defaultProfile === 'string') {
+      updates.defaultProfile = windowConfig.defaultProfile;
+    }
+    
+    if (typeof windowConfig.activeProfile === 'string') {
+      updates.activeProfile = windowConfig.activeProfile;
+    }
+    
     if (Object.keys(updates).length > 0) {
       set(updates);
+      
+      // Register profiles with ProfileStore if they exist
+      if (updates.profiles) {
+        const profileStore = useProfileStore.getState();
+        
+        Object.entries(updates.profiles).forEach(([id, config]) => {
+          profileStore.registerProfile({
+            id,
+            name: config.name,
+            description: config.description || '',
+            packageMappings: config.packageMappings,
+          });
+        });
+      }
     }
+  },
+  
+  loadProfiles: () => {
+    const state = _get();
+    if (!state.profiles || Object.keys(state.profiles).length === 0) {
+      return;
+    }
+    
+    const profileStore = useProfileStore.getState();
+    
+    Object.entries(state.profiles).forEach(([id, config]) => {
+      profileStore.registerProfile({
+        id,
+        name: config.name,
+        description: config.description || '',
+        packageMappings: config.packageMappings,
+      });
+    });
   },
 
   updateConfig: (config: Partial<ConfigState>) => {

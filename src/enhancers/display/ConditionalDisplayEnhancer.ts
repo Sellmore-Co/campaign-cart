@@ -15,6 +15,7 @@ import { PriceCalculator } from '@/utils/calculations/PriceCalculator';
 import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useOrderStore } from '@/stores/orderStore';
+import { useProfileStore } from '@/stores/profileStore';
 import type { CartState } from '@/types/global';
 import type { Package } from '@/types/campaign';
 
@@ -28,6 +29,8 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
   private dependsOnSelection: boolean = false;
   private dependsOnOrder: boolean = false;
   private dependsOnShipping: boolean = false;
+  private dependsOnProfile: boolean = false;
+  private profileId: string | null = null;
   private selectionChangeHandler: ((event: any) => void) | null = null;
 
   public async initialize(): Promise<void> {
@@ -40,22 +43,38 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     // Detect selector context
     this.selectorId = this.detectSelectorContext();
     
-    // Determine if this is a show or hide condition
-    const showAttr = this.getAttribute('data-next-show');
-    const hideAttr = this.getAttribute('data-next-hide');
+    // Check for profile-specific attributes first
+    const showIfProfileAttr = this.getAttribute('data-next-show-if-profile');
+    const hideIfProfileAttr = this.getAttribute('data-next-hide-if-profile');
     
-    if (showAttr) {
-      this.condition = AttributeParser.parseCondition(showAttr);
+    if (showIfProfileAttr) {
+      this.profileId = showIfProfileAttr;
       this.showCondition = true;
-    } else if (hideAttr) {
-      this.condition = AttributeParser.parseCondition(hideAttr);
+      this.dependsOnProfile = true;
+    } else if (hideIfProfileAttr) {
+      this.profileId = hideIfProfileAttr;
       this.showCondition = false;
+      this.dependsOnProfile = true;
     } else {
-      throw new Error('Either data-next-show or data-next-hide is required');
+      // Determine if this is a show or hide condition
+      const showAttr = this.getAttribute('data-next-show');
+      const hideAttr = this.getAttribute('data-next-hide');
+    
+      if (showAttr) {
+        this.condition = AttributeParser.parseCondition(showAttr);
+        this.showCondition = true;
+      } else if (hideAttr) {
+        this.condition = AttributeParser.parseCondition(hideAttr);
+        this.showCondition = false;
+      } else {
+        throw new Error('Either data-next-show, data-next-hide, data-next-show-if-profile, or data-next-hide-if-profile is required');
+      }
     }
     
-    // Determine what this condition depends on
-    this.analyzeDependencies();
+    // Determine what this condition depends on (if not profile-based from attributes)
+    if (!this.dependsOnProfile && this.condition) {
+      this.analyzeDependencies();
+    }
     
     // Subscribe only to relevant state changes
     if (this.dependsOnCart) {
@@ -80,11 +99,35 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
       this.subscribe(useCampaignStore, this.handleShippingUpdate.bind(this));
     }
     
+    if (this.dependsOnProfile) {
+      this.subscribe(useProfileStore, this.handleProfileUpdate.bind(this));
+      
+      // Also listen for profile events to handle URL parameter application
+      this.eventBus.on('profile:applied', () => {
+        this.handleProfileUpdate(useProfileStore.getState());
+      });
+      this.eventBus.on('profile:reverted', () => {
+        this.handleProfileUpdate(useProfileStore.getState());
+      });
+      this.eventBus.on('profile:switched', () => {
+        this.handleProfileUpdate(useProfileStore.getState());
+      });
+      
+      // Listen for SDK URL parameters processed event
+      // This ensures we re-evaluate after profiles are applied from URL
+      this.eventBus.on('sdk:url-parameters-processed', () => {
+          this.handleProfileUpdate(useProfileStore.getState());
+      });
+    }
+    
     // Initial update - force immediate evaluation with current state
     // This ensures we get the correct state even after rehydration
     await new Promise(resolve => setTimeout(resolve, 0)); // Allow stores to fully initialize
     
-    if (this.dependsOnCart) {
+    // Initial evaluation based on current dependency
+    if (this.dependsOnProfile) {
+      this.handleProfileUpdate(useProfileStore.getState());
+    } else if (this.dependsOnCart) {
       this.handleStateUpdate(useCartStore.getState());
     } else if (this.dependsOnPackage) {
       this.handlePackageUpdate();
@@ -96,16 +139,6 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
       this.handleShippingUpdate();
     }
     
-    this.logger.debug(`Initialized conditional display:`, {
-      condition: this.condition,
-      packageContext: this.packageContext,
-      selectorId: this.selectorId,
-      dependsOnCart: this.dependsOnCart,
-      dependsOnPackage: this.dependsOnPackage,
-      dependsOnSelection: this.dependsOnSelection,
-      dependsOnOrder: this.dependsOnOrder,
-      dependsOnShipping: this.dependsOnShipping
-    });
   }
 
   public update(): void {
@@ -117,6 +150,8 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
       this.handleSelectionUpdate();
     } else if (this.dependsOnOrder) {
       this.handleOrderUpdate(useOrderStore.getState());
+    } else if (this.dependsOnProfile) {
+      this.handleProfileUpdate(useProfileStore.getState());
     }
   }
 
@@ -126,9 +161,10 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     this.dependsOnSelection = this.conditionDependsOnSelection(this.condition);
     this.dependsOnOrder = this.conditionDependsOnOrder(this.condition);
     this.dependsOnShipping = this.conditionDependsOnShipping(this.condition);
+    this.dependsOnProfile = this.conditionDependsOnProfile(this.condition);
     
     // If no dependency is detected, default to cart for backward compatibility
-    if (!this.dependsOnCart && !this.dependsOnPackage && !this.dependsOnSelection && !this.dependsOnOrder && !this.dependsOnShipping) {
+    if (!this.dependsOnCart && !this.dependsOnPackage && !this.dependsOnSelection && !this.dependsOnOrder && !this.dependsOnShipping && !this.dependsOnProfile) {
       this.dependsOnCart = true;
     }
   }
@@ -224,6 +260,25 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     }
   }
 
+  private conditionDependsOnProfile(condition: any): boolean {
+    if (!condition) return false;
+    
+    switch (condition.type) {
+      case 'property':
+        return condition.object === 'profile';
+      
+      case 'function':
+        return condition.object === 'profile';
+      
+      case 'comparison':
+        return (condition.left && condition.left.object === 'profile') || 
+               (condition.right && typeof condition.right === 'object' && condition.right.object === 'profile');
+      
+      default:
+        return false;
+    }
+  }
+
   private handleCampaignUpdate(): void {
     // Campaign data changed, re-evaluate package conditions
     if (this.dependsOnPackage) {
@@ -285,6 +340,37 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
       
     } catch (error) {
       this.handleError(error, 'handleShippingUpdate');
+    }
+  }
+
+  private handleProfileUpdate(profileState: any): void {
+    try {
+      
+      // For profile-specific attributes, check if the active profile matches
+      let conditionMet = false;
+      
+      if (this.profileId) {
+        // Simple profile ID check for data-next-show-if-profile / data-next-hide-if-profile
+        conditionMet = profileState.activeProfileId === this.profileId;
+      } else if (this.condition) {
+        // Complex profile condition (e.g., profile.active === 'vip')
+        conditionMet = this.evaluateProfileCondition(profileState);
+      }
+      
+      const shouldShow = this.showCondition ? conditionMet : !conditionMet;
+      
+      // Update element visibility
+      this.element.style.display = shouldShow ? '' : 'none';
+      
+      // Add conditional classes
+      this.toggleClass('next-condition-met', conditionMet);
+      this.toggleClass('next-condition-not-met', !conditionMet);
+      this.toggleClass('next-visible', shouldShow);
+      this.toggleClass('next-hidden', !shouldShow);
+      this.toggleClass('next-profile-active', conditionMet && this.profileId !== null);
+      
+    } catch (error) {
+      this.handleError(error, 'handleProfileUpdate');
     }
   }
 
@@ -531,6 +617,64 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
       }
     } catch (error) {
       this.logger.error('Error evaluating shipping condition:', error);
+      return false;
+    }
+  }
+
+  private evaluateProfileCondition(profileState: any): boolean {
+    try {
+      
+      switch (this.condition.type) {
+        case 'property':
+          // Handle profile.active or profile.isActive
+          if (this.condition.property === 'active' || this.condition.property === 'isActive') {
+            return Boolean(profileState.activeProfileId);
+          }
+          // Handle profile.id
+          if (this.condition.property === 'id') {
+            return profileState.activeProfileId || '';
+          }
+          return false;
+        
+        case 'comparison':
+          // Handle profile.active === 'profile_id'
+          if (this.condition.left.object === 'profile' && 
+              (this.condition.left.property === 'active' || this.condition.left.property === 'id')) {
+            const activeProfile = profileState.activeProfileId || '';
+            const compareValue = this.condition.right;
+            
+            switch (this.condition.operator) {
+              case '===':
+              case '==':
+                return activeProfile === compareValue;
+              case '!==':
+              case '!=':
+                return activeProfile !== compareValue;
+              default:
+                return false;
+            }
+          }
+          return false;
+        
+        case 'function':
+          // Handle profile.is('profile_id')
+          if (this.condition.method === 'is') {
+            const profileId = this.condition.args[0];
+            return profileState.activeProfileId === profileId;
+          }
+          // Handle profile.has('profile_id')
+          if (this.condition.method === 'has') {
+            const profileId = this.condition.args[0];
+            return profileState.profiles.has(profileId);
+          }
+          return false;
+        
+        default:
+          this.logger.warn(`Unsupported condition type for profile: ${this.condition.type}`);
+          return false;
+      }
+    } catch (error) {
+      this.logger.error('Error evaluating profile condition:', error);
       return false;
     }
   }
