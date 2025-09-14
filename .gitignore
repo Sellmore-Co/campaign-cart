@@ -26,3 +26,7 @@ coverage/
 # Temporary files
 *.tmp
 .cache/
+
+# Public folder - ignore everything except loader.js
+public/*
+!public/loader.js

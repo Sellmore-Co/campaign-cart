@@ -9,6 +9,10 @@ interface CartActions {
         isUpsell: boolean | undefined;
     }) => Promise<void>;
     clear: () => Promise<void>;
+    swapCart: (items: Array<{
+        packageId: number;
+        quantity: number;
+    }>) => Promise<void>;
     syncWithAPI: () => Promise<void>;
     calculateTotals: () => void;
     calculateShipping: () => number;

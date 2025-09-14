@@ -3,7 +3,8 @@
  */
 
 import { create } from 'zustand';
-import type { Campaign, Package, Product, VariantAttribute } from '@/types/global';
+import type { Campaign } from '@/types/global';
+import type { Package, Product, VariantAttribute } from '@/types/campaign';
 import { sessionStorageManager, CAMPAIGN_STORAGE_KEY } from '@/utils/storage';
 import { createLogger } from '@/utils/logger';
 
@@ -268,7 +269,7 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
     // Get unique attribute types
     const attributeTypes = new Set<string>();
     productPackages.forEach(pkg => {
-      pkg.product_variant_attribute_values?.forEach(attr => {
+      pkg.product_variant_attribute_values?.forEach((attr: VariantAttribute) => {
         attributeTypes.add(attr.code);
       });
     });
@@ -324,7 +325,7 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       // Check if all selected attributes match
       for (const [code, value] of Object.entries(selectedAttributes)) {
         const hasMatch = pkg.product_variant_attribute_values?.some(
-          attr => attr.code === code && attr.value === value
+          (attr: VariantAttribute) => attr.code === code && attr.value === value
         );
         
         if (!hasMatch) {
@@ -353,12 +354,12 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
     productPackages.forEach(pkg => {
       // Create a key from variant attributes
       const variantKey = pkg.product_variant_attribute_values
-        ?.map(attr => `${attr.code}:${attr.value}`)
+        ?.map((attr: VariantAttribute) => `${attr.code}:${attr.value}`)
         .sort()
         .join('|') || '';
       
       // Track attribute types
-      pkg.product_variant_attribute_values?.forEach(attr => {
+      pkg.product_variant_attribute_values?.forEach((attr: VariantAttribute) => {
         attributeTypes.add(attr.code);
       });
       
@@ -393,7 +394,7 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
     
     // Sort pricing tiers by price
     variantsMap.forEach(variant => {
-      variant.pricingTiers.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+      variant.pricingTiers.sort((a: PricingTier, b: PricingTier) => parseFloat(a.price) - parseFloat(b.price));
     });
     
     const firstPackage = productPackages[0];

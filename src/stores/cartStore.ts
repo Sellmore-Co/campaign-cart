@@ -345,10 +345,15 @@ const cartStoreInstance = create<CartState & CartActions>()(
             originalPackageId: item.packageId !== finalPackageId ? item.packageId : undefined,
             title: packageData.name || `Package ${finalPackageId}`, // Use 'title' instead of 'name'
             price: parseFloat(packageData.price),
-            comparePrice: parseFloat(packageData.price_retail || packageData.price),
+            price_retail: packageData.price_retail,
             quantity: item.quantity,
-            isUpsell: false,
-            createdAt: Date.now(),
+            is_upsell: false,
+            image: packageData.image,
+            sku: undefined,
+            qty: packageData.qty,
+            price_total: packageData.price_total,
+            price_retail_total: packageData.price_retail_total,
+            price_per_unit: packageData.price,
           };
           
           newItems.push(newItem);
