@@ -383,8 +383,11 @@ class TierController {
       const tier = parseInt(selected.getAttribute('data-next-tier'));
       if (tier) {
         this.currentTier = tier;
-        this._updateSlotVisibility(tier);
+        this._updateSlots(tier);
       }
+    } else {
+      // Default to tier 1 if none selected
+      this._updateSlots(1);
     }
   }
 
@@ -402,7 +405,8 @@ class TierController {
       if (radio) radio.setAttribute('data-selected', String(t === tier));
     });
 
-    this._updateSlotVisibility(tier);
+    // Create/update slots dynamically
+    this._updateSlots(tier);
 
     // Apply profile - the event listener will handle the UI updates
     await this._applyProfile(tier);
@@ -414,6 +418,8 @@ class TierController {
         for (let i = prev + 1; i <= tier; i++) {
           this.selectedVariants.set(i, { ...slot1 });
           this._updateSlot(i, slot1);
+          this._updateSlotPrice(i);
+          this._updateStock(document.querySelector(`[next-tier-slot="${i}"]`), i);
         }
       }
     }
@@ -422,13 +428,56 @@ class TierController {
     this._updateCTA();
   }
 
-  _updateSlotVisibility(tier) {
-    document.querySelectorAll('[next-tier-slot]').forEach(slot => {
+  _updateSlots(tier) {
+    const container = document.querySelector('.os-slots');
+    if (!container) return;
+
+    // Get the first slot as template
+    let template = container.querySelector('[next-tier-slot="1"]');
+    
+    // Hide all existing slots first
+    container.querySelectorAll('[next-tier-slot]').forEach(slot => {
       const num = parseInt(slot.getAttribute('next-tier-slot'));
-      const active = num <= tier;
-      slot.classList.toggle('active', active);
-      slot.style.display = active ? 'flex' : 'none';
+      if (num > tier) {
+        slot.style.display = 'none';
+        slot.classList.remove('active');
+      }
     });
+
+    // Create or show slots up to current tier
+    for (let i = 1; i <= tier; i++) {
+      let slot = container.querySelector(`[next-tier-slot="${i}"]`);
+      
+      if (!slot && template) {
+        // Clone the template to create new slot
+        slot = template.cloneNode(true);
+        slot.setAttribute('next-tier-slot', String(i));
+        
+        // Update slot number display
+        const stepLabel = slot.querySelector('.os-slot__step div');
+        if (stepLabel) {
+          stepLabel.textContent = `Set ${String(i).padStart(2, '0')}`;
+        }
+        
+        // Clear any existing dropdown values
+        slot.querySelectorAll('os-dropdown').forEach(dropdown => {
+          dropdown.removeAttribute('value');
+        });
+        
+        container.appendChild(slot);
+      }
+      
+      if (slot) {
+        slot.style.display = 'flex';
+        slot.classList.add('active');
+        
+        // Setup dropdowns for this slot with OOS checking
+        this._populateDropdowns(slot, i);
+        
+        // Update price for this slot
+        this._updateSlotPrice(i);
+      }
+    }
   }
 
   _updateSlot(slotNum, variants) {
@@ -589,12 +638,8 @@ class TierController {
   _setupDropdowns() {
     if (!this.productId) return;
 
-    document.querySelectorAll('[next-tier-slot]').forEach(slot => {
-      const num = parseInt(slot.getAttribute('next-tier-slot'));
-      if (num <= this.currentTier) {
-        this._populateDropdowns(slot, num);
-      }
-    });
+    // Use _updateSlots to ensure slots exist and are populated
+    this._updateSlots(this.currentTier);
   }
 
   _populateDropdowns(slot, slotNum) {
@@ -614,14 +659,27 @@ class TierController {
     menu.innerHTML = '';
     
     const sorted = this._sortOptions(options, type);
+    const currentVariants = this.selectedVariants.get(slotNum) || {};
+    
     sorted.forEach(opt => {
       const item = document.createElement('os-dropdown-item');
       item.setAttribute('value', opt);
       
-      // Check if this option is out of stock
-      const isOutOfStock = this._isVariantOutOfStock(slotNum, { [type]: opt });
-      if (isOutOfStock) {
-        item.classList.add('next-oos');
+      // Check if this specific combination would be out of stock
+      const testVariants = { ...currentVariants, [type]: opt };
+      
+      // Only check OOS if we have both size and color
+      if (testVariants.color && testVariants.size) {
+        const isOutOfStock = this._isCompleteVariantOutOfStock(slotNum, testVariants);
+        if (isOutOfStock) {
+          item.classList.add('next-oos');
+        }
+      } else if (currentVariants[type === 'color' ? 'size' : 'color']) {
+        // Check partial variant if we have the other attribute
+        const isOutOfStock = this._isVariantOutOfStock(slotNum, { [type]: opt });
+        if (isOutOfStock) {
+          item.classList.add('next-oos');
+        }
       }
       
       if (type === 'color') {
@@ -680,13 +738,44 @@ class TierController {
       // Use saved selections if available, otherwise use defaults
       const saved = savedSelections?.[i];
       
+      // Try to use saved color, but validate it's in stock
       if (!v.color) {
-        v.color = saved?.color || defaultColor;
+        let colorToUse = saved?.color || defaultColor;
+        
+        // If we have a saved selection, validate it's still available
+        if (saved?.color && saved?.size) {
+          const isOOS = this._isCompleteVariantOutOfStock(i, { color: saved.color, size: saved.size });
+          if (isOOS) {
+            // Saved combination is OOS, find alternative
+            const altColor = this._findAvailableColor(i, saved.size);
+            const altSize = this._findAvailableSize(i, saved.color);
+            
+            if (altSize && !altColor) {
+              // Keep color, change size
+              v.color = saved.color;
+              v.size = altSize;
+            } else if (altColor && !altSize) {
+              // Keep size, change color
+              v.color = altColor;
+              v.size = saved.size;
+            } else {
+              // Both or neither work, use defaults
+              v.color = defaultColor;
+              v.size = defaultSize;
+            }
+          } else {
+            // Saved selection is valid
+            v.color = saved.color;
+            v.size = saved.size;
+          }
+        } else {
+          // No complete saved selection, use color preference
+          v.color = colorToUse;
+          v.size = saved?.size || defaultSize;
+        }
+        
+        // Update UI
         if (v.color) this._updateSlot(i, { color: v.color });
-      }
-      
-      if (!v.size) {
-        v.size = saved?.size || defaultSize;
         if (v.size) this._updateSlot(i, { size: v.size });
       }
       
@@ -695,6 +784,30 @@ class TierController {
     }
 
     await this._updateCart();
+  }
+  
+  _findAvailableColor(slotNum, size) {
+    const pid = (slotNum === 1 && this.baseProductId) || this.productId;
+    const colors = window.next.getAvailableVariantAttributes(pid, 'color');
+    
+    for (const color of colors) {
+      if (!this._isCompleteVariantOutOfStock(slotNum, { color, size })) {
+        return color;
+      }
+    }
+    return null;
+  }
+  
+  _findAvailableSize(slotNum, color) {
+    const pid = (slotNum === 1 && this.baseProductId) || this.productId;
+    const sizes = window.next.getAvailableVariantAttributes(pid, 'size');
+    
+    for (const size of sizes) {
+      if (!this._isCompleteVariantOutOfStock(slotNum, { color, size })) {
+        return size;
+      }
+    }
+    return null;
   }
   
   _saveSelectionsToStorage() {
@@ -891,9 +1004,11 @@ class TierController {
     this._setupDropdowns();
     
     // Update all slot prices with new profile
-    for (let i = 1; i <= this.currentTier; i++) {
-      this._updateSlotPrice(i);
-    }
+    setTimeout(() => {
+      for (let i = 1; i <= this.currentTier; i++) {
+        this._updateSlotPrice(i);
+      }
+    }, 100);
     
     // Update savings display
     this._updateSavings();
