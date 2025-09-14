@@ -249,6 +249,12 @@ class TierController {
 
   async init() {
     await this._waitForSDK();
+    
+    // SDK will automatically pick up profiles from window.nextConfig
+    
+    // Setup listeners FIRST before any profile changes
+    this._setupListeners();
+    
     await window.next.clearCart();
     await window.next.revertProfile();
 
@@ -265,18 +271,19 @@ class TierController {
     this._setupDropdowns();
     await this._setDefaults();
     this._updatePrices();
-    this._setupListeners();
     
     // Update savings immediately and after delays
     this._updateSavings();
     setTimeout(() => this._updateSavings(), 500);
     setTimeout(() => this._updateSavings(), 1000);
+    
   }
 
   _waitForSDK() {
     return new Promise(resolve => {
       const check = () => {
-        if (window.next?.getCampaignData && window.next?.getPackage) {
+        // Wait for both SDK and config to be loaded
+        if (window.next?.getCampaignData && window.next?.getPackage && window.nextConfig) {
           setTimeout(resolve, 50);
         } else {
           setTimeout(check, 100);
@@ -359,8 +366,12 @@ class TierController {
       }
     }
 
+    // Force update all prices
+    for (let i = 1; i <= tier; i++) {
+      this._updateSlotPrice(i);
+    }
+
     await this._updateCart();
-    this._updatePrices();
     this._updateCTA();
   }
 
@@ -444,7 +455,6 @@ class TierController {
         const alternative = this._findAvailableAlternative(slotNum, type, value);
         
         if (alternative) {
-          console.log(`Auto-selecting available ${type === 'color' ? 'size' : 'color'}: ${alternative}`);
           const otherType = type === 'color' ? 'size' : 'color';
           variants[otherType] = alternative;
           this._updateSlot(slotNum, { [otherType]: alternative });
@@ -642,6 +652,7 @@ class TierController {
       return;
     }
 
+    // Always use baseProductId for initial lookup
     const basePkg = window.next.getPackageByVariantSelection(
       this.baseProductId || this.productId,
       { color: v.color, size: v.size }
@@ -663,7 +674,10 @@ class TierController {
       if (profileName && window.nextConfig?.profiles?.[profileName]?.packageMappings) {
         const mappedId = window.nextConfig.profiles[profileName].packageMappings[basePkg.ref_id];
         if (mappedId) {
-          pkg = window.next.getPackage(mappedId) || basePkg;
+          const mappedPkg = window.next.getPackage(mappedId);
+          if (mappedPkg) {
+            pkg = mappedPkg;
+          }
         }
       }
     }
