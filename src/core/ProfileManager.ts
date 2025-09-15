@@ -144,22 +144,29 @@ export class ProfileManager {
    * Map cart items to new package IDs based on profile
    */
   private async mapCartItems(
-    items: CartItem[], 
-    profile: Profile, 
+    items: CartItem[],
+    profile: Profile,
     preserveQuantities: boolean,
     skipValidation: boolean
   ): Promise<MappedCartItem[]> {
     const campaignStore = useCampaignStore.getState();
     const mappedItems: MappedCartItem[] = [];
-    
+
     for (const item of items) {
       const mappedId = profile.packageMappings[item.packageId];
-      
+
       if (mappedId === undefined) {
-        this.logger.debug(`No mapping found for package ${item.packageId} in profile ${profile.id}`);
+        // No mapping found - preserve the item as-is (for upsells, warranties, etc.)
+        this.logger.debug(`No mapping found for package ${item.packageId} in profile ${profile.id}, preserving as-is`);
+        mappedItems.push({
+          originalItem: item,
+          mappedPackageId: item.packageId, // Keep the same package ID
+          quantity: preserveQuantities ? item.quantity : 1,
+          preserveUnmapped: true, // Flag to indicate this item should be preserved unchanged
+        });
         continue;
       }
-      
+
       // Validate mapped package exists (unless skipped)
       if (!skipValidation) {
         const mappedPackage = campaignStore.getPackage(mappedId);
@@ -167,7 +174,7 @@ export class ProfileManager {
           this.logger.warn(`Mapped package ${mappedId} not found in campaign data, skipping`);
           continue;
         }
-        
+
         mappedItems.push({
           originalItem: item,
           mappedPackageId: mappedId,
@@ -182,7 +189,7 @@ export class ProfileManager {
         });
       }
     }
-    
+
     return mappedItems;
   }
   
@@ -190,32 +197,38 @@ export class ProfileManager {
    * Apply mapped items to cart (swap operation)
    */
   private async applyMappedItems(
-    mappedItems: MappedCartItem[], 
+    mappedItems: MappedCartItem[],
     originalItems: CartItem[]
   ): Promise<void> {
     const cartStore = useCartStore.getState();
-    
+
     // Clear current cart
     await cartStore.clear();
-    
+
     // Add mapped items
     for (const mapped of mappedItems) {
       try {
+        const isUnmapped = (mapped as any).preserveUnmapped === true;
+
         await cartStore.addItem({
           packageId: mapped.mappedPackageId,
           quantity: mapped.quantity,
-          isUpsell: false,
-          // Store original package ID for reference
-          originalPackageId: mapped.originalItem.packageId,
+          isUpsell: mapped.originalItem.is_upsell || false,
+          // Only store original package ID if it was actually mapped
+          originalPackageId: isUnmapped ? undefined : mapped.originalItem.packageId,
         } as any);
-        
-        this.logger.debug(`Added mapped package ${mapped.mappedPackageId} (was ${mapped.originalItem.packageId})`);
+
+        if (isUnmapped) {
+          this.logger.debug(`Preserved unmapped package ${mapped.mappedPackageId}`);
+        } else {
+          this.logger.debug(`Added mapped package ${mapped.mappedPackageId} (was ${mapped.originalItem.packageId})`);
+        }
       } catch (error) {
         this.logger.error(`Failed to add mapped package ${mapped.mappedPackageId}:`, error);
       }
     }
-    
-    this.logger.info(`Applied ${mappedItems.length} mapped items to cart`);
+
+    this.logger.info(`Applied ${mappedItems.length} items to cart (including preserved items)`);
   }
   
   /**
