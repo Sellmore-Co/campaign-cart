@@ -36,6 +36,7 @@ export declare class CheckoutValidator {
     private initializeValidationRules;
     validateField(name: string, value: any, context?: any): ValidationResult;
     validateForm(formData: Record<string, any>, countryConfigs: Map<string, CountryConfig>, currentCountryConfig?: CountryConfig, includePayment?: boolean, billingAddress?: any, sameAsShipping?: boolean): Promise<FormValidationResult>;
+    private findFirstErrorFieldInDOM;
     private applyRule;
     isValidEmail(email: string): boolean;
     isValidPhone(phone: string): boolean;

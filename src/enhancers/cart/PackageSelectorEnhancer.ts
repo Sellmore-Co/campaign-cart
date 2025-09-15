@@ -403,20 +403,53 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
   private async updateCart(previousItem: SelectorItem | null, selectedItem: SelectorItem): Promise<void> {
     const cartStore = useCartStore.getState();
 
-    // Swap mode: use swapPackage method to handle atomic swap
-    if (previousItem && previousItem.packageId !== selectedItem.packageId) {
-      await cartStore.swapPackage(previousItem.packageId, {
-        packageId: selectedItem.packageId,
-        quantity: selectedItem.quantity,
-        isUpsell: false
+    // In swap mode, we need to find any item from this selector that's currently in cart
+    // This is important when profiles change, as the previousItem tracking may be stale
+    if (this.mode === 'swap') {
+      // Find any item in cart that originated from this selector
+      const existingCartItem = cartStore.items.find(cartItem => {
+        // Check if this cart item matches any of our selector's packages
+        return this.items.some(selectorItem =>
+          cartItem.packageId === selectorItem.packageId ||
+          cartItem.originalPackageId === selectorItem.packageId
+        );
       });
-    } else if (!cartStore.hasItem(selectedItem.packageId)) {
-      // No previous item or same item - just add if not in cart
-      await cartStore.addItem({
-        packageId: selectedItem.packageId,
-        quantity: selectedItem.quantity,
-        isUpsell: false
-      });
+
+      if (existingCartItem) {
+        // We found an item from this selector in cart - swap it
+        // Use the cart item's packageId (which may be mapped) for removal
+        if (existingCartItem.packageId !== selectedItem.packageId) {
+          this.logger.debug(`Swapping cart item from selector: ${existingCartItem.packageId} -> ${selectedItem.packageId}`);
+          await cartStore.swapPackage(existingCartItem.packageId, {
+            packageId: selectedItem.packageId,
+            quantity: selectedItem.quantity,
+            isUpsell: false
+          });
+        }
+      } else if (!cartStore.hasItem(selectedItem.packageId)) {
+        // No item from this selector in cart - add the selected item
+        this.logger.debug(`Adding new item from selector: ${selectedItem.packageId}`);
+        await cartStore.addItem({
+          packageId: selectedItem.packageId,
+          quantity: selectedItem.quantity,
+          isUpsell: false
+        });
+      }
+    } else {
+      // Non-swap mode - original behavior
+      if (previousItem && previousItem.packageId !== selectedItem.packageId) {
+        await cartStore.swapPackage(previousItem.packageId, {
+          packageId: selectedItem.packageId,
+          quantity: selectedItem.quantity,
+          isUpsell: false
+        });
+      } else if (!cartStore.hasItem(selectedItem.packageId)) {
+        await cartStore.addItem({
+          packageId: selectedItem.packageId,
+          quantity: selectedItem.quantity,
+          isUpsell: false
+        });
+      }
     }
   }
 
@@ -444,17 +477,23 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
     try {
       // Update card states based on cart contents
       this.items.forEach(item => {
-        const isInCart = cartState.items.some(cartItem => 
+        // Check if this selector item matches any cart item
+        // Cart items may have originalPackageId if they were mapped through a profile
+        const isInCart = cartState.items.some(cartItem =>
+          cartItem.originalPackageId === item.packageId ||
           cartItem.packageId === item.packageId
         );
-        
+
         item.element.classList.toggle('next-in-cart', isInCart);
         item.element.setAttribute('data-next-in-cart', isInCart.toString());
       });
 
       // Find which item should be selected based on cart contents
       const cartItemsInSelector = this.items.filter(item =>
-        cartState.items.some(cartItem => cartItem.packageId === item.packageId)
+        cartState.items.some(cartItem =>
+          cartItem.originalPackageId === item.packageId ||
+          cartItem.packageId === item.packageId
+        )
       );
 
       if (cartItemsInSelector.length > 0 && this.mode === 'swap') {
@@ -463,14 +502,14 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
         if (itemToSelect && this.selectedItem !== itemToSelect) {
           this.selectItem(itemToSelect);
         }
-      } else if (!this.selectedItem) {
-        // No selection and nothing in cart - select pre-selected item if any
+      } else if (!this.selectedItem && cartState.isEmpty) {
+        // No selection and cart is empty - select pre-selected item if any
         const preSelectedItems = this.items.filter(item => item.isPreSelected);
-        
+
         if (preSelectedItems.length > 1) {
           // Multiple pre-selected items - warn and select first one
           this.logger.warn(`Multiple pre-selected items found in selector ${this.selectorId}. Only one should be pre-selected.`);
-          
+
           // Clear all but the first one
           preSelectedItems.slice(1).forEach(item => {
             item.element.classList.remove('next-selected');
@@ -478,11 +517,12 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
             item.isPreSelected = false;
           });
         }
-        
+
         const preSelected = preSelectedItems[0];
         if (preSelected) {
           this.selectItem(preSelected);
           // Auto-add pre-selected item to cart (except in select mode)
+          // The cart store will handle any profile mapping needed
           if (this.mode !== 'select') {
             this.updateCart(null, preSelected).catch(error => {
               this.logger.error('Failed to add pre-selected item:', error);

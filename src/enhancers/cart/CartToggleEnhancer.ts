@@ -421,36 +421,44 @@ export class CartToggleEnhancer extends BaseEnhancer {
 
   private updateSyncedQuantity(cartState: CartState): void {
     if (this.syncPackageIds.length === 0) return;
-    
+
     let totalQuantity = 0;
-    
+
     // Sum up quantities from all synced packages
+    // Check both the original package ID and if it was mapped through a profile
     this.syncPackageIds.forEach(syncId => {
-      const syncedItem = cartState.items.find(item => item.packageId === syncId);
+      const syncedItem = cartState.items.find(item =>
+        item.packageId === syncId ||
+        item.originalPackageId === syncId
+      );
       if (syncedItem) {
         // Consider the qty field (items per package) if available
         const itemsPerPackage = (syncedItem as any).qty || 1;
         const totalItemsForPackage = syncedItem.quantity * itemsPerPackage;
         totalQuantity += totalItemsForPackage;
-        
+
         this.logger.debug(`Sync package ${syncId}: ${syncedItem.quantity} packages × ${itemsPerPackage} items/package = ${totalItemsForPackage} total`);
       }
     });
-    
+
     this.quantity = totalQuantity;
-    
+
     this.logger.debug(`Total sync quantity: ${this.quantity} (from packages: ${this.syncPackageIds.join(', ')})`);
   }
 
   private async handleSyncUpdate(cartState: CartState): Promise<void> {
     if (!this.packageId || this.syncPackageIds.length === 0) return;
-    
+
     // Calculate total quantity from all synced packages
     let totalSyncQuantity = 0;
     let anySyncedItemExists = false;
-    
+
     this.syncPackageIds.forEach(syncId => {
-      const syncedItem = cartState.items.find(item => item.packageId === syncId);
+      // Check both the original package ID and if it was mapped through a profile
+      const syncedItem = cartState.items.find(item =>
+        item.packageId === syncId ||
+        item.originalPackageId === syncId
+      );
       if (syncedItem) {
         anySyncedItemExists = true;
         // Consider the qty field (items per package) if available
@@ -458,9 +466,9 @@ export class CartToggleEnhancer extends BaseEnhancer {
         totalSyncQuantity += syncedItem.quantity * itemsPerPackage;
       }
     });
-    
+
     const currentItem = cartState.items.find(item => item.packageId === this.packageId);
-    
+
     if (anySyncedItemExists && totalSyncQuantity > 0) {
       // At least one synced package is in cart
       if (currentItem && currentItem.quantity !== totalSyncQuantity) {
@@ -469,9 +477,42 @@ export class CartToggleEnhancer extends BaseEnhancer {
         await useCartStore.getState().updateQuantity(this.packageId, totalSyncQuantity);
       }
     } else if (currentItem && !cartState.swapInProgress) {
-      // Only remove if no synced packages AND not in the middle of a swap
-      this.logger.debug('Auto-sync: No synced packages found and not swapping - removing item');
-      await this.removeFromCart();
+      // Additional safety check: if the item is an upsell/bump, be more conservative about removing
+      if (currentItem.is_upsell) {
+        // For upsells, only remove if we're SURE the synced packages don't exist
+        // Give a small delay to let any profile operations complete
+        this.logger.debug('Auto-sync: Upsell item detected, delaying removal check');
+
+        setTimeout(async () => {
+          const updatedState = useCartStore.getState();
+
+          // Re-check for synced packages after delay
+          let stillNoSyncedPackages = true;
+          this.syncPackageIds.forEach(syncId => {
+            const syncedItem = updatedState.items.find(item =>
+              item.packageId === syncId ||
+              item.originalPackageId === syncId
+            );
+            if (syncedItem) {
+              stillNoSyncedPackages = false;
+            }
+          });
+
+          // Also check if item still exists and swap is not in progress
+          const itemStillExists = updatedState.items.find(item => item.packageId === this.packageId);
+
+          if (stillNoSyncedPackages && itemStillExists && !updatedState.swapInProgress) {
+            this.logger.debug('Auto-sync: After delay, still no synced packages - removing upsell');
+            await this.removeFromCart();
+          } else {
+            this.logger.debug('Auto-sync: After delay, conditions changed - keeping upsell');
+          }
+        }, 500); // 500ms delay to let profile operations complete
+      } else {
+        // For non-upsells, remove immediately
+        this.logger.debug('Auto-sync: No synced packages found and not swapping - removing item');
+        await this.removeFromCart();
+      }
     } else if (currentItem && cartState.swapInProgress) {
       // Swap in progress - don't remove yet
       this.logger.debug('Auto-sync: Swap in progress - keeping item for now');
