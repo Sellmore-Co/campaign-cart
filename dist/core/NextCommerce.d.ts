@@ -27,11 +27,22 @@ export declare class NextCommerce {
         quantity: number;
     }): Promise<void>;
     clearCart(): Promise<void>;
+    swapCart(items: Array<{
+        packageId: number;
+        quantity: number;
+    }>): Promise<void>;
     getCartData(): CallbackData;
     getCartTotals(): CartTotals;
     getCartCount(): number;
     getCampaignData(): Campaign | null;
     getPackage(id: number): any | null;
+    getVariantsByProductId(productId: number): any | null;
+    getAvailableVariantAttributes(productId: number, attributeCode: string): string[];
+    getPackageByVariantSelection(productId: number, selectedAttributes: Record<string, string>): any | null;
+    getProductVariantsWithPricing(productId: number): any | null;
+    getVariantPricingTiers(productId: number, variantKey: string): any[];
+    getLowestPriceForVariant(productId: number, variantKey: string): any | null;
+    createVariantKey(attributes: Record<string, string>): string;
     on<K extends keyof EventMap>(event: K, handler: (data: EventMap[K]) => void): void;
     off<K extends keyof EventMap>(event: K, handler: Function): void;
     registerCallback(type: CallbackType, callback: (data: CallbackData) => void): void;
@@ -115,5 +126,22 @@ export declare class NextCommerce {
     canAddUpsells(): boolean;
     getCompletedUpsells(): string[];
     isUpsellAlreadyAdded(packageId: number): boolean;
+    setProfile(profileId: string, options?: {
+        clearCart?: boolean;
+        preserveQuantities?: boolean;
+    }): Promise<void>;
+    revertProfile(): Promise<void>;
+    getActiveProfile(): string | null;
+    getProfileInfo(profileId?: string): any | null;
+    getMappedPackageId(originalId: number): number;
+    getOriginalPackageId(mappedId: number): number | null;
+    listProfiles(): string[];
+    hasProfile(profileId: string): boolean;
+    registerProfile(profile: {
+        id: string;
+        name: string;
+        description?: string;
+        packageMappings: Record<number, number>;
+    }): void;
 }
 //# sourceMappingURL=NextCommerce.d.ts.map

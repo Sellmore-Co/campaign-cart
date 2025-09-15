@@ -68,6 +68,14 @@ Comprehensive reference of all Next Commerce JS SDK HTML data attributes.
 | `data-next-show="package.hasSavings"` | Show when package has savings |
 | `data-next-show="order.exists"` | Show when order found |
 
+### Profile Conditionals
+| Attribute | Description | Example |
+|-----------|-------------|---------|
+| `data-next-show-if-profile` | Show when profile active | `data-next-show-if-profile="black_friday"` |
+| `data-next-hide-if-profile` | Hide when profile active | `data-next-hide-if-profile="regular"` |
+| `data-next-show="profile.active === 'id'"` | Show when specific profile | `data-next-show="profile.active === 'vip'"` |
+| `data-next-show="profile.is('id')"` | Profile check function | `data-next-show="profile.is('sale')"` |
+
 ## Action Attributes
 
 ### Cart Actions
@@ -140,6 +148,18 @@ Comprehensive reference of all Next Commerce JS SDK HTML data attributes.
 | `data-multiply-by` | Multiply value | Number |
 | `data-divide-by` | Divide value | Number |
 
+## Profile Attributes
+
+### Profile Switcher
+| Attribute | Description | Values |
+|-----------|-------------|--------|
+| `data-next-profile` | Profile switcher button | Profile ID |
+| `data-next-profile-selector` | Profile dropdown selector | - |
+| `data-next-clear-cart` | Clear cart on switch | `true`/`false` |
+| `data-next-preserve-quantities` | Keep item quantities | `true`/`false` |
+| `data-next-active-text` | Text when profile active | String |
+| `data-next-inactive-text` | Text when profile inactive | String |
+
 ## State Classes (Automatic)
 
 ### Cart State
@@ -160,6 +180,13 @@ Comprehensive reference of all Next Commerce JS SDK HTML data attributes.
 |-------|--------------|
 | `.next-display-ready` | SDK initialized |
 | `.next-loading` | Loading data |
+
+### Profile State
+| Class | Applied When |
+|-------|--------------|
+| `.next-profile-active` | Profile is active |
+| `.next-profile-switcher` | Profile switcher element |
+| `.next-profile-selector` | Profile selector element |
 
 ## Meta Tag Configuration
 
