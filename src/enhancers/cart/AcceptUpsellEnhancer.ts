@@ -13,6 +13,7 @@
 import { BaseActionEnhancer } from '@/enhancers/base/BaseActionEnhancer';
 import { useOrderStore } from '@/stores/orderStore';
 import { useConfigStore } from '@/stores/configStore';
+import { useCampaignStore } from '@/stores/campaignStore';
 import { ApiClient } from '@/api/client';
 import { preserveQueryParams } from '@/utils/url-utils';
 import { GeneralModal } from '@/components/modals/GeneralModal';
@@ -231,6 +232,15 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
     );
   }
 
+  private getCurrency(): string {
+    const campaignState = useCampaignStore.getState();
+    if (campaignState?.data?.currency) {
+      return campaignState.data.currency;
+    }
+    const configStore = useConfigStore.getState();
+    return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
+  }
+
   private async acceptUpsell(): Promise<void> {
     const orderStore = useOrderStore.getState();
     
@@ -294,7 +304,8 @@ export class AcceptUpsellEnhancer extends BaseActionEnhancer {
         lines: [{
           package_id: packageIdToAdd,
           quantity: quantityToAdd
-        }]
+        }],
+        currency: this.getCurrency()
       };
       
       // Store previous order lines before update

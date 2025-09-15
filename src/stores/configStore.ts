@@ -66,6 +66,14 @@ const initialState: ConfigState = {
   // Tracking configuration
   tracking: 'auto', // 'auto', 'manual', 'disabled'
   
+  // Location and currency detection
+  detectedCountry: '',
+  detectedCurrency: '',
+  selectedCurrency: '',
+  locationData: null as any, // Cache the entire location response
+  currencyBehavior: 'auto' as 'auto' | 'manual', // Default to auto-switch currency on country change
+  currencyFallbackOccurred: false, // Track if currency fallback happened
+  
   // Profile configuration
   profiles: {},
   defaultProfile: undefined,
@@ -170,6 +178,11 @@ export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
     // Load address config from window config
     if (windowConfig.addressConfig && typeof windowConfig.addressConfig === 'object') {
       updates.addressConfig = windowConfig.addressConfig as AddressConfig;
+    }
+    
+    // Load currency behavior from window config
+    if (windowConfig.currencyBehavior && (windowConfig.currencyBehavior === 'auto' || windowConfig.currencyBehavior === 'manual')) {
+      updates.currencyBehavior = windowConfig.currencyBehavior;
     }
     
     

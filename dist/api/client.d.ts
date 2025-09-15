@@ -4,9 +4,13 @@ export declare class ApiClient {
     private apiKey;
     private logger;
     constructor(apiKey: string);
-    getCampaigns(): Promise<Campaign>;
-    createCart(data: CartBase): Promise<Cart>;
-    createOrder(data: CreateOrder): Promise<Order>;
+    getCampaigns(currency?: string): Promise<Campaign>;
+    createCart(data: CartBase & {
+        currency?: string;
+    }): Promise<Cart>;
+    createOrder(data: CreateOrder & {
+        currency?: string;
+    }): Promise<Order>;
     getOrder(refId: string): Promise<Order>;
     addUpsell(refId: string, data: AddUpsellLine): Promise<Order>;
     createProspectCart(data: any): Promise<any>;

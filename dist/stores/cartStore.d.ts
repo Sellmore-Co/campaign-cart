@@ -18,6 +18,7 @@ interface CartActions {
     calculateShipping: () => number;
     calculateTax: () => number;
     calculateEnrichedItems: () => Promise<void>;
+    refreshItemPrices: () => Promise<void>;
     setShippingMethod: (methodId: number) => Promise<void>;
     hasItem: (packageId: number) => boolean;
     getItem: (packageId: number) => CartItem | undefined;
@@ -25,6 +26,7 @@ interface CartActions {
     getTotalWeight: () => number;
     getTotalItemCount: () => number;
     reset: () => void;
+    setLastCurrency: (currency: string) => void;
     applyCoupon: (code: string) => Promise<{
         success: boolean;
         message: string;

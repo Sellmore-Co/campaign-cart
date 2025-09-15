@@ -1,9 +1,6 @@
 import { BaseEnhancer } from '../base/BaseEnhancer';
 import { FormatType } from './DisplayEnhancerTypes';
 export declare class DisplayFormatter {
-    private static currencyFormatter;
-    private static currencyFormatterNoZeroCents;
-    private static numberFormatter;
     private static dateFormatter;
     static formatValue(value: any, format?: FormatType, options?: {
         hideZeroCents?: boolean;
@@ -34,6 +31,7 @@ export declare abstract class BaseDisplayEnhancer extends BaseEnhancer {
     protected lastValue?: any;
     private debugMode;
     initialize(): Promise<void>;
+    protected setupCurrencyChangeListener(): void;
     protected parseDisplayAttributes(): void;
     protected getDefaultFormatType(property: string): FormatType;
     protected abstract setupStoreSubscriptions(): void;

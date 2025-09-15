@@ -5,6 +5,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private countryService;
     private creditCardService?;
     private validator;
+    private stateLoadingPromises;
     private ui;
     private prospectCartEnhancer?;
     private loadingOverlay;
@@ -58,6 +59,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private initializeAddressManagement;
     private populateCountryDropdown;
     private populateBillingCountryDropdown;
+    private handleCountryChange;
     private updateStateOptions;
     private updateFormLabels;
     private updateBillingFormLabels;
@@ -69,6 +71,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private fillAddressFromAutocomplete;
     private parseAddressComponents;
     private setStateWithRetry;
+    private autocompleteListenersAttached;
     private setupAutocompleteCountryChangeListeners;
     private initializeLocationFieldVisibility;
     private handleAddressInput;
@@ -90,6 +93,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private handleOrderRedirect;
     private getNextPageUrlFromMeta;
     private preserveQueryParams;
+    private getCurrency;
     private getSuccessUrl;
     private validateExpressCheckoutFields;
     private getFailureUrl;

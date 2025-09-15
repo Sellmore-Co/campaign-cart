@@ -6,6 +6,7 @@ import { BaseEnhancer } from '@/enhancers/base/BaseEnhancer';
 import { useCheckoutStore, type CheckoutState } from '@/stores/checkoutStore';
 import { useCartStore } from '@/stores/cartStore';
 import { useConfigStore } from '@/stores/configStore';
+import { useCampaignStore } from '@/stores/campaignStore';
 import { ApiClient } from '@/api/client';
 import { CountryService, type Country, type CountryConfig } from '@/utils/countryService';
 import type { CartState } from '@/types/global';
@@ -63,6 +64,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private countryService!: CountryService;
   private creditCardService?: CreditCardService;
   private validator!: CheckoutValidator;
+  private stateLoadingPromises: Map<string, Promise<any>> = new Map();
   private ui!: UIService;
   private prospectCartEnhancer?: ProspectCartEnhancer;
   private loadingOverlay: LoadingOverlay;
@@ -132,6 +134,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     
     // Initialize loading overlay
     this.loadingOverlay = new LoadingOverlay();
+    
+    // NOTE: Currency is initialized separately based on:
+    // 1. URL parameter (?currency=XXX) - highest priority
+    // 2. Session storage (previous selection) - medium priority  
+    // 3. Detected location - lowest priority
+    // Currency does NOT change when shipping/billing country changes
     
     // Initialize core dependencies
     const config = useConfigStore.getState();
@@ -248,6 +256,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     this.eventBus.on('payment:error', (event: any) => {
       if (event.message) {
         this.displayPaymentError(event.message);
+      }
+    });
+    
+    // Listen for country changes from debug selector
+    document.addEventListener('next:country-changed', async (e) => {
+      const customEvent = e as CustomEvent;
+      const { to: newCountry } = customEvent.detail;
+      if (newCountry) {
+        await this.handleCountryChange(newCountry);
       }
     });
     
@@ -967,27 +984,104 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       
       const locationData = await this.countryService.getLocationData();
       this.countries = locationData.countries;
-      this.detectedCountryCode = locationData.detectedCountryCode;
       
-      const countryField = this.fields.get('country');
-      if (countryField instanceof HTMLSelectElement) {
-        this.populateCountryDropdown(countryField, locationData.countries, locationData.detectedCountryCode);
-        
-        if (locationData.detectedCountryCode) {
-          this.updateFormData({ country: locationData.detectedCountryCode });
-          this.clearError('country');
+      // Check for shipping country override from URL or sessionStorage
+      // NOTE: This only affects the shipping country dropdown, NOT currency
+      let selectedCountryCode = locationData.detectedCountryCode;
+      
+      // Use console.log to ensure visibility
+      const countryConfig = this.countryService.getConfig();
+      console.log('%c[CheckoutForm] Shipping Country Priority Check', 'color: #FF6B6B; font-weight: bold', {
+        detectedCountry: locationData.detectedCountryCode,
+        detectedCurrency: locationData.detectedCountryConfig.currencyCode,
+        addressConfigDefault: countryConfig?.defaultCountry,
+        urlParam: new URLSearchParams(window.location.search).get('country'),
+        sessionOverride: sessionStorage.getItem('next_selected_country'),
+        availableCountries: this.countries.map(c => c.code),
+        note: 'Shipping country may differ from detected location. Currency is based on detected location only.'
+      });
+      
+      this.logger.info('Shipping country selection priority check (does not affect currency):', {
+        detectedCountry: locationData.detectedCountryCode,
+        addressConfigDefault: countryConfig?.defaultCountry,
+        urlParam: new URLSearchParams(window.location.search).get('country'),
+        sessionOverride: sessionStorage.getItem('next_selected_country')
+      });
+      
+      // Priority 1: URL parameter (?country=XX for shipping destination)
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlCountry = urlParams.get('country');
+      if (urlCountry) {
+        const countryCode = urlCountry.toUpperCase();
+        // Verify the country exists in the available countries
+        const countryExists = this.countries.some(c => c.code === countryCode);
+        if (countryExists) {
+          selectedCountryCode = countryCode;
+          // Save to sessionStorage for persistence
+          sessionStorage.setItem('next_selected_country', countryCode);
+          this.logger.info(`✅ Using shipping country from URL parameter: ${countryCode} (currency unaffected)`);
+        } else {
+          this.logger.warn(`Country ${countryCode} from URL not in available countries`);
+        }
+      }
+      // Priority 2: sessionStorage override (from previous URL param or user selection)
+      else {
+        const savedCountryOverride = sessionStorage.getItem('next_selected_country');
+        if (savedCountryOverride) {
+          const countryExists = this.countries.some(c => c.code === savedCountryOverride);
+          if (countryExists) {
+            selectedCountryCode = savedCountryOverride;
+            this.logger.info(`✅ Using shipping country from session storage: ${savedCountryOverride} (currency unaffected)`);
+          } else {
+            this.logger.warn(`Saved country ${savedCountryOverride} not in available countries`);
+          }
+        } else {
+          this.logger.info(`✅ Using detected/default shipping country: ${selectedCountryCode} (currency unaffected)`);
         }
       }
       
-      this.countryConfigs.set(locationData.detectedCountryCode, locationData.detectedCountryConfig);
+      this.detectedCountryCode = selectedCountryCode;
       
-      if (locationData.detectedCountryCode) {
+      const countryField = this.fields.get('country');
+      if (countryField instanceof HTMLSelectElement) {
+        console.log('%c[CheckoutForm] Setting country dropdown', 'color: #4ECDC4; font-weight: bold', {
+          field: countryField,
+          selectedCountry: selectedCountryCode,
+          availableOptions: locationData.countries.map(c => c.code)
+        });
+        
+        this.populateCountryDropdown(countryField, locationData.countries, selectedCountryCode);
+        
+        if (selectedCountryCode) {
+          this.updateFormData({ country: selectedCountryCode });
+          this.clearError('country');
+          
+          console.log('%c[CheckoutForm] Country set to:', 'color: #95E77E; font-weight: bold', selectedCountryCode, {
+            dropdownValue: countryField.value,
+            formData: useCheckoutStore.getState().formData.country
+          });
+        }
+      }
+      
+      // Always fetch the config for the selected country to ensure we have the right one
+      let selectedCountryConfig;
+      try {
+        selectedCountryConfig = await this.countryService.getCountryConfig(selectedCountryCode);
+        this.logger.debug(`Fetched config for country ${selectedCountryCode}`);
+      } catch (error) {
+        this.logger.warn(`Failed to get config for country ${selectedCountryCode}, using detected config`);
+        selectedCountryConfig = locationData.detectedCountryConfig;
+      }
+      
+      this.countryConfigs.set(selectedCountryCode, selectedCountryConfig);
+      
+      if (selectedCountryCode) {
         const provinceField = this.fields.get('province');
         if (provinceField instanceof HTMLSelectElement) {
-          await this.updateStateOptions(locationData.detectedCountryCode, provinceField);
-          this.currentCountryConfig = locationData.detectedCountryConfig;
+          await this.updateStateOptions(selectedCountryCode, provinceField);
+          this.currentCountryConfig = selectedCountryConfig;
         }
-        this.updateFormLabels(locationData.detectedCountryConfig);
+        this.updateFormLabels(selectedCountryConfig);
       }
       
       if (this.billingFields.size > 0) {
@@ -1043,6 +1137,47 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     });
   }
 
+  private async handleCountryChange(newCountry: string): Promise<void> {
+    this.logger.info(`Handling country change to: ${newCountry}`);
+    
+    // Update the country dropdown
+    const countryField = this.fields.get('country');
+    if (countryField instanceof HTMLSelectElement) {
+      countryField.value = newCountry;
+      
+      // Update form data in checkout store
+      this.updateFormData({ country: newCountry });
+      
+      // Update state options for the new country
+      const provinceField = this.fields.get('province');
+      if (provinceField instanceof HTMLSelectElement) {
+        await this.updateStateOptions(newCountry, provinceField);
+      }
+      
+      // Trigger change event to update any dependent fields
+      countryField.dispatchEvent(new Event('change', { bubbles: true }));
+      
+      this.logger.info(`Country field updated to: ${newCountry}`);
+    }
+    
+    // Also update billing country if billing form is visible
+    const billingCountryField = this.billingFields.get('billing-country');
+    if (billingCountryField instanceof HTMLSelectElement) {
+      billingCountryField.value = newCountry;
+      
+      // Update billing state options
+      const billingProvinceField = this.billingFields.get('billing-province');
+      if (billingProvinceField instanceof HTMLSelectElement) {
+        // Pass the shipping province value if "same as shipping" is checked
+        const checkoutStore = useCheckoutStore.getState();
+        const shippingProvince = checkoutStore.sameAsShipping ? checkoutStore.formData.province : undefined;
+        await this.updateBillingStateOptions(newCountry, billingProvinceField, shippingProvince);
+      }
+      
+      billingCountryField.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
   private async updateStateOptions(country: string, provinceField: HTMLSelectElement): Promise<void> {
     // If country is empty, just clear the state field
     if (!country || country.trim() === '') {
@@ -1056,7 +1191,23 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     provinceField.innerHTML = '<option value="">Loading...</option>';
     
     try {
-      const countryData = await this.countryService.getCountryStates(country);
+      // Check if we already have a promise for this country
+      let countryDataPromise = this.stateLoadingPromises.get(country);
+      
+      if (!countryDataPromise) {
+        // Create new promise and store it
+        countryDataPromise = this.countryService.getCountryStates(country);
+        this.stateLoadingPromises.set(country, countryDataPromise);
+        
+        // Clean up after completion
+        countryDataPromise.finally(() => {
+          setTimeout(() => this.stateLoadingPromises.delete(country), 100);
+        });
+      } else {
+        this.logger.debug(`Reusing existing state loading promise for ${country}`);
+      }
+      
+      const countryData = await countryDataPromise;
       this.countryConfigs.set(country, countryData.countryConfig);
       this.currentCountryConfig = countryData.countryConfig;
       
@@ -1702,10 +1853,21 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     }
   }
 
+  private autocompleteListenersAttached = false;
+
   private setupAutocompleteCountryChangeListeners(): void {
-    // Shipping country change
+    // Prevent duplicate listener attachment
+    if (this.autocompleteListenersAttached) {
+      this.logger.debug('Autocomplete country change listeners already attached, skipping');
+      return;
+    }
+
+    // Shipping country change - use a named function so we can identify it
     const shippingCountryField = this.fields.get('country');
     if (shippingCountryField instanceof HTMLSelectElement) {
+      // Mark the field to indicate autocomplete handler will be attached
+      (shippingCountryField as any)._hasAutocompleteHandler = true;
+      
       shippingCountryField.addEventListener('change', () => {
         const autocomplete = this.autocompleteInstances.get('address1');
         const countryValue = shippingCountryField.value;
@@ -1734,6 +1896,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         }
       });
     }
+
+    this.autocompleteListenersAttached = true;
   }
 
   // ============================================================================
@@ -2325,7 +2489,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       shipping_address: shippingAddress,
       ...(billingAddressData && { billing_address: billingAddressData }),
       billing_same_as_shipping_address: checkoutStore.sameAsShipping,
-      shipping_method: checkoutStore.shippingMethod?.id || 1,
+      shipping_method: checkoutStore.shippingMethod?.id || cartStore.shippingMethod?.id || 1,
       payment_detail: payment,
       user: {
         email: checkoutStore.formData.email,
@@ -2337,6 +2501,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       },
       vouchers: vouchers,
       attribution: attribution,
+      currency: this.getCurrency(),
       success_url: this.getSuccessUrl(),
       payment_failed_url: this.getFailureUrl()
     };
@@ -2525,7 +2690,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         },
         
         billing_same_as_shipping_address: true,
-        shipping_method: 1,
+        shipping_method: cartStore.shippingMethod?.id || 1,
         
         payment_detail: {
           payment_method: 'card_token' as PaymentMethod,
@@ -2543,6 +2708,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         
         vouchers: vouchers,
         attribution: this.getTestAttribution(),
+        currency: this.getCurrency(),
         success_url: this.getSuccessUrl(),
         payment_failed_url: this.getFailureUrl()
       };
@@ -2672,6 +2838,17 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     } catch (error) {
       return targetUrl;
     }
+  }
+
+  private getCurrency(): string {
+    // Get currency from campaign or config store (same logic as cart store)
+    const campaignState = useCampaignStore.getState();
+    if (campaignState?.data?.currency) {
+      return campaignState.data.currency;
+    }
+    
+    const configStore = useConfigStore.getState();
+    return configStore?.selectedCurrency || configStore?.detectedCurrency || 'USD';
   }
 
   private getSuccessUrl(): string {
@@ -3207,6 +3384,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         if (billingProvinceField instanceof HTMLSelectElement) {
           await this.updateBillingStateOptions(target.value, billingProvinceField, checkoutStore.formData.province);
         }
+        // Currency is location-based only, not affected by billing or shipping country
       }
     } else {
       this.updateFormData({ [fieldName]: target.value });
@@ -3233,6 +3411,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         if (provinceField instanceof HTMLSelectElement) {
           await this.updateStateOptions(target.value, provinceField);
         }
+        
+        // Save the user's country selection to sessionStorage
+        sessionStorage.setItem('next_selected_country', target.value);
+        this.logger.debug(`Saved user's country selection to session: ${target.value}`);
+        
+        // Currency is now based on user's location, not shipping country
+        // Currency can only be changed via URL parameter or manual selection
       }
       
       // Show location fields when address1 is populated
@@ -3423,7 +3608,23 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     billingProvinceField.innerHTML = '<option value="">Loading...</option>';
     
     try {
-      const countryData = await this.countryService.getCountryStates(country);
+      // Check if we already have a promise for this country
+      let countryDataPromise = this.stateLoadingPromises.get(country);
+      
+      if (!countryDataPromise) {
+        // Create new promise and store it
+        countryDataPromise = this.countryService.getCountryStates(country);
+        this.stateLoadingPromises.set(country, countryDataPromise);
+        
+        // Clean up after completion
+        countryDataPromise.finally(() => {
+          setTimeout(() => this.stateLoadingPromises.delete(country), 100);
+        });
+      } else {
+        this.logger.debug(`Reusing existing state loading promise for ${country} (billing)`);
+      }
+      
+      const countryData = await countryDataPromise;
       
       // Update billing form labels and placeholders
       this.updateBillingFormLabels(countryData.countryConfig);
@@ -3824,6 +4025,14 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   // ============================================================================
+  // CURRENCY MANAGEMENT
+  // ============================================================================
+
+  // Currency handling has been moved to initialization only
+  // Currency is now based on user's detected location and URL parameters
+  // Shipping country changes no longer affect currency
+
+  // ============================================================================
   // UTILITY METHODS
   // ============================================================================
 
@@ -3893,12 +4102,34 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         checkoutStore.setPaymentMethod('credit-card');
         checkoutStore.setPaymentToken('test_card');
         checkoutStore.setSameAsShipping(true);
-        checkoutStore.setShippingMethod({
-          id: 1,
-          name: 'Standard Shipping',
-          price: 0,
-          code: 'standard'
-        });
+        // Use existing shipping method from cart if available
+        const cartStore = useCartStore.getState();
+        const existingShipping = cartStore.shippingMethod || checkoutStore.shippingMethod;
+        if (existingShipping) {
+          checkoutStore.setShippingMethod(existingShipping);
+        } else {
+          // Fallback to first available from campaign
+          const campaignStore = useCampaignStore.getState();
+          if (campaignStore.data?.shipping_methods && campaignStore.data.shipping_methods.length > 0) {
+            const firstMethod = campaignStore.data.shipping_methods[0];
+            if (firstMethod) {
+              checkoutStore.setShippingMethod({
+                id: firstMethod.ref_id,
+                name: firstMethod.code,
+                price: parseFloat(firstMethod.price || '0'),
+                code: firstMethod.code
+              });
+            }
+          } else {
+            // Last resort fallback
+            checkoutStore.setShippingMethod({
+              id: 1,
+              name: 'Standard Shipping',
+              price: 0,
+              code: 'standard'
+            });
+          }
+        }
         
         this.populateFormData();
         

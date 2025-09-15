@@ -37,6 +37,7 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     
     this.setupStoreSubscriptions();
     this.setupQuantityListeners();
+    this.setupCurrencyChangeListener();
     this.setupProfileEventListeners();
     await this.performInitialUpdate();
     this.logger.debug(`ProductDisplayEnhancer initialized with package ${this.packageId}, path: ${this.displayPath}, format: ${this.formatType}, multiplyByQuantity: ${this.multiplyByQuantity}`);
@@ -79,6 +80,25 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
   private handleCartUpdate(): void {
     // Update display when cart changes (discount codes might affect package price)
     this.updateDisplay();
+  }
+  
+  protected override setupCurrencyChangeListener(): void {
+    // Call base implementation first
+    super.setupCurrencyChangeListener();
+    
+    // Add our specific handling for package data refresh
+    document.addEventListener('next:currency-changed', async () => {
+      this.logger.debug('Currency changed, reloading package data');
+      
+      // Get fresh campaign state
+      this.campaignState = useCampaignStore.getState();
+      
+      // Reload package data with new currency
+      this.loadPackageData();
+      
+      // Force a complete re-render
+      await this.updateDisplay();
+    });
   }
   
   private handleProfileUpdate(): void {
@@ -197,8 +217,11 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
   private loadPackageData(): void {
     if (!this.packageId || !this.campaignState) return;
     
+    // Get packages from the correct location in campaign state
+    const packages = this.campaignState.data?.packages || this.campaignState.packages;
+    
     // Always load the original package data first
-    this.originalPackageData = this.campaignState.packages?.find((pkg: Package) => pkg.ref_id === this.packageId);
+    this.originalPackageData = packages?.find((pkg: Package) => pkg.ref_id === this.packageId);
     
     // Apply profile mapping if active
     const profileStore = useProfileStore.getState();
@@ -212,7 +235,7 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     }
     
     // First try to find in campaign packages
-    this.packageData = this.campaignState.packages?.find((pkg: Package) => pkg.ref_id === targetPackageId);
+    this.packageData = packages?.find((pkg: Package) => pkg.ref_id === targetPackageId);
     
     // If not found and it's a mapped package, try to get it from the campaign store directly
     if (!this.packageData && mappedPackageId !== this.packageId) {
@@ -229,14 +252,19 @@ export class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     if (!this.packageData) {
       this.logger.warn(`Package ${targetPackageId} not found in campaign data (original: ${this.packageId})`);
       // Log available package IDs for debugging
-      const availableIds = this.campaignState.packages?.map((p: Package) => p.ref_id).join(', ');
+      const availableIds = packages?.map((p: Package) => p.ref_id).join(', ');
       this.logger.debug(`Available package IDs in campaign state: ${availableIds}`);
       // If mapped package not found, fall back to original
       this.packageData = this.originalPackageData;
-      this.logger.warn(`Falling back to original package ${this.packageId}`);
+      if (this.originalPackageData) {
+        this.logger.warn(`Falling back to original package ${this.packageId}`);
+      }
     } else if (mappedPackageId !== this.packageId) {
       // Log the price comparison
       this.logger.debug(`Package prices - Original #${this.packageId}: retail=${this.originalPackageData?.price_retail}, sale=${this.originalPackageData?.price} | Mapped #${targetPackageId}: retail=${this.packageData.price_retail}, sale=${this.packageData.price}`);
+    } else {
+      // Log currency info when loading package
+      this.logger.debug(`Package ${this.packageId} loaded with price: ${this.packageData.price} ${this.campaignState.data?.currency || ''}`);
     }
   }
 

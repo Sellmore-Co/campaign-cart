@@ -30,6 +30,7 @@ export declare class UpsellEnhancer extends BaseEnhancer {
     private syncOptionSelectionAcrossContainers;
     private setupEventHandlers;
     private handleActionClick;
+    private getCurrency;
     private addUpsellToOrder;
     private skipUpsell;
     private navigateToUrl;

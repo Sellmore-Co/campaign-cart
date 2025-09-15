@@ -8,29 +8,13 @@ import { AttributeParser } from '../base/AttributeParser';
 import { FormatType, getPropertyConfig, type DisplayValue } from './DisplayEnhancerTypes';
 import { DisplayValueValidator } from '@/utils/validation/DisplayValueValidator';
 import { DisplayErrorBoundary } from './DisplayErrorBoundary';
+import { formatCurrency as formatCurrencyUtil, formatNumber as formatNumberUtil, CurrencyFormatter } from '@/utils/currencyFormatter';
 
 // =====================
 // DISPLAY FORMATTER
 // =====================
 
 export class DisplayFormatter {
-  private static currencyFormatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
-  });
-
-  private static currencyFormatterNoZeroCents = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  });
-
-  private static numberFormatter = new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  });
-
   private static dateFormatter = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'long',
@@ -76,22 +60,13 @@ export class DisplayFormatter {
   }
 
   static formatCurrency(value: any, hideZeroCents?: boolean): string {
-    // Check if already formatted
-    if (typeof value === 'string' && value.includes('$')) {
-      return value; // Already formatted, return as-is
-    }
     const numValue = DisplayValueValidator.validateCurrency(value);
-    
-    // Use appropriate formatter based on hideZeroCents option
-    if (hideZeroCents) {
-      return this.currencyFormatterNoZeroCents.format(numValue);
-    }
-    return this.currencyFormatter.format(numValue);
+    return formatCurrencyUtil(numValue, undefined, hideZeroCents !== undefined ? { hideZeroCents } : {});
   }
 
   static formatNumber(value: any): string {
     const numValue = DisplayValueValidator.validateNumber(value);
-    return this.numberFormatter.format(numValue);
+    return formatNumberUtil(numValue);
   }
 
   static formatBoolean(value: any): string {
@@ -259,8 +234,26 @@ export abstract class BaseDisplayEnhancer extends BaseEnhancer {
     this.validateElement();
     this.parseDisplayAttributes();
     this.setupStoreSubscriptions();
+    this.setupCurrencyChangeListener();
     await this.performInitialUpdate();
     this.logger.debug(`${this.constructor.name} initialized with path: ${this.displayPath}`);
+  }
+
+  /**
+   * Sets up listener for currency change events to refresh display
+   */
+  protected setupCurrencyChangeListener(): void {
+    // Listen for currency changes and update display
+    document.addEventListener('next:currency-changed', () => {
+      this.logger.debug(`Currency changed, updating display for ${this.displayPath}`);
+      // Clear formatter cache to ensure new currency is used
+      CurrencyFormatter.clearCache();
+      // Clear the last value to force a display update even if the raw value hasn't changed
+      // This is important because currency symbol changes even when the numeric value doesn't
+      this.lastValue = undefined;
+      // Update the display with new currency
+      this.updateDisplay();
+    });
   }
 
   /**

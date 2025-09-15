@@ -8,6 +8,7 @@ import type { CartState, CartItem, CartTotals, DiscountDefinition, AppliedCoupon
 import { sessionStorageManager, CART_STORAGE_KEY } from '@/utils/storage';
 import { EventBus } from '@/utils/events';
 import { createLogger } from '@/utils/logger';
+import { formatCurrency, formatPercentage } from '@/utils/currencyFormatter';
 
 const logger = createLogger('CartStore');
 
@@ -23,6 +24,7 @@ interface CartActions {
   calculateShipping: () => number;
   calculateTax: () => number;
   calculateEnrichedItems: () => Promise<void>;
+  refreshItemPrices: () => Promise<void>;
   setShippingMethod: (methodId: number) => Promise<void>;
   hasItem: (packageId: number) => boolean;
   getItem: (packageId: number) => CartItem | undefined;
@@ -30,6 +32,7 @@ interface CartActions {
   getTotalWeight: () => number;
   getTotalItemCount: () => number;
   reset: () => void;
+  setLastCurrency: (currency: string) => void;
   
   // Coupon methods
   applyCoupon: (code: string) => Promise<{ success: boolean; message: string }>;
@@ -391,8 +394,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
         const totalQuantity = state.items.reduce((sum, item) => sum + item.quantity, 0);
         const isEmpty = state.items.length === 0;
         
-        const formatCurrency = (amount: number) => 
-          new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        // Currency formatting is handled by the centralized formatter
         
         // Calculate compare total (retail prices) - FIXED: Handle null values properly
         const compareTotal = state.items.reduce((sum, item) => {
@@ -453,11 +455,11 @@ const cartStoreInstance = create<CartState & CartActions>()(
           count: totalQuantity,
           isEmpty,
           savings: { value: savings, formatted: formatCurrency(savings) },
-          savingsPercentage: { value: savingsPercentage, formatted: `${Math.round(savingsPercentage)}%` },
+          savingsPercentage: { value: savingsPercentage, formatted: formatPercentage(savingsPercentage) },
           compareTotal: { value: compareTotal, formatted: formatCurrency(compareTotal) },
           hasSavings,
           totalSavings: { value: totalSavings, formatted: formatCurrency(totalSavings) },
-          totalSavingsPercentage: { value: totalSavingsPercentage, formatted: `${Math.round(totalSavingsPercentage)}%` },
+          totalSavingsPercentage: { value: totalSavingsPercentage, formatted: formatPercentage(totalSavingsPercentage) },
           hasTotalSavings,
         };
         
@@ -621,8 +623,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
           const campaignState = useCampaignStore.getState();
           const state = get();
           
-          const formatCurrency = (amount: number) => 
-            new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+          // Currency is now handled by individual components via campaign/config stores
+          
+          // Use centralized formatter
           
           const enrichedItems = state.items.map(item => {
             const packageData = campaignState.getPackage(item.packageId);
@@ -674,7 +677,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
                 lineCompare: { value: retailLineTotal, formatted: formatCurrency(retailLineTotal) },
                 lineSavings: { value: lineSavings, formatted: formatCurrency(lineSavings) },
                 // Calculated fields
-                savingsPct: { value: savingsPct, formatted: `${savingsPct}%` },
+                savingsPct: { value: savingsPct, formatted: formatPercentage(savingsPct) },
               },
               product: {
                 title: item.title || packageData?.name || '',
@@ -821,8 +824,91 @@ const cartStoreInstance = create<CartState & CartActions>()(
         return Math.min(discountAmount, state.subtotal);
       },
 
+      refreshItemPrices: async () => {
+        try {
+          logger.info('Refreshing cart item prices with new currency data...');
+          
+          // Import campaign store to get updated package data
+          const { useCampaignStore } = await import('./campaignStore');
+          const campaignStore = useCampaignStore.getState();
+          
+          if (!campaignStore.data) {
+            logger.warn('No campaign data available to refresh prices');
+            return;
+          }
+          
+          const state = get();
+          
+          // Update each item with new prices from campaign data
+          const updatedItems = state.items.map(item => {
+            const packageData = campaignStore.getPackage(item.packageId);
+            
+            if (!packageData) {
+              logger.warn(`Package ${item.packageId} not found in campaign data`);
+              return item;
+            }
+            
+            // Update the item with new prices from the reloaded campaign data
+            return {
+              ...item,
+              price: parseFloat(packageData.price_total), // Update package total price
+              price_per_unit: packageData.price,
+              price_total: packageData.price_total,
+              price_retail: packageData.price_retail,
+              price_retail_total: packageData.price_retail_total,
+              price_recurring: packageData.price_recurring,
+              // Keep other fields unchanged (quantity, title, etc.)
+            };
+          });
+          
+          // Also update shipping method price if one is selected
+          let updatedShippingMethod = state.shippingMethod;
+          if (updatedShippingMethod && campaignStore.data.shipping_methods) {
+            const shippingMethodData = campaignStore.data.shipping_methods.find(
+              method => method.ref_id === updatedShippingMethod!.id
+            );
+            
+            if (shippingMethodData) {
+              const newPrice = parseFloat(shippingMethodData.price || '0');
+              updatedShippingMethod = {
+                ...updatedShippingMethod,
+                price: newPrice
+              };
+              logger.info(`Updated shipping method price: ${updatedShippingMethod.code} = ${newPrice} ${campaignStore.data.currency}`);
+            }
+          }
+          
+          // Update state with new items and shipping method
+          set(state => {
+            const updates: any = {
+              ...state,
+              items: updatedItems
+            };
+            if (updatedShippingMethod !== undefined) {
+              updates.shippingMethod = updatedShippingMethod;
+            }
+            return updates;
+          });
+          
+          logger.info('Cart item prices and shipping refreshed with new currency');
+          
+          // Recalculate totals with updated prices
+          // Use setTimeout to ensure the state update completes first
+          setTimeout(() => {
+            get().calculateTotals();
+          }, 0);
+          
+        } catch (error) {
+          logger.error('Failed to refresh item prices:', error);
+        }
+      },
+
       reset: () => {
         set(initialState);
+      },
+
+      setLastCurrency: (currency: string) => {
+        set({ lastCurrency: currency });
       },
     })),
     {

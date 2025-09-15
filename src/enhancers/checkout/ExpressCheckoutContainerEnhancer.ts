@@ -106,13 +106,25 @@ export class ExpressCheckoutContainerEnhancer extends BaseEnhancer {
   }
   
   private handleConfigUpdate(state: any): void {
+    const prevPaymentConfig = this.paymentConfig;
     this.paymentConfig = state.paymentConfig;
-    this.updateExpressCheckoutButtons();
+    
+    // Only update buttons if payment config actually changed
+    if (JSON.stringify(prevPaymentConfig) !== JSON.stringify(state.paymentConfig)) {
+      this.updateExpressCheckoutButtons();
+    }
   }
   
   private handleCampaignUpdate(state: any): void {
-    this.availableExpressMethods = state.data?.available_express_payment_methods;
-    this.updateExpressCheckoutButtons();
+    const newExpressMethods = state.data?.available_express_payment_methods;
+    
+    // Check if express methods actually changed
+    const methodsChanged = JSON.stringify(this.availableExpressMethods) !== JSON.stringify(newExpressMethods);
+    
+    if (methodsChanged) {
+      this.availableExpressMethods = newExpressMethods;
+      this.updateExpressCheckoutButtons();
+    }
   }
   
   private async updateExpressCheckoutButtons(): Promise<void> {

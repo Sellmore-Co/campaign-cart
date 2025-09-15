@@ -12,6 +12,7 @@ export declare class ProductDisplayEnhancer extends BaseDisplayEnhancer {
     protected setupStoreSubscriptions(): void;
     private handleCampaignUpdate;
     private handleCartUpdate;
+    protected setupCurrencyChangeListener(): void;
     private handleProfileUpdate;
     private setupProfileEventListeners;
     private setupQuantityListeners;

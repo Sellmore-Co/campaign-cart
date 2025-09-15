@@ -47,6 +47,7 @@ Display package/product data with context awareness. These work within package c
 ### Recurring Pricing
 ```html
 <span data-next-display="package.price_recurring">Recurring subscription price (formatted)</span>
+<span data-next-display="package.price_recurring_total">Total recurring price (formatted)</span>
 ```
 
 ### Discount-Adjusted Prices

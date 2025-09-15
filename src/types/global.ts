@@ -24,6 +24,7 @@ export interface EventMap {
   'order:completed': OrderData;
   'order:redirect-missing': { order: any };
   'error:occurred': ErrorData;
+  'currency:fallback': { requested: string; actual: string; reason: 'cached' | 'api' };
   'timer:expired': { persistenceId: string };
   'config:updated': ConfigState;
   'coupon:applied': { coupon: AppliedCoupon } | { code: string };
@@ -167,6 +168,7 @@ export interface CartState {
   enrichedItems: EnrichedCartLine[];
   totals: CartTotals;
   swapInProgress?: boolean;
+  lastCurrency?: string; // Track last currency to detect changes
 }
 
 export interface CartTotals {
@@ -217,6 +219,7 @@ export interface Campaign {
   packages: Package[];
   payment_env_key: string;
   shipping_methods: ShippingOption[];
+  available_currencies?: Array<{ code: string; label: string }>;
 }
 
 export interface Package {
@@ -272,6 +275,14 @@ export interface ConfigState {
   paymentConfig: PaymentConfig;
   googleMapsConfig: GoogleMapsConfig;
   addressConfig: AddressConfig;
+  
+  // Location and currency detection
+  detectedCountry?: string;
+  detectedCurrency?: string;
+  selectedCurrency?: string;
+  locationData?: any;
+  currencyBehavior?: 'auto' | 'manual'; // auto: change currency when country changes, manual: never auto-change
+  currencyFallbackOccurred?: boolean; // Track if currency fallback happened
   
   // Additional configuration properties for complete type coverage
   autoInit: boolean | undefined;

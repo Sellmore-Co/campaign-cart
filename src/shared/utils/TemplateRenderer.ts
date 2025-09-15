@@ -146,10 +146,10 @@ export class TemplateRenderer {
    */
   static createDefaultFormatters(): TemplateFormatters {
     return {
-      currency: (amount: number) => new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-      }).format(amount),
+      currency: (amount: number) => {
+        const { formatCurrency } = require('@/utils/currencyFormatter');
+        return formatCurrency(amount);
+      },
       
       date: (dateValue: any) => {
         if (!dateValue) return '';

@@ -35,6 +35,11 @@ export interface EventMap {
         order: any;
     };
     'error:occurred': ErrorData;
+    'currency:fallback': {
+        requested: string;
+        actual: string;
+        reason: 'cached' | 'api';
+    };
     'timer:expired': {
         persistenceId: string;
     };
@@ -295,6 +300,7 @@ export interface CartState {
     enrichedItems: EnrichedCartLine[];
     totals: CartTotals;
     swapInProgress?: boolean;
+    lastCurrency?: string;
 }
 export interface CartTotals {
     subtotal: {
@@ -386,6 +392,10 @@ export interface Campaign {
     packages: Package[];
     payment_env_key: string;
     shipping_methods: ShippingOption[];
+    available_currencies?: Array<{
+        code: string;
+        label: string;
+    }>;
 }
 export interface Package {
     ref_id: number;
@@ -433,6 +443,12 @@ export interface ConfigState {
     paymentConfig: PaymentConfig;
     googleMapsConfig: GoogleMapsConfig;
     addressConfig: AddressConfig;
+    detectedCountry?: string;
+    detectedCurrency?: string;
+    selectedCurrency?: string;
+    locationData?: any;
+    currencyBehavior?: 'auto' | 'manual';
+    currencyFallbackOccurred?: boolean;
     autoInit: boolean | undefined;
     rateLimit: number | undefined;
     cacheTtl: number | undefined;

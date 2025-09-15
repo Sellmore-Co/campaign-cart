@@ -5,6 +5,10 @@ export interface Campaign {
     packages: Package[];
     payment_env_key: string;
     shipping_methods: ShippingOption[];
+    available_currencies?: Array<{
+        code: string;
+        label: string;
+    }>;
 }
 export interface VariantAttribute {
     code: string;

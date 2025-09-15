@@ -36,6 +36,7 @@ export declare class ProspectCartEnhancer extends BaseEnhancer {
     private createProspectCart;
     private updateProspectCart;
     private collectUtmData;
+    private getCurrency;
     private isValidEmail;
     private isValidName;
     private handleCartUpdate;

@@ -81,7 +81,8 @@ export class CountryService {
    * Get location data with user's detected country and list of all countries
    */
   public async getLocationData(): Promise<LocationData> {
-    const cached = this.getFromCache('location_data');
+    // Use localStorage for location data as countries list doesn't change often
+    const cached = this.getFromCache('location_data', true);
     
     if (cached) {
       return await this.applyCountryFiltering(cached);
@@ -95,7 +96,8 @@ export class CountryService {
       }
 
       const data = await response.json();
-      this.setCache('location_data', data);
+      // Store in localStorage for longer persistence
+      this.setCache('location_data', data, true);
       
       this.logger.debug('Location data fetched', {
         detectedCountry: data.detectedCountryCode,
@@ -114,7 +116,8 @@ export class CountryService {
    */
   public async getCountryStates(countryCode: string): Promise<CountryStatesData> {
     const cacheKey = `states_${countryCode}`;
-    const cached = this.getFromCache(cacheKey);
+    // Use localStorage for country states as they don't change often
+    const cached = this.getFromCache(cacheKey, true);
     
     if (cached) {
       return {
@@ -131,7 +134,8 @@ export class CountryService {
       }
 
       const data = await response.json();
-      this.setCache(cacheKey, data);
+      // Store in localStorage for longer persistence
+      this.setCache(cacheKey, data, true);
       
       this.logger.debug(`States data fetched for ${countryCode}`, {
         statesCount: data.states?.length,
@@ -198,17 +202,29 @@ export class CountryService {
    */
   public clearCache(): void {
     try {
-      // Remove all cache entries with our prefix
+      // Remove all cache entries with our prefix from both storages
       const keysToRemove: string[] = [];
+      
+      // Clear from sessionStorage
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i);
         if (key && key.startsWith(this.cachePrefix)) {
           keysToRemove.push(key);
         }
       }
-      
       keysToRemove.forEach(key => sessionStorage.removeItem(key));
-      this.logger.debug('Country service cache cleared');
+      
+      // Clear from localStorage (mainly states data)
+      const localKeysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(this.cachePrefix)) {
+          localKeysToRemove.push(key);
+        }
+      }
+      localKeysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      this.logger.debug(`Country service cache cleared (${keysToRemove.length} session + ${localKeysToRemove.length} local entries)`);
     } catch (error) {
       this.logger.warn('Failed to clear cache:', error);
     }
@@ -220,6 +236,9 @@ export class CountryService {
   public clearCountryCache(countryCode: string): void {
     try {
       const cacheKey = this.cachePrefix + `states_${countryCode}`;
+      // Clear from localStorage since states are stored there
+      localStorage.removeItem(cacheKey);
+      // Also clear from sessionStorage in case there's any legacy data
       sessionStorage.removeItem(cacheKey);
       this.logger.debug(`Cache cleared for country: ${countryCode}`);
     } catch (error) {
@@ -227,17 +246,18 @@ export class CountryService {
     }
   }
 
-  private getFromCache(key: string): any {
+  private getFromCache(key: string, useLocalStorage: boolean = false): any {
     try {
       const cacheKey = this.cachePrefix + key;
-      const cached = sessionStorage.getItem(cacheKey);
+      const storage = useLocalStorage ? localStorage : sessionStorage;
+      const cached = storage.getItem(cacheKey);
       if (!cached) return null;
 
       const { data, timestamp } = JSON.parse(cached);
       const now = Date.now();
 
       if (now - timestamp > this.cacheExpiry) {
-        sessionStorage.removeItem(cacheKey);
+        storage.removeItem(cacheKey);
         return null;
       }
 
@@ -248,17 +268,18 @@ export class CountryService {
     }
   }
 
-  private setCache(key: string, data: any): void {
+  private setCache(key: string, data: any, useLocalStorage: boolean = false): void {
     try {
       const cacheKey = this.cachePrefix + key;
       const cacheData = {
         data,
         timestamp: Date.now()
       };
-      sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+      const storage = useLocalStorage ? localStorage : sessionStorage;
+      storage.setItem(cacheKey, JSON.stringify(cacheData));
     } catch (error) {
       this.logger.warn('Failed to write to cache:', error);
-      // Continue without caching if sessionStorage is unavailable
+      // Continue without caching if storage is unavailable
     }
   }
 
@@ -349,32 +370,49 @@ export class CountryService {
       );
     }
     
-    // Apply default country if specified and country is available
+    // IMPORTANT: Preserve the original detected country config for currency purposes
+    // Even if the country is not in the allowed shipping list, we want to keep
+    // the detected currency (e.g., show CAD for Canadian users even if only shipping to US)
+    const originalDetectedCountryConfig = data.detectedCountryConfig;
+    
+    // Use detected country or fall back to default if detection failed
     let detectedCountryCode = data.detectedCountryCode;
     let detectedCountryConfig = data.detectedCountryConfig;
     
-    if (this.config.defaultCountry) {
+    // Check if detected country is in the allowed list
+    const detectedCountryAllowed = filteredCountries.some(country => 
+      country.code === detectedCountryCode
+    );
+    
+    // Only change the country code for shipping purposes when:
+    // 1. No country was detected, OR
+    // 2. The detected country is not in the allowed shipping list
+    if ((!detectedCountryCode || !detectedCountryAllowed) && this.config.defaultCountry) {
       const defaultCountryExists = filteredCountries.some(country => 
         country.code === this.config.defaultCountry
       );
+      
       if (defaultCountryExists) {
+        this.logger.info(`Using default country ${this.config.defaultCountry} for shipping (detected: ${detectedCountryCode}, allowed: ${detectedCountryAllowed})`);
+        this.logger.info(`Preserving detected currency: ${originalDetectedCountryConfig.currencyCode} from detected location: ${data.detectedCountryCode}`);
+        
+        // Only change the country code for shipping dropdown default
+        // Keep the original detected country config for currency
         detectedCountryCode = this.config.defaultCountry;
-        // Fetch the correct country config for the default country
-        try {
-          const defaultCountryData = await this.getCountryStates(this.config.defaultCountry);
-          detectedCountryConfig = defaultCountryData.countryConfig;
-        } catch (error) {
-          this.logger.warn(`Failed to fetch config for default country ${this.config.defaultCountry}, using fallback:`, error);
-          detectedCountryConfig = this.getDefaultCountryConfig(this.config.defaultCountry);
-        }
+        
+        // KEEP the original detected currency config, don't replace it
+        // This ensures Canadian users see CAD even if only US shipping is allowed
+        detectedCountryConfig = originalDetectedCountryConfig;
       }
+    } else if (detectedCountryCode && detectedCountryAllowed) {
+      this.logger.info(`Using detected country: ${detectedCountryCode}`);
     }
     
     return {
       ...data,
       countries: filteredCountries,
       detectedCountryCode,
-      detectedCountryConfig
+      detectedCountryConfig  // This will be the original detected config for currency
     };
   }
 

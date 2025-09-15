@@ -15,6 +15,7 @@ export class CartItemListEnhancer extends BaseEnhancer {
   private template?: string;
   private emptyTemplate?: string;
   private titleMap?: Record<string, string>;
+  private lastRenderedItems: string = '';  // Track last rendered state
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -98,10 +99,18 @@ export class CartItemListEnhancer extends BaseEnhancer {
       }
     }
 
-    this.element.innerHTML = itemsHTML.join('');
-
-    // Re-enhance any new elements
-    await this.enhanceNewElements();
+    const newHTML = itemsHTML.join('');
+    
+    // Only update DOM if content actually changed
+    if (newHTML !== this.lastRenderedItems) {
+      this.element.innerHTML = newHTML;
+      this.lastRenderedItems = newHTML;
+      
+      // Re-enhance any new elements
+      await this.enhanceNewElements();
+    } else {
+      this.logger.debug('Cart items HTML unchanged, skipping DOM update');
+    }
   }
 
   private async renderCartItem(item: CartItem, campaignStore: any): Promise<string> {
