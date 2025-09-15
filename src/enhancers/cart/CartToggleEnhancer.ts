@@ -477,9 +477,42 @@ export class CartToggleEnhancer extends BaseEnhancer {
         await useCartStore.getState().updateQuantity(this.packageId, totalSyncQuantity);
       }
     } else if (currentItem && !cartState.swapInProgress) {
-      // Only remove if no synced packages AND not in the middle of a swap
-      this.logger.debug('Auto-sync: No synced packages found and not swapping - removing item');
-      await this.removeFromCart();
+      // Additional safety check: if the item is an upsell/bump, be more conservative about removing
+      if (currentItem.is_upsell) {
+        // For upsells, only remove if we're SURE the synced packages don't exist
+        // Give a small delay to let any profile operations complete
+        this.logger.debug('Auto-sync: Upsell item detected, delaying removal check');
+
+        setTimeout(async () => {
+          const updatedState = useCartStore.getState();
+
+          // Re-check for synced packages after delay
+          let stillNoSyncedPackages = true;
+          this.syncPackageIds.forEach(syncId => {
+            const syncedItem = updatedState.items.find(item =>
+              item.packageId === syncId ||
+              item.originalPackageId === syncId
+            );
+            if (syncedItem) {
+              stillNoSyncedPackages = false;
+            }
+          });
+
+          // Also check if item still exists and swap is not in progress
+          const itemStillExists = updatedState.items.find(item => item.packageId === this.packageId);
+
+          if (stillNoSyncedPackages && itemStillExists && !updatedState.swapInProgress) {
+            this.logger.debug('Auto-sync: After delay, still no synced packages - removing upsell');
+            await this.removeFromCart();
+          } else {
+            this.logger.debug('Auto-sync: After delay, conditions changed - keeping upsell');
+          }
+        }, 500); // 500ms delay to let profile operations complete
+      } else {
+        // For non-upsells, remove immediately
+        this.logger.debug('Auto-sync: No synced packages found and not swapping - removing item');
+        await this.removeFromCart();
+      }
     } else if (currentItem && cartState.swapInProgress) {
       // Swap in progress - don't remove yet
       this.logger.debug('Auto-sync: Swap in progress - keeping item for now');

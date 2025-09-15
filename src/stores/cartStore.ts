@@ -344,16 +344,20 @@ const cartStoreInstance = create<CartState & CartActions>()(
         const newItems: CartItem[] = [];
         
         for (const item of items) {
-          // Apply profile mapping if active
+          // Apply profile mapping if active (unless originalPackageId is provided)
           let finalPackageId = item.packageId;
-          if (profileStore.activeProfileId) {
+          let originalPackageId = (item as any).originalPackageId;
+
+          // Only apply profile mapping if no originalPackageId was provided
+          if (!originalPackageId && profileStore.activeProfileId) {
             const mappedId = profileStore.getMappedPackageId(finalPackageId);
             if (mappedId !== finalPackageId) {
               logger.debug(`Applying profile mapping: ${finalPackageId} -> ${mappedId}`);
+              originalPackageId = finalPackageId;
               finalPackageId = mappedId;
             }
           }
-          
+
           // Get package data from campaign
           const packageData = campaignStore.getPackage(finalPackageId);
 
@@ -364,16 +368,16 @@ const cartStoreInstance = create<CartState & CartActions>()(
           }
 
           logger.debug(`Package ${finalPackageId} found:`, packageData);
-          
+
           const newItem: CartItem = {
             id: Date.now() + Math.random(), // Ensure unique IDs
             packageId: finalPackageId,
-            originalPackageId: item.packageId !== finalPackageId ? item.packageId : undefined,
+            originalPackageId: originalPackageId,
             title: packageData.name || `Package ${finalPackageId}`, // Use 'title' instead of 'name'
-            price: parseFloat(packageData.price),
+            price: parseFloat(packageData.price_total), // Use total package price, not per-unit
             price_retail: packageData.price_retail,
             quantity: item.quantity,
-            is_upsell: false,
+            is_upsell: (item as any).isUpsell || false, // Preserve isUpsell flag if provided
             image: packageData.image,
             sku: undefined,
             qty: packageData.qty,
@@ -381,7 +385,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
             price_retail_total: packageData.price_retail_total,
             price_per_unit: packageData.price,
           };
-          
+
           newItems.push(newItem);
         }
         
@@ -411,8 +415,9 @@ const cartStoreInstance = create<CartState & CartActions>()(
           // Import campaign store dynamically to avoid circular dependencies
           const { useCampaignStore } = await import('./campaignStore');
           const campaignState = useCampaignStore.getState();
-        
+
         const state = get();
+        // item.price is already the total package price, so just multiply by quantity of packages
         const subtotal = state.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         const totalQuantity = state.items.reduce((sum, item) => sum + item.quantity, 0);
         const isEmpty = state.items.length === 0;

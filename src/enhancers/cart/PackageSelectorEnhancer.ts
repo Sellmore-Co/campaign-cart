@@ -403,20 +403,53 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
   private async updateCart(previousItem: SelectorItem | null, selectedItem: SelectorItem): Promise<void> {
     const cartStore = useCartStore.getState();
 
-    // Swap mode: use swapPackage method to handle atomic swap
-    if (previousItem && previousItem.packageId !== selectedItem.packageId) {
-      await cartStore.swapPackage(previousItem.packageId, {
-        packageId: selectedItem.packageId,
-        quantity: selectedItem.quantity,
-        isUpsell: false
+    // In swap mode, we need to find any item from this selector that's currently in cart
+    // This is important when profiles change, as the previousItem tracking may be stale
+    if (this.mode === 'swap') {
+      // Find any item in cart that originated from this selector
+      const existingCartItem = cartStore.items.find(cartItem => {
+        // Check if this cart item matches any of our selector's packages
+        return this.items.some(selectorItem =>
+          cartItem.packageId === selectorItem.packageId ||
+          cartItem.originalPackageId === selectorItem.packageId
+        );
       });
-    } else if (!cartStore.hasItem(selectedItem.packageId)) {
-      // No previous item or same item - just add if not in cart
-      await cartStore.addItem({
-        packageId: selectedItem.packageId,
-        quantity: selectedItem.quantity,
-        isUpsell: false
-      });
+
+      if (existingCartItem) {
+        // We found an item from this selector in cart - swap it
+        // Use the cart item's packageId (which may be mapped) for removal
+        if (existingCartItem.packageId !== selectedItem.packageId) {
+          this.logger.debug(`Swapping cart item from selector: ${existingCartItem.packageId} -> ${selectedItem.packageId}`);
+          await cartStore.swapPackage(existingCartItem.packageId, {
+            packageId: selectedItem.packageId,
+            quantity: selectedItem.quantity,
+            isUpsell: false
+          });
+        }
+      } else if (!cartStore.hasItem(selectedItem.packageId)) {
+        // No item from this selector in cart - add the selected item
+        this.logger.debug(`Adding new item from selector: ${selectedItem.packageId}`);
+        await cartStore.addItem({
+          packageId: selectedItem.packageId,
+          quantity: selectedItem.quantity,
+          isUpsell: false
+        });
+      }
+    } else {
+      // Non-swap mode - original behavior
+      if (previousItem && previousItem.packageId !== selectedItem.packageId) {
+        await cartStore.swapPackage(previousItem.packageId, {
+          packageId: selectedItem.packageId,
+          quantity: selectedItem.quantity,
+          isUpsell: false
+        });
+      } else if (!cartStore.hasItem(selectedItem.packageId)) {
+        await cartStore.addItem({
+          packageId: selectedItem.packageId,
+          quantity: selectedItem.quantity,
+          isUpsell: false
+        });
+      }
     }
   }
 

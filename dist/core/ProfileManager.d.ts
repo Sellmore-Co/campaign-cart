@@ -10,13 +10,17 @@ export interface MappedCartItem {
     mappedPackageId: number;
     quantity: number;
     mappedPackage?: Package;
+    preserveUnmapped?: boolean;
 }
 export declare class ProfileManager {
     private static instance;
     private logger;
     private eventBus;
+    private profileOperationInProgress;
+    private initialCartState;
     private constructor();
     static getInstance(): ProfileManager;
+    private captureInitialState;
     applyProfile(profileId: string, options?: ApplyProfileOptions): Promise<void>;
     private mapCartItems;
     private applyMappedItems;
