@@ -213,22 +213,45 @@ const cartStoreInstance = create<CartState & CartActions>()(
 
       swapPackage: async (removePackageId: number, addItem: Partial<CartItem> & { isUpsell: boolean | undefined }) => {
         const { useCampaignStore } = await import('./campaignStore');
+        const { useProfileStore } = await import('./profileStore');
         const campaignStore = useCampaignStore.getState();
-        
-        // Get package data from campaign
-        const newPackageData = campaignStore.getPackage(addItem.packageId ?? 0);
-        
-        if (!newPackageData) {
-          throw new Error(`Package ${addItem.packageId} not found in campaign data`);
+        const profileStore = useProfileStore.getState();
+
+        // Apply profile mapping to both the package being removed and added
+        let mappedRemovePackageId = removePackageId;
+        if (profileStore.activeProfileId) {
+          const mappedRemoveId = profileStore.getMappedPackageId(removePackageId);
+          if (mappedRemoveId !== removePackageId) {
+            logger.debug(`Applying profile mapping to remove package: ${removePackageId} -> ${mappedRemoveId}`);
+            mappedRemovePackageId = mappedRemoveId;
+          }
         }
-        
-        // Get the item being removed
-        const previousItem = get().items.find(item => item.packageId === removePackageId);
+
+        // Apply profile mapping to the new package
+        let finalPackageId = addItem.packageId ?? 0;
+        if (profileStore.activeProfileId) {
+          const mappedId = profileStore.getMappedPackageId(finalPackageId);
+          if (mappedId !== finalPackageId) {
+            logger.debug(`Applying profile mapping in swapPackage: ${finalPackageId} -> ${mappedId}`);
+            finalPackageId = mappedId;
+          }
+        }
+
+        // Get package data from campaign
+        const newPackageData = campaignStore.getPackage(finalPackageId);
+
+        if (!newPackageData) {
+          throw new Error(`Package ${finalPackageId} not found in campaign data`);
+        }
+
+        // Get the item being removed (using the mapped ID)
+        const previousItem = get().items.find(item => item.packageId === mappedRemovePackageId);
         
         // Create the new item
         const newItem: CartItem = {
           id: Date.now(),
-          packageId: addItem.packageId ?? 0,
+          packageId: finalPackageId,
+          originalPackageId: finalPackageId !== (addItem.packageId ?? 0) ? (addItem.packageId ?? 0) : undefined,
           quantity: addItem.quantity ?? 1,
           price: parseFloat(newPackageData.price_total),
           title: addItem.title ?? newPackageData.name,
@@ -252,7 +275,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
         // Perform atomic update
         set(state => {
           // Remove old item and add new item in single state update
-          const newItems = state.items.filter(item => item.packageId !== removePackageId);
+          const newItems = state.items.filter(item => item.packageId !== mappedRemovePackageId);
           
           // Check if new package already exists
           const existingIndex = newItems.findIndex(
@@ -274,8 +297,8 @@ const cartStoreInstance = create<CartState & CartActions>()(
         // Emit single swap event
         const eventBus = EventBus.getInstance();
         const swapEvent: Parameters<typeof eventBus.emit<'cart:package-swapped'>>[1] = {
-          previousPackageId: removePackageId,
-          newPackageId: addItem.packageId ?? 0,
+          previousPackageId: mappedRemovePackageId,
+          newPackageId: finalPackageId,
           newItem,
           priceDifference,
           source: 'package-selector'

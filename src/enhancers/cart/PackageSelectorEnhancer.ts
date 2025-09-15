@@ -444,17 +444,23 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
     try {
       // Update card states based on cart contents
       this.items.forEach(item => {
-        const isInCart = cartState.items.some(cartItem => 
+        // Check if this selector item matches any cart item
+        // Cart items may have originalPackageId if they were mapped through a profile
+        const isInCart = cartState.items.some(cartItem =>
+          cartItem.originalPackageId === item.packageId ||
           cartItem.packageId === item.packageId
         );
-        
+
         item.element.classList.toggle('next-in-cart', isInCart);
         item.element.setAttribute('data-next-in-cart', isInCart.toString());
       });
 
       // Find which item should be selected based on cart contents
       const cartItemsInSelector = this.items.filter(item =>
-        cartState.items.some(cartItem => cartItem.packageId === item.packageId)
+        cartState.items.some(cartItem =>
+          cartItem.originalPackageId === item.packageId ||
+          cartItem.packageId === item.packageId
+        )
       );
 
       if (cartItemsInSelector.length > 0 && this.mode === 'swap') {
@@ -463,14 +469,14 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
         if (itemToSelect && this.selectedItem !== itemToSelect) {
           this.selectItem(itemToSelect);
         }
-      } else if (!this.selectedItem) {
-        // No selection and nothing in cart - select pre-selected item if any
+      } else if (!this.selectedItem && cartState.isEmpty) {
+        // No selection and cart is empty - select pre-selected item if any
         const preSelectedItems = this.items.filter(item => item.isPreSelected);
-        
+
         if (preSelectedItems.length > 1) {
           // Multiple pre-selected items - warn and select first one
           this.logger.warn(`Multiple pre-selected items found in selector ${this.selectorId}. Only one should be pre-selected.`);
-          
+
           // Clear all but the first one
           preSelectedItems.slice(1).forEach(item => {
             item.element.classList.remove('next-selected');
@@ -478,11 +484,12 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
             item.isPreSelected = false;
           });
         }
-        
+
         const preSelected = preSelectedItems[0];
         if (preSelected) {
           this.selectItem(preSelected);
           // Auto-add pre-selected item to cart (except in select mode)
+          // The cart store will handle any profile mapping needed
           if (this.mode !== 'select') {
             this.updateCart(null, preSelected).catch(error => {
               this.logger.error('Failed to add pre-selected item:', error);
