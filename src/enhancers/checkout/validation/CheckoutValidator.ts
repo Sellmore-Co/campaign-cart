@@ -144,8 +144,8 @@ export class CheckoutValidator {
     let firstErrorField: string | undefined;
     const errors: Record<string, string> = {};
     
-    // Define required fields in validation order
-    const baseRequiredFields = ['email', 'fname', 'lname', 'address1', 'city'];
+    // Define required fields in validation order (fname first for proper focus order)
+    const baseRequiredFields = ['fname', 'lname', 'email', 'address1', 'city'];
     
     const countryConfig = countryConfigs.get(formData.country);
     const requiredFields = [...baseRequiredFields];
@@ -166,52 +166,37 @@ export class CheckoutValidator {
     requiredFields.forEach(field => {
       if (!formData[field] || formData[field].trim() === '') {
         errors[field] = `${this.formatFieldName(field, currentCountryConfig)} is required`;
-        if (!firstErrorField) {
-          firstErrorField = field;
-        }
         isValid = false;
       }
     });
-    
+
     // Name validation
     if (formData.fname && formData.fname.trim() && !this.isValidName(formData.fname)) {
       errors.fname = 'First name can only contain letters, spaces, hyphens, and apostrophes';
-      if (!firstErrorField) {
-        firstErrorField = 'fname';
-      }
       isValid = false;
     }
-    
+
     if (formData.lname && formData.lname.trim() && !this.isValidName(formData.lname)) {
       errors.lname = 'Last name can only contain letters, spaces, hyphens, and apostrophes';
-      if (!firstErrorField) {
-        firstErrorField = 'lname';
-      }
       isValid = false;
     }
-    
+
     // City validation
     if (formData.city && formData.city.trim() && !this.isValidCity(formData.city)) {
       errors.city = 'Please enter a valid city name';
-      if (!firstErrorField) {
-        firstErrorField = 'city';
-      }
       isValid = false;
     }
-    
+
     // Email validation
     if (formData.email && !this.isValidEmail(formData.email)) {
       errors.email = 'Please enter a valid email address';
-      if (isValid) {
-        firstErrorField = 'email';
-      }
       isValid = false;
     }
-    
+
     // Phone validation
     if (formData.phone) {
       let phoneIsValid = false;
-      
+
       if (this.phoneValidator) {
         phoneIsValid = this.phoneValidator(formData.phone, 'shipping');
       } else if (this.phoneInputManager) {
@@ -223,27 +208,21 @@ export class CheckoutValidator {
       } else {
         phoneIsValid = this.isValidPhone(formData.phone);
       }
-      
+
       if (!phoneIsValid) {
         errors.phone = 'Please enter a valid phone number';
-        if (isValid) {
-          firstErrorField = 'phone';
-        }
         isValid = false;
       }
     }
-    
+
     // Postal code validation
     if (formData.postal && formData.country) {
       const countryConfig = countryConfigs.get(formData.country);
       if (countryConfig && !this.countryService.validatePostalCode(formData.postal, formData.country, countryConfig)) {
-        const errorMsg = countryConfig.postcodeExample 
+        const errorMsg = countryConfig.postcodeExample
           ? `Please enter a valid ${countryConfig.postcodeLabel.toLowerCase()} (e.g. ${countryConfig.postcodeExample})`
           : `Please enter a valid ${countryConfig.postcodeLabel.toLowerCase()}`;
         errors.postal = errorMsg;
-        if (isValid) {
-          firstErrorField = 'postal';
-        }
         isValid = false;
       }
     }
@@ -267,26 +246,17 @@ export class CheckoutValidator {
             spreedlyCheck.errors.forEach((error) => {
               const fieldName = error.field === 'number' ? 'cc-number' : 'cvv';
               errors[fieldName] = error.message;
-              
-              if (isValid && error.field === 'number') {
-                firstErrorField = 'cc-number';
-              } else if (isValid && !firstErrorField) {
-                firstErrorField = fieldName;
-              }
             });
             isValid = false;
           }
-          
+
           // Validate month/year dropdowns
           const creditCardValidation = this.creditCardService.validateCreditCard(cardData);
           if (!creditCardValidation.isValid && creditCardValidation.errors) {
             Object.entries(creditCardValidation.errors).forEach(([field, error]) => {
               errors[field] = error;
-              if (isValid) {
-                firstErrorField = field;
-                isValid = false;
-              }
             });
+            isValid = false;
           }
         }
       }
@@ -295,7 +265,7 @@ export class CheckoutValidator {
     // Billing address validation
     if (!sameAsShipping && billingAddress) {
       const billingErrors = this.validateBillingAddress(billingAddress, countryConfigs);
-      
+
       Object.entries(billingErrors.errors).forEach(([field, error]) => {
         const fieldNameMap: Record<string, string> = {
           'first_name': 'billing-fname',
@@ -307,25 +277,53 @@ export class CheckoutValidator {
           'country': 'billing-country',
           'phone': 'billing-phone'
         };
-        
+
         const htmlFieldName = fieldNameMap[field] || `billing-${field}`;
         errors[htmlFieldName] = error;
-        if (isValid) {
-          firstErrorField = htmlFieldName;
-          isValid = false;
-        }
       });
-      
+
       if (!billingErrors.isValid) {
         isValid = false;
       }
     }
     
-    return { 
-      isValid, 
+    // After collecting all errors, find the first error field based on DOM position
+    if (!isValid && Object.keys(errors).length > 0) {
+      firstErrorField = this.findFirstErrorFieldInDOM(errors);
+    }
+
+    return {
+      isValid,
       ...(firstErrorField && { firstErrorField }),
-      errors 
+      errors
     };
+  }
+
+  private findFirstErrorFieldInDOM(errors: Record<string, string>): string | undefined {
+    // Get all form fields with errors
+    const errorFieldNames = Object.keys(errors);
+    if (errorFieldNames.length === 0) return undefined;
+
+    // Find all fields in the DOM
+    const fieldsInDOM: { name: string; element: HTMLElement; position: number }[] = [];
+
+    errorFieldNames.forEach(fieldName => {
+      const field = this.findFormField(fieldName);
+      if (field) {
+        const rect = field.getBoundingClientRect();
+        const position = rect.top + window.scrollY; // Get absolute position from top of document
+        fieldsInDOM.push({ name: fieldName, element: field, position });
+      }
+    });
+
+    // Sort by position and return the first one
+    if (fieldsInDOM.length > 0) {
+      fieldsInDOM.sort((a, b) => a.position - b.position);
+      return fieldsInDOM[0].name;
+    }
+
+    // Fallback to first error in the errors object
+    return errorFieldNames[0];
   }
 
   // ============================================================================
