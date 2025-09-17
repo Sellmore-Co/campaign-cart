@@ -792,7 +792,8 @@ export class NextCommerce {
 
   public getParam(key: string): string | null {
     const paramStore = useParameterStore.getState();
-    return paramStore.getParam(key);
+    const value = paramStore.getParam(key);
+    return value !== undefined ? value : null;
   }
 
   public getAllParams(): Record<string, string> {
