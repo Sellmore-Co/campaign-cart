@@ -178,6 +178,8 @@ export class GTMAdapter extends ProviderAdapter {
       item_list_id: item.item_list_id || item.list_id,
       item_list_name: item.item_list_name || item.list_name,
       item_variant: item.item_variant || item.variant,
+      item_image: item.item_image || item.image || item.image_url || item.imageUrl,
+      item_sku: item.item_sku || item.sku,
       location_id: item.location_id,
       price: parseFloat(this.formatCurrency(item.price || 0)),
       quantity: item.quantity || 1

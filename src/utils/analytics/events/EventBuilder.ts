@@ -25,7 +25,11 @@ interface MinimalCartItem {
   variant?: string;
   product?: {
     title?: string;
+    image?: string;
   };
+  image?: string;
+  imageUrl?: string;
+  image_url?: string;
 }
 
 export class EventBuilder {
@@ -197,13 +201,25 @@ export class EventBuilder {
   ): EcommerceItem {
     const currency = this.getCurrency();
     let campaignName = 'Campaign';
-    
+    let imageUrl: string | undefined;
+
     try {
       if (typeof window !== 'undefined') {
         const campaignStore = (window as any).campaignStore;
         if (campaignStore) {
           const campaign = campaignStore.getState().data;
           campaignName = campaign?.name || 'Campaign';
+
+          // Try to get image from campaign packages
+          const packageId = item.packageId || item.package_id || item.id;
+          if (packageId && campaign?.packages) {
+            const packageData = campaign.packages.find((p: any) =>
+              p.ref_id === packageId || p.external_id === packageId
+            );
+            if (packageData?.image) {
+              imageUrl = packageData.image;
+            }
+          }
         }
       }
     } catch (error) {
@@ -212,11 +228,20 @@ export class EventBuilder {
 
     // Handle different item formats
     const itemId = String(item.packageId || item.package_id || item.id);
-    const itemName = item.product?.title || 
-                    item.title || 
+    const itemName = item.product?.title ||
+                    item.title ||
                     item.product_title ||
                     item.name ||
                     `Package ${itemId}`;
+
+    // Get image from various possible sources
+    if (!imageUrl) {
+      imageUrl = (item as any).image ||
+                 (item as any).product?.image ||
+                 (item as any).imageUrl ||
+                 (item as any).image_url;
+    }
+
     let price: number = 0;
     if (item.price_incl_tax) {
       price = typeof item.price_incl_tax === 'string' ? parseFloat(item.price_incl_tax) : item.price_incl_tax;
@@ -238,12 +263,28 @@ export class EventBuilder {
       currency,
     };
 
-    // Add optional fields
-    if (item.package_profile || item.variant) {
-      const variant = item.package_profile || item.variant;
-      if (variant !== undefined) {
-        ecommerceItem.item_variant = variant;
-      }
+    // Add variant information - prefer product_variant_name over package_profile
+    const variant = (item as any).product_variant_name ||
+                   (item as any).product?.variant?.name ||
+                   item.package_profile ||
+                   item.variant;
+    if (variant !== undefined) {
+      ecommerceItem.item_variant = variant;
+    }
+
+    // Add brand information (using product name as brand)
+    const brand = (item as any).product_name ||
+                  (item as any).product?.name;
+    if (brand) {
+      ecommerceItem.item_brand = brand;
+    }
+
+    // Add SKU as a custom dimension (can be tracked in GTM)
+    const sku = (item as any).product_sku ||
+                (item as any).product?.variant?.sku ||
+                (item as any).sku;
+    if (sku) {
+      ecommerceItem.item_sku = sku;
     }
 
     if (index !== undefined) {
@@ -256,6 +297,11 @@ export class EventBuilder {
     }
     if (list?.name) {
       ecommerceItem.item_list_name = list.name;
+    }
+
+    // Add image URL if available
+    if (imageUrl) {
+      ecommerceItem.item_image = imageUrl;
     }
 
     return ecommerceItem;

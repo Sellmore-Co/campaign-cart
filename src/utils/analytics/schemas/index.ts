@@ -128,6 +128,7 @@ const productFields: Record<string, FieldDefinition> = {
   item_list_id: { type: 'string' },
   item_list_name: { type: 'string' },
   item_variant: { type: 'string' },
+  item_image: { type: 'string' },
   location_id: { type: 'string' },
   price: { type: 'number' },
   quantity: { type: 'number' }

@@ -158,8 +158,11 @@ export class ViewItemListTracker {
       currency: campaignStore.data?.currency || 'USD',
       price: parseFloat(packageData.price_total || '0'), // Use total package price
       quantity: 1, // Always 1 for package-based pricing
-      item_category: 'uncategorized',
-      item_variant: undefined,
+      item_category: campaignStore.data?.name || 'Campaign',
+      item_variant: packageData.product_variant_name || packageData.product?.variant?.name,
+      item_brand: packageData.product_name || packageData.product?.name,
+      item_sku: packageData.product_sku || packageData.product?.variant?.sku,
+      ...(packageData.image && { item_image: packageData.image }),
       ...(listContext && {
         item_list_id: listContext.listId,
         item_list_name: listContext.listName
@@ -222,8 +225,11 @@ export class ViewItemListTracker {
         currency: campaignStore.data?.currency || 'USD',
         price: price,
         quantity: 1, // Always 1 for package-based pricing
-        item_category: 'uncategorized',
-        item_variant: undefined,
+        item_category: campaignStore.data?.name || 'Campaign',
+        item_variant: packageData.product_variant_name || packageData.product?.variant?.name,
+        item_brand: packageData.product_name || packageData.product?.name,
+        item_sku: packageData.product_sku || packageData.product?.variant?.sku,
+        ...(packageData.image && { item_image: packageData.image }),
         item_list_id: listContext.listId,
         item_list_name: listContext.listName,
         index: index
