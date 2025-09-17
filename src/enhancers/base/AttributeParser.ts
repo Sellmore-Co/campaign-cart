@@ -232,6 +232,8 @@ export class AttributeParser {
 
   public static parseCondition(condition: string): any {
     try {
+      this.logger.debug('Parsing condition:', condition);
+
       // Support simple conditions like "cart.hasItems" or complex ones like "cart.total > 50"
       if (condition.includes('(') && condition.includes(')')) {
         // Function call format: cart.hasItem(123)
@@ -246,18 +248,66 @@ export class AttributeParser {
         }
       }
       
-      if (condition.includes(' ')) {
-        // Comparison format: cart.total > 50
+      if (condition.includes(' ') || condition.includes('==') || condition.includes('!=')) {
+        // Comparison format: cart.total > 50 or param.timer==n (without spaces)
         const operators = ['>=', '<=', '>', '<', '===', '==', '!==', '!='];
         for (const op of operators) {
           if (condition.includes(op)) {
-            const [left, right] = condition.split(op).map(s => s.trim());
-            return {
-              type: 'comparison',
-              left: this.parseDisplayPath(left ?? ''),
-              operator: op,
-              right: this.parseValue(right ?? ''),
-            };
+            const parts = condition.split(op);
+            if (parts.length === 2) {
+              const left = parts[0].trim();
+              const right = parts[1].trim();
+
+              // Special handling for param comparisons with unquoted values
+              // If left side is param.* and right side doesn't look like a number/boolean,
+              // treat it as a string literal
+              const leftPath = this.parseDisplayPath(left ?? '');
+              let rightValue;
+
+              // Check if the right side has quotes
+              const rightTrimmed = right.trim();
+              const hasQuotes = (rightTrimmed.startsWith('"') && rightTrimmed.endsWith('"')) ||
+                               (rightTrimmed.startsWith("'") && rightTrimmed.endsWith("'"));
+
+              if (hasQuotes) {
+                // Remove quotes and use the inner value
+                rightValue = rightTrimmed.slice(1, -1);
+              } else {
+                // No quotes - parse normally
+                rightValue = this.parseValue(right ?? '');
+
+                // If it's a param comparison and the right value is a string that's not a boolean/number,
+                // keep it as-is (it's an unquoted string value like 'n' or 'y')
+                if ((leftPath.object === 'param' || leftPath.object === 'params') &&
+                    typeof rightValue === 'string' &&
+                    right !== 'true' &&
+                    right !== 'false' &&
+                    !/^-?\d+(\.\d+)?$/.test(right)) {
+                  // It's already a string, just use it
+                  rightValue = right;
+                }
+              }
+
+              const result = {
+                type: 'comparison',
+                left: leftPath,
+                operator: op,
+                right: rightValue,
+              };
+
+              this.logger.debug('Parsed comparison:', {
+                original: condition,
+                leftPart: left,
+                rightPart: right,
+                hasQuotes,
+                result,
+                leftObject: leftPath.object,
+                rightValue,
+                rightType: typeof rightValue
+              });
+
+              return result;
+            }
           }
         }
       }

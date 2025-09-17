@@ -10,6 +10,7 @@ export declare class SDKInitializer {
     private static campaignLoadTime;
     private static campaignFromCache;
     static initialize(): Promise<void>;
+    private static captureUrlParameters;
     private static initializeLocationAndCurrency;
     private static loadConfiguration;
     private static loadCampaignData;

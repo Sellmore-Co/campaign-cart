@@ -10,6 +10,7 @@ export declare class ConditionalDisplayEnhancer extends BaseEnhancer {
     private dependsOnOrder;
     private dependsOnShipping;
     private dependsOnProfile;
+    private dependsOnParams;
     private profileId;
     private selectionChangeHandler;
     initialize(): Promise<void>;
@@ -21,11 +22,13 @@ export declare class ConditionalDisplayEnhancer extends BaseEnhancer {
     private conditionDependsOnOrder;
     private conditionDependsOnShipping;
     private conditionDependsOnProfile;
+    private conditionDependsOnParams;
     private handleCampaignUpdate;
     private handleOrderUpdate;
     private handlePackageUpdate;
     private handleShippingUpdate;
     private handleProfileUpdate;
+    private handleParamsUpdate;
     private evaluatePackageCondition;
     private evaluateOrderCondition;
     private evaluatePackageProperty;
@@ -40,6 +43,7 @@ export declare class ConditionalDisplayEnhancer extends BaseEnhancer {
     private evaluateSelectionCondition;
     private evaluateShippingCondition;
     private evaluateProfileCondition;
+    private evaluateParamsCondition;
     private evaluateSelectionProperty;
     private evaluateSelectionComparison;
     private evaluateShippingProperty;

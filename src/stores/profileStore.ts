@@ -5,7 +5,10 @@
 import { create } from 'zustand';
 import { subscribeWithSelector, persist } from 'zustand/middleware';
 import { createLogger } from '@/utils/logger';
-import { sessionStorageManager } from '@/utils/storage';
+import { StorageManager } from '@/utils/storage';
+
+// Use localStorage for profile persistence across page refreshes
+const profileStorageManager = new StorageManager({ storage: localStorage });
 import type { CartItem } from '@/types/global';
 
 const logger = createLogger('ProfileStore');
@@ -240,7 +243,7 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
       name: 'next-profile-store',
       storage: {
         getItem: (name) => {
-          const str = sessionStorageManager.get(name);
+          const str = profileStorageManager.get(name);
           if (!str) return null;
           
           // Convert Map back from array
@@ -258,14 +261,12 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
             (toStore.state as any).profiles = Array.from(toStore.state.profiles.entries());
           }
           
-          sessionStorageManager.set(name, JSON.stringify(toStore));
+          profileStorageManager.set(name, JSON.stringify(toStore));
         },
         removeItem: (name) => {
-          sessionStorageManager.remove(name);
+          profileStorageManager.remove(name);
         },
       },
-      // Only persist the active and previous profile IDs
-      // Don't persist profiles (they come from config) or cart snapshot
     }
   )
 );

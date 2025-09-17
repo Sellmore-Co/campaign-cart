@@ -143,5 +143,13 @@ export declare class NextCommerce {
         description?: string;
         packageMappings: Record<number, number>;
     }): void;
+    setParam(key: string, value: string): void;
+    setParams(params: Record<string, string>): void;
+    getParam(key: string): string | null;
+    getAllParams(): Record<string, string>;
+    hasParam(key: string): boolean;
+    clearParam(key: string): void;
+    clearAllParams(): void;
+    mergeParams(params: Record<string, string>): void;
 }
 //# sourceMappingURL=NextCommerce.d.ts.map

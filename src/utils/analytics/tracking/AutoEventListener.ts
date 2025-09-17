@@ -108,8 +108,11 @@ export class AutoEventListener {
         currency: campaignStore.data?.currency || 'USD',
         price: parseFloat(packageData.price_total || '0'), // Use total package price
         quantity: 1, // Always 1 for package-based pricing
-        item_category: 'uncategorized',
-        item_variant: undefined,
+        item_category: campaignStore.data?.name || 'Campaign',
+        item_variant: packageData.product_variant_name || packageData.product?.variant?.name,
+        item_brand: packageData.product_name || packageData.product?.name,
+        item_sku: packageData.product_sku || packageData.product?.variant?.sku,
+        ...(packageData.image && { item_image: packageData.image }),
         ...(listContext && {
           item_list_id: listContext.listId,
           item_list_name: listContext.listName
@@ -158,8 +161,11 @@ export class AutoEventListener {
         currency: campaignStore.data?.currency || 'USD',
         price: parseFloat(packageData.price_total || '0'), // Use total package price
         quantity: 1, // Always 1 for package-based pricing
-        item_category: 'uncategorized',
-        item_variant: undefined
+        item_category: campaignStore.data?.name || 'Campaign',
+        item_variant: packageData.product_variant_name || packageData.product?.variant?.name,
+        item_brand: packageData.product_name || packageData.product?.name,
+        item_sku: packageData.product_sku || packageData.product?.variant?.sku,
+        ...(packageData.image && { item_image: packageData.image })
       };
 
       const event = dataLayer.formatEcommerceEvent('dl_remove_from_cart', {
@@ -195,7 +201,11 @@ export class AutoEventListener {
         currency: campaignStore.data?.currency || 'USD',
         price: parseFloat(previousPackageData.price_total || '0'),
         quantity: 1,
-        item_category: 'uncategorized'
+        item_category: campaignStore.data?.name || 'Campaign',
+        item_variant: previousPackageData.product_variant_name || previousPackageData.product?.variant?.name,
+        item_brand: previousPackageData.product_name || previousPackageData.product?.name,
+        item_sku: previousPackageData.product_sku || previousPackageData.product?.variant?.sku || undefined,
+        ...(previousPackageData.image && { item_image: previousPackageData.image })
       };
 
       const newItemFormatted = {
@@ -204,7 +214,11 @@ export class AutoEventListener {
         currency: campaignStore.data?.currency || 'USD',
         price: parseFloat(newPackageData.price_total || '0'),
         quantity: 1,
-        item_category: 'uncategorized'
+        item_category: campaignStore.data?.name || 'Campaign',
+        item_variant: newPackageData.product_variant_name || newPackageData.product?.variant?.name,
+        item_brand: newPackageData.product_name || newPackageData.product?.name,
+        item_sku: newPackageData.product_sku || newPackageData.product?.variant?.sku || undefined,
+        ...(newPackageData.image && { item_image: newPackageData.image })
       };
 
       // Push single swap event instead of remove + add
@@ -385,7 +399,10 @@ export class AutoEventListener {
           price: parseFloat(packageData?.price_total || '0'), // Use total package price
           quantity: item.quantity, // This is the number of packages in cart
           item_category: campaignStore.data?.name || 'uncategorized',
-          item_variant: undefined,
+          item_variant: packageData?.product_variant_name || packageData?.product?.variant?.name,
+          item_brand: packageData?.product_name || packageData?.product?.name,
+          item_sku: packageData?.product_sku || packageData?.product?.variant?.sku,
+          ...(packageData?.image && { item_image: packageData.image }),
           index: index
         };
       });
@@ -418,6 +435,7 @@ export class AutoEventListener {
           price: parseFloat(packageData?.price_total || '0'),
           quantity: item.quantity,
           item_category: campaignStore.data?.name || 'uncategorized',
+          ...(packageData?.image && { item_image: packageData.image }),
           item_variant: undefined,
           index: index
         };
@@ -473,6 +491,7 @@ export class AutoEventListener {
             price: parseFloat(packageData?.price_total || '0'), // Use total package price
             quantity: item.quantity, // This is the number of packages in cart
             item_category: campaignStore.data?.name || 'uncategorized',
+            ...(packageData?.image && { item_image: packageData.image }),
             index: index
           };
         });

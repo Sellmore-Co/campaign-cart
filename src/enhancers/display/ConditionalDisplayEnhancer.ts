@@ -16,6 +16,7 @@ import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { useOrderStore } from '@/stores/orderStore';
 import { useProfileStore } from '@/stores/profileStore';
+import { useParameterStore } from '@/stores/parameterStore';
 import type { CartState } from '@/types/global';
 import type { Package } from '@/types/campaign';
 
@@ -30,10 +31,22 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
   private dependsOnOrder: boolean = false;
   private dependsOnShipping: boolean = false;
   private dependsOnProfile: boolean = false;
+  private dependsOnParams: boolean = false;
   private profileId: string | null = null;
   private selectionChangeHandler: ((event: any) => void) | null = null;
 
   public async initialize(): Promise<void> {
+    // Log initialization for debugging
+    const showAttr = this.element.getAttribute('data-next-show');
+    const hideAttr = this.element.getAttribute('data-next-hide');
+    this.logger.info('ConditionalDisplayEnhancer initializing:', {
+      element: this.element.tagName,
+      class: this.element.className,
+      showAttr,
+      hideAttr,
+      hasParams: window.location.search
+    });
+
     this.validateElement();
     
     // Detect package context using PackageContextResolver
@@ -74,6 +87,14 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     // Determine what this condition depends on (if not profile-based from attributes)
     if (!this.dependsOnProfile && this.condition) {
       this.analyzeDependencies();
+
+      // Debug logging for condition analysis
+      this.logger.debug('Condition analysis:', {
+        condition: this.condition,
+        dependsOnParams: this.dependsOnParams,
+        dependsOnCart: this.dependsOnCart,
+        dependsOnProfile: this.dependsOnProfile
+      });
     }
     
     // Subscribe only to relevant state changes
@@ -101,7 +122,7 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     
     if (this.dependsOnProfile) {
       this.subscribe(useProfileStore, this.handleProfileUpdate.bind(this));
-      
+
       // Also listen for profile events to handle URL parameter application
       this.eventBus.on('profile:applied', () => {
         this.handleProfileUpdate(useProfileStore.getState());
@@ -112,11 +133,20 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
       this.eventBus.on('profile:switched', () => {
         this.handleProfileUpdate(useProfileStore.getState());
       });
-      
+
       // Listen for SDK URL parameters processed event
       // This ensures we re-evaluate after profiles are applied from URL
       this.eventBus.on('sdk:url-parameters-processed', () => {
           this.handleProfileUpdate(useProfileStore.getState());
+      });
+    }
+
+    if (this.dependsOnParams) {
+      this.subscribe(useParameterStore, this.handleParamsUpdate.bind(this));
+
+      // Also listen for URL parameter updates
+      this.eventBus.on('sdk:url-parameters-processed', () => {
+        this.handleParamsUpdate(useParameterStore.getState());
       });
     }
     
@@ -127,6 +157,8 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     // Initial evaluation based on current dependency
     if (this.dependsOnProfile) {
       this.handleProfileUpdate(useProfileStore.getState());
+    } else if (this.dependsOnParams) {
+      this.handleParamsUpdate(useParameterStore.getState());
     } else if (this.dependsOnCart) {
       this.handleStateUpdate(useCartStore.getState());
     } else if (this.dependsOnPackage) {
@@ -152,6 +184,8 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
       this.handleOrderUpdate(useOrderStore.getState());
     } else if (this.dependsOnProfile) {
       this.handleProfileUpdate(useProfileStore.getState());
+    } else if (this.dependsOnParams) {
+      this.handleParamsUpdate(useParameterStore.getState());
     }
   }
 
@@ -162,9 +196,10 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     this.dependsOnOrder = this.conditionDependsOnOrder(this.condition);
     this.dependsOnShipping = this.conditionDependsOnShipping(this.condition);
     this.dependsOnProfile = this.conditionDependsOnProfile(this.condition);
-    
+    this.dependsOnParams = this.conditionDependsOnParams(this.condition);
+
     // If no dependency is detected, default to cart for backward compatibility
-    if (!this.dependsOnCart && !this.dependsOnPackage && !this.dependsOnSelection && !this.dependsOnOrder && !this.dependsOnShipping && !this.dependsOnProfile) {
+    if (!this.dependsOnCart && !this.dependsOnPackage && !this.dependsOnSelection && !this.dependsOnOrder && !this.dependsOnShipping && !this.dependsOnProfile && !this.dependsOnParams) {
       this.dependsOnCart = true;
     }
   }
@@ -262,18 +297,48 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private conditionDependsOnProfile(condition: any): boolean {
     if (!condition) return false;
-    
+
     switch (condition.type) {
       case 'property':
         return condition.object === 'profile';
-      
+
       case 'function':
         return condition.object === 'profile';
-      
+
       case 'comparison':
-        return (condition.left && condition.left.object === 'profile') || 
+        return (condition.left && condition.left.object === 'profile') ||
                (condition.right && typeof condition.right === 'object' && condition.right.object === 'profile');
-      
+
+      default:
+        return false;
+    }
+  }
+
+  private conditionDependsOnParams(condition: any): boolean {
+    if (!condition) return false;
+
+    this.logger.debug('Checking if condition depends on params:', {
+      condition,
+      type: condition.type,
+      leftObject: condition.left?.object,
+      rightObject: condition.right?.object
+    });
+
+    switch (condition.type) {
+      case 'property':
+        return condition.object === 'param' || condition.object === 'params';
+
+      case 'function':
+        return condition.object === 'param' || condition.object === 'params';
+
+      case 'comparison':
+        const dependsOnParams = (condition.left && (condition.left.object === 'param' || condition.left.object === 'params')) ||
+               (condition.right && typeof condition.right === 'object' &&
+                (condition.right.object === 'param' || condition.right.object === 'params'));
+
+        this.logger.debug('Comparison depends on params:', dependsOnParams);
+        return dependsOnParams;
+
       default:
         return false;
     }
@@ -345,10 +410,10 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private handleProfileUpdate(profileState: any): void {
     try {
-      
+
       // For profile-specific attributes, check if the active profile matches
       let conditionMet = false;
-      
+
       if (this.profileId) {
         // Simple profile ID check for data-next-show-if-profile / data-next-hide-if-profile
         conditionMet = profileState.activeProfileId === this.profileId;
@@ -356,21 +421,50 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
         // Complex profile condition (e.g., profile.active === 'vip')
         conditionMet = this.evaluateProfileCondition(profileState);
       }
-      
+
       const shouldShow = this.showCondition ? conditionMet : !conditionMet;
-      
+
       // Update element visibility
       this.element.style.display = shouldShow ? '' : 'none';
-      
+
       // Add conditional classes
       this.toggleClass('next-condition-met', conditionMet);
       this.toggleClass('next-condition-not-met', !conditionMet);
       this.toggleClass('next-visible', shouldShow);
       this.toggleClass('next-hidden', !shouldShow);
       this.toggleClass('next-profile-active', conditionMet && this.profileId !== null);
-      
+
     } catch (error) {
       this.handleError(error, 'handleProfileUpdate');
+    }
+  }
+
+  private handleParamsUpdate(paramState: any): void {
+    try {
+      const conditionMet = this.evaluateParamsCondition(paramState);
+      const shouldShow = this.showCondition ? conditionMet : !conditionMet;
+
+      // Debug logging
+      this.logger.debug('handleParamsUpdate:', {
+        condition: this.condition,
+        showCondition: this.showCondition,
+        conditionMet,
+        shouldShow,
+        params: paramState.params,
+        element: this.element.outerHTML.substring(0, 100)
+      });
+
+      // Update element visibility
+      this.element.style.display = shouldShow ? '' : 'none';
+
+      // Add conditional classes
+      this.toggleClass('next-condition-met', conditionMet);
+      this.toggleClass('next-condition-not-met', !conditionMet);
+      this.toggleClass('next-visible', shouldShow);
+      this.toggleClass('next-hidden', !shouldShow);
+
+    } catch (error) {
+      this.handleError(error, 'handleParamsUpdate');
     }
   }
 
@@ -623,7 +717,7 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
 
   private evaluateProfileCondition(profileState: any): boolean {
     try {
-      
+
       switch (this.condition.type) {
         case 'property':
           // Handle profile.active or profile.isActive
@@ -635,14 +729,14 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
             return profileState.activeProfileId || '';
           }
           return false;
-        
+
         case 'comparison':
           // Handle profile.active === 'profile_id'
-          if (this.condition.left.object === 'profile' && 
+          if (this.condition.left.object === 'profile' &&
               (this.condition.left.property === 'active' || this.condition.left.property === 'id')) {
             const activeProfile = profileState.activeProfileId || '';
             const compareValue = this.condition.right;
-            
+
             switch (this.condition.operator) {
               case '===':
               case '==':
@@ -655,7 +749,7 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
             }
           }
           return false;
-        
+
         case 'function':
           // Handle profile.is('profile_id')
           if (this.condition.method === 'is') {
@@ -668,13 +762,81 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
             return profileState.profiles.has(profileId);
           }
           return false;
-        
+
         default:
           this.logger.warn(`Unsupported condition type for profile: ${this.condition.type}`);
           return false;
       }
     } catch (error) {
       this.logger.error('Error evaluating profile condition:', error);
+      return false;
+    }
+  }
+
+  private evaluateParamsCondition(paramState: any): boolean {
+    try {
+      switch (this.condition.type) {
+        case 'property':
+          // param.seen would check if 'seen' parameter exists
+          return paramState.hasParam(this.condition.property);
+
+        case 'comparison':
+          // param.seen == 'n' would check the value
+          const paramValue = String(paramState.getParam(this.condition.left.property) || '');
+          const compareValue = String(this.condition.right); // Ensure string comparison
+
+          this.logger.info('evaluateParamsCondition comparison:', {
+            condition: this.condition,
+            property: this.condition.left.property,
+            paramValue,
+            compareValue,
+            operator: this.condition.operator,
+            willMatch: paramValue === compareValue,
+            paramValueType: typeof paramValue,
+            compareValueType: typeof compareValue,
+            allParams: paramState.params
+          });
+
+          switch (this.condition.operator) {
+            case '===':
+            case '==':
+              return paramValue === compareValue;
+            case '!==':
+            case '!=':
+              return paramValue !== compareValue;
+            case '>':
+              return Number(paramValue) > Number(compareValue);
+            case '>=':
+              return Number(paramValue) >= Number(compareValue);
+            case '<':
+              return Number(paramValue) < Number(compareValue);
+            case '<=':
+              return Number(paramValue) <= Number(compareValue);
+            default:
+              return false;
+          }
+
+        case 'function':
+          // Handle param.has('seen') or param.exists('seen')
+          if (this.condition.method === 'has' || this.condition.method === 'exists') {
+            const paramName = this.condition.args[0];
+            return paramState.hasParam(paramName);
+          }
+          // Handle param.is('seen', 'n')
+          if (this.condition.method === 'is' || this.condition.method === 'equals') {
+            const paramName = this.condition.args[0];
+            const expectedValue = String(this.condition.args[1]);
+            const actualValue = paramState.getParam(paramName) || '';
+            return actualValue === expectedValue;
+          }
+          return false;
+
+        default:
+          this.logger.warn(`Unsupported condition type for params: ${this.condition.type}`);
+          return false;
+      }
+    } catch (error) {
+      this.logger.error('Error evaluating params condition:', error);
       return false;
     }
   }
@@ -890,7 +1052,12 @@ export class ConditionalDisplayEnhancer extends BaseEnhancer {
     if (object === 'shipping') {
       return this.getShippingPropertyValue(property);
     }
-    
+
+    if (object === 'param' || object === 'params') {
+      const paramStore = useParameterStore.getState();
+      return paramStore.getParam(property);
+    }
+
     return null;
   }
 

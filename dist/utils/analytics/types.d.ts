@@ -59,6 +59,8 @@ export interface EcommerceItem {
     item_category4?: string;
     item_category5?: string;
     item_variant?: string;
+    item_image?: string;
+    item_sku?: string;
     price?: number;
     quantity?: number;
     currency?: string;

@@ -136,6 +136,42 @@ export class SDKInitializer {
     }
   }
 
+  private static async captureUrlParameters(urlParams: URLSearchParams): Promise<void> {
+    try {
+      // Import parameter store
+      const { useParameterStore } = await import('@/stores/parameterStore');
+      const paramStore = useParameterStore.getState();
+
+      // Get existing stored parameters
+      const existingParams = { ...paramStore.params };
+
+      // Capture all current URL parameters
+      const currentParams: Record<string, string> = {};
+      urlParams.forEach((value, key) => {
+        currentParams[key] = value;
+      });
+
+      // Merge with existing parameters (new URL params override stored ones)
+      const mergedParams = { ...existingParams, ...currentParams };
+
+      // Update the store with merged parameters
+      if (Object.keys(mergedParams).length > 0) {
+        paramStore.updateParams(mergedParams);
+        this.logger.debug(`Captured ${Object.keys(currentParams).length} URL parameters, total stored: ${Object.keys(mergedParams).length}`);
+
+        // Log special parameters we're interested in for visibility control
+        const visibilityParams = ['seen', 'timer', 'reviews', 'loading', 'banner', 'exit'];
+        const relevantParams = Object.keys(mergedParams).filter(key => visibilityParams.includes(key));
+        if (relevantParams.length > 0) {
+          this.logger.info('Visibility control parameters detected:', relevantParams.map(k => `${k}=${mergedParams[k]}`).join(', '));
+        }
+      }
+    } catch (error) {
+      this.logger.warn('Failed to capture URL parameters:', error);
+      // Non-critical error, continue with initialization
+    }
+  }
+
   private static async initializeLocationAndCurrency(): Promise<void> {
     try {
       this.logger.info('Initializing location and currency detection...');
@@ -323,7 +359,7 @@ export class SDKInitializer {
 
   private static async loadConfiguration(): Promise<void> {
     const configStore = useConfigStore.getState();
-    
+
     // Check for reset parameter first
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('reset') === 'true') {
@@ -333,7 +369,10 @@ export class SDKInitializer {
       const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
       window.history.replaceState({}, '', newUrl);
     }
-    
+
+    // NEW: Capture ALL URL parameters for session use
+    await this.captureUrlParameters(urlParams);
+
     // Check URL parameters for debug mode, forcePackageId, and forceShippingId
     const debugMode = urlParams.get('debugger') === 'true';
     const forcePackageId = urlParams.get('forcePackageId');
@@ -485,39 +524,79 @@ export class SDKInitializer {
 
   private static async processProfileParameter(): Promise<void> {
     const urlParams = new URLSearchParams(window.location.search);
-    const profileParam = urlParams.get('profile') || 
+    const profileParam = urlParams.get('profile') ||
                         urlParams.get('forceProfile') ||
                         urlParams.get('packageProfile');
-    
+
+    // First, register all profiles from config
+    const configStore = useConfigStore.getState();
+    if (configStore.profiles && Object.keys(configStore.profiles).length > 0) {
+      const { useProfileStore } = await import('@/stores/profileStore');
+      const profileStore = useProfileStore.getState();
+
+      Object.entries(configStore.profiles).forEach(([id, config]) => {
+        profileStore.registerProfile({
+          id,
+          name: config.name,
+          description: config.description || '',
+          packageMappings: config.packageMappings,
+        });
+      });
+      this.logger.debug(`Registered ${Object.keys(configStore.profiles).length} profiles from config`);
+    }
+
     if (profileParam) {
       this.logger.info('Profile parameter detected:', profileParam);
-      
+
       try {
         const { ProfileManager } = await import('@/core/ProfileManager');
         const profileManager = ProfileManager.getInstance();
         const clearCart = urlParams.get('forceProfile') !== null;
-        
+
         await profileManager.applyProfile(profileParam, { clearCart });
-        this.logger.info(`Profile "${profileParam}" applied successfully`);
+        this.logger.info(`Profile "${profileParam}" applied successfully from URL`);
       } catch (error) {
         this.logger.error('Failed to apply profile from URL:', error);
         // Don't throw - this shouldn't break SDK initialization
       }
+      return; // URL param takes precedence
     }
-    
-    // Check for default profile in config (only if no URL param)
-    if (!profileParam) {
-      const configStore = useConfigStore.getState();
-      if (configStore.defaultProfile) {
-        try {
-          this.logger.info('Applying default profile:', configStore.defaultProfile);
-          const { ProfileManager } = await import('@/core/ProfileManager');
-          const profileManager = ProfileManager.getInstance();
-          await profileManager.applyProfile(configStore.defaultProfile);
-        } catch (error) {
-          this.logger.error('Failed to apply default profile:', error);
-          // Don't throw - this shouldn't break SDK initialization
-        }
+
+    // Check for persisted active profile (from previous session)
+    const { useProfileStore } = await import('@/stores/profileStore');
+    const profileStore = useProfileStore.getState();
+
+    if (profileStore.activeProfileId &&
+        profileStore.activeProfileId !== 'default' &&
+        profileStore.activeProfileId !== 'regular') {
+      try {
+        this.logger.info('Restoring persisted profile:', profileStore.activeProfileId);
+        const { ProfileManager } = await import('@/core/ProfileManager');
+        const profileManager = ProfileManager.getInstance();
+
+        // Re-apply the persisted profile
+        await profileManager.applyProfile(profileStore.activeProfileId, {
+          clearCart: false, // Don't clear cart when restoring
+          preserveQuantities: true
+        });
+        this.logger.info(`Restored profile "${profileStore.activeProfileId}" from previous session`);
+        return;
+      } catch (error) {
+        this.logger.error('Failed to restore persisted profile:', error);
+        // Continue to default profile logic if restoration fails
+      }
+    }
+
+    // Finally, check for default profile in config (only if no URL param or persisted profile)
+    if (configStore.defaultProfile && !profileStore.activeProfileId) {
+      try {
+        this.logger.info('Applying default profile:', configStore.defaultProfile);
+        const { ProfileManager } = await import('@/core/ProfileManager');
+        const profileManager = ProfileManager.getInstance();
+        await profileManager.applyProfile(configStore.defaultProfile);
+      } catch (error) {
+        this.logger.error('Failed to apply default profile:', error);
+        // Don't throw - this shouldn't break SDK initialization
       }
     }
   }

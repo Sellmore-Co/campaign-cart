@@ -228,7 +228,10 @@
             price: event.upsell.price || event.upsell.value || 0,
             quantity: event.upsell.quantity || 1,
             item_category: 'Upsell',
-            item_variant: event.upsell.variant
+            item_variant: event.upsell.variant || event.upsell.product_variant_name,
+            item_brand: event.upsell.brand || event.upsell.product_name,
+            item_image: event.upsell.image || event.upsell.image_url,
+            item_sku: event.upsell.sku || event.upsell.product_sku
           });
         }
 
@@ -249,7 +252,11 @@
             item_name: event.upsell.package_name || event.upsell.name || `Upsell Package ${event.upsell.package_id}`,
             price: event.upsell.price || event.upsell.value || 0,
             quantity: 1,
-            item_category: 'Upsell'
+            item_category: 'Upsell',
+            item_variant: event.upsell.variant || event.upsell.product_variant_name,
+            item_brand: event.upsell.brand || event.upsell.product_name,
+            item_image: event.upsell.image || event.upsell.image_url,
+            item_sku: event.upsell.sku || event.upsell.product_sku
           });
         }
       }
@@ -269,15 +276,17 @@
             currency: item.currency || ga4Event.ecommerce.currency,
             discount: item.discount,
             index: item.index,
-            item_brand: item.item_brand,
-            item_category: item.item_category,
+            item_brand: item.item_brand || item.brand,
+            item_category: item.item_category || item.category,
             item_category2: item.item_category2,
             item_category3: item.item_category3,
             item_category4: item.item_category4,
             item_category5: item.item_category5,
             item_list_id: item.item_list_id,
             item_list_name: item.item_list_name,
-            item_variant: item.item_variant,
+            item_variant: item.item_variant || item.variant,
+            item_image: item.item_image || item.image || item.image_url,
+            item_sku: item.item_sku || item.sku || item.product_sku,
             location_id: item.location_id,
             price: item.price,
             quantity: item.quantity

@@ -26,6 +26,7 @@ import { useOrderStore } from '@/stores/orderStore';
 import { useConfigStore } from '@/stores/configStore';
 import { useAttributionStore } from '@/stores/attributionStore';
 import { useProfileStore } from '@/stores/profileStore';
+import { useParameterStore } from '@/stores/parameterStore';
 import { EventBus } from '@/utils/events';
 import { Logger } from '@/utils/logger';
 import { ApiClient } from '@/api/client';
@@ -774,5 +775,54 @@ export class NextCommerce {
     const profileStore = useProfileStore.getState();
     profileStore.registerProfile(profile);
     this.logger.info(`Profile "${profile.id}" registered via API`);
+  }
+
+  // URL Parameter Methods
+  public setParam(key: string, value: string): void {
+    const paramStore = useParameterStore.getState();
+    paramStore.updateParam(key, value);
+    this.logger.debug(`URL parameter set: ${key}=${value}`);
+  }
+
+  public setParams(params: Record<string, string>): void {
+    const paramStore = useParameterStore.getState();
+    paramStore.updateParams(params);
+    this.logger.debug('URL parameters set:', params);
+  }
+
+  public getParam(key: string): string | null {
+    const paramStore = useParameterStore.getState();
+    const value = paramStore.getParam(key);
+    return value !== undefined ? value : null;
+  }
+
+  public getAllParams(): Record<string, string> {
+    const paramStore = useParameterStore.getState();
+    return paramStore.params;
+  }
+
+  public hasParam(key: string): boolean {
+    const paramStore = useParameterStore.getState();
+    return paramStore.hasParam(key);
+  }
+
+  public clearParam(key: string): void {
+    const paramStore = useParameterStore.getState();
+    const newParams = { ...paramStore.params };
+    delete newParams[key];
+    paramStore.updateParams(newParams);
+    this.logger.debug(`URL parameter cleared: ${key}`);
+  }
+
+  public clearAllParams(): void {
+    const paramStore = useParameterStore.getState();
+    paramStore.updateParams({});
+    this.logger.debug('All URL parameters cleared');
+  }
+
+  public mergeParams(params: Record<string, string>): void {
+    const paramStore = useParameterStore.getState();
+    paramStore.mergeParams(params);
+    this.logger.debug('URL parameters merged:', params);
   }
 }
