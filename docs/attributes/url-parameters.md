@@ -204,6 +204,28 @@ Page 3: (no parameters)
   → Uses stored: banner=n, theme=light
 ```
 
+## JavaScript API
+
+URL parameters can also be managed programmatically using the SDK's JavaScript API. This allows you to set, get, and clear parameters without modifying the URL.
+
+For complete API documentation, see [URL Parameters API Reference](../api-reference/url-parameters.md).
+
+### Quick Examples
+
+```javascript
+// Set parameters programmatically
+next.setParam('banner', 'n');
+next.setParams({ timer: 'n', reviews: 'n' });
+
+// Check and get parameters
+if (next.hasParam('debug')) {
+  const debugValue = next.getParam('debug');
+}
+
+// Clear parameters
+next.clearParam('timer');
+```
+
 ## Debugging
 
 ### View Current Parameters
@@ -211,8 +233,12 @@ Page 3: (no parameters)
 To debug stored parameters, open the browser console and run:
 
 ```javascript
-// View all stored parameters
+// View all stored parameters (debug method)
 nextDebug.stores.parameter().debug()
+
+// Or using the SDK
+const params = next.getAllParams();
+console.log('Current parameters:', params);
 
 // Check specific parameter
 nextDebug.stores.parameter().getParam('seen')
