@@ -73,7 +73,7 @@ const CONFIG = {
     }
   },
   displayOrder: {
-    sizes: ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King'],
+    sizes: ['Single', 'Twin', 'Double', 'Queen', 'King', 'California King'],
     colors: ['Obsidian Grey', 'Chateau Ivory', 'Scribe Blue', 'Verdant Sage']
   },
   sizePreferenceOrder: [
@@ -593,7 +593,7 @@ class TierController {
     const sizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
     
     const defaultColor = colors.find(c => c.toLowerCase().includes('obsidian')) || colors[0];
-    const defaultSize = sizes.find(s => s.toLowerCase() === 'king') || sizes[0];
+    const defaultSize = sizes.find(s => s.toLowerCase() === 'single') || sizes[0];
 
     for (let i = 1; i <= this.currentTier; i++) {
       if (!this.selectedVariants.has(i)) {

@@ -204,7 +204,7 @@ export class AutoEventListener {
         item_category: campaignStore.data?.name || 'Campaign',
         item_variant: previousPackageData.product_variant_name || previousPackageData.product?.variant?.name,
         item_brand: previousPackageData.product_name || previousPackageData.product?.name,
-        item_sku: previousPackageData.product_sku || previousPackageData.product?.variant?.sku,
+        item_sku: previousPackageData.product_sku || previousPackageData.product?.variant?.sku || undefined,
         ...(previousPackageData.image && { item_image: previousPackageData.image })
       };
 
@@ -217,7 +217,7 @@ export class AutoEventListener {
         item_category: campaignStore.data?.name || 'Campaign',
         item_variant: newPackageData.product_variant_name || newPackageData.product?.variant?.name,
         item_brand: newPackageData.product_name || newPackageData.product?.name,
-        item_sku: newPackageData.product_sku || newPackageData.product?.variant?.sku,
+        item_sku: newPackageData.product_sku || newPackageData.product?.variant?.sku || undefined,
         ...(newPackageData.image && { item_image: newPackageData.image })
       };
 

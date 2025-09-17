@@ -267,13 +267,6 @@ export const useProfileStore = create<ProfileState & ProfileActions>()(
           profileStorageManager.remove(name);
         },
       },
-      // Persist only essential profile state
-      partialize: (state) => ({
-        activeProfileId: state.activeProfileId,
-        previousProfileId: state.previousProfileId,
-        // Don't persist profiles themselves as they come from config
-        // Don't persist cart snapshot or history
-      }),
     }
   )
 );

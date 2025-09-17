@@ -30,7 +30,11 @@ interface MinimalCartItem {
     variant?: string;
     product?: {
         title?: string;
+        image?: string;
     };
+    image?: string;
+    imageUrl?: string;
+    image_url?: string;
 }
 export declare class EventBuilder {
     static createEvent(eventName: string, eventData?: Partial<DataLayerEvent>): DataLayerEvent;
