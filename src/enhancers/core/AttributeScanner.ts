@@ -48,7 +48,7 @@ export class AttributeScanner {
     }
 
     this.isScanning = true;
-    this.logger.debug('Scanning for data attributes...', { root: root.tagName });
+    this.logger.info('🔍 Starting DOM scan for data attributes...', { root: root.tagName });
     
     try {
       // Find all elements with data-next attributes
@@ -89,8 +89,21 @@ export class AttributeScanner {
       ].join(', ');
       
       const elements = root.querySelectorAll(selector);
-      
+
       this.logger.debug(`Found ${elements.length} elements with data attributes`);
+
+      // Log conditional display elements specifically
+      const conditionalElements = root.querySelectorAll('[data-next-show], [data-next-hide]');
+      if (conditionalElements.length > 0) {
+        this.logger.info(`Found ${conditionalElements.length} conditional display elements:`,
+          Array.from(conditionalElements).map(el => ({
+            tag: el.tagName,
+            class: el.className,
+            show: el.getAttribute('data-next-show'),
+            hide: el.getAttribute('data-next-hide')
+          }))
+        );
+      }
       
       let enhancedCount = 0;
       const enhancePromises: Promise<void>[] = [];
@@ -315,6 +328,12 @@ export class AttributeScanner {
           return new TimerEnhancer(element);
           
         case 'conditional':
+          this.logger.info('Creating ConditionalDisplayEnhancer for element:', {
+            element: element.tagName,
+            class: element.className,
+            showAttr: element.getAttribute('data-next-show'),
+            hideAttr: element.getAttribute('data-next-hide')
+          });
           const { ConditionalDisplayEnhancer } = await import('@/enhancers/display/ConditionalDisplayEnhancer');
           return new ConditionalDisplayEnhancer(element);
           

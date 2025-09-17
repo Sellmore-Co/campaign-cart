@@ -136,6 +136,42 @@ export class SDKInitializer {
     }
   }
 
+  private static async captureUrlParameters(urlParams: URLSearchParams): Promise<void> {
+    try {
+      // Import parameter store
+      const { useParameterStore } = await import('@/stores/parameterStore');
+      const paramStore = useParameterStore.getState();
+
+      // Get existing stored parameters
+      const existingParams = { ...paramStore.params };
+
+      // Capture all current URL parameters
+      const currentParams: Record<string, string> = {};
+      urlParams.forEach((value, key) => {
+        currentParams[key] = value;
+      });
+
+      // Merge with existing parameters (new URL params override stored ones)
+      const mergedParams = { ...existingParams, ...currentParams };
+
+      // Update the store with merged parameters
+      if (Object.keys(mergedParams).length > 0) {
+        paramStore.updateParams(mergedParams);
+        this.logger.debug(`Captured ${Object.keys(currentParams).length} URL parameters, total stored: ${Object.keys(mergedParams).length}`);
+
+        // Log special parameters we're interested in for visibility control
+        const visibilityParams = ['seen', 'timer', 'reviews', 'loading', 'banner', 'exit'];
+        const relevantParams = Object.keys(mergedParams).filter(key => visibilityParams.includes(key));
+        if (relevantParams.length > 0) {
+          this.logger.info('Visibility control parameters detected:', relevantParams.map(k => `${k}=${mergedParams[k]}`).join(', '));
+        }
+      }
+    } catch (error) {
+      this.logger.warn('Failed to capture URL parameters:', error);
+      // Non-critical error, continue with initialization
+    }
+  }
+
   private static async initializeLocationAndCurrency(): Promise<void> {
     try {
       this.logger.info('Initializing location and currency detection...');
@@ -323,7 +359,7 @@ export class SDKInitializer {
 
   private static async loadConfiguration(): Promise<void> {
     const configStore = useConfigStore.getState();
-    
+
     // Check for reset parameter first
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('reset') === 'true') {
@@ -333,7 +369,10 @@ export class SDKInitializer {
       const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
       window.history.replaceState({}, '', newUrl);
     }
-    
+
+    // NEW: Capture ALL URL parameters for session use
+    await this.captureUrlParameters(urlParams);
+
     // Check URL parameters for debug mode, forcePackageId, and forceShippingId
     const debugMode = urlParams.get('debugger') === 'true';
     const forcePackageId = urlParams.get('forcePackageId');
