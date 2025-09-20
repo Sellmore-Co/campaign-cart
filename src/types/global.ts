@@ -141,6 +141,13 @@ export interface CartItem {
   is_recurring?: boolean | undefined; // Whether this is a recurring item
   interval?: string | null | undefined; // Billing interval
   interval_count?: number | null | undefined; // Billing interval count
+  // Product and variant information for display
+  productId?: number | undefined;
+  productName?: string | undefined;
+  variantId?: number | undefined;
+  variantName?: string | undefined;
+  variantAttributes?: Array<{ code: string; name: string; value: string }> | undefined;
+  variantSku?: string | undefined;
 }
 
 // Selector-specific types with explicit undefined handling

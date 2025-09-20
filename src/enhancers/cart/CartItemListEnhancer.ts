@@ -155,6 +155,8 @@ export class CartItemListEnhancer extends BaseEnhancer {
         </div>
         <div class="cart-item-details">
           <h4 class="cart-item-name">{item.name}</h4>
+          <div class="cart-item-variant" style="color: #666; font-size: 0.9em;">{item.variantAttributesFormatted}</div>
+          <div class="cart-item-sku" style="color: #999; font-size: 0.85em;">SKU: {item.variantSku}</div>
           <div class="cart-item-pricing">
             <div class="original-price {item.showOriginalPrice}" style="text-decoration: line-through; color: #999;">{item.price} each</div>
             <div class="current-price">{item.finalPrice} each</div>
@@ -318,6 +320,21 @@ export class CartItemListEnhancer extends BaseEnhancer {
       title: customTitle || item.title || packageData.name,
       name: customTitle || packageData.name,
       quantity: item.quantity,
+
+      // Product and variant information
+      productId: item.productId || packageData.product_id,
+      productName: item.productName || packageData.product_name || '',
+      variantId: item.variantId || packageData.product_variant_id,
+      variantName: item.variantName || packageData.product_variant_name || '',
+      variantAttributes: item.variantAttributes || packageData.product_variant_attribute_values || [],
+      variantSku: item.variantSku || packageData.product_sku || '',
+
+      // Formatted variant attributes for easy display
+      variantAttributesFormatted: this.formatVariantAttributes(item.variantAttributes || packageData.product_variant_attribute_values || []),
+      variantAttributesList: this.formatVariantAttributesList(item.variantAttributes || packageData.product_variant_attribute_values || []),
+
+      // Individual variant attributes by code
+      ...this.extractIndividualAttributes(item.variantAttributes || packageData.product_variant_attribute_values || []),
       
       // Pricing - will be formatted by TemplateRenderer
       price: packageCurrentPrice, // Total package price (e.g., $47.97 for 3x Drone)
@@ -410,5 +427,65 @@ export class CartItemListEnhancer extends BaseEnhancer {
   public refreshItem(_packageId: number): void {
     const cartState = useCartStore.getState();
     this.handleCartUpdate(cartState);
+  }
+
+  /**
+   * Format variant attributes as a comma-separated string
+   * Example: "Color: Obsidian Grey, Size: Twin"
+   */
+  private formatVariantAttributes(attributes: Array<{ code: string; name: string; value: string }>): string {
+    if (!attributes || attributes.length === 0) return '';
+
+    return attributes
+      .map(attr => `${attr.name}: ${attr.value}`)
+      .join(', ');
+  }
+
+  /**
+   * Format variant attributes as an HTML list
+   * Example: "<span>Color: Obsidian Grey</span> <span>Size: Twin</span>"
+   */
+  private formatVariantAttributesList(attributes: Array<{ code: string; name: string; value: string }>): string {
+    if (!attributes || attributes.length === 0) return '';
+
+    return attributes
+      .map(attr => `<span class="variant-attr">${attr.name}: ${attr.value}</span>`)
+      .join(' ');
+  }
+
+  /**
+   * Extract individual variant attributes as separate properties
+   * Returns an object with properties like:
+   * - variantColor: "Obsidian Grey"
+   * - variantSize: "Twin"
+   * - variant.color: "Obsidian Grey"
+   * - variant.size: "Twin"
+   * - variantAttr.color: "Obsidian Grey"
+   * - variantAttr.size: "Twin"
+   */
+  private extractIndividualAttributes(attributes: Array<{ code: string; name: string; value: string }>): Record<string, string> {
+    const result: Record<string, string> = {};
+
+    if (!attributes || attributes.length === 0) return result;
+
+    attributes.forEach(attr => {
+      // Convert code to camelCase for property name
+      const camelCode = attr.code.charAt(0).toUpperCase() + attr.code.slice(1).toLowerCase();
+
+      // Add multiple ways to access the attribute
+      // 1. variantColor, variantSize, etc.
+      result[`variant${camelCode}`] = attr.value;
+
+      // 2. variant.color, variant.size (using dot notation in template)
+      result[`variant.${attr.code.toLowerCase()}`] = attr.value;
+
+      // 3. variantAttr.color, variantAttr.size (alternative naming)
+      result[`variantAttr.${attr.code.toLowerCase()}`] = attr.value;
+
+      // 4. Just the attribute code as-is for simple access
+      result[`variant_${attr.code}`] = attr.value;
+    });
+
+    return result;
   }
 }
