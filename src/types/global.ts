@@ -148,6 +148,8 @@ export interface CartItem {
   variantName?: string | undefined;
   variantAttributes?: Array<{ code: string; name: string; value: string }> | undefined;
   variantSku?: string | undefined;
+  // Grouping support
+  groupedItemIds?: number[] | undefined; // IDs of items grouped together
 }
 
 // Selector-specific types with explicit undefined handling

@@ -408,15 +408,38 @@ The variant attributes are now available in multiple formats:
 
 - `data-empty-template` - Template to show when cart is empty
 - `data-title-map` - JSON object to map package IDs to custom titles
+- `data-group-items` - Group identical items together (combines quantities)
 
 ```html
+<!-- Basic usage -->
 <div data-next-cart-items
      data-item-template-id="cart-item-template"
      data-empty-template="<p>No items in cart</p>"
      data-title-map='{"2": "Premium Drone Package", "3": "Starter Kit"}'
      class="cart-items-list">
 </div>
+
+<!-- With item grouping enabled -->
+<div data-next-cart-items
+     data-group-items
+     data-item-template-id="cart-item-template"
+     class="cart-items-list">
+</div>
 ```
+
+### Item Grouping
+
+When `data-group-items` is enabled, identical items (same packageId) are automatically grouped together:
+
+**Without Grouping:**
+- Item 1: Grounded Sheets - Grey/Single (Qty: 1)
+- Item 2: Grounded Sheets - Grey/Single (Qty: 1)
+- Item 3: Grounded Sheets - Grey/Single (Qty: 1)
+
+**With Grouping:**
+- Item: Grounded Sheets - Grey/Single (Qty: 3)
+
+This is useful when items are added individually but you want to display them as a single line with combined quantity.
 
 ## Cart Item Details
 

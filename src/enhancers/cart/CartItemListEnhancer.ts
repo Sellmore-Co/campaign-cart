@@ -16,6 +16,7 @@ export class CartItemListEnhancer extends BaseEnhancer {
   private emptyTemplate?: string;
   private titleMap?: Record<string, string>;
   private lastRenderedItems: string = '';  // Track last rendered state
+  private groupItems: boolean = false;  // Group identical items together
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -39,7 +40,7 @@ export class CartItemListEnhancer extends BaseEnhancer {
       this.template = this.getDefaultItemTemplate();
     }
     
-    this.emptyTemplate = this.getAttribute('data-empty-template') || 
+    this.emptyTemplate = this.getAttribute('data-empty-template') ||
       '<div class="cart-empty">Your cart is empty</div>';
 
     // Load title mapping from data attribute
@@ -51,6 +52,9 @@ export class CartItemListEnhancer extends BaseEnhancer {
         this.logger.warn('Invalid title map JSON:', error);
       }
     }
+
+    // Check if items should be grouped
+    this.groupItems = this.hasAttribute('data-group-items');
 
     // Subscribe to cart changes
     this.subscribe(useCartStore, this.handleCartUpdate.bind(this));
@@ -92,7 +96,10 @@ export class CartItemListEnhancer extends BaseEnhancer {
     const campaignStore = useCampaignStore.getState();
     const itemsHTML: string[] = [];
 
-    for (const item of items) {
+    // Group items if enabled
+    const itemsToRender = this.groupItems ? this.groupIdenticalItems(items) : items;
+
+    for (const item of itemsToRender) {
       const itemHTML = await this.renderCartItem(item, campaignStore);
       if (itemHTML) {
         itemsHTML.push(itemHTML);
@@ -100,12 +107,12 @@ export class CartItemListEnhancer extends BaseEnhancer {
     }
 
     const newHTML = itemsHTML.join('');
-    
+
     // Only update DOM if content actually changed
     if (newHTML !== this.lastRenderedItems) {
       this.element.innerHTML = newHTML;
       this.lastRenderedItems = newHTML;
-      
+
       // Re-enhance any new elements
       await this.enhanceNewElements();
     } else {
@@ -427,6 +434,32 @@ export class CartItemListEnhancer extends BaseEnhancer {
   public refreshItem(_packageId: number): void {
     const cartState = useCartStore.getState();
     this.handleCartUpdate(cartState);
+  }
+
+  /**
+   * Group identical items together based on packageId
+   * Combines quantities and preserves the first item's ID
+   */
+  private groupIdenticalItems(items: CartItem[]): CartItem[] {
+    const grouped = new Map<number, CartItem>();
+
+    for (const item of items) {
+      const existing = grouped.get(item.packageId);
+      if (existing) {
+        // Combine quantities
+        existing.quantity += item.quantity;
+        // Keep track of individual item IDs for actions (optional)
+        if (!existing.groupedItemIds) {
+          existing.groupedItemIds = [existing.id];
+        }
+        existing.groupedItemIds.push(item.id);
+      } else {
+        // Clone item to avoid mutating original
+        grouped.set(item.packageId, { ...item });
+      }
+    }
+
+    return Array.from(grouped.values());
   }
 
   /**
