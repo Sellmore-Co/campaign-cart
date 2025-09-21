@@ -328,48 +328,49 @@ class TierController {
 
   _getActiveProfileFromStore() {
     try {
-      // Read from the Zustand store in localStorage
       const storeData = localStorage.getItem('next-profile-store');
       if (storeData) {
         const parsed = JSON.parse(storeData);
         return parsed?.state?.activeProfileId || null;
       }
-    } catch (error) {
-      console.log('Error reading profile store:', error);
-    }
+    } catch {}
     return null;
   }
 
   _checkActiveProfile() {
     const activeProfileId = this._getActiveProfileFromStore();
+    if (!activeProfileId) return;
 
-    if (activeProfileId) {
-      console.log('Active profile found on init:', activeProfileId);
-
-      // Check if it's an exit discount profile
-      if (activeProfileId.includes('exit_10')) {
-        this.exitDiscountActive = true;
-        // Migrate to sessionStorage for consistency
-        sessionStorage.setItem('grounded-exit-discount-active', 'true');
-      }
-
-      // Determine the tier from the profile name
-      if (activeProfileId.includes('3pack') || activeProfileId.includes('3_pack')) {
-        this.currentTier = 3;
-      } else if (activeProfileId.includes('2pack') || activeProfileId.includes('2_pack')) {
-        this.currentTier = 2;
-      }
-
-      // Update UI to match the detected tier
-      if (this.currentTier !== 1) {
-        document.querySelectorAll('[data-next-tier]').forEach(card => {
-          const t = +card.getAttribute('data-next-tier');
-          card.classList.toggle('next-selected', t === this.currentTier);
-          const radio = card.querySelector('.radio-style-1');
-          if (radio) radio.setAttribute('data-selected', t === this.currentTier);
-        });
-      }
+    // Check if it's an exit discount profile
+    if (activeProfileId.includes('exit_10')) {
+      this.exitDiscountActive = true;
+      sessionStorage.setItem('grounded-exit-discount-active', 'true');
     }
+
+    // Determine tier from profile name
+    this._detectTierFromProfile(activeProfileId);
+
+    // Update UI if not tier 1
+    if (this.currentTier !== 1) {
+      this._updateTierUI(this.currentTier);
+    }
+  }
+
+  _detectTierFromProfile(profileId) {
+    if (profileId.includes('3pack') || profileId.includes('3_pack')) {
+      this.currentTier = 3;
+    } else if (profileId.includes('2pack') || profileId.includes('2_pack')) {
+      this.currentTier = 2;
+    }
+  }
+
+  _updateTierUI(tier) {
+    document.querySelectorAll('[data-next-tier]').forEach(card => {
+      const t = +card.getAttribute('data-next-tier');
+      card.classList.toggle('next-selected', t === tier);
+      const radio = card.querySelector('.radio-style-1');
+      if (radio) radio.setAttribute('data-selected', t === tier);
+    });
   }
 
   _getProductId() {
@@ -426,26 +427,13 @@ class TierController {
     this.currentTier = tier;
 
     // Update UI
-    document.querySelectorAll('[data-next-tier]').forEach(card => {
-      const t = +card.getAttribute('data-next-tier');
-      card.classList.toggle('next-selected', t === tier);
-      const radio = card.querySelector('.radio-style-1');
-      if (radio) radio.setAttribute('data-selected', t === tier);
-    });
-
+    this._updateTierUI(tier);
     this._updateSlots(tier);
     await this._applyProfile(tier);
 
     // Copy selections from slot 1 to new slots
     if (tier > prev) {
-      const slot1 = this.selectedVariants.get(1);
-      if (slot1?.color && slot1?.size) {
-        for (let i = prev + 1; i <= tier; i++) {
-          this.selectedVariants.set(i, { ...slot1 });
-          this._updateSlot(i, slot1);
-          this._updateSlotPrice(i);
-        }
-      }
+      this._copySelectionsToNewSlots(prev, tier);
     }
 
     // Only update cart if not explicitly skipped (prevents loops)
@@ -453,6 +441,17 @@ class TierController {
       this._cartDebounce();
     }
     this._updateCTA();
+  }
+
+  _copySelectionsToNewSlots(fromTier, toTier) {
+    const slot1 = this.selectedVariants.get(1);
+    if (!slot1?.color || !slot1?.size) return;
+
+    for (let i = fromTier + 1; i <= toTier; i++) {
+      this.selectedVariants.set(i, { ...slot1 });
+      this._updateSlot(i, slot1);
+      this._updateSlotPrice(i);
+    }
   }
 
   _updateSlots(tier) {
@@ -514,39 +513,25 @@ class TierController {
     try {
       if (profile && profile !== 'default') {
         await window.next.setProfile(profile);
-        // Give the SDK time to update packages after profile change
-        await new Promise(resolve => setTimeout(resolve, 100));
-        // Re-fetch product ID after profile is applied
-        this._getProductId();
       } else {
         await window.next.revertProfile();
-        await new Promise(resolve => setTimeout(resolve, 100));
-        this._getProductId();
       }
-    } catch (error) {
-      console.log('Profile application error:', error);
-    }
+      // Give SDK time to update and refresh product ID
+      await new Promise(resolve => setTimeout(resolve, 100));
+      this._getProductId();
+    } catch {}
   }
 
   async activateExitDiscount() {
-    console.log('Activating exit discount for tier:', this.currentTier);
     this.exitDiscountActive = true;
     sessionStorage.setItem('grounded-exit-discount-active', 'true');
 
-    // Apply the exit profile
+    // Apply the exit profile and update prices
     await this._applyProfile(this.currentTier);
+    this._updateAllPrices();
 
-    // Force price updates after profile is applied
-    setTimeout(() => {
-      console.log('Forcing price update after exit discount activation');
-      this._updateAllPrices();
-    }, 300);
-
-    const badge = document.createElement('div');
-    badge.innerHTML = '🎉 Extra 10% OFF Applied!';
-    badge.style.cssText = 'position:fixed;top:20px;right:20px;background:#4CAF50;color:white;padding:10px 20px;border-radius:5px;z-index:9999;';
-    document.body.appendChild(badge);
-    setTimeout(() => badge.remove(), 5000);
+    // Show success notification
+    this._showNotification('🎉 Extra 10% OFF Applied!', 'success');
   }
 
   _handleVariant({ value, component }) {
@@ -645,16 +630,9 @@ class TierController {
   }
 
   _populateDropdowns(slot, slotNum) {
-    // Always use the current productId after profiles are applied
     const pid = this.productId || this.baseProductId;
-
-    console.log(`Populating dropdowns for slot ${slotNum} with productId: ${pid}`);
-
     const colors = window.next.getAvailableVariantAttributes(pid, 'color');
     const sizes = window.next.getAvailableVariantAttributes(pid, 'size');
-
-    console.log('Available colors:', colors);
-    console.log('Available sizes:', sizes);
 
     this._fillDropdown(slot, 'color', colors, slotNum);
     this._fillDropdown(slot, 'size', sizes, slotNum);
@@ -904,63 +882,42 @@ class TierController {
       return;
     }
 
-    // Debug logging
-    console.log(`Updating slot ${slotNum} price with variants:`, v);
-    console.log('Current productId:', this.productId);
-    console.log('Base productId:', this.baseProductId);
-    console.log('Exit discount active:', this.exitDiscountActive);
-    console.log('Current tier:', this.currentTier);
-
-    // IMPORTANT: For tier 2 and 3, we need to use the mapped package IDs
-    // The profile should have already been applied at this point
-
-    // First get the base package to find its ref_id
+    // Get the base package
     const basePkg = window.next.getPackageByVariantSelection(
       this.baseProductId || this.productId,
       { color: v.color, size: v.size }
     );
 
     if (!basePkg) {
-      console.log('No base package found for variants:', v);
       this._resetPrice(slot);
       return;
     }
 
-    console.log('Base package found:', basePkg.ref_id, basePkg.name, basePkg.price);
+    // Get mapped package if needed
+    const finalPkg = this._getMappedPackage(basePkg);
+    this._displayPrice(slot, finalPkg);
+  }
 
-    // Now check if we need to map to a different package based on tier/profile
-    let finalPkg = basePkg;
-
-    if (this.currentTier > 1 || this.exitDiscountActive) {
-      // Determine which profile mapping to use
-      const profileName = this.exitDiscountActive
-        ? CONFIG.exitProfiles[this.currentTier]
-        : CONFIG.profiles[this.currentTier];
-
-      console.log('Looking for profile:', profileName);
-
-      // Get the mapped package ID from our config
-      const mappedId = CONFIG.profileDefinitions[profileName]?.packageMappings[basePkg.ref_id];
-
-      console.log('Mapped package ID:', mappedId, 'from base ref_id:', basePkg.ref_id);
-
-      if (mappedId) {
-        // Try to get the mapped package
-        const mappedPkg = window.next.getPackage(mappedId);
-
-        if (mappedPkg) {
-          console.log('Found mapped package:', mappedPkg.ref_id, mappedPkg.name, mappedPkg.price);
-          finalPkg = mappedPkg;
-        } else {
-          console.log('Mapped package not found, using base package');
-        }
-      } else {
-        console.log('No mapping found for base package ref_id:', basePkg.ref_id);
-      }
+  _getMappedPackage(basePkg) {
+    // Return base package if no mapping needed
+    if (this.currentTier === 1 && !this.exitDiscountActive) {
+      return basePkg;
     }
 
-    // Display the final package price
-    this._displayPrice(slot, finalPkg);
+    // Determine profile to use
+    const profileName = this.exitDiscountActive
+      ? CONFIG.exitProfiles[this.currentTier]
+      : CONFIG.profiles[this.currentTier];
+
+    // Get mapped package ID
+    const mappedId = CONFIG.profileDefinitions[profileName]?.packageMappings[basePkg.ref_id];
+
+    if (mappedId) {
+      const mappedPkg = window.next.getPackage(mappedId);
+      if (mappedPkg) return mappedPkg;
+    }
+
+    return basePkg; // Fallback to base
   }
 
   _displayPrice(slot, pkg) {
@@ -973,14 +930,46 @@ class TierController {
     if (priceEl) priceEl.textContent = `$${price.toFixed(2)}`;
     if (regEl) regEl.textContent = `$${retail.toFixed(2)}`;
 
-    const pctEl = slot.querySelector('[data-option="savingPct"]');
-    if (pctEl && retail > price) {
-      pctEl.textContent = `${Math.round(((retail - price) / retail) * 100)}%`;
-    }
+    // Handle savings percentage and profile discount display
+    this._updateSavingsDisplay(slot, pkg, retail, price);
 
     const priceContainer = slot.querySelector('.os-card__price.os--current');
     if (priceContainer) {
       priceContainer.innerHTML = `<span data-option="price">$${price.toFixed(2)}</span>/ea`;
+    }
+  }
+
+  _updateSavingsDisplay(slot, pkg, retail, finalPrice) {
+    const pctEl = slot.querySelector('[data-option="savingPct"]');
+    const profileSavingsEl = slot.querySelector('.data-profile-savings');
+
+    if (this.exitDiscountActive) {
+      // When exit discount is active, show base savings and additional discount separately
+
+      // Calculate the base price without exit discount (roughly 10% more)
+      const basePrice = finalPrice / 0.9; // Reverse the 10% discount
+
+      // Show the original savings percentage (from retail to base price)
+      if (pctEl && retail > basePrice) {
+        const baseSavings = Math.round(((retail - basePrice) / retail) * 100);
+        pctEl.textContent = `${baseSavings}%`;
+      }
+
+      // Show the additional profile savings
+      if (profileSavingsEl) {
+        profileSavingsEl.style.display = 'block';
+        profileSavingsEl.textContent = '+10% OFF';
+      }
+    } else {
+      // Normal pricing - show combined savings
+      if (pctEl && retail > finalPrice) {
+        pctEl.textContent = `${Math.round(((retail - finalPrice) / retail) * 100)}%`;
+      }
+
+      // Hide profile savings when not active
+      if (profileSavingsEl) {
+        profileSavingsEl.style.display = 'none';
+      }
     }
   }
 
@@ -1053,20 +1042,12 @@ class TierController {
   }
 
   _setupListeners() {
-    // Listen for profile changes with proper event data
-    window.next.on('profile:applied', (data) => {
-      console.log('Profile applied event received:', data);
-      this._onProfileChanged(data);
-    });
+    // Listen for profile changes
+    window.next.on('profile:applied', data => this._onProfileChanged(data));
+    window.next.on('profile:reverted', data => this._onProfileChanged(data));
 
-    window.next.on('profile:reverted', (data) => {
-      console.log('Profile reverted event received:', data);
-      this._onProfileChanged(data);
-    });
-
-    // Also listen for cart changes that might be profile-related
+    // Listen for cart changes that might be profile-related
     window.next.on('cart:updated', () => {
-      // Check if a profile is active and update prices
       if (this.profileUpdatePending) {
         this.profileUpdatePending = false;
         this._updateAllPrices();
@@ -1075,50 +1056,38 @@ class TierController {
   }
   
   _onProfileChanged(eventData) {
-    console.log('Profile changed, updating prices...', eventData);
-
-    // Check if this is an exit discount profile
+    // Handle exit discount detection
     const profileId = eventData?.profileId || eventData?.profile?.id || '';
-    if (profileId && profileId.includes('exit_10')) {
-      console.log('Exit discount profile detected:', profileId);
-      this.exitDiscountActive = true;
-      sessionStorage.setItem('grounded-exit-discount-active', 'true');
-    } else if (profileId === null || profileId === '') {
-      // Profile reverted
-      console.log('Profile reverted, disabling exit discount');
-      this.exitDiscountActive = false;
-      sessionStorage.removeItem('grounded-exit-discount-active');
-    }
+    this._handleExitDiscountProfile(profileId);
 
-    // Mark that we're expecting a profile update
+    // Mark pending update and refresh data
     this.profileUpdatePending = true;
+    this._getProductId();
 
-    // Re-fetch the campaign data and product ID
-    const campaign = window.next.getCampaignData();
-    console.log('Updated campaign data:', campaign);
-
-    // Update the product ID from the refreshed campaign data
-    this.productId = campaign?.packages?.[0]?.product_id;
-    console.log('Updated product ID:', this.productId);
-
-    // Force immediate price updates
+    // Force price updates after a delay
     setTimeout(() => {
       this._updateAllPrices();
       this.profileUpdatePending = false;
     }, 200);
   }
 
-  _updateAllPrices() {
-    console.log('Updating all prices for tier:', this.currentTier);
+  _handleExitDiscountProfile(profileId) {
+    if (profileId && profileId.includes('exit_10')) {
+      this.exitDiscountActive = true;
+      sessionStorage.setItem('grounded-exit-discount-active', 'true');
+    } else if (!profileId) {
+      this.exitDiscountActive = false;
+      sessionStorage.removeItem('grounded-exit-discount-active');
+    }
+  }
 
-    // Re-populate dropdowns with new profile's packages
+  _updateAllPrices() {
+    // Update dropdowns and re-select variants
     for (let i = 1; i <= this.currentTier; i++) {
       const slot = document.querySelector(`[next-tier-slot="${i}"]`);
       if (slot) {
-        // Update the dropdown options
         this._populateDropdowns(slot, i);
 
-        // Force re-selection of current variants
         const variants = this.selectedVariants.get(i);
         if (variants?.color && variants?.size) {
           this._updateSlot(i, variants);
@@ -1126,15 +1095,8 @@ class TierController {
       }
     }
 
-    // Update all prices with new profile pricing
-    for (let i = 1; i <= this.currentTier; i++) {
-      this._updateSlotPrice(i);
-    }
-
-    // Update savings display
-    this._updateSavings();
-
-    console.log('Price update complete');
+    // Update all prices and savings
+    this._updatePrices();
   }
 
   _handleStepTransition() {
@@ -1219,37 +1181,27 @@ class TierController {
   }
 
   _showErrorMessage(message) {
-    // Create or update error message element
-    let errorEl = document.querySelector('.selection-error-message');
+    this._showNotification(message, 'error');
+  }
 
-    if (!errorEl) {
-      errorEl = document.createElement('div');
-      errorEl.className = 'selection-error-message';
-      errorEl.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #ff4444;
-        color: white;
-        padding: 12px 24px;
-        border-radius: 8px;
-        z-index: 10000;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        font-size: 14px;
-        font-weight: 500;
-        animation: slideDown 0.3s ease;
-      `;
-      document.body.appendChild(errorEl);
-    }
+  _showNotification(message, type = 'info') {
+    const styles = {
+      success: 'background:#4CAF50;',
+      error: 'background:#ff4444;',
+      info: 'background:#2196F3;'
+    };
 
-    errorEl.textContent = message;
-    errorEl.style.display = 'block';
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position:fixed;top:20px;left:50%;transform:translateX(-50%);
+      ${styles[type]}color:white;padding:12px 24px;border-radius:8px;
+      z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.15);
+      font-size:14px;font-weight:500;animation:slideDown 0.3s ease;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
 
-    // Auto-hide after 3 seconds
-    setTimeout(() => {
-      errorEl.style.display = 'none';
-    }, 3000);
+    setTimeout(() => notification.remove(), type === 'error' ? 3000 : 5000);
   }
 
   handleVerifyClick() {
@@ -1409,41 +1361,27 @@ document.head.appendChild(style);
 window.addEventListener('next:initialized', () => {
   window.tierController = new TierController();
 
-  // Add global debug method to manually update prices
-  window.updatePrices = () => {
-    console.log('Manually triggering price update...');
-    if (window.tierController) {
-      window.tierController._getProductId();
-      window.tierController._updateAllPrices();
-    }
-  };
-
-  // Add method to check current profile
-  window.checkProfile = () => {
-    const campaign = window.next.getCampaignData();
-    const activeProfile = window.next.getActiveProfile ? window.next.getActiveProfile() : 'unknown';
-    console.log('Active profile:', activeProfile);
-    console.log('Campaign packages:', campaign?.packages?.length);
-    console.log('First package:', campaign?.packages?.[0]);
-    return activeProfile;
-  };
-
-  // Debug method to check if mapped packages exist
-  window.checkMappedPackages = () => {
-    console.log('Checking if mapped packages exist...');
-
-    // Check for 2-pack mapping for Obsidian Grey / Single
-    const pkg25 = window.next.getPackage(25);
-    console.log('Package 25 (2-pack Obsidian Grey/Single):', pkg25);
-
-    const pkg49 = window.next.getPackage(49);
-    console.log('Package 49 (3-pack Obsidian Grey/Single):', pkg49);
-
-    const pkg74 = window.next.getPackage(74);
-    console.log('Package 74 (exit discount Obsidian Grey/Single):', pkg74);
-
-    return { pkg25, pkg49, pkg74 };
-  };
+  // Production-ready debug utilities (can be removed in production)
+  if (window.location.search.includes('debug=true')) {
+    window.tierController.debug = {
+      updatePrices: () => {
+        window.tierController._getProductId();
+        window.tierController._updateAllPrices();
+      },
+      checkProfile: () => {
+        const storeData = localStorage.getItem('next-profile-store');
+        const parsed = storeData ? JSON.parse(storeData) : null;
+        return parsed?.state?.activeProfileId || null;
+      },
+      getState: () => ({
+        tier: window.tierController.currentTier,
+        exitDiscount: window.tierController.exitDiscountActive,
+        selections: Object.fromEntries(window.tierController.selectedVariants),
+        productId: window.tierController.productId,
+        baseProductId: window.tierController.baseProductId
+      })
+    };
+  }
 
   const btn = document.querySelector('[os-checkout="verify-step"]');
   if (btn) {
