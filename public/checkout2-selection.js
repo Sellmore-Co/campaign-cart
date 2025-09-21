@@ -18,6 +18,15 @@ const CONFIG = {
   },
   profiles: { 1: 'default', 2: '2_pack', 3: '3_pack' },
   exitProfiles: { 1: 'exit_10', 2: 'exit_10_2pack', 3: 'exit_10_3pack' },
+  discounts: {
+    base: { 1: 50, 2: 55, 3: 60 }, // Base discount percentages per tier
+    exit: 10, // Additional exit discount percentage
+    display: {
+      1: { base: '50%', withExit: '55%' },
+      2: { base: '55%', withExit: '60%' },
+      3: { base: '60%', withExit: '65%' }
+    }
+  },
   profileDefinitions: {
     '2_pack': {
       name: '2-Pack Bundle',
@@ -83,11 +92,7 @@ const CONFIG = {
     ['Double', 'Queen', 'King', 'Single', 'Twin', 'California King'],
     ['Single', 'Twin', 'Double', 'Queen', 'King', 'California King'],
     ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King']
-  ],
-  savings: {
-    normal: { 1: '50', 2: '55', 3: '60' },
-    exit: { 1: '55', 2: '60', 3: '65' }
-  }
+  ]
 };
 
 // Base element class
@@ -943,27 +948,24 @@ class TierController {
     const pctEl = slot.querySelector('[data-option="savingPct"]');
     const profileSavingsEl = slot.querySelector('.data-profile-savings');
 
+    // Use hardcoded discount values from CONFIG
+    const tierDiscounts = CONFIG.discounts.display[this.currentTier];
+
     if (this.exitDiscountActive) {
-      // When exit discount is active, show base savings and additional discount separately
-
-      // Calculate the base price without exit discount (roughly 10% more)
-      const basePrice = finalPrice / 0.9; // Reverse the 10% discount
-
-      // Show the original savings percentage (from retail to base price)
-      if (pctEl && retail > basePrice) {
-        const baseSavings = Math.round(((retail - basePrice) / retail) * 100);
-        pctEl.textContent = `${baseSavings}%`;
+      // Show base savings and additional discount separately
+      if (pctEl && tierDiscounts) {
+        pctEl.textContent = tierDiscounts.base;
       }
 
       // Show the additional profile savings
       if (profileSavingsEl) {
         profileSavingsEl.style.display = 'block';
-        profileSavingsEl.textContent = '+10% OFF';
+        profileSavingsEl.textContent = `+${CONFIG.discounts.exit}% OFF`;
       }
     } else {
-      // Normal pricing - show combined savings
-      if (pctEl && retail > finalPrice) {
-        pctEl.textContent = `${Math.round(((retail - finalPrice) / retail) * 100)}%`;
+      // Normal pricing - show base discount only
+      if (pctEl && tierDiscounts) {
+        pctEl.textContent = tierDiscounts.base;
       }
 
       // Hide profile savings when not active
@@ -1007,14 +1009,15 @@ class TierController {
   }
 
   _updateSavings() {
-    const savings = this.exitDiscountActive ? CONFIG.savings.exit : CONFIG.savings.normal;
-    
     [1, 2, 3].forEach(tier => {
+      const discounts = CONFIG.discounts.display[tier];
+      const displayValue = this.exitDiscountActive ? discounts.withExit : discounts.base;
+
       document.querySelectorAll(
-        `[data-next-tier="${tier}"] [data-next-display*="bestSavingsPercentage"], 
+        `[data-next-tier="${tier}"] [data-next-display*="bestSavingsPercentage"],
          [data-next-tier="${tier}"] .next-cart-has-items`
       ).forEach(el => {
-        if (el) el.textContent = savings[tier] + '%';
+        if (el) el.textContent = displayValue;
       });
     });
   }
