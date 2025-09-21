@@ -25,6 +25,8 @@ export class ExitIntentEnhancer extends BaseEnhancer {
   private useSessionStorage = true; // Enable session storage by default
   private overlayClosable = true; // Allow overlay click to close
   private showCloseButton = false; // Show close button on modal
+  private imageClickable = true; // Make image clickable (default true for backward compat)
+  private actionButtonText = ''; // Text for action button
 
   constructor() {
     super(document.body);
@@ -63,7 +65,7 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     }
   }
 
-  public setup(options: { 
+  public setup(options: {
     image?: string; // Now optional - use either image or template
     template?: string; // Name of the template to use (e.g., 'exit-intent')
     action?: () => void | Promise<void>;
@@ -74,6 +76,8 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     sessionStorageKey?: string; // Custom session storage key
     overlayClosable?: boolean; // Allow overlay click to close
     showCloseButton?: boolean; // Show close button on modal
+    imageClickable?: boolean; // Make image clickable to trigger action (default: true for backward compat)
+    actionButtonText?: string; // Text for action button (if provided, shows button instead of clickable image)
   }): void {
     // Validate that either image or template is provided
     if (!options.image && !options.template) {
@@ -90,6 +94,8 @@ export class ExitIntentEnhancer extends BaseEnhancer {
     this.useSessionStorage = options.useSessionStorage !== undefined ? options.useSessionStorage : true;
     this.overlayClosable = options.overlayClosable !== undefined ? options.overlayClosable : true;
     this.showCloseButton = options.showCloseButton || false;
+    this.imageClickable = options.imageClickable !== undefined ? options.imageClickable : true;
+    this.actionButtonText = options.actionButtonText || '';
     if (options.sessionStorageKey) {
       this.sessionStorageKey = options.sessionStorageKey;
     }
@@ -409,9 +415,9 @@ export class ExitIntentEnhancer extends BaseEnhancer {
       left: 50%;
       transform: translate(-50%, -50%);
       z-index: 1000000;
-      cursor: pointer;
+      cursor: ${this.imageClickable && !this.actionButtonText ? 'pointer' : 'default'};
       max-width: 90vw;
-      max-height: 50vh;
+      max-height: ${this.actionButtonText ? '60vh' : '50vh'};
     `;
 
     // Create image
@@ -436,6 +442,81 @@ export class ExitIntentEnhancer extends BaseEnhancer {
 
     this.popupElement.appendChild(image);
 
+    // Add action button if specified
+    if (this.actionButtonText) {
+      const buttonContainer = document.createElement('div');
+      buttonContainer.style.cssText = `
+        text-align: center;
+        margin-top: 20px;
+      `;
+
+      const actionButton = document.createElement('button');
+      actionButton.className = 'exit-intent-action-button';
+      actionButton.setAttribute('data-exit-intent', 'action');
+      actionButton.textContent = this.actionButtonText;
+      actionButton.style.cssText = `
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+      `;
+
+      actionButton.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        this.emit('exit-intent:clicked', { imageUrl: this.imageUrl });
+
+        // Execute action if provided
+        if (this.action) {
+          try {
+            await this.action();
+          } catch (error) {
+            this.logger.error('Exit intent action failed:', error);
+          }
+        }
+
+        // Mark as clicked in session storage
+        this.saveToSessionStorage();
+        this.hidePopup();
+      });
+
+      buttonContainer.appendChild(actionButton);
+      this.popupElement.appendChild(buttonContainer);
+    }
+
+    // Add close button
+    if (this.showCloseButton) {
+      const closeButton = document.createElement('button');
+      closeButton.className = 'exit-intent-close';
+      closeButton.setAttribute('data-exit-intent', 'close');
+      closeButton.innerHTML = '&times;';
+      closeButton.style.cssText = `
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: transparent;
+        border: none;
+        font-size: 30px;
+        cursor: pointer;
+        z-index: 1000001;
+        color: #fff;
+        text-shadow: 0 0 3px rgba(0,0,0,0.5);
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        line-height: 1;
+      `;
+      closeButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.hidePopup();
+        this.emit('exit-intent:closed', { imageUrl: this.imageUrl });
+      });
+      this.popupElement.appendChild(closeButton);
+    }
+
     // Click handlers
     this.overlayElement.addEventListener('click', () => {
       this.hidePopup();
@@ -444,23 +525,31 @@ export class ExitIntentEnhancer extends BaseEnhancer {
       this.saveToSessionStorage();
     });
 
-    this.popupElement.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      this.emit('exit-intent:clicked', { imageUrl: this.imageUrl });
-      
-      // Execute action if provided
-      if (this.action) {
-        try {
-          await this.action();
-        } catch (error) {
-          this.logger.error('Exit intent action failed:', error);
+    // Only make the popup clickable if imageClickable is true and no action button
+    if (this.imageClickable && !this.actionButtonText) {
+      this.popupElement.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        this.emit('exit-intent:clicked', { imageUrl: this.imageUrl });
+
+        // Execute action if provided
+        if (this.action) {
+          try {
+            await this.action();
+          } catch (error) {
+            this.logger.error('Exit intent action failed:', error);
+          }
         }
-      }
-      
-      // Mark as clicked in session storage
-      this.saveToSessionStorage();
-      this.hidePopup();
-    });
+
+        // Mark as clicked in session storage
+        this.saveToSessionStorage();
+        this.hidePopup();
+      });
+    } else {
+      // Prevent popup clicks from closing when clicking inside
+      this.popupElement.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
 
     // Escape key
     const keyHandler = (e: KeyboardEvent) => {

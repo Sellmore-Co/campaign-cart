@@ -126,7 +126,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
             variantId: packageData.product_variant_id,
             variantName: packageData.product_variant_name,
             variantAttributes: packageData.product_variant_attribute_values,
-            variantSku: packageData.product_sku
+            variantSku: packageData.product_sku || undefined || undefined
           };
           
           // Console log for debugging upsell items
@@ -280,7 +280,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
           variantId: newPackageData.product_variant_id,
           variantName: newPackageData.product_variant_name,
           variantAttributes: newPackageData.product_variant_attribute_values,
-          variantSku: newPackageData.product_sku
+          variantSku: newPackageData.product_sku || undefined
         };
         
         // Calculate price difference
@@ -408,7 +408,7 @@ const cartStoreInstance = create<CartState & CartActions>()(
             variantId: packageData.product_variant_id,
             variantName: packageData.product_variant_name,
             variantAttributes: packageData.product_variant_attribute_values,
-            variantSku: packageData.product_sku
+            variantSku: packageData.product_sku || undefined || undefined
           };
 
           newItems.push(newItem);
