@@ -293,9 +293,17 @@ class TierController {
       this._initState();
     }
 
+    // Check for active profile from the Zustand store (now in localStorage)
+    this._checkActiveProfile();
+
+    // Also check sessionStorage for backwards compatibility
     if (sessionStorage.getItem('grounded-exit-discount-active') === 'true') {
       this.exitDiscountActive = true;
-      await this._applyProfile(this.currentTier);
+      // Don't re-apply profile if one is already active
+      const activeProfile = this._getActiveProfileFromStore();
+      if (!activeProfile) {
+        await this._applyProfile(this.currentTier);
+      }
     }
 
     // Defer heavy operations
@@ -316,6 +324,52 @@ class TierController {
       const check = () => window.next?.getCampaignData ? r() : setTimeout(check, 50);
       check();
     });
+  }
+
+  _getActiveProfileFromStore() {
+    try {
+      // Read from the Zustand store in localStorage
+      const storeData = localStorage.getItem('next-profile-store');
+      if (storeData) {
+        const parsed = JSON.parse(storeData);
+        return parsed?.state?.activeProfileId || null;
+      }
+    } catch (error) {
+      console.log('Error reading profile store:', error);
+    }
+    return null;
+  }
+
+  _checkActiveProfile() {
+    const activeProfileId = this._getActiveProfileFromStore();
+
+    if (activeProfileId) {
+      console.log('Active profile found on init:', activeProfileId);
+
+      // Check if it's an exit discount profile
+      if (activeProfileId.includes('exit_10')) {
+        this.exitDiscountActive = true;
+        // Migrate to sessionStorage for consistency
+        sessionStorage.setItem('grounded-exit-discount-active', 'true');
+      }
+
+      // Determine the tier from the profile name
+      if (activeProfileId.includes('3pack') || activeProfileId.includes('3_pack')) {
+        this.currentTier = 3;
+      } else if (activeProfileId.includes('2pack') || activeProfileId.includes('2_pack')) {
+        this.currentTier = 2;
+      }
+
+      // Update UI to match the detected tier
+      if (this.currentTier !== 1) {
+        document.querySelectorAll('[data-next-tier]').forEach(card => {
+          const t = +card.getAttribute('data-next-tier');
+          card.classList.toggle('next-selected', t === this.currentTier);
+          const radio = card.querySelector('.radio-style-1');
+          if (radio) radio.setAttribute('data-selected', t === this.currentTier);
+        });
+      }
+    }
   }
 
   _getProductId() {
@@ -1022,6 +1076,19 @@ class TierController {
   
   _onProfileChanged(eventData) {
     console.log('Profile changed, updating prices...', eventData);
+
+    // Check if this is an exit discount profile
+    const profileId = eventData?.profileId || eventData?.profile?.id || '';
+    if (profileId && profileId.includes('exit_10')) {
+      console.log('Exit discount profile detected:', profileId);
+      this.exitDiscountActive = true;
+      sessionStorage.setItem('grounded-exit-discount-active', 'true');
+    } else if (profileId === null || profileId === '') {
+      // Profile reverted
+      console.log('Profile reverted, disabling exit discount');
+      this.exitDiscountActive = false;
+      sessionStorage.removeItem('grounded-exit-discount-active');
+    }
 
     // Mark that we're expecting a profile update
     this.profileUpdatePending = true;
