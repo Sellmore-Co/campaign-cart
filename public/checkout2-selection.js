@@ -978,6 +978,12 @@ class TierController {
       const el = slot.querySelector(sel);
       if (el) el.textContent = ['$XX.XX', '$XX.XX', 'XX%'][i];
     });
+
+    // Also hide profile savings when resetting
+    const profileSavingsEl = slot.querySelector('.data-profile-savings');
+    if (profileSavingsEl) {
+      profileSavingsEl.style.display = 'none';
+    }
   }
 
   _updateStock(slot, slotNum) {
@@ -1313,7 +1319,7 @@ customElements.define('os-dropdown', OSDropdown);
 customElements.define('os-dropdown-menu', OSDropdownMenu);
 customElements.define('os-dropdown-item', OSDropdownItem);
 
-// Add CSS for animations
+// Add CSS for animations and profile savings
 const style = document.createElement('style');
 style.textContent = `
   @keyframes slideDown {
@@ -1353,6 +1359,20 @@ style.textContent = `
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  /* Profile savings styling */
+  .data-profile-savings {
+    display: none;
+    color: #4CAF50;
+    font-weight: 600;
+    margin-top: 4px;
+    animation: pulseGreen 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseGreen {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
   }
 `;
 document.head.appendChild(style);
