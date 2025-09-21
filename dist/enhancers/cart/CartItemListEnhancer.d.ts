@@ -4,6 +4,7 @@ export declare class CartItemListEnhancer extends BaseEnhancer {
     private emptyTemplate?;
     private titleMap?;
     private lastRenderedItems;
+    private groupItems;
     initialize(): Promise<void>;
     update(data?: any): void;
     private handleCartUpdate;
@@ -16,5 +17,9 @@ export declare class CartItemListEnhancer extends BaseEnhancer {
     getItemCount(): number;
     getItemElements(): NodeListOf<Element>;
     refreshItem(_packageId: number): void;
+    private groupIdenticalItems;
+    private formatVariantAttributes;
+    private formatVariantAttributesList;
+    private extractIndividualAttributes;
 }
 //# sourceMappingURL=CartItemListEnhancer.d.ts.map
