@@ -274,19 +274,26 @@ class TierController {
     await this._waitForSDK();
     this._registerProfiles();
     this._setupListeners();
-    
-    await window.next.clearCart();
-    await window.next.revertProfile();
+
+    // Check if cart has items before clearing
+    const cartData = window.next.getCartData();
+    const hasCartItems = cartData?.cartLines && cartData.cartLines.length > 0;
+
+    if (!hasCartItems) {
+      // Only clear cart if it's empty
+      await window.next.clearCart();
+      await window.next.revertProfile();
+    }
 
     this._getProductId();
     this._bindEvents();
     this._initState();
-    
+
     if (sessionStorage.getItem('grounded-exit-discount-active') === 'true') {
       this.exitDiscountActive = true;
       await this._applyProfile(this.currentTier);
     }
-    
+
     this._setupDropdowns();
     await this._setDefaults();
     this._updatePrices();
@@ -613,45 +620,151 @@ class TierController {
   }
 
   async _setDefaults() {
-    const saved = this._loadSelectionsFromStorage();
-    const colors = window.next.getAvailableVariantAttributes(this.productId, 'color');
-    const sizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
-    
-    const defaultColor = colors.find(c => c.toLowerCase().includes('obsidian')) || colors[0];
-    const defaultSize = sizes.find(s => s.toLowerCase() === 'single') || sizes[0];
+    // First check if cart has items and try to restore from cart
+    const cartRestored = await this._restoreFromCart();
 
-    for (let i = 1; i <= this.currentTier; i++) {
-      if (!this.selectedVariants.has(i)) {
-        this.selectedVariants.set(i, {});
-      }
-      
-      const v = this.selectedVariants.get(i);
-      const s = saved?.[i];
-      
-      // Validate saved selections or use defaults
-      if (s?.color && s?.size) {
-        if (this._isVariantOOS(i, s)) {
-          // Find alternative
-          const altColor = this._findAvailable(i, 'color', s.size);
-          const altSize = this._findAvailable(i, 'size', s.color);
-          
-          v.color = altColor || defaultColor;
-          v.size = altSize || defaultSize;
-        } else {
-          v.color = s.color;
-          v.size = s.size;
+    if (!cartRestored) {
+      // If no cart items, try localStorage or use defaults
+      const saved = this._loadSelectionsFromStorage();
+      const colors = window.next.getAvailableVariantAttributes(this.productId, 'color');
+      const sizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
+
+      const defaultColor = colors.find(c => c.toLowerCase().includes('obsidian')) || colors[0];
+      const defaultSize = sizes.find(s => s.toLowerCase() === 'single') || sizes[0];
+
+      for (let i = 1; i <= this.currentTier; i++) {
+        if (!this.selectedVariants.has(i)) {
+          this.selectedVariants.set(i, {});
         }
-      } else {
-        v.color = s?.color || defaultColor;
-        v.size = s?.size || defaultSize;
+
+        const v = this.selectedVariants.get(i);
+        const s = saved?.[i];
+
+        // Validate saved selections or use defaults
+        if (s?.color && s?.size) {
+          if (this._isVariantOOS(i, s)) {
+            // Find alternative
+            const altColor = this._findAvailable(i, 'color', s.size);
+            const altSize = this._findAvailable(i, 'size', s.color);
+
+            v.color = altColor || defaultColor;
+            v.size = altSize || defaultSize;
+          } else {
+            v.color = s.color;
+            v.size = s.size;
+          }
+        } else {
+          v.color = s?.color || defaultColor;
+          v.size = s?.size || defaultSize;
+        }
+
+        this._updateSlot(i, v);
+        this._updateSlotPrice(i);
+        this._updateStock(document.querySelector(`[next-tier-slot="${i}"]`), i);
       }
-      
-      this._updateSlot(i, v);
-      this._updateSlotPrice(i);
-      this._updateStock(document.querySelector(`[next-tier-slot="${i}"]`), i);
+
+      await this._updateCart();
+    }
+  }
+
+  async _restoreFromCart() {
+    try {
+      const cartData = window.next.getCartData();
+
+      if (!cartData?.cartLines || cartData.cartLines.length === 0) {
+        return false;
+      }
+
+      // Detect tier based on cart items count
+      const itemCount = cartData.cartLines.length;
+      if (itemCount > 0) {
+        // Auto-select the tier based on item count
+        const detectedTier = Math.min(itemCount, 3); // Max 3 tiers
+        if (detectedTier !== this.currentTier) {
+          await this.selectTier(detectedTier);
+        }
+
+        // Extract variants from cart items
+        cartData.cartLines.forEach((item, index) => {
+          const slotNum = index + 1;
+          if (slotNum <= 3) { // Max 3 slots
+            // Try to extract variant attributes from the item
+            const variants = this._extractVariantsFromCartItem(item);
+
+            if (variants.color && variants.size) {
+              this.selectedVariants.set(slotNum, variants);
+              this._updateSlot(slotNum, variants);
+              this._updateSlotPrice(slotNum);
+              this._updateStock(document.querySelector(`[next-tier-slot="${slotNum}"]`), slotNum);
+            }
+          }
+        });
+
+        // Save restored selections to localStorage
+        this._saveSelectionsToStorage();
+
+        // Auto-open step 2 since we have cart items
+        this._autoOpenStepTwo();
+
+        return true; // Successfully restored from cart
+      }
+    } catch (error) {
+      console.log('Could not restore from cart:', error);
     }
 
-    await this._updateCart();
+    return false;
+  }
+
+  _extractVariantsFromCartItem(item) {
+    const variants = {};
+
+    // Method 1: Parse from item.product.title (based on cartdata.json structure)
+    if (item.product?.title) {
+      const title = item.product.title;
+
+      // Try to extract color
+      const colorMatch = title.match(/(Obsidian Grey|Chateau Ivory|Scribe Blue|Verdant Sage)/i);
+      if (colorMatch) {
+        variants.color = colorMatch[1];
+      }
+
+      // Try to extract size
+      const sizeMatch = title.match(/(Single|Twin|Double|Queen|King|California King)/i);
+      if (sizeMatch) {
+        variants.size = sizeMatch[1];
+      }
+    }
+
+    // Method 2: Try to get from package details using packageId
+    if (!variants.color || !variants.size) {
+      const pkg = window.next.getPackage(item.packageId);
+      if (pkg?.product_variant_attribute_values) {
+        pkg.product_variant_attribute_values.forEach(attr => {
+          if (attr.code === 'color' && attr.value) {
+            variants.color = attr.value;
+          }
+          if (attr.code === 'size' && attr.value) {
+            variants.size = attr.value;
+          }
+        });
+      }
+    }
+
+    // Method 3: Check if item has variant_attributes directly (fallback)
+    if (!variants.color || !variants.size) {
+      if (item.variant_attributes) {
+        item.variant_attributes.forEach(attr => {
+          if (attr.code === 'color' && attr.value) {
+            variants.color = attr.value;
+          }
+          if (attr.code === 'size' && attr.value) {
+            variants.size = attr.value;
+          }
+        });
+      }
+    }
+
+    return variants;
   }
 
   _findAvailable(slotNum, type, otherValue) {
@@ -852,6 +965,21 @@ class TierController {
           behavior: 'smooth'
         });
       }, 100);
+    }
+  }
+
+  _autoOpenStepTwo() {
+    // Similar to _handleStepTransition but without scrolling
+    const stepTwo = document.querySelector('[data-next-component="step-two"]');
+    if (stepTwo) {
+      // Remove inactive class to show step two (no animation on page load)
+      stepTwo.classList.remove('is-inactive');
+
+      // Hide the first step's CTA wrapper
+      const quantityCTA = document.querySelector('[data-next-component="quantity-cta"]');
+      if (quantityCTA) {
+        quantityCTA.style.display = 'none';
+      }
     }
   }
 
