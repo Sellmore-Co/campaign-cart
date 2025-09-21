@@ -295,6 +295,10 @@ class TierController {
       // Only clear cart and setup fresh if empty
       await window.next.clearCart();
       await window.next.revertProfile();
+
+      // Check for forceTier parameter if no cart
+      this._checkForceTierParam();
+
       this._initState();
     }
 
@@ -423,6 +427,38 @@ class TierController {
     const tier = selected ? +selected.getAttribute('data-next-tier') : 1;
     this.currentTier = tier;
     this._updateSlots(tier);
+  }
+
+  _checkForceTierParam() {
+    // Check URL for forceTier parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceTier = urlParams.get('forceTier');
+
+    if (forceTier) {
+      const tierNum = parseInt(forceTier, 10);
+
+      // Validate tier is 1, 2, or 3
+      if (tierNum >= 1 && tierNum <= 3) {
+        // Auto-select the tier
+        this.currentTier = tierNum;
+
+        // Update UI to show selected tier
+        this._updateTierUI(tierNum);
+
+        // Apply the appropriate profile
+        this._applyProfile(tierNum);
+
+        // Update slots
+        this._updateSlots(tierNum);
+
+        // Auto-open step 2 if tier is pre-selected
+        if (tierNum > 1) {
+          requestAnimationFrame(() => {
+            this._autoOpenStepTwo();
+          });
+        }
+      }
+    }
   }
 
   async selectTier(tier, skipCartUpdate = false) {

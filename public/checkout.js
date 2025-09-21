@@ -18,6 +18,15 @@ const CONFIG = {
   },
   profiles: { 1: 'default', 2: '2_pack', 3: '3_pack' },
   exitProfiles: { 1: 'exit_10', 2: 'exit_10_2pack', 3: 'exit_10_3pack' },
+  discounts: {
+    base: { 1: 50, 2: 55, 3: 60 }, // Base discount percentages per tier
+    exit: 10, // Additional exit discount percentage
+    display: {
+      1: { base: '50%', withExit: '55%' },
+      2: { base: '55%', withExit: '60%' },
+      3: { base: '60%', withExit: '65%' }
+    }
+  },
   profileDefinitions: {
     '2_pack': {
       name: '2-Pack Bundle',
@@ -83,11 +92,7 @@ const CONFIG = {
     ['Double', 'Queen', 'King', 'Single', 'Twin', 'California King'],
     ['Single', 'Twin', 'Double', 'Queen', 'King', 'California King'],
     ['Twin', 'Single', 'Double', 'Queen', 'King', 'California King']
-  ],
-  savings: {
-    normal: { 1: '50', 2: '55', 3: '60' },
-    exit: { 1: '55', 2: '60', 3: '65' }
-  }
+  ]
 };
 
 // Base element class
@@ -274,23 +279,53 @@ class TierController {
     await this._waitForSDK();
     this._registerProfiles();
     this._setupListeners();
-    
-    await window.next.clearCart();
-    await window.next.revertProfile();
 
+    // Get initial data
     this._getProductId();
     this._bindEvents();
-    this._initState();
-    
+
+    // Check if cart has items before clearing
+    const cartData = window.next.getCartData();
+    const hasCartItems = cartData?.cartLines && cartData.cartLines.length > 0;
+
+    if (hasCartItems) {
+      // If cart has items, restore from cart first
+      this._initStateFromCart(cartData);
+    } else {
+      // Only clear cart and setup fresh if empty
+      await window.next.clearCart();
+      await window.next.revertProfile();
+
+      // Check for forceTier parameter if no cart
+      this._checkForceTierParam();
+
+      this._initState();
+    }
+
+    // Check for active profile from the Zustand store (now in localStorage)
+    this._checkActiveProfile();
+
+    // Also check sessionStorage for backwards compatibility
     if (sessionStorage.getItem('grounded-exit-discount-active') === 'true') {
       this.exitDiscountActive = true;
-      await this._applyProfile(this.currentTier);
+      // Don't re-apply profile if one is already active
+      const activeProfile = this._getActiveProfileFromStore();
+      if (!activeProfile) {
+        await this._applyProfile(this.currentTier);
+      }
     }
-    
-    this._setupDropdowns();
-    await this._setDefaults();
-    this._updatePrices();
-    this._updateSavings();
+
+    // Defer heavy operations
+    requestAnimationFrame(() => {
+      this._setupDropdowns();
+
+      if (!hasCartItems) {
+        this._setDefaultsWithoutCart();
+      }
+
+      this._updatePrices();
+      this._updateSavings();
+    });
   }
 
   _waitForSDK() {
@@ -298,6 +333,179 @@ class TierController {
       const check = () => window.next?.getCampaignData ? r() : setTimeout(check, 50);
       check();
     });
+  }
+
+  _getActiveProfileFromStore() {
+    try {
+      const storeData = localStorage.getItem('next-profile-store');
+      if (storeData) {
+        const parsed = JSON.parse(storeData);
+        return parsed?.state?.activeProfileId || null;
+      }
+    } catch {}
+    return null;
+  }
+
+  _checkActiveProfile() {
+    const activeProfileId = this._getActiveProfileFromStore();
+    if (!activeProfileId) return;
+
+    // Check if it's an exit discount profile
+    if (activeProfileId.includes('exit_10')) {
+      this.exitDiscountActive = true;
+      sessionStorage.setItem('grounded-exit-discount-active', 'true');
+    }
+
+    // Determine tier from profile name
+    this._detectTierFromProfile(activeProfileId);
+
+    // Update UI if not tier 1
+    if (this.currentTier !== 1) {
+      this._updateTierUI(this.currentTier);
+    }
+  }
+
+  _detectTierFromProfile(profileId) {
+    if (profileId.includes('3pack') || profileId.includes('3_pack')) {
+      this.currentTier = 3;
+    } else if (profileId.includes('2pack') || profileId.includes('2_pack')) {
+      this.currentTier = 2;
+    }
+  }
+
+  _updateTierUI(tier) {
+    document.querySelectorAll('[data-next-tier]').forEach(card => {
+      const t = +card.getAttribute('data-next-tier');
+      card.classList.toggle('next-selected', t === tier);
+      const radio = card.querySelector('.radio-style-1');
+      if (radio) radio.setAttribute('data-selected', t === tier);
+    });
+  }
+
+  _initStateFromCart(cartData) {
+    // Synchronously initialize state from cart without async operations
+    if (!cartData?.cartLines || cartData.cartLines.length === 0) {
+      this._initState();
+      return;
+    }
+
+    // Detect tier based on cart items count
+    const detectedTier = Math.min(cartData.cartLines.length, 3);
+    this.currentTier = detectedTier;
+
+    // Update UI for tier selection
+    this._updateTierUI(detectedTier);
+
+    // Extract variants from cart items
+    cartData.cartLines.forEach((item, index) => {
+      const slotNum = index + 1;
+      if (slotNum <= 3) {
+        const variants = this._extractVariantsFromCartItem(item);
+        if (variants.color && variants.size) {
+          this.selectedVariants.set(slotNum, variants);
+        }
+      }
+    });
+
+    // Update slots
+    this._updateSlots(detectedTier);
+
+    // Batch update UI after slots are created
+    requestAnimationFrame(() => {
+      for (let i = 1; i <= detectedTier; i++) {
+        const variants = this.selectedVariants.get(i);
+        if (variants) {
+          this._updateSlot(i, variants);
+          this._updateSlotPrice(i);
+          this._updateStock(document.querySelector(`[next-tier-slot="${i}"]`), i);
+        }
+      }
+
+      // Save restored selections to localStorage
+      this._saveSelectionsToStorage();
+    });
+  }
+
+  _extractVariantsFromCartItem(item) {
+    const variants = {};
+
+    // Method 1: Parse from item.product.title (based on cartdata.json structure)
+    if (item.product?.title) {
+      const title = item.product.title;
+
+      // Try to extract color
+      const colorMatch = title.match(/(Obsidian Grey|Chateau Ivory|Scribe Blue|Verdant Sage)/i);
+      if (colorMatch) {
+        variants.color = colorMatch[1];
+      }
+
+      // Try to extract size
+      const sizeMatch = title.match(/(Single|Twin|Double|Queen|King|California King)/i);
+      if (sizeMatch) {
+        variants.size = sizeMatch[1];
+      }
+    }
+
+    // Method 2: Try to get from package details using packageId
+    if (!variants.color || !variants.size) {
+      const pkg = window.next.getPackage(item.packageId);
+      if (pkg?.product_variant_attribute_values) {
+        pkg.product_variant_attribute_values.forEach(attr => {
+          if (attr.code === 'color' && attr.value) {
+            variants.color = attr.value;
+          }
+          if (attr.code === 'size' && attr.value) {
+            variants.size = attr.value;
+          }
+        });
+      }
+    }
+
+    return variants;
+  }
+
+  _setDefaultsWithoutCart() {
+    // Only called when no cart items exist
+    const saved = this._loadSelectionsFromStorage();
+    const colors = window.next.getAvailableVariantAttributes(this.productId, 'color');
+    const sizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
+
+    const defaultColor = colors.find(c => c.toLowerCase().includes('obsidian')) || colors[0];
+    const defaultSize = sizes.find(s => s.toLowerCase() === 'single') || sizes[0];
+
+    for (let i = 1; i <= this.currentTier; i++) {
+      if (!this.selectedVariants.has(i)) {
+        this.selectedVariants.set(i, {});
+      }
+
+      const v = this.selectedVariants.get(i);
+      const s = saved?.[i];
+
+      // Validate saved selections or use defaults
+      if (s?.color && s?.size) {
+        if (this._isVariantOOS(i, s)) {
+          // Find alternative
+          const altColor = this._findAvailable(i, 'color', s.size);
+          const altSize = this._findAvailable(i, 'size', s.color);
+
+          v.color = altColor || defaultColor;
+          v.size = altSize || defaultSize;
+        } else {
+          v.color = s.color;
+          v.size = s.size;
+        }
+      } else {
+        v.color = s?.color || defaultColor;
+        v.size = s?.size || defaultSize;
+      }
+
+      this._updateSlot(i, v);
+      this._updateSlotPrice(i);
+      this._updateStock(document.querySelector(`[next-tier-slot="${i}"]`), i);
+    }
+
+    // Debounce cart update
+    this._cartDebounce();
   }
 
   _getProductId() {
@@ -322,37 +530,63 @@ class TierController {
     this._updateSlots(tier);
   }
 
-  async selectTier(tier) {
+  _checkForceTierParam() {
+    // Check URL for forceTier parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceTier = urlParams.get('forceTier');
+
+    if (forceTier) {
+      const tierNum = parseInt(forceTier, 10);
+
+      // Validate tier is 1, 2, or 3
+      if (tierNum >= 1 && tierNum <= 3) {
+        // Auto-select the tier
+        this.currentTier = tierNum;
+
+        // Update UI to show selected tier
+        this._updateTierUI(tierNum);
+
+        // Apply the appropriate profile
+        this._applyProfile(tierNum);
+
+        // Update slots
+        this._updateSlots(tierNum);
+      }
+    }
+  }
+
+  async selectTier(tier, skipCartUpdate = false) {
     if (tier === this.currentTier) return;
 
     const prev = this.currentTier;
     this.currentTier = tier;
 
     // Update UI
-    document.querySelectorAll('[data-next-tier]').forEach(card => {
-      const t = +card.getAttribute('data-next-tier');
-      card.classList.toggle('next-selected', t === tier);
-      const radio = card.querySelector('.radio-style-1');
-      if (radio) radio.setAttribute('data-selected', t === tier);
-    });
-
+    this._updateTierUI(tier);
     this._updateSlots(tier);
     await this._applyProfile(tier);
 
     // Copy selections from slot 1 to new slots
     if (tier > prev) {
-      const slot1 = this.selectedVariants.get(1);
-      if (slot1?.color && slot1?.size) {
-        for (let i = prev + 1; i <= tier; i++) {
-          this.selectedVariants.set(i, { ...slot1 });
-          this._updateSlot(i, slot1);
-          this._updateSlotPrice(i);
-        }
-      }
+      this._copySelectionsToNewSlots(prev, tier);
     }
 
-    await this._updateCart();
+    // Only update cart if not explicitly skipped (prevents loops)
+    if (!skipCartUpdate) {
+      this._cartDebounce();
+    }
     this._updateCTA();
+  }
+
+  _copySelectionsToNewSlots(fromTier, toTier) {
+    const slot1 = this.selectedVariants.get(1);
+    if (!slot1?.color || !slot1?.size) return;
+
+    for (let i = fromTier + 1; i <= toTier; i++) {
+      this.selectedVariants.set(i, { ...slot1 });
+      this._updateSlot(i, slot1);
+      this._updateSlotPrice(i);
+    }
   }
 
   _updateSlots(tier) {
@@ -410,27 +644,49 @@ class TierController {
   async _applyProfile(tier) {
     const profiles = this.exitDiscountActive ? CONFIG.exitProfiles : CONFIG.profiles;
     const profile = profiles[tier];
-    
+
     try {
       if (profile && profile !== 'default') {
         await window.next.setProfile(profile);
       } else {
         await window.next.revertProfile();
       }
+      // Give SDK time to update and refresh product ID
+      await new Promise(resolve => setTimeout(resolve, 100));
+      this._getProductId();
     } catch {}
   }
 
   async activateExitDiscount() {
     this.exitDiscountActive = true;
     sessionStorage.setItem('grounded-exit-discount-active', 'true');
+
+    // Apply the exit profile and update prices
     await this._applyProfile(this.currentTier);
-    this._cartDebounce();
-    
-    const badge = document.createElement('div');
-    badge.innerHTML = '🎉 Extra 10% OFF Applied!';
-    badge.style.cssText = 'position:fixed;top:20px;right:20px;background:#4CAF50;color:white;padding:10px 20px;border-radius:5px;z-index:9999;';
-    document.body.appendChild(badge);
-    setTimeout(() => badge.remove(), 5000);
+    this._updateAllPrices();
+
+    // Show success notification
+    this._showNotification('🎉 Extra 10% OFF Applied!', 'success');
+  }
+
+  _showNotification(message, type = 'info') {
+    const styles = {
+      success: 'background:#4CAF50;',
+      error: 'background:#ff4444;',
+      info: 'background:#2196F3;'
+    };
+
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position:fixed;top:20px;left:50%;transform:translateX(-50%);
+      ${styles[type]}color:white;padding:12px 24px;border-radius:8px;
+      z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.15);
+      font-size:14px;font-weight:500;animation:slideDown 0.3s ease;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => notification.remove(), type === 'error' ? 3000 : 5000);
   }
 
   _handleVariant({ value, component }) {
@@ -675,6 +931,7 @@ class TierController {
       return;
     }
 
+    // Get the base package
     const basePkg = window.next.getPackageByVariantSelection(
       this.baseProductId || this.productId,
       { color: v.color, size: v.size }
@@ -685,38 +942,80 @@ class TierController {
       return;
     }
 
-    let pkg = basePkg;
-    
-    // Get mapped package
-    if (this.currentTier > 1 || this.exitDiscountActive) {
-      const profileName = this.exitDiscountActive 
-        ? CONFIG.exitProfiles[this.currentTier]
-        : CONFIG.profiles[this.currentTier];
-      
-      const mappedId = CONFIG.profileDefinitions[profileName]?.packageMappings[basePkg.ref_id];
-      if (mappedId) {
-        const mappedPkg = window.next.getPackage(mappedId);
-        if (mappedPkg) pkg = mappedPkg;
-      }
+    // Get mapped package if needed
+    const finalPkg = this._getMappedPackage(basePkg);
+    this._displayPrice(slot, finalPkg);
+  }
+
+  _getMappedPackage(basePkg) {
+    // Return base package if no mapping needed
+    if (this.currentTier === 1 && !this.exitDiscountActive) {
+      return basePkg;
     }
 
+    // Determine profile to use
+    const profileName = this.exitDiscountActive
+      ? CONFIG.exitProfiles[this.currentTier]
+      : CONFIG.profiles[this.currentTier];
+
+    // Get mapped package ID
+    const mappedId = CONFIG.profileDefinitions[profileName]?.packageMappings[basePkg.ref_id];
+
+    if (mappedId) {
+      const mappedPkg = window.next.getPackage(mappedId);
+      if (mappedPkg) return mappedPkg;
+    }
+
+    return basePkg; // Fallback to base
+  }
+
+  _displayPrice(slot, pkg) {
     const price = parseFloat(pkg.price);
     const retail = parseFloat(pkg.price_retail);
-    
+
     const priceEl = slot.querySelector('[data-option="price"]');
     const regEl = slot.querySelector('[data-option="reg"]');
-    
+
     if (priceEl) priceEl.textContent = `$${price.toFixed(2)}`;
     if (regEl) regEl.textContent = `$${retail.toFixed(2)}`;
-    
-    const pctEl = slot.querySelector('[data-option="savingPct"]');
-    if (pctEl && retail > price) {
-      pctEl.textContent = `${Math.round(((retail - price) / retail) * 100)}%`;
-    }
-    
+
+    // Handle savings percentage and profile discount display
+    this._updateSavingsDisplay(slot, pkg, retail, price);
+
     const priceContainer = slot.querySelector('.os-card__price.os--current');
     if (priceContainer) {
       priceContainer.innerHTML = `<span data-option="price">$${price.toFixed(2)}</span>/ea`;
+    }
+  }
+
+  _updateSavingsDisplay(slot, pkg, retail, finalPrice) {
+    const pctEl = slot.querySelector('[data-option="savingPct"]');
+    const profileSavingsEl = slot.querySelector('.data-profile-savings');
+
+    // Use hardcoded discount values from CONFIG
+    const tierDiscounts = CONFIG.discounts.display[this.currentTier];
+
+    if (this.exitDiscountActive) {
+      // Show base savings and additional discount separately
+      if (pctEl && tierDiscounts) {
+        pctEl.textContent = tierDiscounts.base;
+      }
+
+      // Show the additional profile savings
+      if (profileSavingsEl) {
+        profileSavingsEl.style.display = 'block';
+        profileSavingsEl.textContent = `+${CONFIG.discounts.exit}% OFF`;
+      }
+    } else {
+      // Normal pricing - show base discount only
+      if (pctEl && tierDiscounts) {
+        pctEl.textContent = tierDiscounts.base;
+      }
+
+      // Hide profile savings when not active
+      if (profileSavingsEl) {
+        profileSavingsEl.style.display = 'none';
+      }
     }
   }
 
@@ -725,6 +1024,12 @@ class TierController {
       const el = slot.querySelector(sel);
       if (el) el.textContent = ['$XX.XX', '$XX.XX', 'XX%'][i];
     });
+
+    // Also hide profile savings when resetting
+    const profileSavingsEl = slot.querySelector('.data-profile-savings');
+    if (profileSavingsEl) {
+      profileSavingsEl.style.display = 'none';
+    }
   }
 
   _updateStock(slot, slotNum) {
@@ -748,14 +1053,15 @@ class TierController {
   }
 
   _updateSavings() {
-    const savings = this.exitDiscountActive ? CONFIG.savings.exit : CONFIG.savings.normal;
-    
     [1, 2, 3].forEach(tier => {
+      const discounts = CONFIG.discounts.display[tier];
+      const displayValue = this.exitDiscountActive ? discounts.withExit : discounts.base;
+
       document.querySelectorAll(
-        `[data-next-tier="${tier}"] [data-next-display*="bestSavingsPercentage"], 
+        `[data-next-tier="${tier}"] [data-next-display*="bestSavingsPercentage"],
          [data-next-tier="${tier}"] .next-cart-has-items`
       ).forEach(el => {
-        if (el) el.textContent = savings[tier] + '%';
+        if (el) el.textContent = displayValue;
       });
     });
   }
@@ -789,19 +1095,61 @@ class TierController {
   }
 
   _setupListeners() {
-    window.next.on('profile:applied', () => this._onProfileChanged());
-    window.next.on('profile:reverted', () => this._onProfileChanged());
-  }
-  
-  _onProfileChanged() {
-    this._getProductId();
-    this._setupDropdowns();
-    setTimeout(() => {
-      for (let i = 1; i <= this.currentTier; i++) {
-        this._updateSlotPrice(i);
+    // Listen for profile changes
+    window.next.on('profile:applied', data => this._onProfileChanged(data));
+    window.next.on('profile:reverted', data => this._onProfileChanged(data));
+
+    // Listen for cart changes that might be profile-related
+    window.next.on('cart:updated', () => {
+      if (this.profileUpdatePending) {
+        this.profileUpdatePending = false;
+        this._updateAllPrices();
       }
-    }, 100);
-    this._updateSavings();
+    });
+  }
+
+  _onProfileChanged(eventData) {
+    // Handle exit discount detection
+    const profileId = eventData?.profileId || eventData?.profile?.id || '';
+    this._handleExitDiscountProfile(profileId);
+
+    // Mark pending update and refresh data
+    this.profileUpdatePending = true;
+    this._getProductId();
+
+    // Force price updates after a delay
+    setTimeout(() => {
+      this._updateAllPrices();
+      this.profileUpdatePending = false;
+    }, 200);
+  }
+
+  _handleExitDiscountProfile(profileId) {
+    if (profileId && profileId.includes('exit_10')) {
+      this.exitDiscountActive = true;
+      sessionStorage.setItem('grounded-exit-discount-active', 'true');
+    } else if (!profileId) {
+      this.exitDiscountActive = false;
+      sessionStorage.removeItem('grounded-exit-discount-active');
+    }
+  }
+
+  _updateAllPrices() {
+    // Update dropdowns and re-select variants
+    for (let i = 1; i <= this.currentTier; i++) {
+      const slot = document.querySelector(`[next-tier-slot="${i}"]`);
+      if (slot) {
+        this._populateDropdowns(slot, i);
+
+        const variants = this.selectedVariants.get(i);
+        if (variants?.color && variants?.size) {
+          this._updateSlot(i, variants);
+        }
+      }
+    }
+
+    // Update all prices and savings
+    this._updatePrices();
   }
 
   handleVerifyClick() {
