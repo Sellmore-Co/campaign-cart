@@ -275,29 +275,40 @@ class TierController {
     this._registerProfiles();
     this._setupListeners();
 
+    // Get initial data
+    this._getProductId();
+    this._bindEvents();
+
     // Check if cart has items before clearing
     const cartData = window.next.getCartData();
     const hasCartItems = cartData?.cartLines && cartData.cartLines.length > 0;
 
-    if (!hasCartItems) {
-      // Only clear cart if it's empty
+    if (hasCartItems) {
+      // If cart has items, restore from cart first
+      this._initStateFromCart(cartData);
+    } else {
+      // Only clear cart and setup fresh if empty
       await window.next.clearCart();
       await window.next.revertProfile();
+      this._initState();
     }
-
-    this._getProductId();
-    this._bindEvents();
-    this._initState();
 
     if (sessionStorage.getItem('grounded-exit-discount-active') === 'true') {
       this.exitDiscountActive = true;
       await this._applyProfile(this.currentTier);
     }
 
-    this._setupDropdowns();
-    await this._setDefaults();
-    this._updatePrices();
-    this._updateSavings();
+    // Defer heavy operations
+    requestAnimationFrame(() => {
+      this._setupDropdowns();
+
+      if (!hasCartItems) {
+        this._setDefaultsWithoutCart();
+      }
+
+      this._updatePrices();
+      this._updateSavings();
+    });
   }
 
   _waitForSDK() {
@@ -354,7 +365,7 @@ class TierController {
     this._updateSlots(tier);
   }
 
-  async selectTier(tier) {
+  async selectTier(tier, skipCartUpdate = false) {
     if (tier === this.currentTier) return;
 
     const prev = this.currentTier;
@@ -383,7 +394,10 @@ class TierController {
       }
     }
 
-    await this._updateCart();
+    // Only update cart if not explicitly skipped (prevents loops)
+    if (!skipCartUpdate) {
+      this._cartDebounce();
+    }
     this._updateCTA();
   }
 
@@ -619,100 +633,100 @@ class TierController {
     });
   }
 
-  async _setDefaults() {
-    // First check if cart has items and try to restore from cart
-    const cartRestored = await this._restoreFromCart();
+  _setDefaultsWithoutCart() {
+    // Only called when no cart items exist
+    const saved = this._loadSelectionsFromStorage();
+    const colors = window.next.getAvailableVariantAttributes(this.productId, 'color');
+    const sizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
 
-    if (!cartRestored) {
-      // If no cart items, try localStorage or use defaults
-      const saved = this._loadSelectionsFromStorage();
-      const colors = window.next.getAvailableVariantAttributes(this.productId, 'color');
-      const sizes = window.next.getAvailableVariantAttributes(this.productId, 'size');
+    const defaultColor = colors.find(c => c.toLowerCase().includes('obsidian')) || colors[0];
+    const defaultSize = sizes.find(s => s.toLowerCase() === 'single') || sizes[0];
 
-      const defaultColor = colors.find(c => c.toLowerCase().includes('obsidian')) || colors[0];
-      const defaultSize = sizes.find(s => s.toLowerCase() === 'single') || sizes[0];
-
-      for (let i = 1; i <= this.currentTier; i++) {
-        if (!this.selectedVariants.has(i)) {
-          this.selectedVariants.set(i, {});
-        }
-
-        const v = this.selectedVariants.get(i);
-        const s = saved?.[i];
-
-        // Validate saved selections or use defaults
-        if (s?.color && s?.size) {
-          if (this._isVariantOOS(i, s)) {
-            // Find alternative
-            const altColor = this._findAvailable(i, 'color', s.size);
-            const altSize = this._findAvailable(i, 'size', s.color);
-
-            v.color = altColor || defaultColor;
-            v.size = altSize || defaultSize;
-          } else {
-            v.color = s.color;
-            v.size = s.size;
-          }
-        } else {
-          v.color = s?.color || defaultColor;
-          v.size = s?.size || defaultSize;
-        }
-
-        this._updateSlot(i, v);
-        this._updateSlotPrice(i);
-        this._updateStock(document.querySelector(`[next-tier-slot="${i}"]`), i);
+    for (let i = 1; i <= this.currentTier; i++) {
+      if (!this.selectedVariants.has(i)) {
+        this.selectedVariants.set(i, {});
       }
 
-      await this._updateCart();
+      const v = this.selectedVariants.get(i);
+      const s = saved?.[i];
+
+      // Validate saved selections or use defaults
+      if (s?.color && s?.size) {
+        if (this._isVariantOOS(i, s)) {
+          // Find alternative
+          const altColor = this._findAvailable(i, 'color', s.size);
+          const altSize = this._findAvailable(i, 'size', s.color);
+
+          v.color = altColor || defaultColor;
+          v.size = altSize || defaultSize;
+        } else {
+          v.color = s.color;
+          v.size = s.size;
+        }
+      } else {
+        v.color = s?.color || defaultColor;
+        v.size = s?.size || defaultSize;
+      }
+
+      this._updateSlot(i, v);
+      this._updateSlotPrice(i);
+      this._updateStock(document.querySelector(`[next-tier-slot="${i}"]`), i);
     }
+
+    // Debounce cart update
+    this._cartDebounce();
   }
 
-  async _restoreFromCart() {
-    try {
-      const cartData = window.next.getCartData();
-
-      if (!cartData?.cartLines || cartData.cartLines.length === 0) {
-        return false;
-      }
-
-      // Detect tier based on cart items count
-      const itemCount = cartData.cartLines.length;
-      if (itemCount > 0) {
-        // Auto-select the tier based on item count
-        const detectedTier = Math.min(itemCount, 3); // Max 3 tiers
-        if (detectedTier !== this.currentTier) {
-          await this.selectTier(detectedTier);
-        }
-
-        // Extract variants from cart items
-        cartData.cartLines.forEach((item, index) => {
-          const slotNum = index + 1;
-          if (slotNum <= 3) { // Max 3 slots
-            // Try to extract variant attributes from the item
-            const variants = this._extractVariantsFromCartItem(item);
-
-            if (variants.color && variants.size) {
-              this.selectedVariants.set(slotNum, variants);
-              this._updateSlot(slotNum, variants);
-              this._updateSlotPrice(slotNum);
-              this._updateStock(document.querySelector(`[next-tier-slot="${slotNum}"]`), slotNum);
-            }
-          }
-        });
-
-        // Save restored selections to localStorage
-        this._saveSelectionsToStorage();
-
-        // Auto-open step 2 since we have cart items
-        this._autoOpenStepTwo();
-
-        return true; // Successfully restored from cart
-      }
-    } catch (error) {
-      console.log('Could not restore from cart:', error);
+  _initStateFromCart(cartData) {
+    // Synchronously initialize state from cart without async operations
+    if (!cartData?.cartLines || cartData.cartLines.length === 0) {
+      this._initState();
+      return;
     }
 
-    return false;
+    // Detect tier based on cart items count
+    const detectedTier = Math.min(cartData.cartLines.length, 3);
+    this.currentTier = detectedTier;
+
+    // Update UI for tier selection
+    document.querySelectorAll('[data-next-tier]').forEach(card => {
+      const t = +card.getAttribute('data-next-tier');
+      card.classList.toggle('next-selected', t === detectedTier);
+      const radio = card.querySelector('.radio-style-1');
+      if (radio) radio.setAttribute('data-selected', t === detectedTier);
+    });
+
+    // Extract variants from cart items
+    cartData.cartLines.forEach((item, index) => {
+      const slotNum = index + 1;
+      if (slotNum <= 3) {
+        const variants = this._extractVariantsFromCartItem(item);
+        if (variants.color && variants.size) {
+          this.selectedVariants.set(slotNum, variants);
+        }
+      }
+    });
+
+    // Update slots
+    this._updateSlots(detectedTier);
+
+    // Batch update UI after slots are created
+    requestAnimationFrame(() => {
+      for (let i = 1; i <= detectedTier; i++) {
+        const variants = this.selectedVariants.get(i);
+        if (variants) {
+          this._updateSlot(i, variants);
+          this._updateSlotPrice(i);
+          this._updateStock(document.querySelector(`[next-tier-slot="${i}"]`), i);
+        }
+      }
+
+      // Save restored selections to localStorage
+      this._saveSelectionsToStorage();
+
+      // Auto-open step 2 since we have cart items
+      this._autoOpenStepTwo();
+    });
   }
 
   _extractVariantsFromCartItem(item) {
