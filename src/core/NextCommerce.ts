@@ -537,8 +537,18 @@ export class NextCommerce {
 
   // Exit Intent - Simple approach
   public async exitIntent(options: {
-    image: string;
+    image?: string;
+    template?: string;
     action?: () => void | Promise<void>;
+    disableOnMobile?: boolean;
+    mobileScrollTrigger?: boolean;
+    maxTriggers?: number;
+    useSessionStorage?: boolean;
+    sessionStorageKey?: string;
+    overlayClosable?: boolean;
+    showCloseButton?: boolean;
+    imageClickable?: boolean;
+    actionButtonText?: string;
   }): Promise<void> {
     try {
       // Lazy load the enhancer

@@ -96,8 +96,18 @@ export declare class NextCommerce {
     };
     calculateDiscountAmount(coupon: DiscountDefinition): number;
     exitIntent(options: {
-        image: string;
+        image?: string;
+        template?: string;
         action?: () => void | Promise<void>;
+        disableOnMobile?: boolean;
+        mobileScrollTrigger?: boolean;
+        maxTriggers?: number;
+        useSessionStorage?: boolean;
+        sessionStorageKey?: string;
+        overlayClosable?: boolean;
+        showCloseButton?: boolean;
+        imageClickable?: boolean;
+        actionButtonText?: string;
     }): Promise<void>;
     disableExitIntent(): void;
     private fomoEnhancer;

@@ -213,6 +213,27 @@ Templates can be specified in multiple ways (in priority order):
 - `{item.sku}` - Product SKU/external ID
 - `{item.frequency}` - Purchase frequency (e.g., "One time", "Every month")
 
+#### Product & Variant Properties
+- `{item.productId}` - Base product ID
+- `{item.productName}` - Base product name (e.g., "Grounded Sheets")
+- `{item.variantId}` - Product variant ID
+- `{item.variantName}` - Full variant name (e.g., "Grounded Sheets - Obsidian Grey / Twin")
+- `{item.variantSku}` - Variant-specific SKU (e.g., "BE-GRS-TWN-GR")
+- `{item.variantAttributes}` - Raw array of variant attributes (for JSON output)
+- `{item.variantAttributesFormatted}` - Formatted attributes as string (e.g., "Color: Obsidian Grey, Size: Twin")
+- `{item.variantAttributesList}` - Formatted attributes as HTML spans
+
+#### Individual Variant Attributes
+Access specific variant attributes directly:
+- `{item.variantColor}` - Color value (e.g., "Obsidian Grey")
+- `{item.variantSize}` - Size value (e.g., "Twin")
+- `{item.variant.color}` - Alternative access for color
+- `{item.variant.size}` - Alternative access for size
+- `{item.variant_color}` - Another alternative format
+- `{item.variant_size}` - Another alternative format
+
+Note: These individual accessors are dynamically generated based on the variant's attribute codes.
+
 #### Pricing Variables
 - `{item.price}` - Total package price
 - `{item.unitPrice}` - Individual unit price
@@ -279,6 +300,10 @@ Templates can be specified in multiple ways (in priority order):
     
     <div class="cart-item__details">
       <h4 class="cart-item__name">{item.name}</h4>
+      <!-- Display base product name and variant details -->
+      <div class="cart-item__product">{item.productName}</div>
+      <div class="cart-item__variant">{item.variantName}</div>
+      <div class="cart-item__sku">SKU: {item.variantSku}</div>
       <div class="cart-item__frequency">{item.frequency}</div>
       
       <div class="cart-item__pricing">
@@ -326,19 +351,95 @@ Templates can be specified in multiple ways (in priority order):
 </div>
 ```
 
+### Working with Product Variants
+
+The cart now includes detailed variant information that can be displayed in templates:
+
+```html
+<template id="cart-item-with-variants">
+  <div class="cart-item">
+    <!-- Display base product and variant info -->
+    <h4>{item.productName}</h4>
+    <div class="variant-details">
+
+      <!-- Option 1: Pre-formatted variant attributes (easiest) -->
+      <div class="variant-attributes">{item.variantAttributesFormatted}</div>
+
+      <!-- Option 2: HTML formatted variant attributes -->
+      <div class="variant-attributes">{item.variantAttributesList}</div>
+
+      <!-- Option 3: Full variant name -->
+      <div class="variant-name">{item.variantName}</div>
+
+      <!-- Variant SKU -->
+      <span class="sku">SKU: {item.variantSku}</span>
+    </div>
+  </div>
+</template>
+```
+
+The variant attributes are now available in multiple formats:
+
+**All Attributes Together:**
+- **`{item.variantAttributesFormatted}`** - Simple comma-separated string: "Color: Obsidian Grey, Size: Twin"
+- **`{item.variantAttributesList}`** - HTML spans: `<span class="variant-attr">Color: Obsidian Grey</span> <span class="variant-attr">Size: Twin</span>`
+- **`{item.variantAttributes}`** - Raw JSON array (for custom JavaScript processing)
+
+**Individual Attributes:**
+```html
+<!-- Display only the color -->
+<div class="item-color">Color: {item.variantColor}</div>
+
+<!-- Display only the size -->
+<div class="item-size">Size: {item.variantSize}</div>
+
+<!-- Custom layout with individual attributes -->
+<div class="variant-details">
+  <span class="color-badge" style="background: {item.variantColor};">{item.variantColor}</span>
+  <span class="size-label">{item.variantSize}</span>
+</div>
+
+<!-- Alternative access methods -->
+<div>{item.variant.color} / {item.variant.size}</div>
+<div>{item.variant_color} - {item.variant_size}</div>
+```
+
 ### Additional Attributes
 
 - `data-empty-template` - Template to show when cart is empty
 - `data-title-map` - JSON object to map package IDs to custom titles
+- `data-group-items` - Group identical items together (combines quantities)
 
 ```html
+<!-- Basic usage -->
 <div data-next-cart-items
      data-item-template-id="cart-item-template"
      data-empty-template="<p>No items in cart</p>"
      data-title-map='{"2": "Premium Drone Package", "3": "Starter Kit"}'
      class="cart-items-list">
 </div>
+
+<!-- With item grouping enabled -->
+<div data-next-cart-items
+     data-group-items
+     data-item-template-id="cart-item-template"
+     class="cart-items-list">
+</div>
 ```
+
+### Item Grouping
+
+When `data-group-items` is enabled, identical items (same packageId) are automatically grouped together:
+
+**Without Grouping:**
+- Item 1: Grounded Sheets - Grey/Single (Qty: 1)
+- Item 2: Grounded Sheets - Grey/Single (Qty: 1)
+- Item 3: Grounded Sheets - Grey/Single (Qty: 1)
+
+**With Grouping:**
+- Item: Grounded Sheets - Grey/Single (Qty: 3)
+
+This is useful when items are added individually but you want to display them as a single line with combined quantity.
 
 ## Cart Item Details
 

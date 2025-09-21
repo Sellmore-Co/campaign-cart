@@ -19,6 +19,8 @@ export declare class ExitIntentEnhancer extends BaseEnhancer {
     private useSessionStorage;
     private overlayClosable;
     private showCloseButton;
+    private imageClickable;
+    private actionButtonText;
     constructor();
     initialize(): Promise<void>;
     update(data?: any): Promise<void>;
@@ -33,6 +35,8 @@ export declare class ExitIntentEnhancer extends BaseEnhancer {
         sessionStorageKey?: string;
         overlayClosable?: boolean;
         showCloseButton?: boolean;
+        imageClickable?: boolean;
+        actionButtonText?: string;
     }): void;
     disable(): void;
     reset(): void;

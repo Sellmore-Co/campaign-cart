@@ -276,6 +276,17 @@ export interface CartItem {
     is_recurring?: boolean | undefined;
     interval?: string | null | undefined;
     interval_count?: number | null | undefined;
+    productId?: number | undefined;
+    productName?: string | undefined;
+    variantId?: number | undefined;
+    variantName?: string | undefined;
+    variantAttributes?: Array<{
+        code: string;
+        name: string;
+        value: string;
+    }> | undefined;
+    variantSku?: string | undefined;
+    groupedItemIds?: number[] | undefined;
 }
 export interface SelectorItem {
     element: HTMLElement;

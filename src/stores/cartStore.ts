@@ -108,8 +108,8 @@ const cartStoreInstance = create<CartState & CartActions>()(
             price: parseFloat(packageData.price_total), // Use total package price, not per-unit
             title: item.title ?? packageData.name,
             is_upsell: item.isUpsell ?? false,
-            image: item.image ?? undefined,
-            sku: item.sku ?? undefined,
+            image: item.image ?? packageData.image ?? undefined,
+            sku: item.sku ?? packageData.product_sku ?? undefined,
             // Add campaign response data for display
             price_per_unit: packageData.price,
             qty: packageData.qty,
@@ -119,7 +119,14 @@ const cartStoreInstance = create<CartState & CartActions>()(
             price_recurring: packageData.price_recurring,
             is_recurring: packageData.is_recurring,
             interval: packageData.interval,
-            interval_count: packageData.interval_count
+            interval_count: packageData.interval_count,
+            // Product and variant information
+            productId: packageData.product_id,
+            productName: packageData.product_name,
+            variantId: packageData.product_variant_id,
+            variantName: packageData.product_variant_name,
+            variantAttributes: packageData.product_variant_attribute_values,
+            variantSku: packageData.product_sku || undefined || undefined
           };
           
           // Console log for debugging upsell items
@@ -256,8 +263,8 @@ const cartStoreInstance = create<CartState & CartActions>()(
           price: parseFloat(newPackageData.price_total),
           title: addItem.title ?? newPackageData.name,
           is_upsell: addItem.isUpsell ?? false,
-          image: addItem.image ?? undefined,
-          sku: addItem.sku ?? undefined,
+          image: addItem.image ?? newPackageData.image ?? undefined,
+          sku: addItem.sku ?? newPackageData.product_sku ?? undefined,
           price_per_unit: newPackageData.price,
           qty: newPackageData.qty,
           price_total: newPackageData.price_total,
@@ -266,7 +273,14 @@ const cartStoreInstance = create<CartState & CartActions>()(
           price_recurring: newPackageData.price_recurring,
           is_recurring: newPackageData.is_recurring,
           interval: newPackageData.interval,
-          interval_count: newPackageData.interval_count
+          interval_count: newPackageData.interval_count,
+          // Product and variant information
+          productId: newPackageData.product_id,
+          productName: newPackageData.product_name,
+          variantId: newPackageData.product_variant_id,
+          variantName: newPackageData.product_variant_name,
+          variantAttributes: newPackageData.product_variant_attribute_values,
+          variantSku: newPackageData.product_sku || undefined
         };
         
         // Calculate price difference
@@ -379,11 +393,22 @@ const cartStoreInstance = create<CartState & CartActions>()(
             quantity: item.quantity,
             is_upsell: (item as any).isUpsell || false, // Preserve isUpsell flag if provided
             image: packageData.image,
-            sku: undefined,
+            sku: packageData.product_sku || undefined,
             qty: packageData.qty,
             price_total: packageData.price_total,
             price_retail_total: packageData.price_retail_total,
             price_per_unit: packageData.price,
+            price_recurring: packageData.price_recurring,
+            is_recurring: packageData.is_recurring,
+            interval: packageData.interval,
+            interval_count: packageData.interval_count,
+            // Product and variant information
+            productId: packageData.product_id,
+            productName: packageData.product_name,
+            variantId: packageData.product_variant_id,
+            variantName: packageData.product_variant_name,
+            variantAttributes: packageData.product_variant_attribute_values,
+            variantSku: packageData.product_sku || undefined || undefined
           };
 
           newItems.push(newItem);
@@ -870,12 +895,12 @@ const cartStoreInstance = create<CartState & CartActions>()(
           // Update each item with new prices from campaign data
           const updatedItems = state.items.map(item => {
             const packageData = campaignStore.getPackage(item.packageId);
-            
+
             if (!packageData) {
               logger.warn(`Package ${item.packageId} not found in campaign data`);
               return item;
             }
-            
+
             // Update the item with new prices from the reloaded campaign data
             return {
               ...item,
@@ -886,6 +911,13 @@ const cartStoreInstance = create<CartState & CartActions>()(
               price_retail_total: packageData.price_retail_total,
               price_recurring: packageData.price_recurring,
               // Keep other fields unchanged (quantity, title, etc.)
+              // Preserve existing variant data or update if changed
+              productId: item.productId ?? packageData.product_id,
+              productName: item.productName ?? packageData.product_name,
+              variantId: item.variantId ?? packageData.product_variant_id,
+              variantName: item.variantName ?? packageData.product_variant_name,
+              variantAttributes: item.variantAttributes ?? packageData.product_variant_attribute_values,
+              variantSku: item.variantSku ?? packageData.product_sku
             };
           });
           
