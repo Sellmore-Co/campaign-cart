@@ -313,6 +313,31 @@ class TierController {
       card.onclick = () => this.selectTier(+card.getAttribute('data-next-tier'));
     });
     document.addEventListener('variantSelected', e => this._handleVariant(e.detail));
+
+    // Handle step navigation buttons
+    const selectVariantsBtn = document.querySelector('[data-next-action="select-variants"]');
+    if (selectVariantsBtn) {
+      selectVariantsBtn.onclick = e => {
+        e.preventDefault();
+        this._handleStepTransition();
+      };
+    }
+
+    const checkoutBtn = document.querySelector('[data-next-action="checkout"]');
+    if (checkoutBtn) {
+      checkoutBtn.onclick = e => {
+        e.preventDefault();
+        if (!this._isComplete()) {
+          this._highlightIncompleteSlots();
+        } else {
+          // All selections complete, redirect to checkout
+          const urlParams = new URLSearchParams(window.location.search);
+          const debugParam = urlParams.get('debug');
+          const redirectUrl = '/bareearth/checkout-billing' + (debugParam === 'true' ? '?debug=true' : '');
+          window.location.href = redirectUrl;
+        }
+      };
+    }
   }
 
   _initState() {
@@ -804,6 +829,106 @@ class TierController {
     this._updateSavings();
   }
 
+  _handleStepTransition() {
+    const stepTwo = document.querySelector('[data-next-component="step-two"]');
+    if (stepTwo) {
+      // Remove inactive class and add animation class to show step two
+      stepTwo.classList.remove('is-inactive');
+      stepTwo.classList.add('step-revealed');
+
+      // Hide the first step's CTA wrapper
+      const quantityCTA = document.querySelector('[data-next-component="quantity-cta"]');
+      if (quantityCTA) {
+        quantityCTA.style.display = 'none';
+      }
+
+      // Smooth scroll to step two with offset for more top spacing
+      setTimeout(() => {
+        const elementPosition = stepTwo.getBoundingClientRect().top + window.pageYOffset;
+        const offsetPosition = elementPosition - 100; // 100px offset from top
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }, 100);
+    }
+  }
+
+  _highlightIncompleteSlots() {
+    let hasIncomplete = false;
+
+    for (let i = 1; i <= this.currentTier; i++) {
+      const v = this.selectedVariants.get(i);
+      const slot = document.querySelector(`[next-tier-slot="${i}"]`);
+
+      if (!v?.color || !v?.size) {
+        hasIncomplete = true;
+
+        // Add visual feedback for incomplete selection
+        if (slot) {
+          slot.classList.add('error-highlight');
+
+          // Remove error highlight after animation
+          setTimeout(() => {
+            slot.classList.remove('error-highlight');
+          }, 2000);
+
+          // Scroll to first incomplete slot
+          if (hasIncomplete) {
+            slot.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center'
+            });
+            hasIncomplete = false; // Only scroll to first one
+          }
+        }
+
+        // Show error message for missing selections
+        const missing = [];
+        if (!v?.color) missing.push('color');
+        if (!v?.size) missing.push('size');
+
+        this._showErrorMessage(`Please select ${missing.join(' and ')} for Set ${String(i).padStart(2, '0')}`);
+        break;
+      }
+    }
+  }
+
+  _showErrorMessage(message) {
+    // Create or update error message element
+    let errorEl = document.querySelector('.selection-error-message');
+
+    if (!errorEl) {
+      errorEl = document.createElement('div');
+      errorEl.className = 'selection-error-message';
+      errorEl.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #ff4444;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        font-size: 14px;
+        font-weight: 500;
+        animation: slideDown 0.3s ease;
+      `;
+      document.body.appendChild(errorEl);
+    }
+
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      errorEl.style.display = 'none';
+    }, 3000);
+  }
+
   handleVerifyClick() {
     if (!this._isComplete()) {
       for (let i = 1; i <= this.currentTier; i++) {
@@ -913,10 +1038,54 @@ customElements.define('os-dropdown', OSDropdown);
 customElements.define('os-dropdown-menu', OSDropdownMenu);
 customElements.define('os-dropdown-item', OSDropdownItem);
 
+// Add CSS for animations
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideDown {
+    from {
+      transform: translateX(-50%) translateY(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .error-highlight {
+    animation: errorPulse 0.5s ease-in-out 2;
+    border: 2px solid #ff4444 !important;
+    background-color: rgba(255, 68, 68, 0.05) !important;
+  }
+
+  @keyframes errorPulse {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+    100% { transform: translateX(0); }
+  }
+
+  [data-next-component="step-two"].step-revealed {
+    animation: fadeInUp 0.4s ease;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`;
+document.head.appendChild(style);
+
 // Initialize
 window.addEventListener('next:initialized', () => {
   window.tierController = new TierController();
-  
+
   const btn = document.querySelector('[os-checkout="verify-step"]');
   if (btn) {
     btn.onclick = e => {
