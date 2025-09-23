@@ -129,6 +129,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     update(): void;
     protected cleanupEventListeners(): void;
     private displayPaymentError;
+    private trackBeginCheckout;
     destroy(): void;
 }
 //# sourceMappingURL=CheckoutFormEnhancer.d.ts.map

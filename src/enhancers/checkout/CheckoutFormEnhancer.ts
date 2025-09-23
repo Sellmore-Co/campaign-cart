@@ -308,7 +308,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     
     // Check for fresh purchase on initial load
     this.handlePurchaseEvent();
-    
+
+    // Track begin_checkout event immediately when checkout form initializes
+    this.trackBeginCheckout();
+
     this.logger.debug('CheckoutFormEnhancer initialized');
     this.emit('checkout:form-initialized', { form: this.form });
   }
@@ -4299,7 +4302,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private displayPaymentError(message: string): void {
     this.logger.info('[Payment Error] Displaying error:', message);
-    
+
     // Use a slight delay to ensure DOM is ready
     setTimeout(() => {
       // Find the credit error container
@@ -4310,22 +4313,22 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         if (messageElement) {
           messageElement.textContent = message;
         }
-        
+
         // Force show the error container
         errorContainer.style.display = 'flex';
         errorContainer.style.visibility = 'visible';
         errorContainer.style.opacity = '1';
         errorContainer.classList.add('visible');
         errorContainer.classList.remove('hidden');
-        
+
         // Remove any inline styles that might be hiding it
         if (errorContainer.style.display === 'none') {
           errorContainer.style.removeProperty('display');
           errorContainer.style.display = 'flex';
         }
-        
+
         this.logger.info('[Payment Error] Error container shown with message:', message);
-        
+
         // Auto-hide after 10 seconds
         setTimeout(() => {
           errorContainer.style.display = 'none';
@@ -4335,9 +4338,25 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         this.logger.error('[Payment Error] Could not find error container element');
       }
     }, 100); // Small delay to ensure DOM is ready
-    
+
     // Also emit an event for other components to handle
     this.emit('payment:error', { errors: [message] });
+  }
+
+  /**
+   * Track begin_checkout event when checkout form initializes
+   */
+  private trackBeginCheckout(): void {
+    try {
+      const cartStore = useCartStore.getState();
+      // Only track if cart has items
+      if (!cartStore.isEmpty && cartStore.items.length > 0) {
+        nextAnalytics.track(EcommerceEvents.createBeginCheckoutEvent());
+        this.logger.info('Tracked begin_checkout event on checkout form initialization');
+      }
+    } catch (error) {
+      this.logger.warn('Failed to track begin_checkout event:', error);
+    }
   }
 
   public override destroy(): void {

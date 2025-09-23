@@ -10,7 +10,6 @@ import { useCampaignStore } from '@/stores/campaignStore';
 import { useAttributionStore } from '@/stores/attributionStore';
 import { ApiClient } from '@/api/client';
 import type { CartBase, UserCreateCart } from '@/types/api';
-import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
 
 export interface ProspectCartConfig {
   autoCreate?: boolean;
@@ -43,7 +42,6 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   private prospectCart: ProspectCart | undefined;
   private emailField?: HTMLInputElement;
   private hasTriggered = false;
-  private hasTrackedBeginCheckout = false;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -696,11 +694,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     const hasValidFirstName = this.isValidName(firstName);
     const hasValidLastName = this.isValidName(lastName);
     
-    // Track begin_checkout event as soon as we have a valid email (shows intent)
-    if (hasValidEmail && !this.hasTrackedBeginCheckout) {
-      this.trackBeginCheckout();
-      this.logger.info('Tracked begin_checkout event on valid email entry:', email);
-    }
+    // Note: begin_checkout event is now tracked in CheckoutFormEnhancer on initialization
     
     // Check if prospect cart has already been created
     if (this.hasTriggered) {
@@ -754,24 +748,5 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     
     this.createProspectCart();
     this.hasTriggered = true;
-  }
-  
-  /**
-   * Track begin_checkout event when user starts checkout by entering email
-   */
-  private trackBeginCheckout(): void {
-    if (!this.hasTrackedBeginCheckout) {
-      try {
-        const cartStore = useCartStore.getState();
-        // Only track if cart has items
-        if (!cartStore.isEmpty && cartStore.items.length > 0) {
-          nextAnalytics.track(EcommerceEvents.createBeginCheckoutEvent());
-          this.hasTrackedBeginCheckout = true;
-          this.logger.info('Tracked begin_checkout event on email entry');
-        }
-      } catch (error) {
-        this.logger.warn('Failed to track begin_checkout event:', error);
-      }
-    }
   }
 }

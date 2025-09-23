@@ -21,7 +21,6 @@ export declare class ProspectCartEnhancer extends BaseEnhancer {
     private prospectCart;
     private emailField?;
     private hasTriggered;
-    private hasTrackedBeginCheckout;
     initialize(): Promise<void>;
     update(data?: any): void;
     private loadConfig;
@@ -49,6 +48,5 @@ export declare class ProspectCartEnhancer extends BaseEnhancer {
     private updateEmailTimeout;
     updateEmail(email: string): void;
     checkAndCreateCart(): void;
-    private trackBeginCheckout;
 }
 //# sourceMappingURL=ProspectCartEnhancer.d.ts.map
