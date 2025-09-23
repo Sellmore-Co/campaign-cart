@@ -763,21 +763,22 @@ export class SDKInitializer {
   }
 
   private static async checkAndLoadOrder(): Promise<void> {
-    // Check if there's a ref_id parameter in the URL
+    // Check if there's a ref_id or order_ref_id parameter in the URL
     const urlParams = new URLSearchParams(window.location.search);
-    const refId = urlParams.get('ref_id');
-    
+    const refId = urlParams.get('ref_id') || urlParams.get('order_ref_id');
+
     if (refId) {
-      this.logger.info('Page loaded with ref_id parameter, auto-loading order:', refId);
-      
+      const paramName = urlParams.get('ref_id') ? 'ref_id' : 'order_ref_id';
+      this.logger.info(`Page loaded with ${paramName} parameter, auto-loading order:`, refId);
+
       try {
         const configStore = useConfigStore.getState();
         const orderStore = useOrderStore.getState();
         const apiClient = new ApiClient(configStore.apiKey);
-        
+
         await orderStore.loadOrder(refId, apiClient);
         this.logger.info('Order loaded successfully:', orderStore.order);
-        
+
         // Log whether the order supports upsells
         if (orderStore.order) {
           this.logger.info('Order supports upsells:', orderStore.order.supports_post_purchase_upsells);

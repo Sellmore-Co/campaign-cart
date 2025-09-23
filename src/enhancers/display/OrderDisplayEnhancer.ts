@@ -45,18 +45,18 @@ export class OrderDisplayEnhancer extends BaseDisplayEnhancer {
 
   private async checkAndLoadOrderFromUrl(): Promise<void> {
     const urlParams = new URLSearchParams(window.location.search);
-    // URL parameter remains ref_id as it's external API convention
-    const refId = urlParams.get('ref_id');
-    
+    // Check for both ref_id and order_ref_id parameters
+    const refId = urlParams.get('ref_id') || urlParams.get('order_ref_id');
+
     if (refId) {
       const orderStore = useOrderStore.getState();
-      
+
       // Only load if not already loaded or loading
       if (!orderStore.order && !orderStore.isLoading && orderStore.refId !== refId) {
         try {
           const config = useConfigStore.getState();
           this.apiClient = new ApiClient(config.apiKey);
-          
+
           await orderStore.loadOrder(refId, this.apiClient);
         } catch (error) {
           this.logger.error('Failed to auto-load order:', error);
