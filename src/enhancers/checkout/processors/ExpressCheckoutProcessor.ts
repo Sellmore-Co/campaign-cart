@@ -41,15 +41,10 @@ export class ExpressCheckoutProcessor {
       
       // Get mapped payment method
       const paymentMethod = EXPRESS_PAYMENT_METHOD_MAP[method] || method;
-      
-      // Track begin_checkout event for express payment methods
-      try {
-        nextAnalytics.track(EcommerceEvents.createBeginCheckoutEvent());
-        this.logger.info('Tracked begin_checkout event for express checkout', { method });
-      } catch (analyticsError) {
-        this.logger.warn('Failed to track begin_checkout event:', analyticsError);
-      }
-      
+
+      // NOTE: begin_checkout is already tracked when the checkout page loads (in CheckoutFormEnhancer)
+      // We should NOT track it again here - that would be a duplicate
+
       // Track add_payment_info event immediately for express methods
       try {
         const paymentTypeMap: Record<string, string> = {

@@ -96,6 +96,13 @@ export class NextAnalytics {
   }
 
   /**
+   * Check if analytics is initialized
+   */
+  public isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  /**
    * Initialize the analytics system
    */
   public async initialize(): Promise<void> {
@@ -183,6 +190,9 @@ export class NextAnalytics {
         blockedEvents: config.providers.facebook.blockedEvents || [],
         storeName: storeName
       });
+
+      // DO NOT process historical events - this causes duplicates
+      // Events will be tracked properly as they occur
     }
 
     // RudderStack Adapter

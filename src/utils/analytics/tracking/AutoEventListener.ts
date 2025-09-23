@@ -386,10 +386,14 @@ export class AutoEventListener {
    */
   private setupCheckoutEventListeners(): void {
     // Checkout started
+    // DISABLED: checkout:started handler to prevent duplicate begin_checkout events
+    // The begin_checkout event is now properly tracked in CheckoutFormEnhancer
+    // through nextAnalytics.track(EcommerceEvents.createBeginCheckoutEvent())
+    /*
     const handleCheckoutStarted = async (data: any) => {
       const cartStore = useCartStore.getState();
       const campaignStore = useCampaignStore.getState();
-      
+
       const items = cartStore.items.map((item, index) => {
         const packageData = campaignStore.getPackage(item.packageId);
         return {
@@ -420,12 +424,16 @@ export class AutoEventListener {
 
     this.eventBus.on('checkout:started', handleCheckoutStarted);
     this.eventHandlers.set('checkout:started', handleCheckoutStarted);
+    */
 
+    // DISABLED: Express checkout handler to prevent duplicate begin_checkout events
+    // Express checkout events are properly tracked through the main analytics system
+    /*
     // Express checkout started
     const handleExpressCheckoutStarted = async (data: any) => {
       const cartStore = useCartStore.getState();
       const campaignStore = useCampaignStore.getState();
-      
+
       const items = cartStore.items.map((item, index) => {
         const packageData = campaignStore.getPackage(item.packageId);
         return {
@@ -455,6 +463,7 @@ export class AutoEventListener {
 
     this.eventBus.on('express-checkout:started', handleExpressCheckoutStarted);
     this.eventHandlers.set('express-checkout:started', handleExpressCheckoutStarted);
+    */
 
     // Order completed
     const handleOrderCompleted = async (order: any) => {

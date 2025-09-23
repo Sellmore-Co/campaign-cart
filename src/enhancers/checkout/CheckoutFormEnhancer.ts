@@ -121,6 +121,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   
   // Track if analytics events have been fired
   private hasTrackedShippingInfo = false;
+  private hasTrackedBeginCheckout = false;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -309,8 +310,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     // Check for fresh purchase on initial load
     this.handlePurchaseEvent();
 
-    // Track begin_checkout event immediately when checkout form initializes
-    this.trackBeginCheckout();
+    // Track begin_checkout event - only from here, nowhere else
+    // Small delay to ensure analytics providers are ready
+    setTimeout(() => {
+      this.trackBeginCheckout();
+    }, 500);
 
     this.logger.debug('CheckoutFormEnhancer initialized');
     this.emit('checkout:form-initialized', { form: this.form });
@@ -3265,11 +3269,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             AmplitudeAnalytics.trackCheckoutSubmitted(submitData);
           });
           
-          this.emit('checkout:started', {
-            formData: checkoutStore.formData,
-            paymentMethod: checkoutStore.paymentMethod
-          });
-          
           // For express payment methods (PayPal, Apple Pay, Google Pay), always use ExpressCheckoutProcessor
           if (isExpressPayment && this.expressProcessor) {
             this.logger.info(`Processing express checkout for ${checkoutStore.paymentMethod} (after validation)`);
@@ -4345,13 +4344,30 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   /**
    * Track begin_checkout event when checkout form initializes
+   * This should be the ONLY place where begin_checkout is fired
    */
   private trackBeginCheckout(): void {
+    // Prevent duplicate tracking
+    if (this.hasTrackedBeginCheckout) {
+      this.logger.debug('begin_checkout already tracked, skipping duplicate');
+      return;
+    }
+
     try {
       const cartStore = useCartStore.getState();
       // Only track if cart has items
       if (!cartStore.isEmpty && cartStore.items.length > 0) {
+        this.hasTrackedBeginCheckout = true;
+
+        // Track through analytics (this handles GTM, Facebook, etc.)
         nextAnalytics.track(EcommerceEvents.createBeginCheckoutEvent());
+
+        // Only emit internal event for UI components that need to know checkout started
+        // NOT for analytics tracking - that's already handled above
+        this.emit('checkout:started', {
+          timestamp: Date.now()
+        } as CheckoutData);
+
         this.logger.info('Tracked begin_checkout event on checkout form initialization');
       }
     } catch (error) {
