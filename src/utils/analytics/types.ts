@@ -32,40 +32,135 @@ export interface DataLayerEvent {
  * User properties matching Elevar's structure
  */
 export interface UserProperties {
-  visitor_type?: 'guest' | 'customer' | 'returning_customer';
+  visitor_type?: 'guest' | 'logged_in'; // Elevar uses 'logged_in' instead of 'customer'
   customer_id?: string;
   customer_email?: string;
   customer_phone?: string;
   customer_first_name?: string;
   customer_last_name?: string;
-  customer_address_city?: string;
-  customer_address_country?: string;
-  customer_address_country_code?: string;
-  customer_address_province?: string;
-  customer_address_province_code?: string;
-  customer_address_zip?: string;
-  customer_tags?: string[];
-  customer_order_count?: number;
-  customer_total_spent?: number;
+  // Elevar format without address_ prefix
+  customer_city?: string;
+  customer_country?: string;
+  customer_province?: string;
+  customer_province_code?: string;
+  customer_zip?: string;
+  // Elevar specific address fields
+  customer_address_1?: string;
+  customer_address_2?: string;
+  // These should be strings for Elevar
+  customer_tags?: string;
+  customer_order_count?: string;
+  customer_total_spent?: string;
   [key: string]: any;
 }
 
 /**
- * Ecommerce data types
+ * Elevar Enhanced Ecommerce data structure
+ */
+export interface ElevarProduct {
+  id: string; // SKU
+  name: string;
+  product_id: string; // Product ID
+  variant_id: string; // Variant ID
+  price: string; // String for Elevar
+  brand?: string;
+  category?: string;
+  variant?: string;
+  quantity: string; // String for Elevar
+  compare_at_price?: string;
+  image?: string;
+  position?: number;
+  list?: string;
+  url?: string;
+}
+
+export interface ElevarImpression {
+  id: string; // SKU
+  name: string;
+  product_id?: string;
+  variant_id?: string;
+  price: string;
+  brand?: string;
+  category?: string;
+  variant?: string;
+  position?: number;
+  list?: string;
+  image?: string;
+}
+
+/**
+ * Ecommerce data types (Enhanced Ecommerce format)
  */
 export interface EcommerceData {
+  // Standard GA4 fields (kept for compatibility)
   currency?: string;
   value?: number;
-  value_change?: number; // For package swap events
+  value_change?: number;
   items?: EcommerceItem[];
-  items_removed?: EcommerceItem[]; // For package swap events
-  items_added?: EcommerceItem[]; // For package swap events
+  items_removed?: EcommerceItem[];
+  items_added?: EcommerceItem[];
   transaction_id?: string;
   affiliation?: string;
   tax?: number;
   shipping?: number;
   coupon?: string;
   discount?: number;
+  shipping_tier?: string;
+  payment_type?: string;
+
+  // Elevar Enhanced Ecommerce fields
+  currencyCode?: string;
+  impressions?: ElevarImpression[];
+  detail?: {
+    actionField: {
+      list?: string;
+      action?: string;
+    };
+    products: ElevarProduct[];
+  };
+  add?: {
+    actionField: {
+      list?: string;
+    };
+    products: ElevarProduct[];
+  };
+  remove?: {
+    actionField: {
+      list?: string;
+    };
+    products: ElevarProduct[];
+  };
+  click?: {
+    actionField: {
+      list?: string;
+      action?: string;
+    };
+    products: ElevarProduct[];
+  };
+  checkout?: {
+    actionField: {
+      step: number;
+      option?: string;
+      coupon?: string;
+    };
+    products: ElevarProduct[];
+  };
+  purchase?: {
+    actionField: {
+      id: string;
+      order_name?: string;
+      revenue: string;
+      tax: string;
+      shipping: string;
+      sub_total?: string;
+      affiliation?: string;
+      coupon?: string;
+      discountAmount?: string;
+    };
+    products: ElevarProduct[];
+  };
+  cart_contents?: ElevarProduct[];
+  actionField?: Record<string, any>;
 }
 
 export interface EcommerceItem {
@@ -164,6 +259,15 @@ export interface AnalyticsProvider {
   config?: Record<string, any>;
   initialize?: () => Promise<void>;
   trackEvent?: (event: DataLayerEvent) => void;
+}
+
+/**
+ * Cart contents for dl_user_data event
+ */
+export interface CartContents {
+  products: ElevarProduct[];
+  total_value: string;
+  item_count: string;
 }
 
 /**

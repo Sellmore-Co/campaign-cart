@@ -3,12 +3,14 @@
  * Builder methods for user-related analytics events
  */
 
-import type { DataLayerEvent, UserProperties } from '../types';
+import type { DataLayerEvent, UserProperties, ElevarProduct } from '../types';
 import { EventBuilder } from './EventBuilder';
+import { useCartStore } from '@/stores/cartStore';
+import { useCampaignStore } from '@/stores/campaignStore';
 
 export class UserEvents {
   /**
-   * Create base user data event
+   * Create base user data event (Elevar format)
    * This is the foundation for all user-related events
    */
   static createUserDataEvent(
@@ -21,6 +23,40 @@ export class UserEvents {
       ...EventBuilder.getUserProperties(),
       ...userData
     };
+
+    // For dl_user_data event, add cart_contents and cart_total
+    if (eventName === 'dl_user_data') {
+      try {
+        if (typeof window !== 'undefined') {
+          const cartState = useCartStore.getState();
+          const campaignState = useCampaignStore.getState();
+
+          const currency = campaignState?.data?.currency || 'USD';
+          const cartItems = cartState?.enrichedItems || cartState?.items || [];
+
+          // Format cart items as Elevar products using EventBuilder
+          const products: ElevarProduct[] = cartItems.length > 0
+            ? cartItems.map((item: any, idx: number) => EventBuilder.formatElevarProduct(item, idx))
+            : [];
+
+          // Calculate cart total
+          const cartTotal = cartState?.totals?.total?.value || cartState?.total || 0;
+
+          // Always return the event with cart_contents (even if empty array)
+          return EventBuilder.createEvent(eventName, {
+            user_properties: userProperties,
+            cart_total: String(cartTotal),
+            ecommerce: {
+              currencyCode: currency,
+              cart_contents: products // Elevar expects products array (can be empty)
+            },
+            ...additionalData
+          });
+        }
+      } catch (error) {
+        console.warn('Could not add cart contents to user data event:', error);
+      }
+    }
 
     return EventBuilder.createEvent(eventName, {
       user_properties: userProperties,
@@ -36,7 +72,7 @@ export class UserEvents {
     method: string = 'email',
     userData?: Partial<UserProperties>
   ): DataLayerEvent {
-    return this.createUserDataEvent('sign_up', userData, {
+    return this.createUserDataEvent('dl_sign_up', userData, {
       event_label: method,
       custom_properties: {
         method,
@@ -52,13 +88,13 @@ export class UserEvents {
     method: string = 'email',
     userData?: Partial<UserProperties>
   ): DataLayerEvent {
-    // Update visitor type to customer if we have a customer ID
+    // Update visitor type to customer if we have a customer ID (Elevar format)
     const enrichedUserData: Partial<UserProperties> = {
       ...userData,
-      visitor_type: userData?.customer_id ? 'returning_customer' : 'guest'
+      visitor_type: userData?.customer_id ? 'logged_in' : 'guest'
     };
 
-    return this.createUserDataEvent('login', enrichedUserData, {
+    return this.createUserDataEvent('dl_login', enrichedUserData, {
       event_label: method,
       custom_properties: {
         method,
@@ -80,7 +116,11 @@ export class UserEvents {
     },
     userData?: Partial<UserProperties>
   ): DataLayerEvent {
-    return this.createUserDataEvent('subscribe', userData, {
+    // For Elevar format, include lead_type
+    const leadType = channel === 'sms' || channel === 'push' ? 'phone' : 'email';
+
+    return this.createUserDataEvent('dl_subscribe', userData, {
+      lead_type: leadType,
       event_label: channel,
       custom_properties: {
         channel,

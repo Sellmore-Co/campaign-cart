@@ -7,6 +7,7 @@ import { createLogger } from '@/utils/logger';
 import { useCampaignStore } from '@/stores/campaignStore';
 import { dataLayer } from '../DataLayerManager';
 import { listAttributionTracker } from './ListAttributionTracker';
+import { EcommerceEvents } from '../events/EcommerceEvents';
 
 const logger = createLogger('ViewItemListTracker');
 
@@ -149,32 +150,25 @@ export class ViewItemListTracker {
       return;
     }
 
-    // Get list context for attribution
-    const listContext = listAttributionTracker.getCurrentList();
-
+    // Create item in a format that EcommerceEvents can work with
     const item = {
-      item_id: packageData.external_id.toString(), // Use external_id for analytics
-      item_name: packageData.name || `Package ${product.packageId}`,
-      currency: campaignStore.data?.currency || 'USD',
-      price: parseFloat(packageData.price_total || '0'), // Use total package price
-      quantity: 1, // Always 1 for package-based pricing
-      item_category: campaignStore.data?.name || 'Campaign',
-      item_variant: packageData.product_variant_name || packageData.product?.variant?.name,
-      item_brand: packageData.product_name || packageData.product?.name,
-      item_sku: packageData.product_sku || packageData.product?.variant?.sku,
-      ...(packageData.image && { item_image: packageData.image }),
-      ...(listContext && {
-        item_list_id: listContext.listId,
-        item_list_name: listContext.listName
-      })
+      packageId: product.packageId,
+      id: packageData.external_id || packageData.ref_id,
+      title: packageData.name || `Package ${product.packageId}`,
+      price: parseFloat(packageData.price_total || '0'),
+      price_incl_tax: parseFloat(packageData.price_total || '0'),
+      quantity: 1,
+      package_profile: packageData.product_variant_name || packageData.product?.variant?.name,
+      variant: packageData.product_variant_name || packageData.product?.variant?.name,
+      product_name: packageData.product_name || packageData.product?.name,
+      product_sku: packageData.product_sku || packageData.product?.variant?.sku,
+      image: packageData.image,
+      product_id: packageData.product_id,
+      product_variant_id: packageData.product_variant_id
     };
 
-    const event = dataLayer.formatEcommerceEvent('dl_view_item', {
-      currency: item.currency,
-      value: item.price,
-      items: [item]
-    });
-
+    // Use EcommerceEvents to properly format the event with detail structure
+    const event = EcommerceEvents.createViewItemEvent(item);
     dataLayer.push(event);
     this.trackedProducts.add(product.packageId);
 
@@ -219,20 +213,22 @@ export class ViewItemListTracker {
       const price = parseFloat(packageData.price_total || '0'); // Use total package price
       totalValue += price;
 
+      // Create item in a format that EcommerceEvents can work with
       items.push({
-        item_id: packageData.external_id.toString(), // Use external_id for analytics
-        item_name: packageData.name || `Package ${product.packageId}`,
-        currency: campaignStore.data?.currency || 'USD',
+        packageId: product.packageId,
+        id: packageData.external_id || packageData.ref_id,
+        title: packageData.name || `Package ${product.packageId}`,
         price: price,
-        quantity: 1, // Always 1 for package-based pricing
-        item_category: campaignStore.data?.name || 'Campaign',
-        item_variant: packageData.product_variant_name || packageData.product?.variant?.name,
-        item_brand: packageData.product_name || packageData.product?.name,
-        item_sku: packageData.product_sku || packageData.product?.variant?.sku,
-        ...(packageData.image && { item_image: packageData.image }),
-        item_list_id: listContext.listId,
-        item_list_name: listContext.listName,
-        index: index
+        price_incl_tax: price,
+        quantity: 1,
+        package_profile: packageData.product_variant_name || packageData.product?.variant?.name,
+        variant: packageData.product_variant_name || packageData.product?.variant?.name,
+        product_name: packageData.product_name || packageData.product?.name,
+        product_sku: packageData.product_sku || packageData.product?.variant?.sku,
+        image: packageData.image,
+        // These will be used by EventBuilder.formatElevarImpression
+        product_id: packageData.product_id,
+        product_variant_id: packageData.product_variant_id
       });
 
       this.trackedProducts.add(product.packageId);
@@ -243,14 +239,8 @@ export class ViewItemListTracker {
       return;
     }
 
-    const event = dataLayer.formatEcommerceEvent('dl_view_item_list', {
-      currency: campaignStore.data?.currency || 'USD',
-      value: totalValue,
-      items: items,
-      item_list_id: listContext.listId,
-      item_list_name: listContext.listName
-    });
-
+    // Use EcommerceEvents to properly format the event with impressions
+    const event = EcommerceEvents.createViewItemListEvent(items, listContext.listId, listContext.listName);
     dataLayer.push(event);
 
     logger.debug(`Tracked view_item_list with ${items.length} items`);

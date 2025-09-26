@@ -3,7 +3,7 @@
  * Base class for creating standardized analytics events
  */
 
-import type { DataLayerEvent, UserProperties, EventContext, EventMetadata, EcommerceItem } from '../types';
+import type { DataLayerEvent, UserProperties, EventContext, EventMetadata, EcommerceItem, ElevarProduct, ElevarImpression } from '../types';
 
 // Define minimal types to avoid external dependencies
 interface MinimalCartItem {
@@ -61,11 +61,11 @@ export class EventBuilder {
   }
 
   /**
-   * Get user properties from stores
+   * Get user properties from stores (Elevar format)
    */
   static getUserProperties(): UserProperties {
     const userProperties: UserProperties = {
-      visitor_type: 'guest', // Default to guest, can be overridden if we have customer data
+      visitor_type: 'guest', // Default to guest for Elevar
     };
 
     // Try to get store states safely
@@ -73,22 +73,25 @@ export class EventBuilder {
       if (typeof window !== 'undefined') {
         // Try to import stores dynamically
         const checkoutStore = (window as any).checkoutStore;
-        // const cartStore = (window as any).cartStore;
-        
+
         if (checkoutStore) {
           const checkoutState = checkoutStore.getState();
-          
-          // Add billing address info if available
+
+          // Add billing address info if available (Elevar format without address_ prefix)
           if (checkoutState.billingAddress) {
             const billing = checkoutState.billingAddress;
             userProperties.customer_first_name = billing.first_name;
             userProperties.customer_last_name = billing.last_name;
-            userProperties.customer_address_city = billing.city;
-            userProperties.customer_address_province = billing.province;
-            userProperties.customer_address_province_code = billing.province; // Using province as code for now
-            userProperties.customer_address_zip = billing.postal;
-            userProperties.customer_address_country = billing.country;
+            userProperties.customer_city = billing.city; // No address_ prefix
+            userProperties.customer_province = billing.province; // No address_ prefix
+            userProperties.customer_province_code = billing.province_code || billing.province;
+            userProperties.customer_zip = billing.postal; // No address_ prefix
+            userProperties.customer_country = billing.country; // No address_ prefix
             userProperties.customer_phone = billing.phone;
+
+            // Add address lines for Elevar
+            userProperties.customer_address_1 = billing.address_1 || billing.address || '';
+            userProperties.customer_address_2 = billing.address_2 || '';
           }
 
           // Add customer email if available from form data
@@ -99,7 +102,18 @@ export class EventBuilder {
           // Add customer ID if available (from order or other sources)
           if (checkoutState.formData?.customerId) {
             userProperties.customer_id = String(checkoutState.formData.customerId);
-            userProperties.visitor_type = 'customer';
+            userProperties.visitor_type = 'logged_in'; // Elevar uses 'logged_in' not 'customer'
+          }
+
+          // Add customer metrics if available (convert to string for Elevar)
+          if (checkoutState.formData?.orderCount !== undefined) {
+            userProperties.customer_order_count = String(checkoutState.formData.orderCount);
+          }
+          if (checkoutState.formData?.totalSpent !== undefined) {
+            userProperties.customer_total_spent = String(checkoutState.formData.totalSpent);
+          }
+          if (checkoutState.formData?.tags) {
+            userProperties.customer_tags = String(checkoutState.formData.tags);
           }
         }
       }
@@ -347,5 +361,143 @@ export class EventBuilder {
       sessionStorage.removeItem('analytics_list_id');
       sessionStorage.removeItem('analytics_list_name');
     }
+  }
+
+  /**
+   * Format product for Elevar (matches their exact structure)
+   */
+  static formatElevarProduct(
+    item: MinimalCartItem,
+    index?: number
+  ): ElevarProduct {
+    const currency = this.getCurrency();
+    let campaignName = 'Campaign';
+
+    // Get campaign and package data
+    let packageData: any = null;
+    try {
+      if (typeof window !== 'undefined') {
+        const campaignStore = (window as any).campaignStore;
+        if (campaignStore) {
+          const campaign = campaignStore.getState().data;
+          campaignName = campaign?.name || 'Campaign';
+
+          // Find package data
+          const packageId = item.packageId || item.package_id || item.id;
+          if (packageId && campaign?.packages) {
+            packageData = campaign.packages.find((p: any) =>
+              String(p.ref_id) === String(packageId)
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Could not access campaign store:', error);
+    }
+
+    // Get price value
+    let priceValue: number = 0;
+    if (packageData?.price) {
+      priceValue = typeof packageData.price === 'string' ? parseFloat(packageData.price) : packageData.price;
+    } else if (item.price_incl_tax) {
+      priceValue = typeof item.price_incl_tax === 'string' ? parseFloat(item.price_incl_tax) : item.price_incl_tax;
+    } else if (item.price) {
+      if (typeof item.price === 'object' && 'incl_tax' in item.price) {
+        priceValue = item.price.incl_tax.value;
+      } else {
+        priceValue = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
+      }
+    }
+
+    // Build Elevar product object with exact field names
+    // Check cart item fields first since they're already populated from packageData
+    const product: ElevarProduct = {
+      // Use SKU as id (Elevar expects SKU here) - check cart item fields
+      id: (item as any).variantSku || (item as any).sku || packageData?.product_sku || `SKU-${item.packageId || item.id}`,
+      name: (item as any).productName || packageData?.product_name || item.title || item.product_title || item.name || '',
+      product_id: String((item as any).productId || packageData?.product_id || item.packageId || item.package_id || item.id || ''),
+      variant_id: String((item as any).variantId || packageData?.product_variant_id || ''),
+      brand: (item as any).productName || packageData?.product_name || campaignName,
+      category: campaignName,
+      variant: (item as any).variantName || packageData?.product_variant_name || item.package_profile || item.variant || '',
+      price: priceValue.toFixed(2), // Format as string with 2 decimals
+      quantity: String(item.quantity || 1)
+    };
+
+    // Add optional fields
+    // Always add compare_at_price (use "0.0" if not available as per Elevar docs)
+    if (packageData?.price_retail || (item as any).price_retail) {
+      product.compare_at_price = String(packageData?.price_retail || (item as any).price_retail);
+    } else {
+      product.compare_at_price = "0.0";
+    }
+    if (packageData?.image || (item as any).image || (item as any).imageUrl) {
+      product.image = packageData?.image || (item as any).image || (item as any).imageUrl || '';
+    }
+
+    // Add position (1-based for Elevar)
+    if (index !== undefined) {
+      product.position = index + 1;
+    }
+
+    // Add URL if this is add to cart
+    const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+    product.url = currentUrl;
+
+    // Add list if available
+    const list = this.getListAttribution();
+    if (list?.name || list?.id) {
+      product.list = list.name || list.id;
+    }
+
+    return product;
+  }
+
+  /**
+   * Format impression for Elevar (similar to product but for list views)
+   */
+  static formatElevarImpression(
+    item: MinimalCartItem,
+    index?: number,
+    list?: string
+  ): ElevarImpression {
+    const product = this.formatElevarProduct(item, index);
+
+    // Create impression from product, excluding quantity and url
+    const impression: ElevarImpression = {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      brand: product.brand,
+      category: product.category,
+      variant: product.variant
+    };
+
+    // Add optional fields
+    if (product.product_id) {
+      impression.product_id = product.product_id;
+    }
+    if (product.variant_id) {
+      impression.variant_id = product.variant_id;
+    }
+    if (product.image) {
+      impression.image = product.image;
+    }
+
+    // Add list if provided
+    if (list) {
+      impression.list = list;
+    } else if (product.list) {
+      impression.list = product.list;
+    }
+
+    // Add position
+    if (product.position) {
+      impression.position = product.position;
+    } else if (index !== undefined) {
+      impression.position = index + 1;
+    }
+
+    return impression;
   }
 }

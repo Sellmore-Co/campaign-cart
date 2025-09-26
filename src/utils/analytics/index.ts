@@ -275,6 +275,13 @@ export class NextAnalytics {
    */
   public invalidateContext(): void {
     dataLayer.invalidateContext();
+
+    // Call Elevar's invalidate context if available
+    if (typeof window !== 'undefined' && window.ElevarInvalidateContext) {
+      window.ElevarInvalidateContext();
+      logger.debug('Called ElevarInvalidateContext');
+    }
+
     // Reset trackers
     this.viewTracker.reset();
     // Track new user data

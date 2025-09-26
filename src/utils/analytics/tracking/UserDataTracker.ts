@@ -8,6 +8,7 @@ import { useCartStore } from '@/stores/cartStore';
 import { dataLayer } from '../DataLayerManager';
 import { EventBus } from '@/utils/events';
 import { userDataStorage } from '../userDataStorage';
+import { UserEvents } from '../events/UserEvents';
 
 const logger = createLogger('UserDataTracker');
 
@@ -72,13 +73,30 @@ export class UserDataTracker {
     this.lastTrackTime = now;
 
     const userData = this.collectUserData();
-    
+
     if (!userData || Object.keys(userData).length === 0) {
       logger.debug('No user data to track');
       return;
     }
 
-    const event = dataLayer.formatUserDataEvent(userData);
+    // Convert userData to UserProperties format for UserEvents
+    const userProperties: any = {
+      customer_email: userData.email,
+      customer_phone: userData.phone,
+      customer_first_name: userData.firstName,
+      customer_last_name: userData.lastName,
+      visitor_type: userData.userId ? 'logged_in' : 'guest'
+    };
+
+    // Remove undefined values
+    Object.keys(userProperties).forEach(key => {
+      if (userProperties[key] === undefined) {
+        delete userProperties[key];
+      }
+    });
+
+    // Use UserEvents.createUserDataEvent to properly format the event with cart_contents
+    const event = UserEvents.createUserDataEvent('dl_user_data', userProperties);
     dataLayer.push(event);
 
     logger.debug('Tracked user data:', {

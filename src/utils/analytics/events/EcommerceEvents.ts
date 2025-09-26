@@ -6,13 +6,12 @@
 import type { DataLayerEvent, EcommerceData, EcommerceItem } from '../types';
 import { EventBuilder } from './EventBuilder';
 import { useCartStore } from '@/stores/cartStore';
-// import { useCampaignStore } from '@/stores/campaignStore'; - removed unused import
-// import { useCheckoutStore } from '@/stores/checkoutStore'; - removed unused import
+import { useCampaignStore } from '@/stores/campaignStore';
 import type { CartItem, EnrichedCartLine } from '@/types/global';
 
 export class EcommerceEvents {
   /**
-   * Create view_item_list event with impressions array
+   * Create view_item_list event with impressions array (Elevar format)
    */
   static createViewItemListEvent(
     items: (CartItem | EnrichedCartLine | any)[],
@@ -20,61 +19,55 @@ export class EcommerceEvents {
     listName?: string
   ): DataLayerEvent {
     const currency = EventBuilder.getCurrency();
-    
-    // Format items with index
-    const formattedItems: EcommerceItem[] = items.map((item, index) => 
-      EventBuilder.formatEcommerceItem(item, index, listId !== undefined || listName !== undefined ? { 
-        ...(listId !== undefined && { id: listId }),
-        ...(listName !== undefined && { name: listName })
-      } : undefined)
-    );
 
-    // Calculate total value
-    const totalValue = formattedItems.reduce(
-      (sum, item) => sum + ((item.price || 0) * (item.quantity || 1)),
-      0
+    // Format items as impressions
+    const impressions = items.map((item, index) =>
+      EventBuilder.formatElevarImpression(item, index, listId || listName)
     );
 
     // Store list attribution for future events
     EventBuilder.setListAttribution(listId, listName);
 
-    const ecommerce: EcommerceData = {
-      currency,
-      value: totalValue,
-      items: formattedItems
+    const ecommerce: any = {
+      currencyCode: currency,
+      impressions: impressions
     };
 
     return EventBuilder.createEvent('dl_view_item_list', {
-      ecommerce,
-      event_category: 'ecommerce',
-      event_label: listName || 'Product List'
+      user_properties: EventBuilder.getUserProperties(),
+      ecommerce
     });
   }
 
   /**
-   * Create view_item event
+   * Create view_item event (Elevar format)
    */
   static createViewItemEvent(
     item: CartItem | EnrichedCartLine | any
   ): DataLayerEvent {
     const currency = EventBuilder.getCurrency();
-    const formattedItem = EventBuilder.formatEcommerceItem(item);
+    const formattedItem = EventBuilder.formatElevarProduct(item);
+    const list = EventBuilder.getListAttribution();
 
-    const ecommerce: EcommerceData = {
-      currency,
-      value: (formattedItem.price || 0) * (formattedItem.quantity || 1),
-      items: [formattedItem]
+    const ecommerce: any = {
+      currencyCode: currency,
+      detail: {
+        actionField: {
+          list: list?.name || list?.id || location.pathname,
+          action: 'detail'
+        },
+        products: [formattedItem]
+      }
     };
 
     return EventBuilder.createEvent('dl_view_item', {
-      ecommerce,
-      event_category: 'ecommerce',
-      event_label: formattedItem.item_name
+      user_properties: EventBuilder.getUserProperties(),
+      ecommerce
     });
   }
 
   /**
-   * Create add_to_cart event with list attribution
+   * Create add_to_cart event with list attribution (Elevar format)
    */
   static createAddToCartEvent(
     item: CartItem | EnrichedCartLine | any,
@@ -82,50 +75,52 @@ export class EcommerceEvents {
     listName?: string
   ): DataLayerEvent {
     const currency = EventBuilder.getCurrency();
-    
-    // Use provided list info or get from session
-    const list = listId || listName 
-      ? {
-          ...(listId !== undefined && { id: listId }),
-          ...(listName !== undefined && { name: listName })
-        }
-      : EventBuilder.getListAttribution();
-    
-    const formattedItem = EventBuilder.formatEcommerceItem(item, undefined, list);
 
-    const ecommerce: EcommerceData = {
-      currency,
-      value: (formattedItem.price || 0) * (formattedItem.quantity || 1),
-      items: [formattedItem]
+    // Use provided list info or get from session
+    const list = EventBuilder.getListAttribution();
+    const listPath = listName || listId || list?.name || list?.id || location.pathname;
+
+    const formattedItem = EventBuilder.formatElevarProduct(item);
+
+    const ecommerce: any = {
+      currencyCode: currency,
+      add: {
+        actionField: {
+          list: listPath
+        },
+        products: [formattedItem]
+      }
     };
 
     return EventBuilder.createEvent('dl_add_to_cart', {
-      ecommerce,
-      event_category: 'ecommerce',
-      event_label: formattedItem.item_name,
-      list: list?.id || list?.name ? list : undefined
+      user_properties: EventBuilder.getUserProperties(),
+      ecommerce
     });
   }
 
   /**
-   * Create remove_from_cart event
+   * Create remove_from_cart event (Elevar format)
    */
   static createRemoveFromCartEvent(
     item: CartItem | EnrichedCartLine | any
   ): DataLayerEvent {
     const currency = EventBuilder.getCurrency();
-    const formattedItem = EventBuilder.formatEcommerceItem(item);
+    const formattedItem = EventBuilder.formatElevarProduct(item);
+    const list = EventBuilder.getListAttribution();
 
-    const ecommerce: EcommerceData = {
-      currency,
-      value: (formattedItem.price || 0) * (formattedItem.quantity || 1),
-      items: [formattedItem]
+    const ecommerce: any = {
+      currencyCode: currency,
+      remove: {
+        actionField: {
+          list: list?.name || list?.id || location.pathname
+        },
+        products: [formattedItem]
+      }
     };
 
     return EventBuilder.createEvent('dl_remove_from_cart', {
-      ecommerce,
-      event_category: 'ecommerce',
-      event_label: formattedItem.item_name
+      user_properties: EventBuilder.getUserProperties(),
+      ecommerce
     });
   }
 
@@ -162,7 +157,7 @@ export class EcommerceEvents {
   }
 
   /**
-   * Create select_item event (product click)
+   * Create select_item event (product click) (Elevar format)
    */
   static createSelectItemEvent(
     item: CartItem | EnrichedCartLine | any,
@@ -170,159 +165,238 @@ export class EcommerceEvents {
     listName?: string
   ): DataLayerEvent {
     const currency = EventBuilder.getCurrency();
-    
-    // Use provided list info or get from session
-    const list = listId || listName 
-      ? {
-          ...(listId !== undefined && { id: listId }),
-          ...(listName !== undefined && { name: listName })
-        }
-      : EventBuilder.getListAttribution();
-    
-    const formattedItem = EventBuilder.formatEcommerceItem(item, undefined, list);
+    const list = listName || listId || location.pathname;
+    const formattedItem = EventBuilder.formatElevarProduct(item);
 
-    const ecommerce: EcommerceData = {
-      currency,
-      value: (formattedItem.price || 0) * (formattedItem.quantity || 1),
-      items: [formattedItem]
+    const ecommerce: any = {
+      currencyCode: currency,
+      click: {
+        actionField: {
+          list: list,
+          action: 'click'
+        },
+        products: [formattedItem]
+      }
     };
 
     return EventBuilder.createEvent('dl_select_item', {
-      ecommerce,
-      event_category: 'ecommerce',
-      event_label: formattedItem.item_name,
-      list: list?.id || list?.name ? list : undefined
+      user_properties: EventBuilder.getUserProperties(),
+      ecommerce
     });
   }
 
   /**
-   * Create begin_checkout event
+   * Create begin_checkout event (Elevar format)
    */
   static createBeginCheckoutEvent(): DataLayerEvent {
     const cartState = useCartStore.getState();
     const currency = EventBuilder.getCurrency();
-    
-    // Format all cart items
-    const formattedItems = cartState.enrichedItems.map((item, index) => 
-      EventBuilder.formatEcommerceItem(item, index)
+
+    // Use raw cart items, not enrichedItems, as they have the proper package data
+    const products = cartState.items.map((item, index) =>
+      EventBuilder.formatElevarProduct(item, index)
     );
 
-    const ecommerce: EcommerceData = {
-      currency,
-      value: cartState.totals.total.value,
-      items: formattedItems
+    // Build Elevar-style ecommerce object with checkout action
+    const ecommerce: any = {
+      currencyCode: currency,
+      checkout: {
+        actionField: {
+          step: 1,
+          option: 'Checkout'
+        },
+        products: products
+      }
     };
 
     // Add coupon if applied
     if (cartState.appliedCoupons?.[0]?.code) {
-      ecommerce.coupon = cartState.appliedCoupons[0].code;
+      ecommerce.checkout.actionField.coupon = cartState.appliedCoupons[0].code;
     }
 
     return EventBuilder.createEvent('dl_begin_checkout', {
-      ecommerce,
-      event_category: 'ecommerce',
-      event_value: cartState.totals.total.value
+      user_properties: EventBuilder.getUserProperties(),
+      cart_total: String(cartState.totals.total.value || '0.00'),
+      ecommerce
     });
   }
 
   /**
-   * Create purchase event
+   * Create purchase event (Elevar format)
    */
   static createPurchaseEvent(orderData: any): DataLayerEvent {
     const cartState = useCartStore.getState();
     const currency = EventBuilder.getCurrency();
-    
+    const campaignStore = useCampaignStore.getState();
+
     // Handle order object structure from API
     const order = orderData.order || orderData;
-    const orderId = order.ref_id || order.number || orderData.orderId || 
+    const orderId = order.ref_id || order.number || orderData.orderId ||
                    orderData.transactionId || `order_${Date.now()}`;
-    
+
     // Parse order totals
     const orderTotal = parseFloat(
-      order.total_incl_tax || order.total || orderData.total || 
+      order.total_incl_tax || order.total || orderData.total ||
       cartState.totals.total.value || 0
     );
     const orderTax = parseFloat(
       order.total_tax || orderData.tax || cartState.totals.tax.value || 0
     );
     const orderShipping = parseFloat(
-      order.shipping_incl_tax || orderData.shipping || 
+      order.shipping_incl_tax || orderData.shipping ||
       cartState.totals.shipping.value || 0
     );
-    
-    // Format order items
-    let formattedItems: EcommerceItem[] = [];
+    const orderSubtotal = orderTotal - orderTax - orderShipping;
+
+    // Format order items as Elevar products
+    let products: any[] = [];
     if (order.lines && order.lines.length > 0) {
-      formattedItems = order.lines.map((line: any, index: number) => ({
-        item_id: String(line.package || line.product_id || line.id),
-        item_name: line.product_title || line.name || 'Unknown Product',
-        item_category: line.campaign_name || 'Campaign',
-        item_variant: line.package_profile || line.variant,
-        price: parseFloat(line.price_incl_tax || line.price || 0),
-        quantity: line.quantity || 1,
-        currency: order.currency || currency,
-        index
-      }));
+      products = order.lines.map((line: any, index: number) => {
+        // Try to get package data from campaign
+        const packageData = campaignStore.data?.packages?.find((p: any) =>
+          String(p.ref_id) === String(line.package)
+        );
+
+        return {
+          id: line.product_sku || packageData?.product_sku || line.sku || `SKU-${line.product_id || line.id}`,
+          name: line.product_title || line.name || 'Unknown Product',
+          product_id: String(line.product_id || packageData?.product_id || line.package),
+          variant_id: String(line.variant_id || packageData?.product_variant_id || line.package),
+          price: String(line.price_incl_tax || line.price || 0),
+          brand: packageData?.product_name || campaignStore.data?.name || '',
+          category: line.campaign_name || campaignStore.data?.name || 'Campaign',
+          variant: line.package_profile || line.variant || '',
+          quantity: String(line.quantity || 1)
+        };
+      });
     } else if (orderData.items || cartState.enrichedItems.length > 0) {
       // Fallback to provided items or cart items
-      formattedItems = (orderData.items || cartState.enrichedItems).map(
-        (item: any, index: number) => EventBuilder.formatEcommerceItem(item, index)
+      products = (orderData.items || cartState.enrichedItems).map(
+        (item: any, index: number) => EventBuilder.formatElevarProduct(item, index)
       );
     }
 
-    const ecommerce: EcommerceData = {
-      transaction_id: orderId,
-      currency: order.currency || currency,
-      value: orderTotal,
-      items: formattedItems,
-      tax: orderTax,
-      shipping: orderShipping
+    // Build Elevar-style ecommerce object with purchase action
+    const ecommerce: any = {
+      currencyCode: order.currency || currency,
+      purchase: {
+        actionField: {
+          id: orderId,
+          order_name: orderId,
+          revenue: String(orderTotal),
+          tax: String(orderTax),
+          shipping: String(orderShipping),
+          sub_total: String(orderSubtotal),
+          affiliation: 'Online Store'
+        },
+        products: products
+      }
     };
 
     // Add coupon if present
-    const coupon = order.vouchers?.[0]?.code || orderData.coupon || 
+    const coupon = order.vouchers?.[0]?.code || orderData.coupon ||
                   cartState.appliedCoupons?.[0]?.code;
     if (coupon) {
-      ecommerce.coupon = coupon;
+      ecommerce.purchase.actionField.coupon = coupon;
+    }
+
+    // Add discount amount if present
+    const discountAmount = order.discount || orderData.discountAmount || 0;
+    if (discountAmount) {
+      ecommerce.purchase.actionField.discountAmount = String(discountAmount);
     }
 
     // Clear list attribution after purchase
     EventBuilder.clearListAttribution();
 
+    // Extract user properties from order data if available
+    let userProperties = EventBuilder.getUserProperties();
+    if (order.user || order.billing_address) {
+      // Override with order data which is more reliable at purchase time
+      userProperties = {
+        ...userProperties,
+        visitor_type: order.user ? 'logged_in' : 'guest',
+        ...(order.user?.email && { customer_email: order.user.email }),
+        ...(order.user?.first_name && { customer_first_name: order.user.first_name }),
+        ...(order.user?.last_name && { customer_last_name: order.user.last_name }),
+        ...(order.user?.phone_number && { customer_phone: order.user.phone_number }),
+        // Use billing address from order
+        ...(order.billing_address && {
+          customer_first_name: order.billing_address.first_name || order.user?.first_name,
+          customer_last_name: order.billing_address.last_name || order.user?.last_name,
+          customer_address_1: order.billing_address.line1 || '',
+          customer_address_2: order.billing_address.line2 || '',
+          customer_city: order.billing_address.line4 || '', // line4 is city in this format
+          customer_province: order.billing_address.state || '',
+          customer_province_code: order.billing_address.state || '',
+          customer_zip: order.billing_address.postcode || '',
+          customer_country: order.billing_address.country || '',
+          customer_phone: order.billing_address.phone_number || order.user?.phone_number
+        })
+      };
+    }
+
     return EventBuilder.createEvent('dl_purchase', {
-      ecommerce,
-      event_category: 'ecommerce',
-      event_value: orderTotal
+      pageType: 'purchase',
+      event_id: orderId,
+      user_properties: userProperties,
+      ecommerce
     });
   }
 
   /**
-   * Create view_cart event
+   * Create view_search_results event (Elevar format)
+   */
+  static createViewSearchResultsEvent(
+    items: (CartItem | EnrichedCartLine | any)[],
+    searchTerm?: string
+  ): DataLayerEvent {
+    const currency = EventBuilder.getCurrency();
+
+    // Format items as impressions
+    const impressions = items.map((item, index) =>
+      EventBuilder.formatElevarImpression(item, index)
+    );
+
+    const ecommerce: any = {
+      currencyCode: currency,
+      actionField: {
+        list: 'search results'
+      },
+      impressions: impressions
+    };
+
+    return EventBuilder.createEvent('dl_view_search_results', {
+      user_properties: EventBuilder.getUserProperties(),
+      ecommerce,
+      search_term: searchTerm
+    });
+  }
+
+  /**
+   * Create view_cart event (Elevar format)
    */
   static createViewCartEvent(): DataLayerEvent {
     const cartState = useCartStore.getState();
     const currency = EventBuilder.getCurrency();
-    
-    // Format all cart items
-    const formattedItems = cartState.enrichedItems.map((item, index) => 
-      EventBuilder.formatEcommerceItem(item, index, { id: 'cart', name: 'Shopping Cart' })
-    );
 
-    const ecommerce: EcommerceData = {
-      currency,
-      value: cartState.totals.total.value,
-      items: formattedItems
+    // Format all cart items as impressions with quantity
+    const impressions = cartState.enrichedItems.map((item, index) => {
+      const impression = EventBuilder.formatElevarImpression(item, index);
+      impression.quantity = String(item.quantity || 1);
+      return impression;
+    });
+
+    const ecommerce: any = {
+      currencyCode: currency,
+      actionField: {},
+      impressions: impressions
     };
 
-    // Add coupon if applied
-    if (cartState.appliedCoupons?.[0]?.code) {
-      ecommerce.coupon = cartState.appliedCoupons[0].code;
-    }
-
     return EventBuilder.createEvent('dl_view_cart', {
-      ecommerce,
-      event_category: 'ecommerce',
-      event_value: cartState.totals.total.value
+      user_properties: EventBuilder.getUserProperties(),
+      cart_total: String(cartState.totals.total.value || '0.00'),
+      ecommerce
     });
   }
 
@@ -333,14 +407,15 @@ export class EcommerceEvents {
   static createAddShippingInfoEvent(shippingTier?: string): DataLayerEvent {
     const cartState = useCartStore.getState();
     const currency = EventBuilder.getCurrency();
-    
+
     // Format all cart items
-    const formattedItems = cartState.enrichedItems.map((item, index) => 
+    const formattedItems = cartState.enrichedItems.map((item, index) =>
       EventBuilder.formatEcommerceItem(item, index)
     );
 
     const ecommerce: EcommerceData = {
       currency,
+      currencyCode: currency, // Add currencyCode for Elevar compatibility
       value: cartState.totals.total.value,
       items: formattedItems,
       ...(shippingTier && { shipping_tier: shippingTier })
@@ -366,9 +441,9 @@ export class EcommerceEvents {
   static createAddPaymentInfoEvent(paymentType?: string): DataLayerEvent {
     const cartState = useCartStore.getState();
     const currency = EventBuilder.getCurrency();
-    
+
     // Format all cart items
-    const formattedItems = cartState.enrichedItems.map((item, index) => 
+    const formattedItems = cartState.enrichedItems.map((item, index) =>
       EventBuilder.formatEcommerceItem(item, index)
     );
 
@@ -389,6 +464,40 @@ export class EcommerceEvents {
       event_category: 'ecommerce',
       event_value: cartState.totals.total.value,
       payment_type: paymentType
+    });
+  }
+
+  /**
+   * Create accepted_upsell event with full user properties
+   * Fires when user accepts an upsell offer
+   */
+  static createAcceptedUpsellEvent(data: {
+    orderId: string;
+    packageId: number | string;
+    packageName?: string;
+    quantity?: number;
+    value?: number;
+    currency?: string;
+  }): DataLayerEvent {
+    const { orderId, packageId, packageName, quantity = 1, value = 0, currency = 'USD' } = data;
+
+    // Get user properties to match Elevar standard
+    const userProperties = EventBuilder.getUserProperties();
+
+    return EventBuilder.createEvent('dl_accepted_upsell', {
+      order_id: orderId,
+      upsell: {
+        package_id: packageId.toString(),
+        package_name: packageName || `Package ${packageId}`,
+        quantity: quantity,
+        value: value,
+        currency: currency
+      },
+      // Include user properties like Elevar does
+      user_properties: userProperties,
+      event_category: 'ecommerce',
+      event_action: 'upsell_accepted',
+      event_value: value
     });
   }
 }
