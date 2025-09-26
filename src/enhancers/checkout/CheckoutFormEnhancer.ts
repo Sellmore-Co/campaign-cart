@@ -4366,7 +4366,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // NOT for analytics tracking - that's already handled above
         this.emit('checkout:started', {
           timestamp: Date.now()
-        } as CheckoutData);
+        });
 
         this.logger.info('Tracked begin_checkout event on checkout form initialization');
       }

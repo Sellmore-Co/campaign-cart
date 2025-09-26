@@ -348,35 +348,64 @@ export class AutoEventListener {
       const quantity = data.quantity || 1;
       const orderId = data.orderId || data.order?.ref_id;
 
+      // Get campaign and package data
+      const campaignStore = useCampaignStore.getState();
+      const packageData = campaignStore.getPackage(packageId);
+
       // Calculate value
       let value = data.value;
-      if (value === undefined) {
-        const campaignStore = useCampaignStore.getState();
-        const packageData = campaignStore.getPackage(packageId);
-        if (packageData?.price) {
-          value = parseFloat(packageData.price) * quantity;
-        }
+      if (value === undefined && packageData?.price) {
+        value = parseFloat(packageData.price) * quantity;
       }
+
+      // Get or increment upsell number (track how many upsells have been accepted)
+      const upsellNumber = data.upsellNumber ||
+        (sessionStorage.getItem(`upsells_${orderId}`) ?
+          parseInt(sessionStorage.getItem(`upsells_${orderId}`) || '0') + 1 : 1);
+
+      // Store the upsell count
+      if (orderId) {
+        sessionStorage.setItem(`upsells_${orderId}`, String(upsellNumber));
+      }
+
+      // Create cart item object with campaign package data for proper formatting
+      const cartItem = {
+        packageId,
+        productId: packageData?.product_id,
+        productName: packageData?.product_name,
+        variantId: packageData?.product_variant_id,
+        variantName: packageData?.product_variant_name,
+        variantSku: packageData?.product_sku,
+        quantity,
+        price: value,
+        image: packageData?.image
+      };
 
       // Use EcommerceEvents helper to create properly formatted event with user properties
       const acceptedUpsellEvent = EcommerceEvents.createAcceptedUpsellEvent({
         orderId,
         packageId,
-        packageName: data.packageName || `Package ${packageId}`,
+        packageName: data.packageName || packageData?.name || `Package ${packageId}`,
         quantity,
         value: value || 0,
-        currency: data.currency || useCampaignStore.getState().data?.currency || 'USD'
+        currency: data.currency || campaignStore.data?.currency || 'USD',
+        upsellNumber,
+        item: cartItem
       });
 
-      // Mark for queueing if will redirect
-      logger.debug('Upsell accepted event data:', { willRedirect: data.willRedirect, data });
+      // The _willRedirect flag is now set inside createAcceptedUpsellEvent
+      // Additional redirect marking if needed
       if (data.willRedirect) {
-        (acceptedUpsellEvent as any)._willRedirect = true;
-        logger.debug('Marked upsell event for queueing due to redirect');
+        logger.debug('Upsell event already marked for queueing due to redirect');
       }
 
       dataLayer.push(acceptedUpsellEvent);
-      logger.info('Tracked upsell accepted:', packageId);
+      logger.info('Tracked upsell accepted:', {
+        packageId,
+        orderId,
+        upsellOrderId: `${orderId}-US${upsellNumber}`,
+        value
+      });
     };
 
     this.eventBus.on('upsell:accepted', handleUpsellAccepted);

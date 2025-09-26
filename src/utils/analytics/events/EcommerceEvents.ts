@@ -468,8 +468,9 @@ export class EcommerceEvents {
   }
 
   /**
-   * Create accepted_upsell event with full user properties
+   * Create accepted_upsell event (dl_upsell_purchase format)
    * Fires when user accepts an upsell offer
+   * Uses Elevar's dl_upsell_purchase format with full ecommerce.purchase structure
    */
   static createAcceptedUpsellEvent(data: {
     orderId: string;
@@ -478,26 +479,95 @@ export class EcommerceEvents {
     quantity?: number;
     value?: number;
     currency?: string;
+    upsellNumber?: number;
+    item?: any;
   }): DataLayerEvent {
-    const { orderId, packageId, packageName, quantity = 1, value = 0, currency = 'USD' } = data;
+    const {
+      orderId,
+      packageId,
+      packageName,
+      quantity = 1,
+      value = 0,
+      currency = 'USD',
+      upsellNumber = 1,
+      item
+    } = data;
+
+    // Format upsell order ID with -US suffix (US1, US2, etc.)
+    const upsellOrderId = `${orderId}-US${upsellNumber}`;
+
+    // Get campaign store for additional product data
+    let campaignStore: any;
+    let packageData: any;
+    try {
+      if (typeof window !== 'undefined') {
+        campaignStore = (window as any).campaignStore;
+        if (campaignStore) {
+          const campaign = campaignStore.getState().data;
+          if (campaign?.packages) {
+            packageData = campaign.packages.find((p: any) =>
+              String(p.ref_id) === String(packageId)
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Could not access campaign store for upsell data:', error);
+    }
+
+    // Format the upsell item as an Elevar product
+    const upsellProduct = item ?
+      EventBuilder.formatElevarProduct(item) :
+      {
+        id: packageData?.product_sku || `SKU-${packageId}`,
+        name: packageName || packageData?.product_name || `Package ${packageId}`,
+        product_id: String(packageData?.product_id || packageId),
+        variant_id: String(packageData?.product_variant_id || packageId),
+        price: String(value),
+        brand: packageData?.product_name || campaignStore?.getState().data?.name || '',
+        category: campaignStore?.getState().data?.name || 'Campaign',
+        variant: packageData?.product_variant_name || '',
+        quantity: String(quantity)
+      };
+
+    // Calculate the additional revenue (just the upsell value, not total order)
+    const additionalRevenue = value * quantity;
+
+    // Build Elevar-style ecommerce.purchase structure for upsell
+    const ecommerce: any = {
+      currencyCode: currency,
+      purchase: {
+        actionField: {
+          id: upsellOrderId,
+          order_name: upsellOrderId,
+          revenue: String(additionalRevenue), // Additional revenue from upsell only
+          tax: "0", // Upsells typically don't show separate tax
+          shipping: "0", // No additional shipping for upsells
+          sub_total: String(additionalRevenue), // Same as revenue for upsells
+          affiliation: 'Upsell'
+        },
+        products: [upsellProduct]
+      }
+    };
 
     // Get user properties to match Elevar standard
     const userProperties = EventBuilder.getUserProperties();
 
-    return EventBuilder.createEvent('dl_accepted_upsell', {
-      order_id: orderId,
-      upsell: {
-        package_id: packageId.toString(),
-        package_name: packageName || `Package ${packageId}`,
-        quantity: quantity,
-        value: value,
-        currency: currency
-      },
-      // Include user properties like Elevar does
+    // Create the dl_upsell_purchase event with _willRedirect flag
+    return EventBuilder.createEvent('dl_upsell_purchase', {
+      pageType: 'upsell',
+      event_id: upsellOrderId,
       user_properties: userProperties,
-      event_category: 'ecommerce',
-      event_action: 'upsell_accepted',
-      event_value: value
+      ecommerce,
+      // Flag for pending events handler to queue this event
+      _willRedirect: true,
+      // Additional metadata for tracking
+      upsell_metadata: {
+        original_order_id: orderId,
+        upsell_number: upsellNumber,
+        package_id: packageId.toString(),
+        package_name: packageName || `Package ${packageId}`
+      }
     });
   }
 }
