@@ -86,6 +86,7 @@ export interface ElevarImpression {
   position?: number;
   list?: string;
   image?: string;
+  quantity?: string; // Optional for cart view
 }
 
 /**

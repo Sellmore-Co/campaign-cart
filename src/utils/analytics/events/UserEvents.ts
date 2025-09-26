@@ -32,7 +32,8 @@ export class UserEvents {
           const campaignState = useCampaignStore.getState();
 
           const currency = campaignState?.data?.currency || 'USD';
-          const cartItems = cartState?.enrichedItems || cartState?.items || [];
+          // Use items from cart store - they already have all the fields we need
+          const cartItems = cartState?.items || [];
 
           // Format cart items as Elevar products using EventBuilder
           const products: ElevarProduct[] = cartItems.length > 0

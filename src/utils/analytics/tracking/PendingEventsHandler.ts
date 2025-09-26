@@ -69,20 +69,30 @@ export class PendingEventsHandler {
 
   /**
    * Process and fire all pending events
+   * IMPORTANT: This should only be called AFTER dl_user_data has been fired
    */
   public processPendingEvents(): void {
     const events = this.getPendingEvents();
-    
+
     if (events.length === 0) {
       logger.debug('No pending analytics events to process');
       return;
     }
-    
+
     logger.info(`Processing ${events.length} pending analytics events`);
-    
+
+    // Sort events to ensure dl_user_data always comes first if present
+    const sortedEvents = [...events].sort((a, b) => {
+      // dl_user_data events should always come first
+      if (a.event.event === 'dl_user_data') return -1;
+      if (b.event.event === 'dl_user_data') return 1;
+      // Otherwise maintain original order (by timestamp)
+      return a.timestamp - b.timestamp;
+    });
+
     const processedIds: string[] = [];
-    
-    for (const pendingEvent of events) {
+
+    for (const pendingEvent of sortedEvents) {
       try {
         // Skip events older than 5 minutes
         if (Date.now() - pendingEvent.timestamp > 5 * 60 * 1000) {
@@ -90,11 +100,11 @@ export class PendingEventsHandler {
           processedIds.push(pendingEvent.id);
           continue;
         }
-        
+
         // Push event to data layer
         dataLayer.push(pendingEvent.event);
         processedIds.push(pendingEvent.id);
-        
+
         logger.debug('Processed pending event:', pendingEvent.event.event);
       } catch (error) {
         logger.error('Failed to process pending event:', pendingEvent.event.event, error);

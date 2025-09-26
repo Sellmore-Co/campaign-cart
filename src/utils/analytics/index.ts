@@ -137,13 +137,17 @@ export class NextAnalytics {
       // Initialize providers based on configuration FIRST
       await this.initializeProviders(config.analytics, config.storeName);
 
-      // Process any pending events from previous page AFTER providers are ready
-      PendingEventsHandler.getInstance().processPendingEvents();
-
-      // Initialize automatic tracking
+      // Initialize automatic tracking BEFORE processing pending events
+      // This ensures dl_user_data fires first on every page load
       if (config.analytics.mode === 'auto') {
         this.initializeAutoTracking();
       }
+
+      // Process any pending events from previous page AFTER user data is tracked
+      // Adding a small delay to ensure dl_user_data is fully processed
+      setTimeout(() => {
+        PendingEventsHandler.getInstance().processPendingEvents();
+      }, 50);
 
       this.initialized = true;
       logger.info('NextAnalytics initialized successfully', {

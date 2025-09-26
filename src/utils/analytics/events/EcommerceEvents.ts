@@ -258,12 +258,12 @@ export class EcommerceEvents {
         );
 
         return {
-          id: line.product_sku || packageData?.product_sku || line.sku || `SKU-${line.product_id || line.id}`,
+          id: line.product_sku || (packageData as any)?.product_sku || line.sku || `SKU-${line.product_id || line.id}`,
           name: line.product_title || line.name || 'Unknown Product',
-          product_id: String(line.product_id || packageData?.product_id || line.package),
-          variant_id: String(line.variant_id || packageData?.product_variant_id || line.package),
+          product_id: String(line.product_id || (packageData as any)?.product_id || line.package),
+          variant_id: String(line.variant_id || (packageData as any)?.product_variant_id || line.package),
           price: String(line.price_incl_tax || line.price || 0),
-          brand: packageData?.product_name || campaignStore.data?.name || '',
+          brand: (packageData as any)?.product_name || campaignStore.data?.name || '',
           category: line.campaign_name || campaignStore.data?.name || 'Campaign',
           variant: line.package_profile || line.variant || '',
           quantity: String(line.quantity || 1)

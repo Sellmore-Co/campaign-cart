@@ -18,18 +18,30 @@ interface MinimalCartItem {
     incl_tax: { value: number; formatted: string };
     original: { value: number; formatted: string };
     savings: { value: number; formatted: string };
+    value?: number;
   };
   price_incl_tax?: number | string;
+  price_retail?: number | string;
   quantity?: number;
+  qty?: number;
   package_profile?: string;
   variant?: string;
   product?: {
     title?: string;
     image?: string;
+    sku?: string;
   };
   image?: string;
   imageUrl?: string;
   image_url?: string;
+  // Cart store fields
+  productId?: string | number;
+  productName?: string;
+  variantId?: string | number;
+  variantName?: string;
+  variantSku?: string;
+  sku?: string;
+  [key: string]: any; // Allow additional properties
 }
 
 export class EventBuilder {
@@ -395,44 +407,91 @@ export class EventBuilder {
       console.warn('Could not access campaign store:', error);
     }
 
-    // Get price value
+    // Get price value - handle various price formats
     let priceValue: number = 0;
     if (packageData?.price) {
       priceValue = typeof packageData.price === 'string' ? parseFloat(packageData.price) : packageData.price;
     } else if (item.price_incl_tax) {
       priceValue = typeof item.price_incl_tax === 'string' ? parseFloat(item.price_incl_tax) : item.price_incl_tax;
     } else if (item.price) {
-      if (typeof item.price === 'object' && 'incl_tax' in item.price) {
-        priceValue = item.price.incl_tax.value;
+      if (typeof item.price === 'object') {
+        // Handle nested price structure
+        if ('incl_tax' in item.price && item.price.incl_tax?.value) {
+          priceValue = item.price.incl_tax.value;
+        } else if ('excl_tax' in item.price && item.price.excl_tax?.value) {
+          priceValue = item.price.excl_tax.value;
+        } else if ('value' in item.price && typeof item.price.value === 'number') {
+          priceValue = item.price.value;
+        }
       } else {
         priceValue = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
       }
     }
 
     // Build Elevar product object with exact field names
-    // Check cart item fields first since they're already populated from packageData
+    // Prioritize cart store fields (productName, variantSku, etc.) which are directly on the item
     const product: ElevarProduct = {
-      // Use SKU as id (Elevar expects SKU here) - check cart item fields
-      id: (item as any).variantSku || (item as any).sku || packageData?.product_sku || `SKU-${item.packageId || item.id}`,
-      name: (item as any).productName || packageData?.product_name || item.title || item.product_title || item.name || '',
-      product_id: String((item as any).productId || packageData?.product_id || item.packageId || item.package_id || item.id || ''),
-      variant_id: String((item as any).variantId || packageData?.product_variant_id || ''),
-      brand: (item as any).productName || packageData?.product_name || campaignName,
+      // Use SKU as id (Elevar expects SKU here)
+      id: item.variantSku ||
+          item.sku ||
+          item.product?.sku ||
+          packageData?.product_sku ||
+          `SKU-${item.packageId || item.id}`,
+
+      name: item.productName ||
+            item.product?.title ||
+            packageData?.product_name ||
+            item.title ||
+            '',
+
+      product_id: String(
+        item.productId ||
+        packageData?.product_id ||
+        item.packageId ||
+        ''
+      ),
+
+      variant_id: String(
+        item.variantId ||
+        packageData?.product_variant_id ||
+        ''
+      ),
+
+      brand: item.productName ||
+             packageData?.product_name ||
+             campaignName,
+
       category: campaignName,
-      variant: (item as any).variantName || packageData?.product_variant_name || item.package_profile || item.variant || '',
+
+      variant: item.variantName ||
+               packageData?.product_variant_name ||
+               item.package_profile ||
+               '',
+
       price: priceValue.toFixed(2), // Format as string with 2 decimals
-      quantity: String(item.quantity || 1)
+      quantity: String(item.quantity || item.qty || 1)
     };
 
     // Add optional fields
     // Always add compare_at_price (use "0.0" if not available as per Elevar docs)
-    if (packageData?.price_retail || (item as any).price_retail) {
-      product.compare_at_price = String(packageData?.price_retail || (item as any).price_retail);
-    } else {
-      product.compare_at_price = "0.0";
+    let comparePrice = "0.0";
+    if (item.price_retail) {
+      comparePrice = String(item.price_retail);
+    } else if (packageData?.price_retail) {
+      comparePrice = String(packageData.price_retail);
+    } else if (typeof item.price === 'object' && item.price && 'original' in item.price && item.price.original?.value) {
+      comparePrice = String(item.price.original.value);
     }
-    if (packageData?.image || (item as any).image || (item as any).imageUrl) {
-      product.image = packageData?.image || (item as any).image || (item as any).imageUrl || '';
+    product.compare_at_price = comparePrice;
+
+    // Handle image from various sources
+    if (item.image ||
+        packageData?.image ||
+        item.product?.image) {
+      product.image = item.image ||
+                     packageData?.image ||
+                     item.product?.image ||
+                     '';
     }
 
     // Add position (1-based for Elevar)

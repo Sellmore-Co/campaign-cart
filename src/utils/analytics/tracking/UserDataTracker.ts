@@ -52,13 +52,15 @@ export class UserDataTracker {
     this.isInitialized = true;
     dataLayer.initialize();
 
-    // Track initial user data
+    // CRITICAL: Force immediate user data tracking without debounce
+    // This ensures dl_user_data is ALWAYS the first event on page load
+    this.lastTrackTime = 0;  // Reset to bypass debounce
     this.trackUserData();
 
-    // Set up listeners
+    // Set up listeners for future changes
     this.setupListeners();
 
-    logger.info('UserDataTracker initialized');
+    logger.info('UserDataTracker initialized - dl_user_data fired first');
   }
 
   /**
