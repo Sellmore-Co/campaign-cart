@@ -3,14 +3,14 @@
  * Builder methods for user-related analytics events
  */
 
-import type { DataLayerEvent, UserProperties, ElevarProduct } from '../types';
+import type { DataLayerEvent, UserProperties, EcommerceItem, EcommerceData } from '../types';
 import { EventBuilder } from './EventBuilder';
 import { useCartStore } from '@/stores/cartStore';
 import { useCampaignStore } from '@/stores/campaignStore';
 
 export class UserEvents {
   /**
-   * Create base user data event (Elevar format)
+   * Create base user data event (GA4 format)
    * This is the foundation for all user-related events
    */
   static createUserDataEvent(
@@ -24,7 +24,7 @@ export class UserEvents {
       ...userData
     };
 
-    // For dl_user_data event, add cart_contents and cart_total
+    // For dl_user_data event, add cart items and cart_total
     if (eventName === 'dl_user_data') {
       try {
         if (typeof window !== 'undefined') {
@@ -35,22 +35,26 @@ export class UserEvents {
           // Use items from cart store - they already have all the fields we need
           const cartItems = cartState?.items || [];
 
-          // Format cart items as Elevar products using EventBuilder
-          const products: ElevarProduct[] = cartItems.length > 0
-            ? cartItems.map((item: any, idx: number) => EventBuilder.formatElevarProduct(item, idx))
+          // Format cart items as GA4 items using EventBuilder
+          const items: EcommerceItem[] = cartItems.length > 0
+            ? cartItems.map((item: any, idx: number) => EventBuilder.formatEcommerceItem(item, idx))
             : [];
 
           // Calculate cart total
           const cartTotal = cartState?.totals?.total?.value || cartState?.total || 0;
 
-          // Always return the event with cart_contents (even if empty array)
+          // Build GA4 ecommerce object
+          const ecommerce: EcommerceData = {
+            currency,
+            value: cartTotal,
+            items // GA4 expects items array (can be empty)
+          };
+
+          // Always return the event with ecommerce data (even if items is empty array)
           return EventBuilder.createEvent(eventName, {
             user_properties: userProperties,
             cart_total: String(cartTotal),
-            ecommerce: {
-              currencyCode: currency,
-              cart_contents: products // Elevar expects products array (can be empty)
-            },
+            ecommerce,
             ...additionalData
           });
         }

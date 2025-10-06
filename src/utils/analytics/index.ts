@@ -137,17 +137,28 @@ export class NextAnalytics {
       // Initialize providers based on configuration FIRST
       await this.initializeProviders(config.analytics, config.storeName);
 
-      // Initialize automatic tracking BEFORE processing pending events
-      // This ensures dl_user_data fires first on every page load
+      // CRITICAL: Fire dl_user_data FIRST, before any other tracking
+      // This must happen before any other events
       if (config.analytics.mode === 'auto') {
-        this.initializeAutoTracking();
+        // Initialize UserDataTracker first and wait for it to fire
+        this.userTracker.initialize();
+
+        // Wait a moment to ensure dl_user_data is processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Now initialize other trackers (they may fire view/list events)
+        this.listTracker.initialize();
+        this.viewTracker.initialize();
+        this.autoListener.initialize();
+
+        logger.info('Auto-tracking initialized (user data fired first)');
       }
 
-      // Process any pending events from previous page AFTER user data is tracked
-      // Adding a small delay to ensure dl_user_data is fully processed
+      // Process any pending events from previous page AFTER everything is initialized
+      // Adding delay to ensure all initial events are processed first
       setTimeout(() => {
         PendingEventsHandler.getInstance().processPendingEvents();
-      }, 50);
+      }, 200);
 
       this.initialized = true;
       logger.info('NextAnalytics initialized successfully', {
@@ -218,15 +229,12 @@ export class NextAnalytics {
 
   /**
    * Initialize automatic tracking features
+   * NOTE: This method is no longer used - tracking is initialized inline
+   * in the initialize() method to ensure proper ordering
    */
   private initializeAutoTracking(): void {
-    // Initialize trackers
-    this.listTracker.initialize();
-    this.viewTracker.initialize();
-    this.userTracker.initialize();
-    this.autoListener.initialize();
-
-    logger.info('Auto-tracking initialized');
+    // Deprecated - see initialize() method for current implementation
+    logger.warn('initializeAutoTracking called but is deprecated');
   }
 
   /**

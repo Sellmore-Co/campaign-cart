@@ -69,7 +69,7 @@ export class PendingEventsHandler {
 
   /**
    * Process and fire all pending events
-   * IMPORTANT: This should only be called AFTER dl_user_data has been fired
+   * IMPORTANT: This should only be called AFTER dl_user_data has been fired on the current page
    */
   public processPendingEvents(): void {
     const events = this.getPendingEvents();
@@ -81,14 +81,18 @@ export class PendingEventsHandler {
 
     logger.info(`Processing ${events.length} pending analytics events`);
 
-    // Sort events to ensure dl_user_data always comes first if present
-    const sortedEvents = [...events].sort((a, b) => {
-      // dl_user_data events should always come first
-      if (a.event.event === 'dl_user_data') return -1;
-      if (b.event.event === 'dl_user_data') return 1;
-      // Otherwise maintain original order (by timestamp)
-      return a.timestamp - b.timestamp;
+    // Filter out dl_user_data events - they should never be queued
+    // The current page should fire its own dl_user_data
+    const filteredEvents = events.filter(e => {
+      if (e.event.event === 'dl_user_data') {
+        logger.warn('Skipping queued dl_user_data - current page should fire its own');
+        return false;
+      }
+      return true;
     });
+
+    // Sort remaining events by timestamp to maintain order
+    const sortedEvents = [...filteredEvents].sort((a, b) => a.timestamp - b.timestamp);
 
     const processedIds: string[] = [];
 
@@ -110,6 +114,10 @@ export class PendingEventsHandler {
         logger.error('Failed to process pending event:', pendingEvent.event.event, error);
       }
     }
+
+    // Also mark filtered dl_user_data events as processed
+    const userDataEvents = events.filter(e => e.event.event === 'dl_user_data');
+    processedIds.push(...userDataEvents.map(e => e.id));
     
     // Remove processed events
     if (processedIds.length > 0) {

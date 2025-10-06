@@ -71,7 +71,7 @@ export class ViewItemListTracker {
     this.lastScanTime = now;
 
     const products = this.findProductElements();
-    
+
     if (products.length === 0) {
       logger.debug('No products found on page');
       return;
@@ -88,6 +88,9 @@ export class ViewItemListTracker {
     } else {
       // Multiple products - fire view_item_list event
       this.trackViewItemList(products);
+
+      // Also fire view_item for the selected item in select mode selectors
+      this.trackSelectedItemInSelectors();
     }
   }
 
@@ -104,11 +107,69 @@ export class ViewItemListTracker {
    * Find all product elements on the page
    */
   private findProductElements(): TrackedProduct[] {
-    const elements = document.querySelectorAll('[data-next-package-id]');
+    // Check for different selector modes
+    const swapSelectors = document.querySelectorAll('[data-next-selection-mode="swap"]');
+    const selectSelectors = document.querySelectorAll('[data-next-selection-mode="select"]');
+
     const products: TrackedProduct[] = [];
     const seen = new Set<string>();
 
+    // For swap mode selectors, only track the selected item (single view)
+    if (swapSelectors.length > 0) {
+      swapSelectors.forEach(selector => {
+        // Find the selected card within this selector
+        const selectedCard = selector.querySelector('[data-next-selector-card][data-next-selected="true"]');
+
+        if (selectedCard) {
+          const packageId = selectedCard.getAttribute('data-next-package-id');
+          if (packageId && !seen.has(packageId)) {
+            seen.add(packageId);
+            products.push({
+              packageId,
+              element: selectedCard,
+              index: products.length
+            });
+          }
+        }
+      });
+    }
+
+    // For select mode selectors, track ALL items (list view)
+    if (selectSelectors.length > 0) {
+      selectSelectors.forEach(selector => {
+        const selectorCards = selector.querySelectorAll('[data-next-selector-card]');
+        selectorCards.forEach((card, index) => {
+          const packageId = card.getAttribute('data-next-package-id');
+          if (packageId && !seen.has(packageId)) {
+            seen.add(packageId);
+            products.push({
+              packageId,
+              element: card,
+              index: products.length
+            });
+          }
+        });
+      });
+    }
+
+    // If we found items in selectors, return those
+    if (products.length > 0) {
+      logger.debug(`Found ${products.length} products in selectors`);
+      return products;
+    }
+
+    // Fall back to normal behavior - find all elements with data-next-package-id
+    const elements = document.querySelectorAll('[data-next-package-id]');
+
     elements.forEach((element, index) => {
+      // Skip selector cards (we handle them above)
+      const isSelectorCard = element.hasAttribute('data-next-selector-card') &&
+                            (element.closest('[data-next-selection-mode="swap"]') ||
+                             element.closest('[data-next-selection-mode="select"]'));
+      if (isSelectorCard) {
+        return; // Skip this element
+      }
+
       const packageId = element.getAttribute('data-next-package-id');
       if (packageId && !seen.has(packageId)) {
         seen.add(packageId);
@@ -124,6 +185,66 @@ export class ViewItemListTracker {
   }
 
   /**
+   * Track selected items in select mode selectors
+   * This fires view_item events for the currently selected package in each selector
+   */
+  private trackSelectedItemInSelectors(): void {
+    const selectSelectors = document.querySelectorAll('[data-next-selection-mode="select"]');
+
+    selectSelectors.forEach(selector => {
+      const selectedCard = selector.querySelector('[data-next-selector-card][data-next-selected="true"]');
+
+      if (selectedCard) {
+        const packageId = selectedCard.getAttribute('data-next-package-id');
+        if (packageId) {
+          const product: TrackedProduct = {
+            packageId,
+            element: selectedCard,
+            index: 0
+          };
+          // Track this as a separate view_item event
+          this.trackViewItemForSelected(product);
+        }
+      }
+    });
+  }
+
+  /**
+   * Track a single product view (for selected items, doesn't add to trackedProducts set)
+   */
+  private trackViewItemForSelected(product: TrackedProduct): void {
+    const campaignStore = useCampaignStore.getState();
+
+    // Debug: Check if campaign data is loaded
+    if (!campaignStore.data || !campaignStore.packages || campaignStore.packages.length === 0) {
+      logger.debug('Campaign data not yet loaded, deferring tracking');
+      return;
+    }
+
+    // Convert packageId to number if needed
+    const packageIdNum = parseInt(product.packageId, 10);
+    const packageData = !isNaN(packageIdNum) ? campaignStore.getPackage(packageIdNum) : null;
+
+    if (!packageData) {
+      logger.warn('Package not found in store:', product.packageId);
+      return;
+    }
+
+    // Create item - pass packageId so EventBuilder.formatEcommerceItem can look it up
+    const item = {
+      packageId: packageIdNum,  // EventBuilder will use this to lookup package data from campaign store
+      package_id: packageIdNum,
+      id: packageIdNum
+    };
+
+    // Use EcommerceEvents to properly format the event
+    const event = EcommerceEvents.createViewItemEvent(item);
+    dataLayer.push(event);
+
+    logger.debug('Tracked view_item for selected package:', product.packageId);
+  }
+
+  /**
    * Track a single product view
    */
   private trackViewItem(product: TrackedProduct): void {
@@ -133,7 +254,7 @@ export class ViewItemListTracker {
     }
 
     const campaignStore = useCampaignStore.getState();
-    
+
     // Debug: Check if campaign data is loaded
     if (!campaignStore.data || !campaignStore.packages || campaignStore.packages.length === 0) {
       logger.debug('Campaign data not yet loaded, deferring tracking');
@@ -150,21 +271,11 @@ export class ViewItemListTracker {
       return;
     }
 
-    // Create item in a format that EcommerceEvents can work with
+    // Create item - pass packageId so EventBuilder.formatEcommerceItem can look it up
     const item = {
-      packageId: product.packageId,
-      id: packageData.external_id || packageData.ref_id,
-      title: packageData.name || `Package ${product.packageId}`,
-      price: parseFloat(packageData.price_total || '0'),
-      price_incl_tax: parseFloat(packageData.price_total || '0'),
-      quantity: 1,
-      package_profile: packageData.product_variant_name || packageData.product?.variant?.name,
-      variant: packageData.product_variant_name || packageData.product?.variant?.name,
-      product_name: packageData.product_name || packageData.product?.name,
-      product_sku: packageData.product_sku || packageData.product?.variant?.sku,
-      image: packageData.image,
-      product_id: packageData.product_id,
-      product_variant_id: packageData.product_variant_id
+      packageId: packageIdNum,  // EventBuilder will use this to lookup package data from campaign store
+      package_id: packageIdNum,
+      id: packageIdNum
     };
 
     // Use EcommerceEvents to properly format the event with detail structure
@@ -213,22 +324,11 @@ export class ViewItemListTracker {
       const price = parseFloat(packageData.price_total || '0'); // Use total package price
       totalValue += price;
 
-      // Create item in a format that EcommerceEvents can work with
+      // Create item - pass packageId so EventBuilder.formatEcommerceItem can look it up
       items.push({
-        packageId: product.packageId,
-        id: packageData.external_id || packageData.ref_id,
-        title: packageData.name || `Package ${product.packageId}`,
-        price: price,
-        price_incl_tax: price,
-        quantity: 1,
-        package_profile: packageData.product_variant_name || packageData.product?.variant?.name,
-        variant: packageData.product_variant_name || packageData.product?.variant?.name,
-        product_name: packageData.product_name || packageData.product?.name,
-        product_sku: packageData.product_sku || packageData.product?.variant?.sku,
-        image: packageData.image,
-        // These will be used by EventBuilder.formatElevarImpression
-        product_id: packageData.product_id,
-        product_variant_id: packageData.product_variant_id
+        packageId: packageIdNum,  // EventBuilder will use this to lookup package data from campaign store
+        package_id: packageIdNum,
+        id: packageIdNum
       });
 
       this.trackedProducts.add(product.packageId);
@@ -271,9 +371,30 @@ export class ViewItemListTracker {
               }
             }
           }
-        } else if (mutation.type === 'attributes' && 
-                   mutation.attributeName === 'data-next-package-id') {
-          hasRelevantChanges = true;
+        } else if (mutation.type === 'attributes') {
+          // Watch for package ID changes
+          if (mutation.attributeName === 'data-next-package-id') {
+            hasRelevantChanges = true;
+          }
+          // Watch for selection changes in swap mode selectors
+          else if (mutation.attributeName === 'data-next-selected' &&
+                   mutation.target instanceof Element &&
+                   mutation.target.closest('[data-next-selection-mode="swap"]')) {
+            // For swap selectors, we want to track the newly selected item
+            // But we should only clear the previously tracked item, not all tracked products
+            const swapSelector = mutation.target.closest('[data-next-selection-mode="swap"]');
+            if (swapSelector) {
+              // Find any previously tracked items from this selector and remove them
+              const selectorCards = swapSelector.querySelectorAll('[data-next-selector-card]');
+              selectorCards.forEach(card => {
+                const pkgId = card.getAttribute('data-next-package-id');
+                if (pkgId) {
+                  this.trackedProducts.delete(pkgId);
+                }
+              });
+            }
+            hasRelevantChanges = true;
+          }
         }
 
         if (hasRelevantChanges) {
@@ -292,7 +413,7 @@ export class ViewItemListTracker {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['data-next-package-id']
+      attributeFilter: ['data-next-package-id', 'data-next-selected']
     });
 
     logger.debug('Mutation observer set up');

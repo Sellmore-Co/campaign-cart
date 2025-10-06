@@ -55,7 +55,8 @@ export interface UserProperties {
 }
 
 /**
- * Elevar Enhanced Ecommerce data structure
+ * @deprecated Legacy Elevar Enhanced Ecommerce structure - kept for backward compatibility
+ * Use EcommerceItem (GA4 format) instead
  */
 export interface ElevarProduct {
   id: string; // SKU
@@ -74,6 +75,10 @@ export interface ElevarProduct {
   url?: string;
 }
 
+/**
+ * @deprecated Legacy Elevar impression structure - kept for backward compatibility
+ * Use EcommerceItem (GA4 format) instead
+ */
 export interface ElevarImpression {
   id: string; // SKU
   name: string;
@@ -90,26 +95,36 @@ export interface ElevarImpression {
 }
 
 /**
- * Ecommerce data types (Enhanced Ecommerce format)
+ * Ecommerce data (GA4 format)
+ * Follows Google Analytics 4 event structure
  */
 export interface EcommerceData {
-  // Standard GA4 fields (kept for compatibility)
+  // GA4 standard fields
   currency?: string;
   value?: number;
-  value_change?: number;
   items?: EcommerceItem[];
-  items_removed?: EcommerceItem[];
-  items_added?: EcommerceItem[];
   transaction_id?: string;
   affiliation?: string;
   tax?: number;
   shipping?: number;
   coupon?: string;
   discount?: number;
+
+  // GA4 list fields
+  item_list_id?: string;
+  item_list_name?: string;
+
+  // GA4 shipping/payment fields
   shipping_tier?: string;
   payment_type?: string;
 
-  // Elevar Enhanced Ecommerce fields
+  // Custom fields for package swaps
+  value_change?: number;
+  items_removed?: EcommerceItem[];
+  items_added?: EcommerceItem[];
+
+  // @deprecated Legacy Enhanced Ecommerce fields - kept for backward compatibility only
+  // These should not be used in new code
   currencyCode?: string;
   impressions?: ElevarImpression[];
   detail?: {
@@ -174,6 +189,8 @@ export interface EcommerceItem {
   item_category4?: string;
   item_category5?: string;
   item_variant?: string;
+  item_variant_id?: string; // Product variant ID
+  item_product_id?: string; // Product ID
   item_image?: string;
   item_sku?: string;
   price?: number;
@@ -263,12 +280,15 @@ export interface AnalyticsProvider {
 }
 
 /**
- * Cart contents for dl_user_data event
+ * Cart contents for dl_user_data event (GA4 format)
  */
 export interface CartContents {
-  products: ElevarProduct[];
-  total_value: string;
-  item_count: string;
+  items: EcommerceItem[];
+  total_value: string | number;
+  item_count: string | number;
+
+  // @deprecated Legacy field - use items instead
+  products?: ElevarProduct[];
 }
 
 /**

@@ -4,6 +4,7 @@
  */
 
 import type { DataLayerEvent, UserProperties, EventContext, EventMetadata, EcommerceItem, ElevarProduct, ElevarImpression } from '../types';
+import { useCampaignStore } from '@/stores/campaignStore';
 
 // Define minimal types to avoid external dependencies
 interface MinimalCartItem {
@@ -205,11 +206,8 @@ export class EventBuilder {
   static getCurrency(): string {
     try {
       if (typeof window !== 'undefined') {
-        const campaignStore = (window as any).campaignStore;
-        if (campaignStore) {
-          const campaign = campaignStore.getState().data;
-          return campaign?.currency || 'USD';
-        }
+        const campaignState = useCampaignStore.getState();
+        return campaignState.data?.currency || 'USD';
       }
     } catch (error) {
       console.warn('Could not access campaign store for currency:', error);
@@ -231,14 +229,15 @@ export class EventBuilder {
 
     try {
       if (typeof window !== 'undefined') {
-        const campaignStore = (window as any).campaignStore;
-        if (campaignStore) {
-          const campaign = campaignStore.getState().data;
-          campaignName = campaign?.name || 'Campaign';
+        const campaignState = useCampaignStore.getState();
+        const campaign = campaignState.data;
+
+        if (campaign) {
+          campaignName = campaign.name || 'Campaign';
 
           // Try to get image from campaign packages
           const packageId = item.packageId || item.package_id || item.id;
-          if (packageId && campaign?.packages) {
+          if (packageId && campaign.packages) {
             const packageData = campaign.packages.find((p: any) =>
               p.ref_id === packageId || p.external_id === packageId
             );
@@ -253,12 +252,53 @@ export class EventBuilder {
     }
 
     // Handle different item formats
-    const itemId = String(item.packageId || item.package_id || item.id);
-    const itemName = item.product?.title ||
-                    item.title ||
-                    item.product_title ||
-                    item.name ||
-                    `Package ${itemId}`;
+    // Use product data instead of package data for consistent tracking
+    let itemId: string;
+    let itemName: string;
+    let productId: string | undefined;
+    let variantId: string | undefined;
+
+    try {
+      // Try to get product data from campaign store
+      if (typeof window !== 'undefined') {
+        const campaignState = useCampaignStore.getState();
+        const campaign = campaignState.data;
+        const packageId = item.packageId || item.package_id || item.id;
+
+        if (packageId && campaign?.packages) {
+          const packageData = campaign.packages.find((p: any) =>
+            String(p.ref_id) === String(packageId) || String(p.external_id) === String(packageId)
+          );
+
+          if (packageData) {
+            // Use product SKU as item_id (matches purchase event format)
+            itemId = packageData.product_sku || String(packageData.external_id);
+            itemName = packageData.product_name || packageData.name;
+            productId = String(packageData.product_id);
+            variantId = String(packageData.product_variant_id);
+          } else {
+            console.warn(`Could not find package data for packageId: ${packageId}`, {
+              packageId,
+              availablePackages: campaign.packages.map((p: any) => ({ ref_id: p.ref_id, name: p.name }))
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Could not access campaign store for product data:', error);
+    }
+
+    // Fallback if campaign store lookup failed
+    if (!itemId) {
+      itemId = String(item.packageId || item.package_id || item.id);
+    }
+    if (!itemName) {
+      itemName = item.product?.title ||
+                item.title ||
+                item.product_title ||
+                item.name ||
+                `Package ${itemId}`;
+    }
 
     // Get image from various possible sources
     if (!imageUrl) {
@@ -268,17 +308,68 @@ export class EventBuilder {
                  (item as any).image_url;
     }
 
+    // Get actual product quantity from package
+    let quantity = 1;
+    try {
+      if (typeof window !== 'undefined') {
+        const campaignState = useCampaignStore.getState();
+        const campaign = campaignState.data;
+        const packageId = item.packageId || item.package_id || item.id;
+
+        if (packageId && campaign?.packages) {
+          const packageData = campaign.packages.find((p: any) =>
+            String(p.ref_id) === String(packageId) || String(p.external_id) === String(packageId)
+          );
+
+          if (packageData?.qty) {
+            quantity = packageData.qty; // Use package qty (3 for "3x Drone")
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Could not access campaign store for quantity:', error);
+    }
+
+    // Fallback to item quantity
+    if (quantity === 1 && (item.quantity || item.qty)) {
+      quantity = item.quantity || item.qty || 1;
+    }
+
+    // Get price per unit (not package total)
     let price: number = 0;
-    if (item.price_incl_tax) {
-      price = typeof item.price_incl_tax === 'string' ? parseFloat(item.price_incl_tax) : item.price_incl_tax;
-    } else if (item.price) {
-      if (typeof item.price === 'object' && 'incl_tax' in item.price) {
-        price = item.price.incl_tax.value;
-      } else {
-        price = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
+    try {
+      if (typeof window !== 'undefined') {
+        const campaignState = useCampaignStore.getState();
+        const campaign = campaignState.data;
+        const packageId = item.packageId || item.package_id || item.id;
+
+        if (packageId && campaign?.packages) {
+          const packageData = campaign.packages.find((p: any) =>
+            String(p.ref_id) === String(packageId) || String(p.external_id) === String(packageId)
+          );
+
+          if (packageData) {
+            // Use the per-unit price (packageData.price is already per-unit, not total)
+            price = typeof packageData.price === 'string' ? parseFloat(packageData.price) : packageData.price;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Could not access campaign store for price:', error);
+    }
+
+    // Fallback to item price
+    if (price === 0) {
+      if (item.price_incl_tax) {
+        price = typeof item.price_incl_tax === 'string' ? parseFloat(item.price_incl_tax) : item.price_incl_tax;
+      } else if (item.price) {
+        if (typeof item.price === 'object' && 'incl_tax' in item.price) {
+          price = item.price.incl_tax.value;
+        } else {
+          price = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
+        }
       }
     }
-    const quantity = item.quantity || 1;
 
     const ecommerceItem: EcommerceItem = {
       item_id: itemId,
@@ -288,6 +379,14 @@ export class EventBuilder {
       quantity,
       currency,
     };
+
+    // Add product_id and variant_id if available
+    if (productId) {
+      ecommerceItem.item_product_id = productId;
+    }
+    if (variantId) {
+      ecommerceItem.item_variant_id = variantId;
+    }
 
     // Add variant information - prefer product_variant_name over package_profile
     const variant = (item as any).product_variant_name ||
@@ -376,7 +475,9 @@ export class EventBuilder {
   }
 
   /**
+   * @deprecated Use formatEcommerceItem() instead for GA4 format
    * Format product for Elevar (matches their exact structure)
+   * Kept for backward compatibility only
    */
   static formatElevarProduct(
     item: MinimalCartItem,
@@ -513,7 +614,9 @@ export class EventBuilder {
   }
 
   /**
+   * @deprecated Use formatEcommerceItem() instead for GA4 format
    * Format impression for Elevar (similar to product but for list views)
+   * Kept for backward compatibility only
    */
   static formatElevarImpression(
     item: MinimalCartItem,

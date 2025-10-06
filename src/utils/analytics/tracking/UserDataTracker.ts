@@ -31,6 +31,7 @@ export class UserDataTracker {
   private trackDebounceMs = 1000; // 1 second debounce
   private isInitialized = false;
   private unsubscribers: (() => void)[] = [];
+  private hasTrackedInitial = false; // Track if initial event has been fired
 
   private constructor() {}
 
@@ -56,9 +57,14 @@ export class UserDataTracker {
     // This ensures dl_user_data is ALWAYS the first event on page load
     this.lastTrackTime = 0;  // Reset to bypass debounce
     this.trackUserData();
+    this.hasTrackedInitial = true;
 
-    // Set up listeners for future changes
-    this.setupListeners();
+    // Set up listeners AFTER initial tracking
+    // Add delay to prevent cart store initialization from triggering duplicate
+    setTimeout(() => {
+      this.setupListeners();
+      logger.debug('User data tracking listeners set up after initial tracking');
+    }, 200);
 
     logger.info('UserDataTracker initialized - dl_user_data fired first');
   }
@@ -68,6 +74,17 @@ export class UserDataTracker {
    */
   public trackUserData(): void {
     const now = Date.now();
+
+    // Log call stack for debugging duplicate events
+    if (this.hasTrackedInitial) {
+      const stack = new Error().stack;
+      logger.debug('trackUserData called after initial:', {
+        timeSinceLastTrack: now - this.lastTrackTime,
+        willDebounce: now - this.lastTrackTime < this.trackDebounceMs,
+        stack: stack?.split('\n').slice(1, 4).join('\n')
+      });
+    }
+
     if (now - this.lastTrackTime < this.trackDebounceMs) {
       logger.debug('User data tracking debounced');
       return;
@@ -232,17 +249,32 @@ export class UserDataTracker {
       });
 
       // Override pushState and replaceState
+      // Only track on pushState (actual navigation), not replaceState (URL updates)
       const originalPushState = history.pushState;
       const originalReplaceState = history.replaceState;
 
+      let lastUrl = window.location.href;
+
       history.pushState = function(...args) {
         originalPushState.apply(history, args);
-        setTimeout(() => UserDataTracker.getInstance().trackUserData(), 0);
+        const newUrl = window.location.href;
+        // Only track if URL actually changed (not just query params)
+        if (newUrl !== lastUrl) {
+          const oldPath = new URL(lastUrl).pathname;
+          const newPath = new URL(newUrl).pathname;
+          if (oldPath !== newPath) {
+            lastUrl = newUrl;
+            logger.debug('pushState changed path, tracking user data');
+            setTimeout(() => UserDataTracker.getInstance().trackUserData(), 0);
+          }
+        }
       };
 
       history.replaceState = function(...args) {
         originalReplaceState.apply(history, args);
-        setTimeout(() => UserDataTracker.getInstance().trackUserData(), 0);
+        // Do NOT track on replaceState - it's used for query param updates
+        // which shouldn't trigger user data events
+        logger.debug('replaceState called, not tracking user data (query param update)');
       };
     }
 

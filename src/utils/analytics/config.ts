@@ -59,31 +59,32 @@ export const PROVIDER_SETTINGS = {
 } as const;
 
 /**
- * Event validation rules
+ * Event validation rules (GA4 format)
  */
 export const EVENT_VALIDATION_RULES = {
   // Required fields for all events
   required: ['event'],
-  
-  // Event-specific required fields (Elevar Enhanced Ecommerce format)
+
+  // Event-specific required fields (GA4 format)
   eventSpecific: {
-    // Elevar dl_ events with Enhanced Ecommerce structure
-    dl_purchase: ['ecommerce.purchase.actionField.id', 'ecommerce.purchase.actionField.revenue', 'ecommerce.purchase.products'],
-    dl_add_to_cart: ['ecommerce.add.products', 'ecommerce.currencyCode'],
-    dl_remove_from_cart: ['ecommerce.remove.products', 'ecommerce.currencyCode'],
-    dl_view_item: ['ecommerce.detail.products', 'ecommerce.currencyCode'],
-    dl_view_item_list: ['ecommerce.impressions', 'ecommerce.currencyCode'],
-    dl_view_search_results: ['ecommerce.impressions', 'ecommerce.currencyCode'],
-    dl_select_item: ['ecommerce.click.products', 'ecommerce.currencyCode'],
-    dl_begin_checkout: ['ecommerce.checkout.products', 'ecommerce.currencyCode'],
-    dl_view_cart: ['ecommerce.impressions', 'ecommerce.currencyCode'],
-    dl_add_payment_info: ['ecommerce.currencyCode'],
-    dl_add_shipping_info: ['ecommerce.currencyCode'],
-    dl_user_data: ['user_properties', 'ecommerce.cart_contents'],
+    // GA4 dl_ events with flat structure
+    dl_purchase: ['ecommerce.transaction_id', 'ecommerce.value', 'ecommerce.items'],
+    dl_add_to_cart: ['ecommerce.items', 'ecommerce.currency'],
+    dl_remove_from_cart: ['ecommerce.items', 'ecommerce.currency'],
+    dl_view_item: ['ecommerce.items', 'ecommerce.currency'],
+    dl_view_item_list: ['ecommerce.items', 'ecommerce.currency'],
+    dl_view_search_results: ['ecommerce.items', 'ecommerce.currency'],
+    dl_select_item: ['ecommerce.items', 'ecommerce.currency'],
+    dl_begin_checkout: ['ecommerce.items', 'ecommerce.currency'],
+    dl_view_cart: ['ecommerce.items', 'ecommerce.currency'],
+    dl_add_payment_info: ['ecommerce.currency'],
+    dl_add_shipping_info: ['ecommerce.currency'],
+    dl_user_data: ['user_properties'], // ecommerce.items is optional for empty cart
     dl_sign_up: ['user_properties'],
     dl_login: ['user_properties'],
     dl_subscribe: ['user_properties', 'lead_type'],
     dl_package_swapped: ['ecommerce.items_removed', 'ecommerce.items_added'],
+    dl_upsell_purchase: ['ecommerce.transaction_id', 'ecommerce.value', 'ecommerce.items'],
 
     // Standard GA4 events (kept for compatibility)
     purchase: ['ecommerce.value', 'ecommerce.items'],

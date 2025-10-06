@@ -11,7 +11,7 @@ import type { CartItem, EnrichedCartLine } from '@/types/global';
 
 export class EcommerceEvents {
   /**
-   * Create view_item_list event with impressions array (Elevar format)
+   * Create view_item_list event (GA4 format)
    */
   static createViewItemListEvent(
     items: (CartItem | EnrichedCartLine | any)[],
@@ -20,17 +20,19 @@ export class EcommerceEvents {
   ): DataLayerEvent {
     const currency = EventBuilder.getCurrency();
 
-    // Format items as impressions
-    const impressions = items.map((item, index) =>
-      EventBuilder.formatElevarImpression(item, index, listId || listName)
+    // Format items as GA4 items
+    const formattedItems = items.map((item, index) =>
+      EventBuilder.formatEcommerceItem(item, index, { id: listId, name: listName })
     );
 
     // Store list attribution for future events
     EventBuilder.setListAttribution(listId, listName);
 
-    const ecommerce: any = {
-      currencyCode: currency,
-      impressions: impressions
+    const ecommerce: EcommerceData = {
+      currency,
+      items: formattedItems,
+      item_list_id: listId,
+      item_list_name: listName || listId
     };
 
     return EventBuilder.createEvent('dl_view_item_list', {
@@ -40,24 +42,19 @@ export class EcommerceEvents {
   }
 
   /**
-   * Create view_item event (Elevar format)
+   * Create view_item event (GA4 format)
    */
   static createViewItemEvent(
     item: CartItem | EnrichedCartLine | any
   ): DataLayerEvent {
     const currency = EventBuilder.getCurrency();
-    const formattedItem = EventBuilder.formatElevarProduct(item);
     const list = EventBuilder.getListAttribution();
 
-    const ecommerce: any = {
-      currencyCode: currency,
-      detail: {
-        actionField: {
-          list: list?.name || list?.id || location.pathname,
-          action: 'detail'
-        },
-        products: [formattedItem]
-      }
+    const formattedItem = EventBuilder.formatEcommerceItem(item, 0, list);
+
+    const ecommerce: EcommerceData = {
+      currency,
+      items: [formattedItem]
     };
 
     return EventBuilder.createEvent('dl_view_item', {
@@ -67,7 +64,7 @@ export class EcommerceEvents {
   }
 
   /**
-   * Create add_to_cart event with list attribution (Elevar format)
+   * Create add_to_cart event with list attribution (GA4 format)
    */
   static createAddToCartEvent(
     item: CartItem | EnrichedCartLine | any,
@@ -78,18 +75,23 @@ export class EcommerceEvents {
 
     // Use provided list info or get from session
     const list = EventBuilder.getListAttribution();
-    const listPath = listName || listId || list?.name || list?.id || location.pathname;
+    const finalListId = listId || list?.id;
+    const finalListName = listName || list?.name || finalListId;
 
-    const formattedItem = EventBuilder.formatElevarProduct(item);
+    const formattedItem = EventBuilder.formatEcommerceItem(item, 0, {
+      id: finalListId,
+      name: finalListName
+    });
 
-    const ecommerce: any = {
-      currencyCode: currency,
-      add: {
-        actionField: {
-          list: listPath
-        },
-        products: [formattedItem]
-      }
+    // Calculate value (price * quantity)
+    const value = formattedItem.price && formattedItem.quantity
+      ? formattedItem.price * formattedItem.quantity
+      : 0;
+
+    const ecommerce: EcommerceData = {
+      currency,
+      value,
+      items: [formattedItem]
     };
 
     return EventBuilder.createEvent('dl_add_to_cart', {
@@ -99,23 +101,25 @@ export class EcommerceEvents {
   }
 
   /**
-   * Create remove_from_cart event (Elevar format)
+   * Create remove_from_cart event (GA4 format)
    */
   static createRemoveFromCartEvent(
     item: CartItem | EnrichedCartLine | any
   ): DataLayerEvent {
     const currency = EventBuilder.getCurrency();
-    const formattedItem = EventBuilder.formatElevarProduct(item);
     const list = EventBuilder.getListAttribution();
 
-    const ecommerce: any = {
-      currencyCode: currency,
-      remove: {
-        actionField: {
-          list: list?.name || list?.id || location.pathname
-        },
-        products: [formattedItem]
-      }
+    const formattedItem = EventBuilder.formatEcommerceItem(item, 0, list);
+
+    // Calculate value (price * quantity)
+    const value = formattedItem.price && formattedItem.quantity
+      ? formattedItem.price * formattedItem.quantity
+      : 0;
+
+    const ecommerce: EcommerceData = {
+      currency,
+      value,
+      items: [formattedItem]
     };
 
     return EventBuilder.createEvent('dl_remove_from_cart', {
@@ -157,7 +161,7 @@ export class EcommerceEvents {
   }
 
   /**
-   * Create select_item event (product click) (Elevar format)
+   * Create select_item event (product click) (GA4 format)
    */
   static createSelectItemEvent(
     item: CartItem | EnrichedCartLine | any,
@@ -165,18 +169,17 @@ export class EcommerceEvents {
     listName?: string
   ): DataLayerEvent {
     const currency = EventBuilder.getCurrency();
-    const list = listName || listId || location.pathname;
-    const formattedItem = EventBuilder.formatElevarProduct(item);
 
-    const ecommerce: any = {
-      currencyCode: currency,
-      click: {
-        actionField: {
-          list: list,
-          action: 'click'
-        },
-        products: [formattedItem]
-      }
+    const formattedItem = EventBuilder.formatEcommerceItem(item, 0, {
+      id: listId,
+      name: listName || listId
+    });
+
+    const ecommerce: EcommerceData = {
+      currency,
+      items: [formattedItem],
+      item_list_id: listId,
+      item_list_name: listName || listId
     };
 
     return EventBuilder.createEvent('dl_select_item', {
@@ -186,32 +189,26 @@ export class EcommerceEvents {
   }
 
   /**
-   * Create begin_checkout event (Elevar format)
+   * Create begin_checkout event (GA4 format)
    */
   static createBeginCheckoutEvent(): DataLayerEvent {
     const cartState = useCartStore.getState();
     const currency = EventBuilder.getCurrency();
 
     // Use raw cart items, not enrichedItems, as they have the proper package data
-    const products = cartState.items.map((item, index) =>
-      EventBuilder.formatElevarProduct(item, index)
+    const items = cartState.items.map((item, index) =>
+      EventBuilder.formatEcommerceItem(item, index)
     );
 
-    // Build Elevar-style ecommerce object with checkout action
-    const ecommerce: any = {
-      currencyCode: currency,
-      checkout: {
-        actionField: {
-          step: 1,
-          option: 'Checkout'
-        },
-        products: products
-      }
+    const ecommerce: EcommerceData = {
+      currency,
+      value: cartState.totals.total.value || 0,
+      items
     };
 
     // Add coupon if applied
     if (cartState.appliedCoupons?.[0]?.code) {
-      ecommerce.checkout.actionField.coupon = cartState.appliedCoupons[0].code;
+      ecommerce.coupon = cartState.appliedCoupons[0].code;
     }
 
     return EventBuilder.createEvent('dl_begin_checkout', {
@@ -222,7 +219,7 @@ export class EcommerceEvents {
   }
 
   /**
-   * Create purchase event (Elevar format)
+   * Create purchase event (GA4 format)
    */
   static createPurchaseEvent(orderData: any): DataLayerEvent {
     const cartState = useCartStore.getState();
@@ -246,64 +243,64 @@ export class EcommerceEvents {
       order.shipping_incl_tax || orderData.shipping ||
       cartState.totals.shipping.value || 0
     );
-    const orderSubtotal = orderTotal - orderTax - orderShipping;
 
-    // Format order items as Elevar products
-    let products: any[] = [];
+    // Format order items as GA4 items
+    let items: EcommerceItem[] = [];
     if (order.lines && order.lines.length > 0) {
-      products = order.lines.map((line: any, index: number) => {
+      items = order.lines.map((line: any, index: number) => {
         // Try to get package data from campaign
-        const packageData = campaignStore.data?.packages?.find((p: any) =>
+        const packageData: any = campaignStore.data?.packages?.find((p: any) =>
           String(p.ref_id) === String(line.package)
         );
 
-        return {
-          id: line.product_sku || (packageData as any)?.product_sku || line.sku || `SKU-${line.product_id || line.id}`,
-          name: line.product_title || line.name || 'Unknown Product',
-          product_id: String(line.product_id || (packageData as any)?.product_id || line.package),
-          variant_id: String(line.variant_id || (packageData as any)?.product_variant_id || line.package),
-          price: String(line.price_incl_tax || line.price || 0),
-          brand: (packageData as any)?.product_name || campaignStore.data?.name || '',
-          category: line.campaign_name || campaignStore.data?.name || 'Campaign',
-          variant: line.package_profile || line.variant || '',
-          quantity: String(line.quantity || 1)
+        // Calculate per-unit price (line price might be total)
+        const linePrice = parseFloat(line.price_incl_tax || line.price || 0);
+        const lineQuantity = parseInt(line.quantity || 1);
+        const perUnitPrice = lineQuantity > 0 ? linePrice / lineQuantity : linePrice;
+
+        const item: EcommerceItem = {
+          item_id: line.product_sku || packageData?.product_sku || line.sku || `SKU-${line.product_id || line.id}`,
+          item_name: line.product_title || line.name || 'Unknown Product',
+          item_brand: packageData?.product_name || campaignStore.data?.name || '',
+          item_category: line.campaign_name || campaignStore.data?.name || 'Campaign',
+          item_variant: line.package_profile || line.variant || '',
+          price: perUnitPrice,
+          quantity: lineQuantity,
+          currency: order.currency || currency,
+          index
         };
+
+        return item;
       });
     } else if (orderData.items || cartState.enrichedItems.length > 0) {
       // Fallback to provided items or cart items
-      products = (orderData.items || cartState.enrichedItems).map(
-        (item: any, index: number) => EventBuilder.formatElevarProduct(item, index)
+      items = (orderData.items || cartState.enrichedItems).map(
+        (item: any, index: number) => EventBuilder.formatEcommerceItem(item, index)
       );
     }
 
-    // Build Elevar-style ecommerce object with purchase action
-    const ecommerce: any = {
-      currencyCode: order.currency || currency,
-      purchase: {
-        actionField: {
-          id: orderId,
-          order_name: orderId,
-          revenue: String(orderTotal),
-          tax: String(orderTax),
-          shipping: String(orderShipping),
-          sub_total: String(orderSubtotal),
-          affiliation: 'Online Store'
-        },
-        products: products
-      }
+    // Build GA4 ecommerce object
+    const ecommerce: EcommerceData = {
+      currency: order.currency || currency,
+      transaction_id: orderId,
+      value: orderTotal,
+      tax: orderTax,
+      shipping: orderShipping,
+      affiliation: 'Online Store',
+      items
     };
 
     // Add coupon if present
     const coupon = order.vouchers?.[0]?.code || orderData.coupon ||
                   cartState.appliedCoupons?.[0]?.code;
     if (coupon) {
-      ecommerce.purchase.actionField.coupon = coupon;
+      ecommerce.coupon = coupon;
     }
 
     // Add discount amount if present
     const discountAmount = order.discount || orderData.discountAmount || 0;
     if (discountAmount) {
-      ecommerce.purchase.actionField.discountAmount = String(discountAmount);
+      ecommerce.discount = discountAmount;
     }
 
     // Clear list attribution after purchase
@@ -345,7 +342,7 @@ export class EcommerceEvents {
   }
 
   /**
-   * Create view_search_results event (Elevar format)
+   * Create view_search_results event (GA4 format)
    */
   static createViewSearchResultsEvent(
     items: (CartItem | EnrichedCartLine | any)[],
@@ -353,17 +350,15 @@ export class EcommerceEvents {
   ): DataLayerEvent {
     const currency = EventBuilder.getCurrency();
 
-    // Format items as impressions
-    const impressions = items.map((item, index) =>
-      EventBuilder.formatElevarImpression(item, index)
+    // Format items as GA4 items
+    const formattedItems = items.map((item, index) =>
+      EventBuilder.formatEcommerceItem(item, index, { name: 'search results' })
     );
 
-    const ecommerce: any = {
-      currencyCode: currency,
-      actionField: {
-        list: 'search results'
-      },
-      impressions: impressions
+    const ecommerce: EcommerceData = {
+      currency,
+      items: formattedItems,
+      item_list_name: 'search results'
     };
 
     return EventBuilder.createEvent('dl_view_search_results', {
@@ -374,23 +369,21 @@ export class EcommerceEvents {
   }
 
   /**
-   * Create view_cart event (Elevar format)
+   * Create view_cart event (GA4 format)
    */
   static createViewCartEvent(): DataLayerEvent {
     const cartState = useCartStore.getState();
     const currency = EventBuilder.getCurrency();
 
-    // Format all cart items as impressions with quantity
-    const impressions = cartState.enrichedItems.map((item, index) => {
-      const impression = EventBuilder.formatElevarImpression(item, index);
-      impression.quantity = String(item.quantity || 1);
-      return impression;
-    });
+    // Format all cart items as GA4 items
+    const items = cartState.enrichedItems.map((item, index) =>
+      EventBuilder.formatEcommerceItem(item, index)
+    );
 
-    const ecommerce: any = {
-      currencyCode: currency,
-      actionField: {},
-      impressions: impressions
+    const ecommerce: EcommerceData = {
+      currency,
+      value: cartState.totals.total.value || 0,
+      items
     };
 
     return EventBuilder.createEvent('dl_view_cart', {
@@ -470,7 +463,7 @@ export class EcommerceEvents {
   /**
    * Create accepted_upsell event (dl_upsell_purchase format)
    * Fires when user accepts an upsell offer
-   * Uses Elevar's dl_upsell_purchase format with full ecommerce.purchase structure
+   * Uses GA4 format with proper transaction_id and value
    */
   static createAcceptedUpsellEvent(data: {
     orderId: string;
@@ -515,39 +508,32 @@ export class EcommerceEvents {
       console.warn('Could not access campaign store for upsell data:', error);
     }
 
-    // Format the upsell item as an Elevar product
-    const upsellProduct = item ?
-      EventBuilder.formatElevarProduct(item) :
+    // Format the upsell item as a GA4 item
+    const upsellItem: EcommerceItem = item ?
+      EventBuilder.formatEcommerceItem(item) :
       {
-        id: packageData?.product_sku || `SKU-${packageId}`,
-        name: packageName || packageData?.product_name || `Package ${packageId}`,
-        product_id: String(packageData?.product_id || packageId),
-        variant_id: String(packageData?.product_variant_id || packageId),
-        price: String(value),
-        brand: packageData?.product_name || campaignStore?.getState().data?.name || '',
-        category: campaignStore?.getState().data?.name || 'Campaign',
-        variant: packageData?.product_variant_name || '',
-        quantity: String(quantity)
+        item_id: packageData?.product_sku || `SKU-${packageId}`,
+        item_name: packageName || packageData?.product_name || `Package ${packageId}`,
+        item_brand: packageData?.product_name || campaignStore?.getState().data?.name || '',
+        item_category: campaignStore?.getState().data?.name || 'Campaign',
+        item_variant: packageData?.product_variant_name || '',
+        price: value,
+        quantity,
+        currency
       };
 
     // Calculate the additional revenue (just the upsell value, not total order)
     const additionalRevenue = value * quantity;
 
-    // Build Elevar-style ecommerce.purchase structure for upsell
-    const ecommerce: any = {
-      currencyCode: currency,
-      purchase: {
-        actionField: {
-          id: upsellOrderId,
-          order_name: upsellOrderId,
-          revenue: String(additionalRevenue), // Additional revenue from upsell only
-          tax: "0", // Upsells typically don't show separate tax
-          shipping: "0", // No additional shipping for upsells
-          sub_total: String(additionalRevenue), // Same as revenue for upsells
-          affiliation: 'Upsell'
-        },
-        products: [upsellProduct]
-      }
+    // Build GA4 ecommerce structure for upsell
+    const ecommerce: EcommerceData = {
+      currency,
+      transaction_id: upsellOrderId,
+      value: additionalRevenue,
+      tax: 0,
+      shipping: 0,
+      affiliation: 'Upsell',
+      items: [upsellItem]
     };
 
     // Get user properties to match Elevar standard
