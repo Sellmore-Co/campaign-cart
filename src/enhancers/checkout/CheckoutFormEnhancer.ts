@@ -3373,14 +3373,19 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private async handleFieldChange(event: Event): Promise<void> {
     const target = event.target as HTMLInputElement | HTMLSelectElement;
     const fieldName = this.getFieldNameFromElement(target);
-    
+
     if (!fieldName) return;
-    
+
     const checkoutStore = useCheckoutStore.getState();
-    
+
+    // Get the correct value based on input type
+    const fieldValue = (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio'))
+      ? target.checked
+      : target.value;
+
     if (fieldName.startsWith('billing-')) {
-      this.handleBillingFieldChange(fieldName, target.value, checkoutStore);
-      
+      this.handleBillingFieldChange(fieldName, fieldValue, checkoutStore);
+
       if (fieldName === 'billing-country') {
         const billingProvinceField = this.billingFields.get('billing-province');
         if (billingProvinceField instanceof HTMLSelectElement) {
@@ -3389,7 +3394,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // Currency is location-based only, not affected by billing or shipping country
       }
     } else {
-      this.updateFormData({ [fieldName]: target.value });
+      this.updateFormData({ [fieldName]: fieldValue });
       checkoutStore.clearError(fieldName);
       
       // Validate fields on blur - simplified without redundant fallback messages
