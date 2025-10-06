@@ -356,49 +356,53 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       const lastName = (this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]') as HTMLInputElement)?.value || '';
       // Get phone in E.164 format if possible
       const phone = this.getFormattedPhoneNumber();
-      
+
+      // Get accepts_marketing checkbox value (defaults to true if not present)
+      const acceptsMarketingCheckbox = this.element.querySelector('[data-next-checkout-field="accepts_marketing"], [os-checkout-field="accepts_marketing"], input[name="accepts_marketing"]') as HTMLInputElement;
+      const acceptsMarketing = acceptsMarketingCheckbox?.checked ?? true;
+
       // NOTE: Address data collection is intentionally disabled
       // We do not send address data with prospect carts
-      
+
       // Get attribution from the attribution store (this has all the tracking data)
       const attributionStore = useAttributionStore.getState();
       const attribution = attributionStore.getAttributionForApi();
-      
+
       // Update metadata with current page information since we're on the checkout page
       if (attribution.metadata) {
-        // Update landing_page to current URL 
+        // Update landing_page to current URL
         attribution.metadata.landing_page = window.location.href;
-        
+
         // Update referrer if it's empty
         if (!attribution.metadata.referrer) {
           attribution.metadata.referrer = document.referrer || '';
         }
-        
+
         // Update domain if it's empty
         if (!attribution.metadata.domain) {
           attribution.metadata.domain = window.location.hostname;
         }
-        
+
         // Update device if it's empty
         if (!attribution.metadata.device) {
           attribution.metadata.device = navigator.userAgent || '';
         }
-        
+
         // Update timestamp to current time
         attribution.metadata.timestamp = Date.now();
       }
-      
+
       // Ensure funnel is set to CH01 for checkout
       if (!attribution.funnel || attribution.funnel === '') {
         attribution.funnel = 'CH01';
       }
-      
+
       // Build user data
       const user: UserCreateCart = {
         first_name: firstName,
         last_name: lastName,
         language: 'en',
-        accepts_marketing: true
+        accepts_marketing: acceptsMarketing
       };
       
       // Add email only if it exists
