@@ -11,6 +11,8 @@ export declare class ViewItemListTracker {
     scan(): void;
     rescan(): void;
     private findProductElements;
+    private trackSelectedItemInSelectors;
+    private trackViewItemForSelected;
     private trackViewItem;
     private trackViewItemList;
     private setupObserver;

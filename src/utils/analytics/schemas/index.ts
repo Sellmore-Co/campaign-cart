@@ -169,6 +169,20 @@ export const eventSchemas: Record<string, EventSchema> = {
         type: 'object',
         required: true,
         properties: userPropertiesFields
+      },
+      ecommerce: {
+        type: 'object',
+        properties: {
+          ...ecommerceWithItemsFields,
+          // cart_contents is deprecated but still supported for backward compatibility
+          cart_contents: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: productFields
+            }
+          }
+        }
       }
     }
   },
@@ -205,9 +219,17 @@ export const eventSchemas: Record<string, EventSchema> = {
         type: 'object',
         required: true,
         properties: {
-          ...ecommerceWithImpressionsFields,
+          ...ecommerceWithItemsFields,
           item_list_id: { type: 'string' },
-          item_list_name: { type: 'string' }
+          item_list_name: { type: 'string' },
+          // impressions is deprecated but still supported for backward compatibility
+          impressions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: productFields
+            }
+          }
         }
       },
       user_properties: {
@@ -224,7 +246,18 @@ export const eventSchemas: Record<string, EventSchema> = {
       search_term: { type: 'string', required: true },
       ecommerce: {
         type: 'object',
-        properties: ecommerceWithImpressionsFields
+        properties: {
+          ...ecommerceWithItemsFields,
+          item_list_name: { type: 'string' },
+          // impressions is deprecated but still supported for backward compatibility
+          impressions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: productFields
+            }
+          }
+        }
       },
       user_properties: {
         type: 'object',

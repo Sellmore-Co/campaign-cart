@@ -87,11 +87,6 @@ export class FacebookAdapter extends ProviderAdapter {
 
     // Check if this event is blocked
     if (this.blockedEvents.includes(event.event)) {
-      console.log(`[Analytics] Event "${event.event}" was blocked from being sent to Facebook`, {
-        event: event.event,
-        blockedEvents: this.blockedEvents,
-        eventData: event
-      });
       this.debug(`Event ${event.event} is blocked for Facebook`);
       return;
     }
@@ -100,7 +95,7 @@ export class FacebookAdapter extends ProviderAdapter {
     if (!this.isFbqLoaded()) {
       this.waitForFbq().then(() => {
         this.sendEventInternal(event);
-      }).catch(() => {
+      }).catch((error) => {
         this.debug('Facebook Pixel failed to load, skipping event:', event.event);
       });
       return;
@@ -166,7 +161,7 @@ export class FacebookAdapter extends ProviderAdapter {
         }
       }
     } catch (error) {
-      console.error('Error sending event to Facebook:', error);
+      this.debug('Error sending event to Facebook:', error);
     }
   }
 

@@ -42,6 +42,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private billingAnimationDebounceTimer?;
     private billingAnimationTimeouts;
     private hasTrackedShippingInfo;
+    private hasTrackedBeginCheckout;
     initialize(): Promise<void>;
     private scanAllFields;
     private scanBillingFields;
@@ -129,6 +130,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     update(): void;
     protected cleanupEventListeners(): void;
     private displayPaymentError;
+    private trackBeginCheckout;
     destroy(): void;
 }
 //# sourceMappingURL=CheckoutFormEnhancer.d.ts.map

@@ -69,20 +69,34 @@ export class PendingEventsHandler {
 
   /**
    * Process and fire all pending events
+   * IMPORTANT: This should only be called AFTER dl_user_data has been fired on the current page
    */
   public processPendingEvents(): void {
     const events = this.getPendingEvents();
-    
+
     if (events.length === 0) {
       logger.debug('No pending analytics events to process');
       return;
     }
-    
+
     logger.info(`Processing ${events.length} pending analytics events`);
-    
+
+    // Filter out dl_user_data events - they should never be queued
+    // The current page should fire its own dl_user_data
+    const filteredEvents = events.filter(e => {
+      if (e.event.event === 'dl_user_data') {
+        logger.warn('Skipping queued dl_user_data - current page should fire its own');
+        return false;
+      }
+      return true;
+    });
+
+    // Sort remaining events by timestamp to maintain order
+    const sortedEvents = [...filteredEvents].sort((a, b) => a.timestamp - b.timestamp);
+
     const processedIds: string[] = [];
-    
-    for (const pendingEvent of events) {
+
+    for (const pendingEvent of sortedEvents) {
       try {
         // Skip events older than 5 minutes
         if (Date.now() - pendingEvent.timestamp > 5 * 60 * 1000) {
@@ -90,16 +104,20 @@ export class PendingEventsHandler {
           processedIds.push(pendingEvent.id);
           continue;
         }
-        
+
         // Push event to data layer
         dataLayer.push(pendingEvent.event);
         processedIds.push(pendingEvent.id);
-        
+
         logger.debug('Processed pending event:', pendingEvent.event.event);
       } catch (error) {
         logger.error('Failed to process pending event:', pendingEvent.event.event, error);
       }
     }
+
+    // Also mark filtered dl_user_data events as processed
+    const userDataEvents = events.filter(e => e.event.event === 'dl_user_data');
+    processedIds.push(...userDataEvents.map(e => e.id));
     
     // Remove processed events
     if (processedIds.length > 0) {

@@ -5,6 +5,7 @@ export declare class UserDataTracker {
     private trackDebounceMs;
     private isInitialized;
     private unsubscribers;
+    private hasTrackedInitial;
     private constructor();
     static getInstance(): UserDataTracker;
     initialize(): void;

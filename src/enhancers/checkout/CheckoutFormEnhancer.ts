@@ -121,6 +121,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   
   // Track if analytics events have been fired
   private hasTrackedShippingInfo = false;
+  private hasTrackedBeginCheckout = false;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -308,7 +309,13 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     
     // Check for fresh purchase on initial load
     this.handlePurchaseEvent();
-    
+
+    // Track begin_checkout event - only from here, nowhere else
+    // Small delay to ensure analytics providers are ready
+    setTimeout(() => {
+      this.trackBeginCheckout();
+    }, 500);
+
     this.logger.debug('CheckoutFormEnhancer initialized');
     this.emit('checkout:form-initialized', { form: this.form });
   }
@@ -3262,11 +3269,6 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             AmplitudeAnalytics.trackCheckoutSubmitted(submitData);
           });
           
-          this.emit('checkout:started', {
-            formData: checkoutStore.formData,
-            paymentMethod: checkoutStore.paymentMethod
-          });
-          
           // For express payment methods (PayPal, Apple Pay, Google Pay), always use ExpressCheckoutProcessor
           if (isExpressPayment && this.expressProcessor) {
             this.logger.info(`Processing express checkout for ${checkoutStore.paymentMethod} (after validation)`);
@@ -3371,14 +3373,15 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private async handleFieldChange(event: Event): Promise<void> {
     const target = event.target as HTMLInputElement | HTMLSelectElement;
     const fieldName = this.getFieldNameFromElement(target);
-    
+
     if (!fieldName) return;
-    
+
     const checkoutStore = useCheckoutStore.getState();
-    
+
     if (fieldName.startsWith('billing-')) {
+      // Billing fields are always strings (no checkboxes in billing)
       this.handleBillingFieldChange(fieldName, target.value, checkoutStore);
-      
+
       if (fieldName === 'billing-country') {
         const billingProvinceField = this.billingFields.get('billing-province');
         if (billingProvinceField instanceof HTMLSelectElement) {
@@ -3387,7 +3390,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // Currency is location-based only, not affected by billing or shipping country
       }
     } else {
-      this.updateFormData({ [fieldName]: target.value });
+      // Get the correct value based on input type
+      const fieldValue = (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio'))
+        ? target.checked
+        : target.value;
+
+      this.updateFormData({ [fieldName]: fieldValue });
       checkoutStore.clearError(fieldName);
       
       // Validate fields on blur - simplified without redundant fallback messages
@@ -4299,7 +4307,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
   private displayPaymentError(message: string): void {
     this.logger.info('[Payment Error] Displaying error:', message);
-    
+
     // Use a slight delay to ensure DOM is ready
     setTimeout(() => {
       // Find the credit error container
@@ -4310,22 +4318,22 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         if (messageElement) {
           messageElement.textContent = message;
         }
-        
+
         // Force show the error container
         errorContainer.style.display = 'flex';
         errorContainer.style.visibility = 'visible';
         errorContainer.style.opacity = '1';
         errorContainer.classList.add('visible');
         errorContainer.classList.remove('hidden');
-        
+
         // Remove any inline styles that might be hiding it
         if (errorContainer.style.display === 'none') {
           errorContainer.style.removeProperty('display');
           errorContainer.style.display = 'flex';
         }
-        
+
         this.logger.info('[Payment Error] Error container shown with message:', message);
-        
+
         // Auto-hide after 10 seconds
         setTimeout(() => {
           errorContainer.style.display = 'none';
@@ -4335,9 +4343,47 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         this.logger.error('[Payment Error] Could not find error container element');
       }
     }, 100); // Small delay to ensure DOM is ready
-    
+
     // Also emit an event for other components to handle
     this.emit('payment:error', { errors: [message] });
+  }
+
+  /**
+   * Track begin_checkout event when checkout form initializes
+   * This should be the ONLY place where begin_checkout is fired
+   */
+  private trackBeginCheckout(): void {
+    // Prevent duplicate tracking
+    if (this.hasTrackedBeginCheckout) {
+      this.logger.debug('begin_checkout already tracked, skipping duplicate');
+      return;
+    }
+
+    try {
+      const cartStore = useCartStore.getState();
+      const checkoutStore = useCheckoutStore.getState();
+
+      // Only track if cart has items
+      if (!cartStore.isEmpty && cartStore.items.length > 0) {
+        this.hasTrackedBeginCheckout = true;
+
+        // Track through analytics (this handles GTM, Facebook, etc.)
+        nextAnalytics.track(EcommerceEvents.createBeginCheckoutEvent());
+
+        // Only emit internal event for UI components that need to know checkout started
+        // NOT for analytics tracking - that's already handled above
+        this.emit('checkout:started', {
+          formData: checkoutStore.formData,
+          paymentMethod: checkoutStore.paymentMethod,
+          isProcessing: checkoutStore.isProcessing,
+          step: checkoutStore.step
+        });
+
+        this.logger.info('Tracked begin_checkout event on checkout form initialization');
+      }
+    } catch (error) {
+      this.logger.warn('Failed to track begin_checkout event:', error);
+    }
   }
 
   public override destroy(): void {

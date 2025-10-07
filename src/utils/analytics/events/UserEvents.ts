@@ -3,12 +3,14 @@
  * Builder methods for user-related analytics events
  */
 
-import type { DataLayerEvent, UserProperties } from '../types';
+import type { DataLayerEvent, UserProperties, EcommerceItem, EcommerceData } from '../types';
 import { EventBuilder } from './EventBuilder';
+import { useCartStore } from '@/stores/cartStore';
+import { useCampaignStore } from '@/stores/campaignStore';
 
 export class UserEvents {
   /**
-   * Create base user data event
+   * Create base user data event (GA4 format)
    * This is the foundation for all user-related events
    */
   static createUserDataEvent(
@@ -21,6 +23,45 @@ export class UserEvents {
       ...EventBuilder.getUserProperties(),
       ...userData
     };
+
+    // For dl_user_data event, add cart items and cart_total
+    if (eventName === 'dl_user_data') {
+      try {
+        if (typeof window !== 'undefined') {
+          const cartState = useCartStore.getState();
+          const campaignState = useCampaignStore.getState();
+
+          const currency = campaignState?.data?.currency || 'USD';
+          // Use items from cart store - they already have all the fields we need
+          const cartItems = cartState?.items || [];
+
+          // Format cart items as GA4 items using EventBuilder
+          const items: EcommerceItem[] = cartItems.length > 0
+            ? cartItems.map((item: any, idx: number) => EventBuilder.formatEcommerceItem(item, idx))
+            : [];
+
+          // Calculate cart total
+          const cartTotal = cartState?.totals?.total?.value || cartState?.total || 0;
+
+          // Build GA4 ecommerce object
+          const ecommerce: EcommerceData = {
+            currency,
+            value: cartTotal,
+            items // GA4 expects items array (can be empty)
+          };
+
+          // Always return the event with ecommerce data (even if items is empty array)
+          return EventBuilder.createEvent(eventName, {
+            user_properties: userProperties,
+            cart_total: String(cartTotal),
+            ecommerce,
+            ...additionalData
+          });
+        }
+      } catch (error) {
+        console.warn('Could not add cart contents to user data event:', error);
+      }
+    }
 
     return EventBuilder.createEvent(eventName, {
       user_properties: userProperties,
@@ -36,7 +77,7 @@ export class UserEvents {
     method: string = 'email',
     userData?: Partial<UserProperties>
   ): DataLayerEvent {
-    return this.createUserDataEvent('sign_up', userData, {
+    return this.createUserDataEvent('dl_sign_up', userData, {
       event_label: method,
       custom_properties: {
         method,
@@ -52,13 +93,13 @@ export class UserEvents {
     method: string = 'email',
     userData?: Partial<UserProperties>
   ): DataLayerEvent {
-    // Update visitor type to customer if we have a customer ID
+    // Update visitor type to customer if we have a customer ID (Elevar format)
     const enrichedUserData: Partial<UserProperties> = {
       ...userData,
-      visitor_type: userData?.customer_id ? 'returning_customer' : 'guest'
+      visitor_type: userData?.customer_id ? 'logged_in' : 'guest'
     };
 
-    return this.createUserDataEvent('login', enrichedUserData, {
+    return this.createUserDataEvent('dl_login', enrichedUserData, {
       event_label: method,
       custom_properties: {
         method,
@@ -80,7 +121,11 @@ export class UserEvents {
     },
     userData?: Partial<UserProperties>
   ): DataLayerEvent {
-    return this.createUserDataEvent('subscribe', userData, {
+    // For Elevar format, include lead_type
+    const leadType = channel === 'sms' || channel === 'push' ? 'phone' : 'email';
+
+    return this.createUserDataEvent('dl_subscribe', userData, {
+      lead_type: leadType,
       event_label: channel,
       custom_properties: {
         channel,

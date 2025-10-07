@@ -10,7 +10,6 @@ import { useCampaignStore } from '@/stores/campaignStore';
 import { useAttributionStore } from '@/stores/attributionStore';
 import { ApiClient } from '@/api/client';
 import type { CartBase, UserCreateCart } from '@/types/api';
-import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
 
 export interface ProspectCartConfig {
   autoCreate?: boolean;
@@ -43,7 +42,6 @@ export class ProspectCartEnhancer extends BaseEnhancer {
   private prospectCart: ProspectCart | undefined;
   private emailField?: HTMLInputElement;
   private hasTriggered = false;
-  private hasTrackedBeginCheckout = false;
 
   public async initialize(): Promise<void> {
     this.validateElement();
@@ -358,49 +356,53 @@ export class ProspectCartEnhancer extends BaseEnhancer {
       const lastName = (this.element.querySelector('[data-next-checkout-field="lname"], [os-checkout-field="lname"], input[name="last_name"]') as HTMLInputElement)?.value || '';
       // Get phone in E.164 format if possible
       const phone = this.getFormattedPhoneNumber();
-      
+
+      // Get accepts_marketing checkbox value (defaults to true if not present)
+      const acceptsMarketingCheckbox = this.element.querySelector('[data-next-checkout-field="accepts_marketing"], [os-checkout-field="accepts_marketing"], input[name="accepts_marketing"]') as HTMLInputElement;
+      const acceptsMarketing = acceptsMarketingCheckbox?.checked ?? true;
+
       // NOTE: Address data collection is intentionally disabled
       // We do not send address data with prospect carts
-      
+
       // Get attribution from the attribution store (this has all the tracking data)
       const attributionStore = useAttributionStore.getState();
       const attribution = attributionStore.getAttributionForApi();
-      
+
       // Update metadata with current page information since we're on the checkout page
       if (attribution.metadata) {
-        // Update landing_page to current URL 
+        // Update landing_page to current URL
         attribution.metadata.landing_page = window.location.href;
-        
+
         // Update referrer if it's empty
         if (!attribution.metadata.referrer) {
           attribution.metadata.referrer = document.referrer || '';
         }
-        
+
         // Update domain if it's empty
         if (!attribution.metadata.domain) {
           attribution.metadata.domain = window.location.hostname;
         }
-        
+
         // Update device if it's empty
         if (!attribution.metadata.device) {
           attribution.metadata.device = navigator.userAgent || '';
         }
-        
+
         // Update timestamp to current time
         attribution.metadata.timestamp = Date.now();
       }
-      
+
       // Ensure funnel is set to CH01 for checkout
       if (!attribution.funnel || attribution.funnel === '') {
         attribution.funnel = 'CH01';
       }
-      
+
       // Build user data
       const user: UserCreateCart = {
         first_name: firstName,
         last_name: lastName,
         language: 'en',
-        accepts_marketing: true
+        accepts_marketing: acceptsMarketing
       };
       
       // Add email only if it exists
@@ -696,11 +698,7 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     const hasValidFirstName = this.isValidName(firstName);
     const hasValidLastName = this.isValidName(lastName);
     
-    // Track begin_checkout event as soon as we have a valid email (shows intent)
-    if (hasValidEmail && !this.hasTrackedBeginCheckout) {
-      this.trackBeginCheckout();
-      this.logger.info('Tracked begin_checkout event on valid email entry:', email);
-    }
+    // Note: begin_checkout event is now tracked in CheckoutFormEnhancer on initialization
     
     // Check if prospect cart has already been created
     if (this.hasTriggered) {
@@ -754,24 +752,5 @@ export class ProspectCartEnhancer extends BaseEnhancer {
     
     this.createProspectCart();
     this.hasTriggered = true;
-  }
-  
-  /**
-   * Track begin_checkout event when user starts checkout by entering email
-   */
-  private trackBeginCheckout(): void {
-    if (!this.hasTrackedBeginCheckout) {
-      try {
-        const cartStore = useCartStore.getState();
-        // Only track if cart has items
-        if (!cartStore.isEmpty && cartStore.items.length > 0) {
-          nextAnalytics.track(EcommerceEvents.createBeginCheckoutEvent());
-          this.hasTrackedBeginCheckout = true;
-          this.logger.info('Tracked begin_checkout event on email entry');
-        }
-      } catch (error) {
-        this.logger.warn('Failed to track begin_checkout event:', error);
-      }
-    }
   }
 }

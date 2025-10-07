@@ -96,6 +96,13 @@ export class NextAnalytics {
   }
 
   /**
+   * Check if analytics is initialized
+   */
+  public isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  /**
    * Initialize the analytics system
    */
   public async initialize(): Promise<void> {
@@ -130,13 +137,28 @@ export class NextAnalytics {
       // Initialize providers based on configuration FIRST
       await this.initializeProviders(config.analytics, config.storeName);
 
-      // Process any pending events from previous page AFTER providers are ready
-      PendingEventsHandler.getInstance().processPendingEvents();
-
-      // Initialize automatic tracking
+      // CRITICAL: Fire dl_user_data FIRST, before any other tracking
+      // This must happen before any other events
       if (config.analytics.mode === 'auto') {
-        this.initializeAutoTracking();
+        // Initialize UserDataTracker first and wait for it to fire
+        this.userTracker.initialize();
+
+        // Wait a moment to ensure dl_user_data is processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Now initialize other trackers (they may fire view/list events)
+        this.listTracker.initialize();
+        this.viewTracker.initialize();
+        this.autoListener.initialize();
+
+        logger.info('Auto-tracking initialized (user data fired first)');
       }
+
+      // Process any pending events from previous page AFTER everything is initialized
+      // Adding delay to ensure all initial events are processed first
+      setTimeout(() => {
+        PendingEventsHandler.getInstance().processPendingEvents();
+      }, 200);
 
       this.initialized = true;
       logger.info('NextAnalytics initialized successfully', {
@@ -183,6 +205,9 @@ export class NextAnalytics {
         blockedEvents: config.providers.facebook.blockedEvents || [],
         storeName: storeName
       });
+
+      // DO NOT process historical events - this causes duplicates
+      // Events will be tracked properly as they occur
     }
 
     // RudderStack Adapter
@@ -204,15 +229,12 @@ export class NextAnalytics {
 
   /**
    * Initialize automatic tracking features
+   * NOTE: This method is no longer used - tracking is initialized inline
+   * in the initialize() method to ensure proper ordering
    */
   private initializeAutoTracking(): void {
-    // Initialize trackers
-    this.listTracker.initialize();
-    this.viewTracker.initialize();
-    this.userTracker.initialize();
-    this.autoListener.initialize();
-
-    logger.info('Auto-tracking initialized');
+    // Deprecated - see initialize() method for current implementation
+    logger.warn('initializeAutoTracking called but is deprecated');
   }
 
   /**
@@ -265,6 +287,13 @@ export class NextAnalytics {
    */
   public invalidateContext(): void {
     dataLayer.invalidateContext();
+
+    // Call Elevar's invalidate context if available
+    if (typeof window !== 'undefined' && window.ElevarInvalidateContext) {
+      window.ElevarInvalidateContext();
+      logger.debug('Called ElevarInvalidateContext');
+    }
+
     // Reset trackers
     this.viewTracker.reset();
     // Track new user data

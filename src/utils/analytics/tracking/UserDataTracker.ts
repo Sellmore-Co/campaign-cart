@@ -8,6 +8,7 @@ import { useCartStore } from '@/stores/cartStore';
 import { dataLayer } from '../DataLayerManager';
 import { EventBus } from '@/utils/events';
 import { userDataStorage } from '../userDataStorage';
+import { UserEvents } from '../events/UserEvents';
 
 const logger = createLogger('UserDataTracker');
 
@@ -30,6 +31,7 @@ export class UserDataTracker {
   private trackDebounceMs = 1000; // 1 second debounce
   private isInitialized = false;
   private unsubscribers: (() => void)[] = [];
+  private hasTrackedInitial = false; // Track if initial event has been fired
 
   private constructor() {}
 
@@ -51,13 +53,20 @@ export class UserDataTracker {
     this.isInitialized = true;
     dataLayer.initialize();
 
-    // Track initial user data
+    // CRITICAL: Force immediate user data tracking without debounce
+    // This ensures dl_user_data is ALWAYS the first event on page load
+    this.lastTrackTime = 0;  // Reset to bypass debounce
     this.trackUserData();
+    this.hasTrackedInitial = true;
 
-    // Set up listeners
-    this.setupListeners();
+    // Set up listeners AFTER initial tracking
+    // Add delay to prevent cart store initialization from triggering duplicate
+    setTimeout(() => {
+      this.setupListeners();
+      logger.debug('User data tracking listeners set up after initial tracking');
+    }, 200);
 
-    logger.info('UserDataTracker initialized');
+    logger.info('UserDataTracker initialized - dl_user_data fired first');
   }
 
   /**
@@ -65,6 +74,17 @@ export class UserDataTracker {
    */
   public trackUserData(): void {
     const now = Date.now();
+
+    // Log call stack for debugging duplicate events
+    if (this.hasTrackedInitial) {
+      const stack = new Error().stack;
+      logger.debug('trackUserData called after initial:', {
+        timeSinceLastTrack: now - this.lastTrackTime,
+        willDebounce: now - this.lastTrackTime < this.trackDebounceMs,
+        stack: stack?.split('\n').slice(1, 4).join('\n')
+      });
+    }
+
     if (now - this.lastTrackTime < this.trackDebounceMs) {
       logger.debug('User data tracking debounced');
       return;
@@ -72,13 +92,30 @@ export class UserDataTracker {
     this.lastTrackTime = now;
 
     const userData = this.collectUserData();
-    
+
     if (!userData || Object.keys(userData).length === 0) {
       logger.debug('No user data to track');
       return;
     }
 
-    const event = dataLayer.formatUserDataEvent(userData);
+    // Convert userData to UserProperties format for UserEvents
+    const userProperties: any = {
+      customer_email: userData.email,
+      customer_phone: userData.phone,
+      customer_first_name: userData.firstName,
+      customer_last_name: userData.lastName,
+      visitor_type: userData.userId ? 'logged_in' : 'guest'
+    };
+
+    // Remove undefined values
+    Object.keys(userProperties).forEach(key => {
+      if (userProperties[key] === undefined) {
+        delete userProperties[key];
+      }
+    });
+
+    // Use UserEvents.createUserDataEvent to properly format the event with cart_contents
+    const event = UserEvents.createUserDataEvent('dl_user_data', userProperties);
     dataLayer.push(event);
 
     logger.debug('Tracked user data:', {
@@ -191,18 +228,13 @@ export class UserDataTracker {
       setTimeout(() => this.trackUserData(), 100);
     });
 
-    // Listen for cart changes
-    this.eventBus.on('cart:updated', () => {
-      logger.debug('Cart updated, tracking user data');
-      this.trackUserData();
-    });
+    // REMOVED: cart:updated listener - causes duplicate tracking
+    // The cart:updated event is already tracked by AutoEventListener as dl_cart_updated
+    // We don't need to also fire dl_user_data on every cart change
 
-    // Subscribe to cart store changes
-    const unsubscribeCart = useCartStore.subscribe(() => {
-      logger.debug('Cart store changed, tracking user data');
-      this.trackUserData();
-    });
-    this.unsubscribers.push(unsubscribeCart);
+    // REMOVED: Cart store subscription - causes duplicate tracking
+    // User data is already tracked on route changes and significant user actions
+    // Cart changes are tracked separately via dl_cart_updated event
 
     // Listen for browser navigation
     if (typeof window !== 'undefined') {
@@ -212,17 +244,32 @@ export class UserDataTracker {
       });
 
       // Override pushState and replaceState
+      // Only track on pushState (actual navigation), not replaceState (URL updates)
       const originalPushState = history.pushState;
       const originalReplaceState = history.replaceState;
 
+      let lastUrl = window.location.href;
+
       history.pushState = function(...args) {
         originalPushState.apply(history, args);
-        setTimeout(() => UserDataTracker.getInstance().trackUserData(), 0);
+        const newUrl = window.location.href;
+        // Only track if URL actually changed (not just query params)
+        if (newUrl !== lastUrl) {
+          const oldPath = new URL(lastUrl).pathname;
+          const newPath = new URL(newUrl).pathname;
+          if (oldPath !== newPath) {
+            lastUrl = newUrl;
+            logger.debug('pushState changed path, tracking user data');
+            setTimeout(() => UserDataTracker.getInstance().trackUserData(), 0);
+          }
+        }
       };
 
       history.replaceState = function(...args) {
         originalReplaceState.apply(history, args);
-        setTimeout(() => UserDataTracker.getInstance().trackUserData(), 0);
+        // Do NOT track on replaceState - it's used for query param updates
+        // which shouldn't trigger user data events
+        logger.debug('replaceState called, not tracking user data (query param update)');
       };
     }
 
@@ -259,7 +306,6 @@ export class UserDataTracker {
     (this.eventBus as any).removeAllListeners('sdk:route-invalidated');
     (this.eventBus as any).removeAllListeners('user:logged-in');
     (this.eventBus as any).removeAllListeners('user:logged-out');
-    this.eventBus.removeAllListeners('cart:updated');
 
     this.isInitialized = false;
     logger.debug('UserDataTracker destroyed');

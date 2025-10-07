@@ -379,18 +379,18 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
     // Select new item
     item.element.classList.add('next-selected');
     item.element.setAttribute('data-next-selected', 'true');
-    
+
     this.selectedItem = item;
-    
+
     // Store on element for button to access
     this.element.setAttribute('data-selected-package', item.packageId.toString());
-    
+
     this.logger.debug(`Selected item in selector ${this.selectorId}:`, {
       packageId: item.packageId,
       name: item.name,
       quantity: item.quantity
     });
-    
+
     // Emit event for buttons to update
     this.emit('selector:selection-changed', {
       selectorId: this.selectorId,
@@ -456,18 +456,18 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
   private async setShippingMethod(shippingId: string): Promise<void> {
     try {
       const shippingIdNum = parseInt(shippingId, 10);
-      
+
       if (isNaN(shippingIdNum)) {
         this.logger.error('Invalid shipping ID:', shippingId);
         return;
       }
-      
+
       // Simply delegate to cart store which handles all the logic
       const cartStore = useCartStore.getState();
       await cartStore.setShippingMethod(shippingIdNum);
-      
+
       this.logger.debug(`Shipping method ${shippingIdNum} set via selector`);
-      
+
     } catch (error) {
       this.logger.error('Failed to set shipping method:', error);
     }
@@ -497,13 +497,14 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
       );
 
       if (cartItemsInSelector.length > 0 && this.mode === 'swap') {
-        // Select the first item found in cart
+        // In swap mode, select the item that's in cart
         const itemToSelect = cartItemsInSelector[0];
         if (itemToSelect && this.selectedItem !== itemToSelect) {
           this.selectItem(itemToSelect);
         }
-      } else if (!this.selectedItem && cartState.isEmpty) {
-        // No selection and cart is empty - select pre-selected item if any
+      } else if (!this.selectedItem) {
+        // No selection yet - try to find a pre-selected item or select first
+        // This applies to both select mode and when cart is empty
         const preSelectedItems = this.items.filter(item => item.isPreSelected);
 
         if (preSelectedItems.length > 1) {
@@ -523,10 +524,18 @@ export class PackageSelectorEnhancer extends BaseEnhancer {
           this.selectItem(preSelected);
           // Auto-add pre-selected item to cart (except in select mode)
           // The cart store will handle any profile mapping needed
-          if (this.mode !== 'select') {
+          if (this.mode !== 'select' && cartState.isEmpty) {
             this.updateCart(null, preSelected).catch(error => {
               this.logger.error('Failed to add pre-selected item:', error);
             });
+          }
+        } else if (this.mode === 'select' && this.items.length > 0) {
+          // In select mode with no pre-selected item, select the first item
+          // This ensures display values work
+          const firstItem = this.items[0];
+          if (firstItem) {
+            this.selectItem(firstItem);
+            this.logger.debug('Select mode: Auto-selected first item since no pre-selected item found');
           }
         }
       }

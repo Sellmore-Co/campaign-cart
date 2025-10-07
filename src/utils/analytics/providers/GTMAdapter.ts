@@ -4,6 +4,8 @@ import { DataLayerEvent } from '../types';
 declare global {
   interface Window {
     dataLayer: any[];
+    ElevarDataLayer?: any[];
+    ElevarInvalidateContext?: () => void;
   }
 }
 
@@ -30,10 +32,24 @@ export class GTMAdapter extends ProviderAdapter {
       return;
     }
 
-    // Ensure dataLayer exists
+    // Ensure dataLayers exist
     window.dataLayer = window.dataLayer || [];
+    window.ElevarDataLayer = window.ElevarDataLayer || [];
 
-    // Transform event to GTM format
+    // For Elevar events (dl_*), push to both ElevarDataLayer and dataLayer
+    if (event.event.startsWith('dl_')) {
+      // Push to ElevarDataLayer first (primary for Elevar processing)
+      window.ElevarDataLayer.push(event);
+
+      // Also push to standard dataLayer for GTM (with ecommerce clear)
+      window.dataLayer.push({ ecommerce: null });
+      window.dataLayer.push(event);
+
+      this.debug('Elevar event sent to both ElevarDataLayer and dataLayer', event);
+      return;
+    }
+
+    // For non-Elevar events, use existing transformation
     const gtmEvent = this.transformToGTMFormat(event);
 
     // Clear ecommerce object before pushing new data (GTM best practice)

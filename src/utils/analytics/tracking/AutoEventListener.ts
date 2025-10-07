@@ -9,6 +9,7 @@ import { useCampaignStore } from '@/stores/campaignStore';
 import { useCartStore } from '@/stores/cartStore';
 import { dataLayer } from '../DataLayerManager';
 import { listAttributionTracker } from './ListAttributionTracker';
+import { EcommerceEvents } from '../events/EcommerceEvents';
 
 const logger = createLogger('AutoEventListener');
 
@@ -57,6 +58,7 @@ export class AutoEventListener {
     this.setupUpsellEventListeners();
     this.setupCheckoutEventListeners();
     this.setupPageEventListeners();
+    this.setupExitIntentEventListeners();
 
     logger.info('AutoEventListener initialized');
   }
@@ -119,18 +121,33 @@ export class AutoEventListener {
         })
       };
 
-      const event = dataLayer.formatEcommerceEvent('dl_add_to_cart', {
-        currency: item.currency,
-        value: item.price * quantity, // Total value for all packages
-        items: [item]
-      });
+      // Get the cart item to use EcommerceEvents method
+      const cartStore = useCartStore.getState();
+      const cartItem = cartStore.getItem(packageId);
+
+      // Create the event using EcommerceEvents which formats it correctly
+      const event = EcommerceEvents.createAddToCartEvent(
+        cartItem || {
+          packageId,
+          quantity,
+          title: packageData.name,
+          price: parseFloat(packageData.price_total),
+          productId: packageData.product_id,
+          productName: packageData.product_name,
+          variantId: packageData.product_variant_id,
+          variantName: packageData.product_variant_name,
+          variantSku: packageData.product_sku
+        },
+        listContext?.listId,
+        listContext?.listName
+      );
 
       // Check if this will redirect
       if (data.willRedirect) {
         // The DataLayerManager will handle queuing
-        event._willRedirect = true;
+        (event as any)._willRedirect = true;
       }
-      
+
       dataLayer.push(event);
       logger.debug('Tracked add to cart:', packageId);
     };
@@ -168,10 +185,17 @@ export class AutoEventListener {
         ...(packageData.image && { item_image: packageData.image })
       };
 
-      const event = dataLayer.formatEcommerceEvent('dl_remove_from_cart', {
-        currency: item.currency,
-        value: item.price * quantity,
-        items: [item]
+      // Create proper remove from cart event using EcommerceEvents
+      const event = EcommerceEvents.createRemoveFromCartEvent({
+        packageId,
+        quantity,
+        title: packageData.name,
+        price: parseFloat(packageData.price_total),
+        productId: packageData.product_id,
+        productName: packageData.product_name,
+        variantId: packageData.product_variant_id,
+        variantName: packageData.product_variant_name,
+        variantSku: packageData.product_sku
       });
 
       dataLayer.push(event);
@@ -324,38 +348,65 @@ export class AutoEventListener {
       const packageId = data.packageId;
       const quantity = data.quantity || 1;
       const orderId = data.orderId || data.order?.ref_id;
-      
+
+      // Get campaign and package data
+      const campaignStore = useCampaignStore.getState();
+      const packageData = campaignStore.getPackage(packageId);
+
       // Calculate value
       let value = data.value;
-      if (value === undefined) {
-        const campaignStore = useCampaignStore.getState();
-        const packageData = campaignStore.getPackage(packageId);
-        if (packageData?.price) {
-          value = parseFloat(packageData.price) * quantity;
-        }
+      if (value === undefined && packageData?.price) {
+        value = parseFloat(packageData.price) * quantity;
       }
 
-      const acceptedUpsellEvent = {
-        event: 'dl_accepted_upsell',
-        order_id: orderId,
-        upsell: {
-          package_id: packageId.toString(),
-          package_name: data.packageName || `Package ${packageId}`,
-          quantity: quantity,
-          value: value || 0,
-          currency: data.currency || 'USD'
-        }
-      };
-      
-      // Mark for queueing if will redirect
-      logger.debug('Upsell accepted event data:', { willRedirect: data.willRedirect, data });
-      if (data.willRedirect) {
-        (acceptedUpsellEvent as any)._willRedirect = true;
-        logger.debug('Marked upsell event for queueing due to redirect');
+      // Get or increment upsell number (track how many upsells have been accepted)
+      const upsellNumber = data.upsellNumber ||
+        (sessionStorage.getItem(`upsells_${orderId}`) ?
+          parseInt(sessionStorage.getItem(`upsells_${orderId}`) || '0') + 1 : 1);
+
+      // Store the upsell count
+      if (orderId) {
+        sessionStorage.setItem(`upsells_${orderId}`, String(upsellNumber));
       }
-      
+
+      // Create cart item object with campaign package data for proper formatting
+      const cartItem = {
+        packageId,
+        productId: packageData?.product_id,
+        productName: packageData?.product_name,
+        variantId: packageData?.product_variant_id,
+        variantName: packageData?.product_variant_name,
+        variantSku: packageData?.product_sku,
+        quantity,
+        price: value,
+        image: packageData?.image
+      };
+
+      // Use EcommerceEvents helper to create properly formatted event with user properties
+      const acceptedUpsellEvent = EcommerceEvents.createAcceptedUpsellEvent({
+        orderId,
+        packageId,
+        packageName: data.packageName || packageData?.name || `Package ${packageId}`,
+        quantity,
+        value: value || 0,
+        currency: data.currency || campaignStore.data?.currency || 'USD',
+        upsellNumber,
+        item: cartItem
+      });
+
+      // The _willRedirect flag is now set inside createAcceptedUpsellEvent
+      // Additional redirect marking if needed
+      if (data.willRedirect) {
+        logger.debug('Upsell event already marked for queueing due to redirect');
+      }
+
       dataLayer.push(acceptedUpsellEvent);
-      logger.info('Tracked upsell accepted:', packageId);
+      logger.info('Tracked upsell accepted:', {
+        packageId,
+        orderId,
+        upsellOrderId: `${orderId}-US${upsellNumber}`,
+        value
+      });
     };
 
     this.eventBus.on('upsell:accepted', handleUpsellAccepted);
@@ -386,10 +437,14 @@ export class AutoEventListener {
    */
   private setupCheckoutEventListeners(): void {
     // Checkout started
+    // DISABLED: checkout:started handler to prevent duplicate begin_checkout events
+    // The begin_checkout event is now properly tracked in CheckoutFormEnhancer
+    // through nextAnalytics.track(EcommerceEvents.createBeginCheckoutEvent())
+    /*
     const handleCheckoutStarted = async (data: any) => {
       const cartStore = useCartStore.getState();
       const campaignStore = useCampaignStore.getState();
-      
+
       const items = cartStore.items.map((item, index) => {
         const packageData = campaignStore.getPackage(item.packageId);
         return {
@@ -420,12 +475,16 @@ export class AutoEventListener {
 
     this.eventBus.on('checkout:started', handleCheckoutStarted);
     this.eventHandlers.set('checkout:started', handleCheckoutStarted);
+    */
 
+    // DISABLED: Express checkout handler to prevent duplicate begin_checkout events
+    // Express checkout events are properly tracked through the main analytics system
+    /*
     // Express checkout started
     const handleExpressCheckoutStarted = async (data: any) => {
       const cartStore = useCartStore.getState();
       const campaignStore = useCampaignStore.getState();
-      
+
       const items = cartStore.items.map((item, index) => {
         const packageData = campaignStore.getPackage(item.packageId);
         return {
@@ -455,17 +514,21 @@ export class AutoEventListener {
 
     this.eventBus.on('express-checkout:started', handleExpressCheckoutStarted);
     this.eventHandlers.set('express-checkout:started', handleExpressCheckoutStarted);
+    */
 
     // Order completed
     const handleOrderCompleted = async (order: any) => {
       // The data passed is the order object itself
       const orderId = order.ref_id || order.number || order.order_id || order.transaction_id;
       const total = parseFloat(order.total_incl_tax || order.total || '0');
-      
+
+      // Always get cart store at the beginning
+      const cartStore = useCartStore.getState();
+      const campaignStore = useCampaignStore.getState();
+
       // Get items from order lines
       let items = [];
       if (order.lines && Array.isArray(order.lines)) {
-        const campaignStore = useCampaignStore.getState();
         items = order.lines.map((line: any, index: number) => ({
           item_id: line.product_sku || line.id?.toString() || `line_${index}`,
           item_name: line.product_title || line.product_description || `Item ${line.id}`,
@@ -479,9 +542,6 @@ export class AutoEventListener {
         }));
       } else {
         // Fallback to cart store
-        const cartStore = useCartStore.getState();
-        const campaignStore = useCampaignStore.getState();
-        
         items = cartStore.items.map((item, index) => {
           const packageData = campaignStore.getPackage(item.packageId);
           return {
@@ -508,8 +568,19 @@ export class AutoEventListener {
         tax: parseFloat(order.total_tax || order.tax || '0')
       };
 
-      const event = dataLayer.formatEcommerceEvent('dl_purchase', purchaseData);
-      
+      // Use EcommerceEvents.createPurchaseEvent for proper Elevar format
+      const event = EcommerceEvents.createPurchaseEvent({
+        order: order,
+        orderId: orderId,
+        transactionId: orderId,
+        total: total,
+        tax: parseFloat(order.total_tax || order.tax || '0'),
+        shipping: parseFloat(order.shipping_incl_tax || order.shipping || '0'),
+        coupon: order.discounts?.[0]?.code || order.coupon_code || order.coupon,
+        items: cartStore.items, // Pass raw cart items with all product data
+        currency: order.currency || 'USD'
+      });
+
       // Purchase events ALWAYS redirect to confirmation/upsell pages
       (event as any)._willRedirect = true;
       logger.debug('Marked purchase event for queueing with _willRedirect = true');
@@ -556,6 +627,101 @@ export class AutoEventListener {
 
     (this.eventBus as any).on('route:changed', handleRouteChanged);
     this.eventHandlers.set('route:changed', handleRouteChanged);
+  }
+
+  /**
+   * Set up exit intent event listeners
+   */
+  private setupExitIntentEventListeners(): void {
+    // Exit intent shown
+    const handleExitIntentShown = (data: any) => {
+      dataLayer.push({
+        event: 'dl_exit_intent_shown',
+        event_category: 'engagement',
+        event_action: 'exit_intent_shown',
+        event_label: data.imageUrl || data.template || 'exit-intent',
+        exit_intent: {
+          image_url: data.imageUrl || '',
+          template: data.template || ''
+        }
+      });
+      logger.debug('Tracked exit intent shown:', data);
+    };
+
+    this.eventBus.on('exit-intent:shown', handleExitIntentShown);
+    this.eventHandlers.set('exit-intent:shown', handleExitIntentShown);
+
+    // Exit intent clicked/accepted
+    const handleExitIntentClicked = (data: any) => {
+      dataLayer.push({
+        event: 'dl_exit_intent_accepted',
+        event_category: 'engagement',
+        event_action: 'exit_intent_accepted',
+        event_label: data.imageUrl || data.template || 'exit-intent',
+        exit_intent: {
+          image_url: data.imageUrl || '',
+          template: data.template || ''
+        }
+      });
+      logger.debug('Tracked exit intent accepted:', data);
+    };
+
+    this.eventBus.on('exit-intent:clicked', handleExitIntentClicked);
+    this.eventHandlers.set('exit-intent:clicked', handleExitIntentClicked);
+
+    // Exit intent dismissed
+    const handleExitIntentDismissed = (data: any) => {
+      dataLayer.push({
+        event: 'dl_exit_intent_dismissed',
+        event_category: 'engagement',
+        event_action: 'exit_intent_dismissed',
+        event_label: data.imageUrl || data.template || 'exit-intent',
+        exit_intent: {
+          image_url: data.imageUrl || '',
+          template: data.template || ''
+        }
+      });
+      logger.debug('Tracked exit intent dismissed:', data);
+    };
+
+    this.eventBus.on('exit-intent:dismissed', handleExitIntentDismissed);
+    this.eventHandlers.set('exit-intent:dismissed', handleExitIntentDismissed);
+
+    // Exit intent closed (X button)
+    const handleExitIntentClosed = (data: any) => {
+      dataLayer.push({
+        event: 'dl_exit_intent_closed',
+        event_category: 'engagement',
+        event_action: 'exit_intent_closed',
+        event_label: data.imageUrl || data.template || 'exit-intent',
+        exit_intent: {
+          image_url: data.imageUrl || '',
+          template: data.template || ''
+        }
+      });
+      logger.debug('Tracked exit intent closed:', data);
+    };
+
+    this.eventBus.on('exit-intent:closed', handleExitIntentClosed);
+    this.eventHandlers.set('exit-intent:closed', handleExitIntentClosed);
+
+    // Exit intent action (for template actions like apply-coupon)
+    const handleExitIntentAction = (data: any) => {
+      dataLayer.push({
+        event: 'dl_exit_intent_action',
+        event_category: 'engagement',
+        event_action: `exit_intent_${data.action}`,
+        event_label: data.couponCode || data.action,
+        exit_intent: {
+          action: data.action,
+          coupon_code: data.couponCode || ''
+        }
+      });
+      logger.debug('Tracked exit intent action:', data);
+    };
+
+    this.eventBus.on('exit-intent:action', handleExitIntentAction);
+    this.eventHandlers.set('exit-intent:action', handleExitIntentAction);
   }
 
   /**

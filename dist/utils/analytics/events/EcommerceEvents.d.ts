@@ -9,8 +9,19 @@ export declare class EcommerceEvents {
     static createSelectItemEvent(item: CartItem | EnrichedCartLine | any, listId?: string, listName?: string): DataLayerEvent;
     static createBeginCheckoutEvent(): DataLayerEvent;
     static createPurchaseEvent(orderData: any): DataLayerEvent;
+    static createViewSearchResultsEvent(items: (CartItem | EnrichedCartLine | any)[], searchTerm?: string): DataLayerEvent;
     static createViewCartEvent(): DataLayerEvent;
     static createAddShippingInfoEvent(shippingTier?: string): DataLayerEvent;
     static createAddPaymentInfoEvent(paymentType?: string): DataLayerEvent;
+    static createAcceptedUpsellEvent(data: {
+        orderId: string;
+        packageId: number | string;
+        packageName?: string;
+        quantity?: number;
+        value?: number;
+        currency?: string;
+        upsellNumber?: number;
+        item?: any;
+    }): DataLayerEvent;
 }
 //# sourceMappingURL=EcommerceEvents.d.ts.map

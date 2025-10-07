@@ -74,19 +74,79 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
   }
 
   private setupSelectorListener(): void {
-    // Add small delay to ensure selector is initialized first
-    setTimeout(() => {
+    // Try to get selector immediately, then retry if not found
+    const checkSelector = (retryCount: number = 0) => {
       const selectorElement = this.findSelectorElement();
-      
+
+      if (!selectorElement && retryCount < 5) {
+        // Retry after a short delay
+        setTimeout(() => checkSelector(retryCount + 1), 50);
+        return;
+      }
+
       if (!selectorElement) {
-        this.logger.warn(`Selector with id "${this.selectorId}" not found. Button may not work properly.`);
+        this.logger.warn(`Selector with id "${this.selectorId}" not found after retries. Button may not work properly.`);
       } else {
         // Get initial selected item
         this.selectedItem = this.getSelectedItemFromElement(selectorElement);
+
+        // If no selected item but selector has data-selected-package, try to find it
+        if (!this.selectedItem) {
+          const selectedPackage = selectorElement.getAttribute('data-selected-package');
+          if (selectedPackage) {
+            const packageId = parseInt(selectedPackage, 10);
+            if (!isNaN(packageId)) {
+              // Try to find the selected card element
+              const selectedCard = selectorElement.querySelector(
+                `[data-next-selector-card][data-next-package-id="${packageId}"]`
+              );
+
+              // Create item from found card or minimal item
+              this.selectedItem = {
+                packageId: packageId,
+                quantity: this.quantity || 1,
+                element: selectedCard as HTMLElement || null as any,
+                price: undefined,
+                name: undefined,
+                isPreSelected: false,
+                shippingId: undefined
+              };
+            }
+          }
+        }
+
+        // For select mode, also check for any card with data-next-selected="true"
+        const isSelectMode = selectorElement.getAttribute('data-next-selection-mode') === 'select';
+        if (isSelectMode && !this.selectedItem) {
+          const selectedCard = selectorElement.querySelector('[data-next-selector-card][data-next-selected="true"]');
+          if (selectedCard) {
+            const packageIdAttr = selectedCard.getAttribute('data-next-package-id');
+            if (packageIdAttr) {
+              const packageId = parseInt(packageIdAttr, 10);
+              if (!isNaN(packageId)) {
+                this.selectedItem = {
+                  packageId: packageId,
+                  quantity: this.quantity || 1,
+                  element: selectedCard as HTMLElement,
+                  price: undefined,
+                  name: undefined,
+                  isPreSelected: false,
+                  shippingId: undefined
+                };
+                // Also update the selector's data-selected-package attribute
+                selectorElement.setAttribute('data-selected-package', packageId.toString());
+              }
+            }
+          }
+        }
+
         this.updateButtonState();
       }
-    }, 100);
-    
+    };
+
+    // Start checking immediately
+    checkSelector();
+
     // Listen to selector events
     this.eventBus.on('selector:item-selected', this.handleSelectorChange.bind(this));
     this.eventBus.on('selector:selection-changed', this.handleSelectorChange.bind(this));
@@ -164,9 +224,21 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
 
   private updateButtonState(): void {
     if (this.selectorId) {
-      // Selector-based: enable if item selected
-      const hasSelection = this.selectedItem !== null;
-      this.setEnabled(hasSelection);
+      // Check if selector is in select mode
+      const selectorElement = this.findSelectorElement();
+      const isSelectMode = selectorElement?.getAttribute('data-next-selection-mode') === 'select';
+
+      if (isSelectMode) {
+        // In select mode, always enable the button if there's a selected item
+        // even if it's already in cart (user might want to add more)
+        const hasSelection = this.selectedItem !== null ||
+                           !!selectorElement?.getAttribute('data-selected-package');
+        this.setEnabled(hasSelection);
+      } else {
+        // In swap mode or default mode, enable if item selected
+        const hasSelection = this.selectedItem !== null;
+        this.setEnabled(hasSelection);
+      }
     } else if (this.packageId) {
       // Direct package: always enable
       this.setEnabled(true);
