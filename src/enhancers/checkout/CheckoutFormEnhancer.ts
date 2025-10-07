@@ -3378,13 +3378,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     const checkoutStore = useCheckoutStore.getState();
 
-    // Get the correct value based on input type
-    const fieldValue = (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio'))
-      ? target.checked
-      : target.value;
-
     if (fieldName.startsWith('billing-')) {
-      this.handleBillingFieldChange(fieldName, fieldValue, checkoutStore);
+      // Billing fields are always strings (no checkboxes in billing)
+      this.handleBillingFieldChange(fieldName, target.value, checkoutStore);
 
       if (fieldName === 'billing-country') {
         const billingProvinceField = this.billingFields.get('billing-province');
@@ -3394,6 +3390,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         // Currency is location-based only, not affected by billing or shipping country
       }
     } else {
+      // Get the correct value based on input type
+      const fieldValue = (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio'))
+        ? target.checked
+        : target.value;
+
       this.updateFormData({ [fieldName]: fieldValue });
       checkoutStore.clearError(fieldName);
       
@@ -4369,9 +4370,7 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
         // Only emit internal event for UI components that need to know checkout started
         // NOT for analytics tracking - that's already handled above
-        this.emit('checkout:started', {
-          timestamp: Date.now()
-        });
+        this.emit('checkout:started', {});
 
         this.logger.info('Tracked begin_checkout event on checkout form initialization');
       }

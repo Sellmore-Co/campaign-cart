@@ -232,7 +232,7 @@ export class AddToCartEnhancer extends BaseActionEnhancer {
         // In select mode, always enable the button if there's a selected item
         // even if it's already in cart (user might want to add more)
         const hasSelection = this.selectedItem !== null ||
-                           selectorElement?.getAttribute('data-selected-package');
+                           !!selectorElement?.getAttribute('data-selected-package');
         this.setEnabled(hasSelection);
       } else {
         // In swap mode or default mode, enable if item selected

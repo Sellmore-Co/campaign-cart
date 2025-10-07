@@ -253,8 +253,8 @@ export class EventBuilder {
 
     // Handle different item formats
     // Use product data instead of package data for consistent tracking
-    let itemId: string;
-    let itemName: string;
+    let itemId: string = '';
+    let itemName: string = '';
     let productId: string | undefined;
     let variantId: string | undefined;
 
@@ -272,10 +272,10 @@ export class EventBuilder {
 
           if (packageData) {
             // Use product SKU as item_id (matches purchase event format)
-            itemId = packageData.product_sku || String(packageData.external_id);
-            itemName = packageData.product_name || packageData.name;
-            productId = String(packageData.product_id);
-            variantId = String(packageData.product_variant_id);
+            itemId = (packageData as any).product_sku || String(packageData.external_id);
+            itemName = (packageData as any).product_name || packageData.name;
+            productId = String((packageData as any).product_id || '');
+            variantId = String((packageData as any).product_variant_id || '');
           } else {
             console.warn(`Could not find package data for packageId: ${packageId}`, {
               packageId,
@@ -288,7 +288,7 @@ export class EventBuilder {
       console.warn('Could not access campaign store for product data:', error);
     }
 
-    // Fallback if campaign store lookup failed
+    // Fallback if campaign store lookup failed or variables not set
     if (!itemId) {
       itemId = String(item.packageId || item.package_id || item.id);
     }
