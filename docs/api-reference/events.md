@@ -1,6 +1,6 @@
 # Events
 
-The Next Commerce JS SDK emits events that you can listen to for tracking and custom functionality. The SDK has 25 internal events that can be listened to via `next.on()`.
+The Next Commerce JS SDK emits events that you can listen to for tracking and custom functionality. The SDK has 34 internal events that can be listened to via `next.on()`.
 
 ## Event Categories
 
@@ -13,6 +13,7 @@ The Next Commerce JS SDK emits events that you can listen to for tracking and cu
 - **Upsell Events** - Post-purchase upsell tracking
 - **User Events** - User authentication
 - **Behavioral Events** - FOMO, exit intent
+- **Profile Events** - Profile management and switching
 - **System Events** - SDK state, errors, routing
 
 ## SDK Initialization
@@ -75,6 +76,17 @@ Fired when item quantity is updated:
 next.on('cart:quantity-changed', (data) => {
   console.log('Quantity changed:', data);
   // data includes: packageId, oldQuantity, newQuantity
+});
+```
+
+### cart:package-swapped
+
+Fired when a package is swapped for another:
+
+```javascript
+next.on('cart:package-swapped', (data) => {
+  console.log('Package swapped:', data);
+  // data includes: previousPackageId, newPackageId, previousItem, newItem, priceDifference, source
 });
 ```
 
@@ -278,6 +290,96 @@ next.on('fomo:shown', (data) => {
 });
 ```
 
+### exit-intent:clicked
+
+Fired when user clicks on exit intent popup:
+
+```javascript
+next.on('exit-intent:clicked', (data) => {
+  console.log('Exit intent clicked:', data);
+  // data includes: imageUrl, template
+});
+```
+
+### exit-intent:dismissed
+
+Fired when exit intent popup is dismissed:
+
+```javascript
+next.on('exit-intent:dismissed', (data) => {
+  console.log('Exit intent dismissed:', data);
+  // data includes: imageUrl, template
+});
+```
+
+### exit-intent:closed
+
+Fired when exit intent popup is closed:
+
+```javascript
+next.on('exit-intent:closed', (data) => {
+  console.log('Exit intent closed:', data);
+  // data includes: imageUrl, template
+});
+```
+
+### exit-intent:action
+
+Fired when user takes an action on exit intent popup:
+
+```javascript
+next.on('exit-intent:action', (data) => {
+  console.log('Exit intent action:', data);
+  // data includes: action, couponCode
+});
+```
+
+## Profile Events
+
+### profile:applied
+
+Fired when a profile is applied to the cart:
+
+```javascript
+next.on('profile:applied', (data) => {
+  console.log('Profile applied:', data);
+  // data includes: profileId, previousProfileId, itemsSwapped, originalItems, cleared, profile
+});
+```
+
+### profile:reverted
+
+Fired when profile changes are reverted:
+
+```javascript
+next.on('profile:reverted', (data) => {
+  console.log('Profile reverted:', data);
+  // data includes: previousProfileId, itemsRestored
+});
+```
+
+### profile:switched
+
+Fired when switching between profiles:
+
+```javascript
+next.on('profile:switched', (data) => {
+  console.log('Profile switched:', data);
+  // data includes: fromProfileId, toProfileId, itemsAffected
+});
+```
+
+### profile:registered
+
+Fired when a new profile is registered:
+
+```javascript
+next.on('profile:registered', (data) => {
+  console.log('Profile registered:', data);
+  // data includes: profileId, mappingsCount
+});
+```
+
 ## System Events
 
 ### route:changed
@@ -325,13 +427,14 @@ next.on('error:occurred', (error) => {
 
 ## Complete Event List
 
-Here are all 25 available events organized by category:
+Here are all 34 available events organized by category:
 
-### Cart (4 events)
+### Cart (5 events)
 - `cart:updated` - Cart state changed
 - `cart:item-added` - Item added to cart
 - `cart:item-removed` - Item removed from cart
 - `cart:quantity-changed` - Item quantity changed
+- `cart:package-swapped` - Package swapped for another
 
 ### Checkout & Order (3 events)
 - `checkout:started` - Checkout process began
@@ -361,8 +464,20 @@ Here are all 25 available events organized by category:
 - `user:logged-in` - User authenticated
 - `user:logged-out` - User logged out
 
-### System (5 events)
+### Behavioral (5 events)
 - `fomo:shown` - FOMO popup displayed
+- `exit-intent:clicked` - Exit intent popup clicked
+- `exit-intent:dismissed` - Exit intent popup dismissed
+- `exit-intent:closed` - Exit intent popup closed
+- `exit-intent:action` - Exit intent action taken
+
+### Profile (4 events)
+- `profile:applied` - Profile applied to cart
+- `profile:reverted` - Profile changes reverted
+- `profile:switched` - Switched between profiles
+- `profile:registered` - New profile registered
+
+### System (5 events)
 - `route:changed` - Page/route changed
 - `sdk:route-invalidated` - Route context reset
 - `page:viewed` - Page view tracked
@@ -490,7 +605,7 @@ if (window.next && window.next.eventBus) {
 if (window.location.search.includes('debug=true')) {
   const allEvents = [
     // Cart
-    'cart:updated', 'cart:item-added', 'cart:item-removed', 'cart:quantity-changed',
+    'cart:updated', 'cart:item-added', 'cart:item-removed', 'cart:quantity-changed', 'cart:package-swapped',
     // Checkout & Order
     'checkout:started', 'checkout:form-initialized', 'order:completed',
     // Payment
@@ -503,8 +618,12 @@ if (window.location.search.includes('debug=true')) {
     'upsell:viewed', 'upsell:accepted', 'upsell:added', 'upsell:skipped',
     // User
     'user:logged-in', 'user:logged-out',
+    // Behavioral
+    'fomo:shown', 'exit-intent:clicked', 'exit-intent:dismissed', 'exit-intent:closed', 'exit-intent:action',
+    // Profile
+    'profile:applied', 'profile:reverted', 'profile:switched', 'profile:registered',
     // System
-    'fomo:shown', 'route:changed', 'sdk:route-invalidated', 'page:viewed', 'error:occurred'
+    'route:changed', 'sdk:route-invalidated', 'page:viewed', 'error:occurred'
   ];
   
   allEvents.forEach(event => {
