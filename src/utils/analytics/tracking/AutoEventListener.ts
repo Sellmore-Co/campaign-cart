@@ -58,6 +58,7 @@ export class AutoEventListener {
     this.setupUpsellEventListeners();
     this.setupCheckoutEventListeners();
     this.setupPageEventListeners();
+    this.setupExitIntentEventListeners();
 
     logger.info('AutoEventListener initialized');
   }
@@ -626,6 +627,101 @@ export class AutoEventListener {
 
     (this.eventBus as any).on('route:changed', handleRouteChanged);
     this.eventHandlers.set('route:changed', handleRouteChanged);
+  }
+
+  /**
+   * Set up exit intent event listeners
+   */
+  private setupExitIntentEventListeners(): void {
+    // Exit intent shown
+    const handleExitIntentShown = (data: any) => {
+      dataLayer.push({
+        event: 'dl_exit_intent_shown',
+        event_category: 'engagement',
+        event_action: 'exit_intent_shown',
+        event_label: data.imageUrl || data.template || 'exit-intent',
+        exit_intent: {
+          image_url: data.imageUrl || '',
+          template: data.template || ''
+        }
+      });
+      logger.debug('Tracked exit intent shown:', data);
+    };
+
+    this.eventBus.on('exit-intent:shown', handleExitIntentShown);
+    this.eventHandlers.set('exit-intent:shown', handleExitIntentShown);
+
+    // Exit intent clicked/accepted
+    const handleExitIntentClicked = (data: any) => {
+      dataLayer.push({
+        event: 'dl_exit_intent_accepted',
+        event_category: 'engagement',
+        event_action: 'exit_intent_accepted',
+        event_label: data.imageUrl || data.template || 'exit-intent',
+        exit_intent: {
+          image_url: data.imageUrl || '',
+          template: data.template || ''
+        }
+      });
+      logger.debug('Tracked exit intent accepted:', data);
+    };
+
+    this.eventBus.on('exit-intent:clicked', handleExitIntentClicked);
+    this.eventHandlers.set('exit-intent:clicked', handleExitIntentClicked);
+
+    // Exit intent dismissed
+    const handleExitIntentDismissed = (data: any) => {
+      dataLayer.push({
+        event: 'dl_exit_intent_dismissed',
+        event_category: 'engagement',
+        event_action: 'exit_intent_dismissed',
+        event_label: data.imageUrl || data.template || 'exit-intent',
+        exit_intent: {
+          image_url: data.imageUrl || '',
+          template: data.template || ''
+        }
+      });
+      logger.debug('Tracked exit intent dismissed:', data);
+    };
+
+    this.eventBus.on('exit-intent:dismissed', handleExitIntentDismissed);
+    this.eventHandlers.set('exit-intent:dismissed', handleExitIntentDismissed);
+
+    // Exit intent closed (X button)
+    const handleExitIntentClosed = (data: any) => {
+      dataLayer.push({
+        event: 'dl_exit_intent_closed',
+        event_category: 'engagement',
+        event_action: 'exit_intent_closed',
+        event_label: data.imageUrl || data.template || 'exit-intent',
+        exit_intent: {
+          image_url: data.imageUrl || '',
+          template: data.template || ''
+        }
+      });
+      logger.debug('Tracked exit intent closed:', data);
+    };
+
+    this.eventBus.on('exit-intent:closed', handleExitIntentClosed);
+    this.eventHandlers.set('exit-intent:closed', handleExitIntentClosed);
+
+    // Exit intent action (for template actions like apply-coupon)
+    const handleExitIntentAction = (data: any) => {
+      dataLayer.push({
+        event: 'dl_exit_intent_action',
+        event_category: 'engagement',
+        event_action: `exit_intent_${data.action}`,
+        event_label: data.couponCode || data.action,
+        exit_intent: {
+          action: data.action,
+          coupon_code: data.couponCode || ''
+        }
+      });
+      logger.debug('Tracked exit intent action:', data);
+    };
+
+    this.eventBus.on('exit-intent:action', handleExitIntentAction);
+    this.eventHandlers.set('exit-intent:action', handleExitIntentAction);
   }
 
   /**

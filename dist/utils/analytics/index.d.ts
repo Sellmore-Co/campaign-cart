@@ -13,6 +13,7 @@ export declare class NextAnalytics {
     static getInstance(): NextAnalytics;
     private checkAndSetIgnoreFlag;
     private shouldIgnoreAnalytics;
+    isInitialized(): boolean;
     initialize(): Promise<void>;
     private initializeProviders;
     private initializeAutoTracking;

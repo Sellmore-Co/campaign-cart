@@ -3,6 +3,8 @@ import { DataLayerEvent } from '../types';
 declare global {
     interface Window {
         dataLayer: any[];
+        ElevarDataLayer?: any[];
+        ElevarInvalidateContext?: () => void;
     }
 }
 export declare class GTMAdapter extends ProviderAdapter {

@@ -4361,6 +4361,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
     try {
       const cartStore = useCartStore.getState();
+      const checkoutStore = useCheckoutStore.getState();
+
       // Only track if cart has items
       if (!cartStore.isEmpty && cartStore.items.length > 0) {
         this.hasTrackedBeginCheckout = true;
@@ -4370,7 +4372,12 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
 
         // Only emit internal event for UI components that need to know checkout started
         // NOT for analytics tracking - that's already handled above
-        this.emit('checkout:started', {});
+        this.emit('checkout:started', {
+          formData: checkoutStore.formData,
+          paymentMethod: checkoutStore.paymentMethod,
+          isProcessing: checkoutStore.isProcessing,
+          step: checkoutStore.step
+        });
 
         this.logger.info('Tracked begin_checkout event on checkout form initialization');
       }

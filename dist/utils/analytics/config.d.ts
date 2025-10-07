@@ -26,6 +26,23 @@ export declare const PROVIDER_SETTINGS: {
 export declare const EVENT_VALIDATION_RULES: {
     required: string[];
     eventSpecific: {
+        dl_purchase: string[];
+        dl_add_to_cart: string[];
+        dl_remove_from_cart: string[];
+        dl_view_item: string[];
+        dl_view_item_list: string[];
+        dl_view_search_results: string[];
+        dl_select_item: string[];
+        dl_begin_checkout: string[];
+        dl_view_cart: string[];
+        dl_add_payment_info: string[];
+        dl_add_shipping_info: string[];
+        dl_user_data: string[];
+        dl_sign_up: string[];
+        dl_login: string[];
+        dl_subscribe: string[];
+        dl_package_swapped: string[];
+        dl_upsell_purchase: string[];
         purchase: string[];
         add_to_cart: string[];
         remove_from_cart: string[];
@@ -34,25 +51,28 @@ export declare const EVENT_VALIDATION_RULES: {
         begin_checkout: string[];
         add_payment_info: string[];
         add_shipping_info: string[];
-        dl_purchase: string[];
-        dl_add_to_cart: string[];
-        dl_remove_from_cart: string[];
-        dl_view_item: string[];
-        dl_view_item_list: string[];
-        dl_begin_checkout: string[];
-        dl_add_payment_info: string[];
-        dl_add_shipping_info: string[];
     };
     fieldTypes: {
         event: string;
         event_id: string;
         event_category: string;
         event_label: string;
-        event_value: string;
+        cart_total: string;
+        lead_type: string;
+        pageType: string;
+        'ecommerce.currencyCode': string;
+        'ecommerce.currency': string;
         'ecommerce.value': string;
-        'ecommerce.tax': string;
-        'ecommerce.shipping': string;
-        'ecommerce.discount': string;
+        'ecommerce.purchase.actionField.revenue': string;
+        'ecommerce.purchase.actionField.tax': string;
+        'ecommerce.purchase.actionField.shipping': string;
+        'ecommerce.purchase.actionField.sub_total': string;
+        'ecommerce.purchase.actionField.id': string;
+        'ecommerce.purchase.actionField.order_name': string;
+        'user_properties.visitor_type': string;
+        'user_properties.customer_id': string;
+        'user_properties.customer_order_count': string;
+        'user_properties.customer_total_spent': string;
     };
 };
 export declare const STORAGE_KEYS: {

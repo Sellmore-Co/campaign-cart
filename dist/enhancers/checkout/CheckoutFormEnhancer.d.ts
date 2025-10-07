@@ -42,6 +42,7 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private billingAnimationDebounceTimer?;
     private billingAnimationTimeouts;
     private hasTrackedShippingInfo;
+    private hasTrackedBeginCheckout;
     initialize(): Promise<void>;
     private scanAllFields;
     private scanBillingFields;

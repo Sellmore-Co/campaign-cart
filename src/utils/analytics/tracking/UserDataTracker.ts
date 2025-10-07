@@ -228,18 +228,13 @@ export class UserDataTracker {
       setTimeout(() => this.trackUserData(), 100);
     });
 
-    // Listen for cart changes
-    this.eventBus.on('cart:updated', () => {
-      logger.debug('Cart updated, tracking user data');
-      this.trackUserData();
-    });
+    // REMOVED: cart:updated listener - causes duplicate tracking
+    // The cart:updated event is already tracked by AutoEventListener as dl_cart_updated
+    // We don't need to also fire dl_user_data on every cart change
 
-    // Subscribe to cart store changes
-    const unsubscribeCart = useCartStore.subscribe(() => {
-      logger.debug('Cart store changed, tracking user data');
-      this.trackUserData();
-    });
-    this.unsubscribers.push(unsubscribeCart);
+    // REMOVED: Cart store subscription - causes duplicate tracking
+    // User data is already tracked on route changes and significant user actions
+    // Cart changes are tracked separately via dl_cart_updated event
 
     // Listen for browser navigation
     if (typeof window !== 'undefined') {
@@ -311,7 +306,6 @@ export class UserDataTracker {
     (this.eventBus as any).removeAllListeners('sdk:route-invalidated');
     (this.eventBus as any).removeAllListeners('user:logged-in');
     (this.eventBus as any).removeAllListeners('user:logged-out');
-    this.eventBus.removeAllListeners('cart:updated');
 
     this.isInitialized = false;
     logger.debug('UserDataTracker destroyed');

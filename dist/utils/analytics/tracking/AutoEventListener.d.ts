@@ -16,6 +16,7 @@ export declare class AutoEventListener {
     private setupUpsellEventListeners;
     private setupCheckoutEventListeners;
     private setupPageEventListeners;
+    private setupExitIntentEventListeners;
     private getCartData;
     reset(): void;
     destroy(): void;

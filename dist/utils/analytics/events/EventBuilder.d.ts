@@ -1,4 +1,4 @@
-import { DataLayerEvent, UserProperties, EventContext, EcommerceItem } from '../types';
+import { DataLayerEvent, UserProperties, EventContext, EcommerceItem, ElevarProduct, ElevarImpression } from '../types';
 interface MinimalCartItem {
     id?: string | number;
     packageId?: string | number;
@@ -23,18 +23,29 @@ interface MinimalCartItem {
             value: number;
             formatted: string;
         };
+        value?: number;
     };
     price_incl_tax?: number | string;
+    price_retail?: number | string;
     quantity?: number;
+    qty?: number;
     package_profile?: string;
     variant?: string;
     product?: {
         title?: string;
         image?: string;
+        sku?: string;
     };
     image?: string;
     imageUrl?: string;
     image_url?: string;
+    productId?: string | number;
+    productName?: string;
+    variantId?: string | number;
+    variantName?: string;
+    variantSku?: string;
+    sku?: string;
+    [key: string]: any;
 }
 export declare class EventBuilder {
     static createEvent(eventName: string, eventData?: Partial<DataLayerEvent>): DataLayerEvent;
@@ -55,6 +66,8 @@ export declare class EventBuilder {
     } | undefined;
     static setListAttribution(listId?: string, listName?: string): void;
     static clearListAttribution(): void;
+    static formatElevarProduct(item: MinimalCartItem, index?: number): ElevarProduct;
+    static formatElevarImpression(item: MinimalCartItem, index?: number, list?: string): ElevarImpression;
 }
 export {};
 //# sourceMappingURL=EventBuilder.d.ts.map
