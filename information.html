@@ -1,0 +1,120 @@
+<div class="form-sections">
+                          <div class="form-section form-section--first">
+                            <h2 class="form-section__title">Contact</h2>
+                            <div class="form-group addErrorIcon">
+                              <div class="form-input addErrorIcon" style="position: relative;"><label for="email" class="label-checkout" style="transition: 0.15s ease-in-out;">Email</label><input autocomplete="email" os-checkout-validate="required" name="email" data-name="Email" type="email" id="email" placeholder="Email*" data-next-checkout-field="email" class="input-flds has-error next-error-field"></div>
+                            <div class="next-error-label" role="alert" aria-live="polite">Email is required</div></div>
+                          </div>
+                          <div pb-checkout-section="shipping" class="form-section">
+                            <h1 class="form-section__title">Shipping</h1>
+                            <div os-checkout-component="shipping-form">
+                              <div class="form-grid">
+                                <div data-next-component="shipping-field-row" class="form-grid__row">
+                                  <div class="form-group">
+                                    <div class="form-input" style="position: relative;"><label for="shipping_country" class="label-checkout has-value" style="transition: 0.15s ease-in-out;">Country</label>
+                                      <div class="select-form-wrapper"><select autocomplete="country-name" os-checkout-validate="required" data-next-checkout-field="country" class="input-flds select-field" style="padding-top: 14px;"><option value="" disabled="">Select Country</option><option value="AU">Australia</option><option value="BR">Brazil</option><option value="CA">Canada</option><option value="FR">France</option><option value="DE">Germany</option><option value="IT">Italy</option><option value="NL">Netherlands</option><option value="ES">Spain</option><option value="GB">United Kingdom</option><option value="US">United States</option></select>
+                                        <div class="caret-down">
+                                          <div class="select-arrow w-embed"><svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                              <polyline points="2 4.75 7 9.25 12 4.75"></polyline>
+                                            </svg></div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div data-next-component="shipping-field-row" class="form-grid__row">
+                                  <div class="form-group addErrorIcon">
+                                    <div class="form-input" style="position: relative;"><label for="shipping_fname" class="label-checkout" style="transition: 0.15s ease-in-out;">First Name</label><input autocomplete="given-name" os-checkout-validate="required" placeholder="First Name*" maxlength="256" name="shipping_fname" data-name="Shipping First Name" type="text" id="shipping_fname" data-next-checkout-field="fname" class="input-flds has-error next-error-field"></div>
+                                  <div class="next-error-label" role="alert" aria-live="polite">First name is required</div></div>
+                                  <div class="form-group addErrorIcon">
+                                    <div class="form-input" style="position: relative;"><label for="shipping_lname" class="label-checkout" style="transition: 0.15s ease-in-out;">Last Name</label><input autocomplete="family-name" os-checkout-validate="required" placeholder="Last Name*" maxlength="256" name="shipping_lname" data-name="Shipping Lirst Name" type="text" id="shipping_lname" data-next-checkout-field="lname" class="input-flds has-error next-error-field"></div>
+                                  <div class="next-error-label" role="alert" aria-live="polite">Last name is required</div></div>
+                                </div>
+                                <div data-next-component="shipping-field-row" class="form-grid__row">
+                                  <div class="form-group addErrorIcon">
+                                    <div class="form-input" style="position: relative;">
+                                      <div class="form-input-icon w-embed"><svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 14 14" focusable="false" aria-hidden="true" class="a8x1wuy a8x1wux *1fragem32 *1fragempz *1fragemly *1fragemlo _1fragemp6">
+                                          <circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1"></circle>
+                                          <path fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" d="m9.25 9.25 2.5 2.5"></path>
+                                        </svg></div><label for="shipping_address1" class="label-checkout" style="transition: 0.15s ease-in-out;">Address</label><input autocomplete="address-line1" os-checkout-validate="required" placeholder="Address*" data-next-checkout-field="address1" class="input-flds has-error next-error-field">
+                                    </div>
+                                  <div class="next-error-label" role="alert" aria-live="polite">Address is required</div></div>
+                                </div>
+                                <div data-next-component="shipping-field-row" class="form-grid__row">
+                                  <div class="form-group">
+                                    <div class="form-input" style="position: relative;"><label for="shipping_address2" class="label-checkout" style="transition: 0.15s ease-in-out;">Apartment, suite, etc. (optional)</label><input autocomplete="address-line2" name="shipping_address2" data-name="Shipping Address 2" type="text" id="shipping_addres2" placeholder="Apartment, suite, etc. (optional)" maxlength="256" data-next-checkout-field="address2" class="input-flds"></div>
+                                  </div>
+                                </div>
+                                <div data-next-component="shipping-field-row" data-os-component="location" class="form-grid__row">
+                                  <div class="form-group addErrorIcon">
+                                    <div class="form-input" style="position: relative;"><label for="shipping_city" class="label-checkout" style="transition: 0.15s ease-in-out;">City</label><input autocomplete="address-level2" os-checkout-validate="required" placeholder="City*" maxlength="256" name="shipping_city" data-name="Shipping City" type="text" id="shipping_city" pattern="^[A-Za-z\s]+$" data-next-checkout-field="city" class="input-flds has-error next-error-field"></div>
+                                  <div class="next-error-label" role="alert" aria-live="polite">City is required</div></div>
+                                  <div class="form-group addErrorIcon">
+                                    <div class="form-input" style="position: relative;"><label for="shipping_province" class="label-checkout" style="transition: 0.15s ease-in-out;">State / Province *</label>
+                                      <div class="select-form-wrapper"><select autocomplete="address-level1" os-checkout-validate="required" name="shipping_province" data-name="Shipping Province" type="select" id="shipping_province" data-next-checkout-field="province" class="input-flds select-field has-error next-error-field" required="required"><option value="">Select State / Province</option><option value="AC">Acre</option><option value="AL">Alagoas</option><option value="AP">Amapá</option><option value="AM">Amazonas</option><option value="BA">Bahia</option><option value="CE">Ceará</option><option value="DF">Distrito Federal</option><option value="ES">Espírito Santo</option><option value="GO">Goiás</option><option value="MA">Maranhão</option><option value="MT">Mato Grosso</option><option value="MS">Mato Grosso do Sul</option><option value="MG">Minas Gerais</option><option value="PB">Paraíba</option><option value="PA">Pará</option><option value="PE">Pernambuco</option><option value="PI">Piauí</option><option value="RN">Rio Grande do Norte</option><option value="RS">Rio Grande do Sul</option><option value="RJ">Rio de Janeiro</option><option value="RO">Rondônia</option><option value="RR">Roraima</option><option value="SC">Santa Catarina</option><option value="SE">Sergipe</option><option value="SP">São Paulo</option><option value="TO">Tocantins</option></select>
+                                        <div class="caret-down">
+                                          <div class="select-arrow w-embed"><svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                              <polyline points="2 4.75 7 9.25 12 4.75"></polyline>
+                                            </svg></div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  <div class="next-error-label" role="alert" aria-live="polite">State / Province is required</div></div>
+                                  <div class="form-group addErrorIcon">
+                                    <div class="form-input" style="position: relative;"><label for="shipping_postal_code" class="label-checkout" style="transition: 0.15s ease-in-out;">Postcode / ZIP *</label><input autocomplete="postal-code" os-checkout-validate="required" placeholder="Postcode / ZIP" maxlength="10" name="shipping_postal_code" data-name="Shipping Postal Code" type="text" id="shipping_postal_code" inputmode="numeric" pattern="(^\d{5}$)|(^\d{5}-\d{4}$)" data-next-checkout-field="postal" class="input-flds has-error next-error-field"></div>
+                                  <div class="next-error-label" role="alert" aria-live="polite">Postcode / ZIP is required</div></div>
+                                </div>
+                                <div data-next-component="shipping-field-row" class="form-grid__row">
+                                  <div class="form-group addErrorIcon">
+                                    <div class="form-input" style="position: relative;"><label for="phone" class="label-checkout" style="transition: 0.15s ease-in-out;">Phone</label><div class="iti"><div class="iti__flag-container"><div class="iti__selected-flag" role="combobox" aria-controls="iti-0__country-listbox" aria-owns="iti-0__country-listbox" aria-expanded="false" title="Brazil (Brasil): +55"><div class="iti__flag iti__br"></div></div></div><input autocomplete="tel-full" name="phone" data-name="Phone" type="tel" id="phone" placeholder="Phone*" data-next-checkout-field="phone" required="" class="input-flds has-error next-error-field" data-intl-tel-input-id="0"></div>
+                                      <div class="custom-css w-embed">
+                                        <style>
+                                          .iti__flag-container {
+                                            position: absolute;
+                                            top: 0;
+                                            bottom: 0;
+                                            width: 3rem !important;
+                                            right: 0 !important;
+                                            left: auto !important;
+                                            padding: 1px;
+                                          }
+
+                                          .iti--allow-dropdown input,
+                                          .iti--allow-dropdown input[type=text],
+                                          .iti--allow-dropdown input[type=tel],
+                                          .iti--separate-dial-code input,
+                                          .iti--separate-dial-code input[type=text],
+                                          .iti--separate-dial-code input[type=tel] {
+                                            padding-right: 52px !important;
+                                            padding-left: 12px !important;
+                                            margin-left: 0 !important;
+                                          }
+                                        </style>
+                                      </div>
+                                    </div>
+                                  <div class="next-error-label" role="alert" aria-live="polite">Phone number is required</div></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="submit-section cc-shop__three">
+                            <div></div>
+                            <div class="submit-section__button"><button os-checkout-payment="combo" data-action="submit" type="submit" class="submit-button cc-shop__three" aria-busy="false">
+                                <div data-pb-element="checkout-button-spinner" class="submit-button__loader">
+                                  <div class="w-embed">
+                                    <style>
+                                      .three-quarter-spinner {
+                                        animation: spin .9s linear 0s infinite;
+                                      }
+                                    </style>
+                                  </div>
+                                  <div class="three-quarter-spinner black"></div>
+                                </div>
+                                <div data-pb-element="checkout-button-info" class="submit-button__content">
+                                  <div class="submit-button__text">
+                                    <div data-i18n="complete_purchase" class="submit-button__main-text cc-shop__three">Continue to Shipping</div>
+                                  </div>
+                                </div>
+                              </button></div>
+                          </div>
+                        </div>

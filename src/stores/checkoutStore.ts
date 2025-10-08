@@ -3,6 +3,7 @@
  */
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface CheckoutState {
   step: number;
@@ -62,77 +63,96 @@ const initialState: CheckoutState = {
   vouchers: [],
 };
 
-export const useCheckoutStore = create<CheckoutState & CheckoutActions>((set) => ({
-  ...initialState,
+export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
+  persist(
+    (set) => ({
+      ...initialState,
 
-  setStep: (step: number) => {
-    set({ step });
-  },
+      setStep: (step: number) => {
+        set({ step });
+      },
 
-  setProcessing: (isProcessing: boolean) => {
-    set({ isProcessing });
-  },
+      setProcessing: (isProcessing: boolean) => {
+        set({ isProcessing });
+      },
 
-  setError: (field: string, error: string) => {
-    set(state => ({
-      errors: { ...state.errors, [field]: error },
-    }));
-  },
+      setError: (field: string, error: string) => {
+        set(state => ({
+          errors: { ...state.errors, [field]: error },
+        }));
+      },
 
-  clearError: (field: string) => {
-    set(state => {
-      const { [field]: _, ...errors } = state.errors;
-      return { errors };
-    });
-  },
+      clearError: (field: string) => {
+        set(state => {
+          const { [field]: _, ...errors } = state.errors;
+          return { errors };
+        });
+      },
 
-  clearAllErrors: () => {
-    set({ errors: {} });
-  },
+      clearAllErrors: () => {
+        set({ errors: {} });
+      },
 
-  updateFormData: (data: Record<string, any>) => {
-    set(state => ({
-      formData: { ...state.formData, ...data },
-    }));
-  },
+      updateFormData: (data: Record<string, any>) => {
+        set(state => ({
+          formData: { ...state.formData, ...data },
+        }));
+      },
 
-  setPaymentToken: (paymentToken: string) => {
-    set({ paymentToken });
-  },
+      setPaymentToken: (paymentToken: string) => {
+        set({ paymentToken });
+      },
 
-  setPaymentMethod: (paymentMethod: CheckoutState['paymentMethod']) => {
-    set({ paymentMethod });
-  },
+      setPaymentMethod: (paymentMethod: CheckoutState['paymentMethod']) => {
+        set({ paymentMethod });
+      },
 
-  setShippingMethod: (shippingMethod: CheckoutState['shippingMethod']) => {
-    set({ shippingMethod });
-  },
+      setShippingMethod: (shippingMethod: CheckoutState['shippingMethod']) => {
+        set({ shippingMethod });
+      },
 
-  setBillingAddress: (billingAddress: CheckoutState['billingAddress']) => {
-    set({ billingAddress });
-  },
+      setBillingAddress: (billingAddress: CheckoutState['billingAddress']) => {
+        set({ billingAddress });
+      },
 
-  setSameAsShipping: (sameAsShipping: boolean) => {
-    set({ sameAsShipping });
-  },
+      setSameAsShipping: (sameAsShipping: boolean) => {
+        set({ sameAsShipping });
+      },
 
-  setTestMode: (testMode: boolean) => {
-    set({ testMode });
-  },
+      setTestMode: (testMode: boolean) => {
+        set({ testMode });
+      },
 
-  addVoucher: (code: string) => {
-    set(state => ({
-      vouchers: [...state.vouchers, code],
-    }));
-  },
+      addVoucher: (code: string) => {
+        set(state => ({
+          vouchers: [...state.vouchers, code],
+        }));
+      },
 
-  removeVoucher: (code: string) => {
-    set(state => ({
-      vouchers: state.vouchers.filter(v => v !== code),
-    }));
-  },
+      removeVoucher: (code: string) => {
+        set(state => ({
+          vouchers: state.vouchers.filter(v => v !== code),
+        }));
+      },
 
-  reset: () => {
-    set(initialState);
-  },
-}));
+      reset: () => {
+        set(initialState);
+      },
+    }),
+    {
+      name: 'next-checkout-store', // Key in sessionStorage
+      storage: {
+        getItem: (name) => {
+          const str = sessionStorage.getItem(name);
+          return str ? JSON.parse(str) : null;
+        },
+        setItem: (name, value) => {
+          sessionStorage.setItem(name, JSON.stringify(value));
+        },
+        removeItem: (name) => {
+          sessionStorage.removeItem(name);
+        },
+      },
+    }
+  )
+);

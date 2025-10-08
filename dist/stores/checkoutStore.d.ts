@@ -43,6 +43,16 @@ interface CheckoutActions {
     removeVoucher: (code: string) => void;
     reset: () => void;
 }
-export declare const useCheckoutStore: import('zustand').UseBoundStore<import('zustand').StoreApi<CheckoutState & CheckoutActions>>;
+export declare const useCheckoutStore: import('zustand').UseBoundStore<Omit<import('zustand').StoreApi<CheckoutState & CheckoutActions>, "persist"> & {
+    persist: {
+        setOptions: (options: Partial<import('zustand/middleware').PersistOptions<CheckoutState & CheckoutActions, CheckoutState & CheckoutActions>>) => void;
+        clearStorage: () => void;
+        rehydrate: () => Promise<void> | void;
+        hasHydrated: () => boolean;
+        onHydrate: (fn: (state: CheckoutState & CheckoutActions) => void) => () => void;
+        onFinishHydration: (fn: (state: CheckoutState & CheckoutActions) => void) => () => void;
+        getOptions: () => Partial<import('zustand/middleware').PersistOptions<CheckoutState & CheckoutActions, CheckoutState & CheckoutActions>>;
+    };
+}>;
 export {};
 //# sourceMappingURL=checkoutStore.d.ts.map

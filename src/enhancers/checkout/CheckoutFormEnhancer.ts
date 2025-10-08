@@ -123,6 +123,11 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private hasTrackedShippingInfo = false;
   private hasTrackedBeginCheckout = false;
 
+  // Multi-step checkout support
+  private isMultiStep = false;
+  private currentStep = 1;
+  private nextStepUrl?: string;
+
   public async initialize(): Promise<void> {
     this.validateElement();
     
@@ -132,7 +137,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     
     this.form = this.element;
     this.form.noValidate = true;
-    
+
+    // Check if this is a multi-step checkout
+    this.detectMultiStepCheckout();
+
     // Initialize loading overlay
     this.loadingOverlay = new LoadingOverlay();
     
@@ -245,8 +253,8 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     document.addEventListener('next:test-mode-activated', this.boundHandleKonamiActivation as EventListener);
     
     // Initialize form with existing data
-    this.populateFormData();
-    
+    await this.populateFormData();
+
     // Initialize location field visibility
     this.initializeLocationFieldVisibility();
     
@@ -995,55 +1003,72 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       // Check for shipping country override from URL or sessionStorage
       // NOTE: This only affects the shipping country dropdown, NOT currency
       let selectedCountryCode = locationData.detectedCountryCode;
-      
+
       // Use console.log to ensure visibility
       const countryConfig = this.countryService.getConfig();
+      const checkoutStore = useCheckoutStore.getState();
+      const storedCountry = checkoutStore.formData.country;
+
       console.log('%c[CheckoutForm] Shipping Country Priority Check', 'color: #FF6B6B; font-weight: bold', {
         detectedCountry: locationData.detectedCountryCode,
         detectedCurrency: locationData.detectedCountryConfig.currencyCode,
         addressConfigDefault: countryConfig?.defaultCountry,
+        storedCountry: storedCountry,
         urlParam: new URLSearchParams(window.location.search).get('country'),
         sessionOverride: sessionStorage.getItem('next_selected_country'),
         availableCountries: this.countries.map(c => c.code),
         note: 'Shipping country may differ from detected location. Currency is based on detected location only.'
       });
-      
+
       this.logger.info('Shipping country selection priority check (does not affect currency):', {
         detectedCountry: locationData.detectedCountryCode,
         addressConfigDefault: countryConfig?.defaultCountry,
+        storedCountry: storedCountry,
         urlParam: new URLSearchParams(window.location.search).get('country'),
         sessionOverride: sessionStorage.getItem('next_selected_country')
       });
-      
-      // Priority 1: URL parameter (?country=XX for shipping destination)
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlCountry = urlParams.get('country');
-      if (urlCountry) {
-        const countryCode = urlCountry.toUpperCase();
-        // Verify the country exists in the available countries
-        const countryExists = this.countries.some(c => c.code === countryCode);
+
+      // Priority 1: Stored country from checkoutStore (from previous step)
+      if (storedCountry) {
+        const countryExists = this.countries.some(c => c.code === storedCountry);
         if (countryExists) {
-          selectedCountryCode = countryCode;
-          // Save to sessionStorage for persistence
-          sessionStorage.setItem('next_selected_country', countryCode);
-          this.logger.info(`✅ Using shipping country from URL parameter: ${countryCode} (currency unaffected)`);
+          selectedCountryCode = storedCountry;
+          this.logger.info(`✅ Using stored country from previous step: ${storedCountry}`);
         } else {
-          this.logger.warn(`Country ${countryCode} from URL not in available countries`);
+          this.logger.warn(`Stored country ${storedCountry} not in available countries`);
         }
       }
-      // Priority 2: sessionStorage override (from previous URL param or user selection)
+      // Priority 2: URL parameter (?country=XX for shipping destination)
       else {
-        const savedCountryOverride = sessionStorage.getItem('next_selected_country');
-        if (savedCountryOverride) {
-          const countryExists = this.countries.some(c => c.code === savedCountryOverride);
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlCountry = urlParams.get('country');
+        if (urlCountry) {
+          const countryCode = urlCountry.toUpperCase();
+          // Verify the country exists in the available countries
+          const countryExists = this.countries.some(c => c.code === countryCode);
           if (countryExists) {
-            selectedCountryCode = savedCountryOverride;
-            this.logger.info(`✅ Using shipping country from session storage: ${savedCountryOverride} (currency unaffected)`);
+            selectedCountryCode = countryCode;
+            // Save to sessionStorage for persistence
+            sessionStorage.setItem('next_selected_country', countryCode);
+            this.logger.info(`✅ Using shipping country from URL parameter: ${countryCode} (currency unaffected)`);
           } else {
-            this.logger.warn(`Saved country ${savedCountryOverride} not in available countries`);
+            this.logger.warn(`Country ${countryCode} from URL not in available countries`);
           }
-        } else {
-          this.logger.info(`✅ Using detected/default shipping country: ${selectedCountryCode} (currency unaffected)`);
+        }
+        // Priority 3: sessionStorage override (from previous URL param or user selection)
+        else {
+          const savedCountryOverride = sessionStorage.getItem('next_selected_country');
+          if (savedCountryOverride) {
+            const countryExists = this.countries.some(c => c.code === savedCountryOverride);
+            if (countryExists) {
+              selectedCountryCode = savedCountryOverride;
+              this.logger.info(`✅ Using shipping country from session storage: ${savedCountryOverride} (currency unaffected)`);
+            } else {
+              this.logger.warn(`Saved country ${savedCountryOverride} not in available countries`);
+            }
+          } else {
+            this.logger.info(`✅ Using detected/default shipping country: ${selectedCountryCode} (currency unaffected)`);
+          }
         }
       }
       
@@ -1081,12 +1106,38 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
       }
       
       this.countryConfigs.set(selectedCountryCode, selectedCountryConfig);
-      
+
+      // IMPORTANT: Save stored province before loading states (updateStateOptions clears it)
+      const storedProvince = checkoutStore.formData.province;
+      console.log('%c[CheckoutForm] Saved province before state loading', 'color: #FF1493; font-weight: bold', {
+        storedProvince,
+        storedCountry,
+        willRestore: !!storedProvince && storedCountry === selectedCountryCode
+      });
+
       if (selectedCountryCode) {
         const provinceField = this.fields.get('province');
         if (provinceField instanceof HTMLSelectElement) {
           await this.updateStateOptions(selectedCountryCode, provinceField);
           this.currentCountryConfig = selectedCountryConfig;
+
+          // Restore stored province after states are loaded (if country matches)
+          if (storedProvince && storedCountry === selectedCountryCode) {
+            const optionExists = Array.from(provinceField.options).some(opt => opt.value === storedProvince);
+            if (optionExists) {
+              provinceField.value = storedProvince;
+              this.updateFormData({ province: storedProvince });
+              console.log('%c[CheckoutForm] ✅ Restored province after state loading', 'color: #00FF00; font-weight: bold', {
+                province: storedProvince,
+                fieldValue: provinceField.value
+              });
+            } else {
+              console.log('%c[CheckoutForm] ⚠️ Cannot restore province - option not found', 'color: #FFA500', {
+                storedProvince,
+                availableOptions: Array.from(provinceField.options).map(o => o.value)
+              });
+            }
+          }
         }
         this.updateFormLabels(selectedCountryConfig);
       }
@@ -2941,14 +2992,113 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   }
 
   // ============================================================================
+  // MULTI-STEP CHECKOUT SUPPORT
+  // ============================================================================
+
+  /**
+   * Detect if this is a multi-step checkout by checking for step attributes
+   */
+  private detectMultiStepCheckout(): void {
+    // Check for data-next-checkout-step attribute on form
+    const stepAttr = this.form.getAttribute('data-next-checkout-step') ||
+                     this.form.getAttribute('os-checkout-step');
+
+    if (stepAttr) {
+      this.isMultiStep = true;
+      this.currentStep = parseInt(this.form.getAttribute('data-next-step-number') || '1', 10);
+      this.nextStepUrl = stepAttr;
+
+      this.logger.info('Multi-step checkout detected', {
+        currentStep: this.currentStep,
+        nextStepUrl: this.nextStepUrl
+      });
+
+      // Update store step
+      const checkoutStore = useCheckoutStore.getState();
+      checkoutStore.setStep(this.currentStep);
+    }
+  }
+
+  /**
+   * Handle step navigation for multi-step checkout
+   */
+  private async handleStepNavigation(checkoutStore: any, cartStore: any): Promise<void> {
+    try {
+      checkoutStore.clearAllErrors();
+
+      this.logger.info(`Validating step ${this.currentStep} before navigation`);
+
+      // Validate only current step fields
+      const validation = await this.validator.validateStep(
+        this.currentStep,
+        checkoutStore.formData,
+        this.countryConfigs,
+        this.currentCountryConfig
+      );
+
+      if (!validation.isValid) {
+        this.logger.warn(`Step ${this.currentStep} validation failed`, validation.errors);
+
+        // Display errors
+        if (validation.errors) {
+          Object.entries(validation.errors).forEach(([field, error]) => {
+            checkoutStore.setError(field, error as string);
+            this.validator.showError(field, error as string);
+          });
+        }
+
+        // Focus first error field
+        if (validation.firstErrorField) {
+          setTimeout(() => {
+            this.validator.focusFirstErrorField(validation.firstErrorField);
+          }, 100);
+        }
+
+        return;
+      }
+
+      // Validation passed - data is already saved in checkoutStore via field change handlers
+      // Navigate to next step
+      this.logger.info(`Step ${this.currentStep} validated successfully, navigating to: ${this.nextStepUrl}`);
+
+      // Update step in store before navigation
+      checkoutStore.setStep(this.currentStep + 1);
+
+      // Build next URL with preserved query parameters
+      let nextUrl = this.nextStepUrl!;
+      const currentParams = new URLSearchParams(window.location.search);
+
+      // Check if debug=true is in current URL
+      if (currentParams.get('debug') === 'true') {
+        // Handle relative URLs (e.g., "shipping", "shipping.html", "/shipping.html")
+        const separator = nextUrl.includes('?') ? '&' : '?';
+        nextUrl = `${nextUrl}${separator}debug=true`;
+        this.logger.debug('Preserving debug parameter in next step URL');
+      }
+
+      // Navigate to next page
+      window.location.href = nextUrl;
+
+    } catch (error) {
+      this.logger.error('Step navigation error:', error);
+      checkoutStore.setError('general', 'Failed to proceed to next step. Please try again.');
+    }
+  }
+
+  // ============================================================================
   // EVENT HANDLERS
   // ============================================================================
 
   private async handleFormSubmit(event: Event): Promise<void> {
     event.preventDefault();
-    
+
     const checkoutStore = useCheckoutStore.getState();
     const cartStore = useCartStore.getState();
+
+    // Handle multi-step navigation
+    if (this.isMultiStep && this.nextStepUrl) {
+      return this.handleStepNavigation(checkoutStore, cartStore);
+    }
     
         try {
           checkoutStore.clearAllErrors();
@@ -4054,16 +4204,126 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     checkoutStore.clearError(field);
   }
 
-  private populateFormData(): void {
+  private async populateFormData(): Promise<void> {
     const checkoutStore = useCheckoutStore.getState();
+
+    console.log('%c[populateFormData] Starting form population', 'color: #FFA500; font-weight: bold', {
+      storedData: checkoutStore.formData,
+      country: checkoutStore.formData.country,
+      province: checkoutStore.formData.province
+    });
+
+    // Check if country is stored and different from current
+    const storedCountry = checkoutStore.formData.country;
+    const countryField = this.fields.get('country');
+
+    if (storedCountry && countryField instanceof HTMLSelectElement) {
+      // Set country first
+      countryField.value = storedCountry;
+      console.log('%c[populateFormData] Set country field', 'color: #00CED1', {
+        storedCountry,
+        fieldValue: countryField.value,
+        detectedCountryCode: this.detectedCountryCode
+      });
+
+      // If country changed, load states for that country
+      const currentCountryValue = countryField.value;
+      if (currentCountryValue && currentCountryValue !== this.detectedCountryCode) {
+        this.logger.info(`Restoring saved country: ${currentCountryValue}`);
+        console.log('%c[populateFormData] Loading states for restored country', 'color: #FFD700', currentCountryValue);
+
+        // Load states for the stored country
+        const provinceField = this.fields.get('province');
+        if (provinceField instanceof HTMLSelectElement) {
+          console.log('%c[populateFormData] Before updateStateOptions', 'color: #FF6347', {
+            country: currentCountryValue,
+            provinceField: provinceField,
+            currentOptions: Array.from(provinceField.options).map(o => o.value)
+          });
+
+          await this.updateStateOptions(currentCountryValue, provinceField);
+
+          console.log('%c[populateFormData] After updateStateOptions', 'color: #32CD32', {
+            country: currentCountryValue,
+            provinceField: provinceField,
+            newOptions: Array.from(provinceField.options).map(o => o.value),
+            optionsCount: provinceField.options.length
+          });
+        }
+      }
+    }
+
+    // Now populate all fields including province
     this.fields.forEach((field, name) => {
       if (checkoutStore.formData[name] && (field instanceof HTMLInputElement || field instanceof HTMLSelectElement)) {
-        field.value = checkoutStore.formData[name];
+        // Skip province if we just loaded states - it will be set below
+        if (name !== 'province' || !(field instanceof HTMLSelectElement)) {
+          field.value = checkoutStore.formData[name];
+          console.log(`[populateFormData] Set field ${name} =`, checkoutStore.formData[name]);
+        }
       }
     });
-    
+
+    // Set province value after states are loaded
+    const storedProvince = checkoutStore.formData.province;
+    const provinceField = this.fields.get('province');
+
+    console.log('%c[populateFormData] Setting province', 'color: #FF1493; font-weight: bold', {
+      storedProvince,
+      provinceField: provinceField,
+      isSelect: provinceField instanceof HTMLSelectElement
+    });
+
+    if (storedProvince && provinceField instanceof HTMLSelectElement) {
+      const availableOptions = Array.from(provinceField.options).map(opt => ({
+        value: opt.value,
+        text: opt.text
+      }));
+
+      console.log('%c[populateFormData] Province field options', 'color: #9370DB', {
+        storedProvince,
+        availableOptions,
+        optionsCount: provinceField.options.length
+      });
+
+      // Check if the option exists
+      const optionExists = Array.from(provinceField.options).some(opt => opt.value === storedProvince);
+
+      console.log('%c[populateFormData] Province option check', 'color: #FF4500', {
+        storedProvince,
+        optionExists,
+        availableValues: availableOptions.map(o => o.value)
+      });
+
+      if (optionExists) {
+        provinceField.value = storedProvince;
+        // IMPORTANT: Also update the store since updateStateOptions cleared it
+        this.updateFormData({ province: storedProvince });
+        console.log('%c[populateFormData] ✅ Province set successfully', 'color: #00FF00; font-weight: bold', {
+          storedProvince,
+          fieldValue: provinceField.value,
+          storeUpdated: true
+        });
+        this.logger.debug(`Restored province: ${storedProvince}`);
+      } else {
+        console.log('%c[populateFormData] ❌ Province NOT set - option not found', 'color: #FF0000; font-weight: bold', {
+          storedProvince,
+          availableOptions
+        });
+        this.logger.warn(`Province ${storedProvince} not found in options for country ${storedCountry}`);
+      }
+    } else {
+      console.log('%c[populateFormData] Province not set', 'color: #FFA500', {
+        hasStoredProvince: !!storedProvince,
+        hasProvinceField: !!provinceField,
+        isSelectElement: provinceField instanceof HTMLSelectElement
+      });
+    }
+
     // Update floating labels for populated data
     this.ui.updateLabelsForPopulatedData();
+
+    console.log('%c[populateFormData] Form population complete', 'color: #00FF00; font-weight: bold');
   }
 
   private handleTestDataFilled(_event: Event): void {
