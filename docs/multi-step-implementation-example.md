@@ -9,7 +9,7 @@ The `CheckoutFormEnhancer` now supports multi-step checkout with step-based vali
 
 1. **Add form wrapper with step attributes**:
    ```html
-   <form data-next-checkout-form
+   <form data-next-checkout="form"
          data-next-checkout-step="shipping.html"
          data-next-step-number="1">
    ```
@@ -21,7 +21,7 @@ The `CheckoutFormEnhancer` now supports multi-step checkout with step-based vali
 ### Complete Example for information.html:
 
 ```html
-<form data-next-checkout-form
+<form data-next-checkout="form"
       data-next-checkout-step="shipping.html"
       data-next-step-number="1">
 
@@ -125,7 +125,7 @@ The `CheckoutFormEnhancer` now supports multi-step checkout with step-based vali
 ## Step 2: Shipping Page (shipping.html)
 
 ```html
-<form data-next-checkout-form
+<form data-next-checkout="form"
       data-next-checkout-step="payment.html"
       data-next-step-number="2">
 
@@ -180,9 +180,9 @@ The `CheckoutFormEnhancer` now supports multi-step checkout with step-based vali
     document.getElementById('shipping-address').textContent =
       `${state.formData.address1}, ${state.formData.city}, ${state.formData.province} ${state.formData.postal}`;
 
-    // Register the form enhancer
-    const form = document.querySelector('[data-next-checkout-form]');
-    await sdk.enhancers.register('checkout-form', form);
+    // Register the form enhancer (optional - auto-detected)
+    const form = document.querySelector('[data-next-checkout="form"]');
+    await sdk.enhancers.register('checkout', form);
   });
 </script>
 ```
@@ -190,7 +190,7 @@ The `CheckoutFormEnhancer` now supports multi-step checkout with step-based vali
 ## Step 3: Payment Page (payment.html)
 
 ```html
-<form data-next-checkout-form>
+<form data-next-checkout="form">
   <!-- No step attribute = final step, will process payment -->
 
   <!-- Summary sections -->
@@ -222,7 +222,7 @@ The `CheckoutFormEnhancer` now supports multi-step checkout with step-based vali
 
 | Attribute | Required | Description | Example |
 |-----------|----------|-------------|---------|
-| `data-next-checkout-form` | Yes | Marks the form for CheckoutFormEnhancer | `<form data-next-checkout-form>` |
+| `data-next-checkout` | Yes | Marks the form for CheckoutFormEnhancer (must be "form") | `<form data-next-checkout="form">` |
 | `data-next-checkout-step` | Step 1 & 2 | URL to navigate to after validation | `data-next-checkout-step="shipping.html"` |
 | `data-next-step-number` | Optional | Current step number (default: 1) | `data-next-step-number="1"` |
 | `data-next-checkout-field` | Yes | Field name for auto-save | `data-next-checkout-field="email"` |

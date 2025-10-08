@@ -3025,6 +3025,10 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
   private async handleStepNavigation(checkoutStore: any, cartStore: any): Promise<void> {
     try {
       checkoutStore.clearAllErrors();
+      checkoutStore.setProcessing(true);
+
+      // Show loading overlay
+      this.loadingOverlay.show();
 
       this.logger.info(`Validating step ${this.currentStep} before navigation`);
 
@@ -3054,6 +3058,9 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
           }, 100);
         }
 
+        // Clear processing state and hide overlay on validation error
+        checkoutStore.setProcessing(false);
+        this.loadingOverlay.hide(true);
         return;
       }
 
@@ -3076,12 +3083,20 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
         this.logger.debug('Preserving debug parameter in next step URL');
       }
 
-      // Navigate to next page
+      // Add a small delay to show the loading spinner before navigation
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Clear processing state before navigation to prevent it persisting to next page
+      checkoutStore.setProcessing(false);
+
+      // Navigate to next page (loading overlay will be cleared by page navigation)
       window.location.href = nextUrl;
 
     } catch (error) {
       this.logger.error('Step navigation error:', error);
       checkoutStore.setError('general', 'Failed to proceed to next step. Please try again.');
+      checkoutStore.setProcessing(false);
+      this.loadingOverlay.hide(true);
     }
   }
 
