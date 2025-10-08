@@ -279,29 +279,29 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
     
     // Handle page restoration from bfcache (back/forward navigation)
     window.addEventListener('pageshow', (event) => {
-      if (event.persisted || 
+      if (event.persisted ||
           (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type === 'back_forward') {
         // Page was restored from bfcache
         this.logger.info('Page restored from bfcache, resetting express checkout state');
-        
+
         // Hide loading overlay immediately when coming back
         this.loadingOverlay.hide(true);
-        
+
         const checkoutStore = useCheckoutStore.getState();
-        
+
         // Reset processing state
         if (checkoutStore.isProcessing) {
           this.logger.info('Resetting processing state after bfcache restore');
           checkoutStore.setProcessing(false);
         }
-        if (checkoutStore.paymentMethod === 'apple_pay' || 
-            checkoutStore.paymentMethod === 'google_pay' || 
+        if (checkoutStore.paymentMethod === 'apple_pay' ||
+            checkoutStore.paymentMethod === 'google_pay' ||
             checkoutStore.paymentMethod === 'paypal') {
           this.logger.info('Resetting payment method from', checkoutStore.paymentMethod, 'to credit-card');
           checkoutStore.setPaymentMethod('credit-card');
           checkoutStore.setPaymentToken(''); // Clear any stale payment token
         }
-        
+
         // Re-initialize credit card service if needed
         if (this.creditCardService && config.spreedlyEnvironmentKey) {
           this.logger.info('Re-initializing credit card service after bfcache restore');
@@ -309,9 +309,35 @@ export class CheckoutFormEnhancer extends BaseEnhancer {
             this.logger.error('Failed to re-initialize credit card service:', error);
           });
         }
-        
+
         // Check for fresh purchase event
         this.handlePurchaseEvent();
+      }
+    });
+
+    // Handle window focus to reset express checkout state when user returns
+    // This catches cases where the user cancels PayPal/etc without triggering pageshow
+    window.addEventListener('focus', () => {
+      const checkoutStore = useCheckoutStore.getState();
+
+      // Only reset if we're in processing state (likely from express checkout)
+      if (checkoutStore.isProcessing) {
+        this.logger.info('Window focused with processing=true, resetting express checkout state');
+
+        // Hide loading overlay
+        this.loadingOverlay.hide(true);
+
+        // Reset processing state
+        checkoutStore.setProcessing(false);
+
+        // Reset payment method back to credit-card if it's an express method
+        if (checkoutStore.paymentMethod === 'apple_pay' ||
+            checkoutStore.paymentMethod === 'google_pay' ||
+            checkoutStore.paymentMethod === 'paypal') {
+          this.logger.info('Resetting payment method from', checkoutStore.paymentMethod, 'to credit-card');
+          checkoutStore.setPaymentMethod('credit-card');
+          checkoutStore.setPaymentToken('');
+        }
       }
     });
     
