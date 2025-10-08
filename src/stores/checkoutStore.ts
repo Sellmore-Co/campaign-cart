@@ -154,20 +154,22 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
         },
       },
       // Exclude transient state from persistence
-      partialize: (state) => ({
-        step: state.step,
-        formData: state.formData,
-        shippingMethod: state.shippingMethod,
-        billingAddress: state.billingAddress,
-        sameAsShipping: state.sameAsShipping,
-        // Explicitly exclude:
-        // - errors (transient validation state)
-        // - isProcessing (transient UI state)
-        // - paymentToken (sensitive, should not persist)
-        // - paymentMethod (should be derived from form, not persisted)
-        // - testMode (session-specific)
-        // - vouchers (will be revalidated on page load)
-      }),
+      partialize: (state) => {
+        return {
+          step: state.step,
+          formData: state.formData,
+          shippingMethod: state.shippingMethod,
+          billingAddress: state.billingAddress,
+          sameAsShipping: state.sameAsShipping,
+          // Explicitly exclude:
+          // - errors (transient validation state)
+          // - isProcessing (transient UI state)
+          // - paymentToken (sensitive, should not persist)
+          // - paymentMethod (should be derived from form, not persisted)
+          // - testMode (session-specific)
+          // - vouchers (will be revalidated on page load)
+        } as any;
+      },
     }
   )
 );
