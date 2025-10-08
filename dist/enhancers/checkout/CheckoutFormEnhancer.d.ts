@@ -43,6 +43,9 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private billingAnimationTimeouts;
     private hasTrackedShippingInfo;
     private hasTrackedBeginCheckout;
+    private isMultiStep;
+    private currentStep;
+    private nextStepUrl?;
     initialize(): Promise<void>;
     private scanAllFields;
     private scanBillingFields;
@@ -98,6 +101,8 @@ export declare class CheckoutFormEnhancer extends BaseEnhancer {
     private getSuccessUrl;
     private validateExpressCheckoutFields;
     private getFailureUrl;
+    private detectMultiStepCheckout;
+    private handleStepNavigation;
     private handleFormSubmit;
     private processOrder;
     private handleTokenizedPayment;

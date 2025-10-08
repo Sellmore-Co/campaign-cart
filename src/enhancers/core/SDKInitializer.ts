@@ -174,11 +174,18 @@ export class SDKInitializer {
 
   private static async initializeLocationAndCurrency(): Promise<void> {
     try {
+      const configStore = useConfigStore.getState();
+
+      // Only initialize if currencyBehavior is explicitly set to 'auto'
+      if (!configStore.currencyBehavior || configStore.currencyBehavior !== 'auto') {
+        this.logger.info('Skipping location/currency detection (currencyBehavior is not set to auto)');
+        return;
+      }
+
       this.logger.info('Initializing location and currency detection...');
-      
+
       // Initialize country service early
       const countryService = CountryService.getInstance();
-      const configStore = useConfigStore.getState();
       
       // Check for country override in URL or session
       const urlParams = new URLSearchParams(window.location.search);

@@ -53,9 +53,10 @@ export class AttributeScanner {
     try {
       // Find all elements with data-next attributes
       const selector = [
+        '[data-next-enhancer]',  // Generic enhancer (checkout-review, etc.)
         '[data-next-display]',
         '[data-next-toggle]',
-        '[data-next-action]', 
+        '[data-next-action]',
         '[data-next-timer]',
         '[data-next-show]',
         '[data-next-hide]',
@@ -342,7 +343,15 @@ export class AttributeScanner {
           // This matches the original CheckoutFormEnhancer.backup.ts approach
           const { CheckoutFormEnhancer } = await import('@/enhancers/checkout/CheckoutFormEnhancer');
           return new CheckoutFormEnhancer(element);
-          
+
+        case 'checkout-review':
+          this.logger.info('Creating CheckoutReviewEnhancer for element:', {
+            element: element.tagName,
+            class: element.className,
+          });
+          const { CheckoutReviewEnhancer } = await import('@/enhancers/checkout/CheckoutReviewEnhancer');
+          return new CheckoutReviewEnhancer(element);
+
         case 'express-checkout':
           // This is for individual button elements (paypal, apple_pay, google_pay)
           // Currently we don't have a separate enhancer for these, they're managed by the container

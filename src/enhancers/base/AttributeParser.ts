@@ -79,6 +79,14 @@ export class AttributeParser {
   public static getEnhancerTypes(element: HTMLElement): string[] {
     const types: string[] = [];
 
+    // Check for generic enhancer attribute (e.g., data-next-enhancer="checkout-review")
+    if (element.hasAttribute('data-next-enhancer')) {
+      const enhancerType = element.getAttribute('data-next-enhancer');
+      if (enhancerType) {
+        types.push(enhancerType);
+      }
+    }
+
     // Check for display enhancer
     if (element.hasAttribute('data-next-display')) {
       types.push('display');

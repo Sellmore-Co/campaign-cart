@@ -35,6 +35,7 @@ export declare class CheckoutValidator {
     setPhoneValidator(validator: (phoneNumber: string, type?: 'shipping' | 'billing') => boolean): void;
     private initializeValidationRules;
     validateField(name: string, value: any, context?: any): ValidationResult;
+    validateStep(step: number, formData: Record<string, any>, countryConfigs: Map<string, CountryConfig>, currentCountryConfig?: CountryConfig): Promise<FormValidationResult>;
     validateForm(formData: Record<string, any>, countryConfigs: Map<string, CountryConfig>, currentCountryConfig?: CountryConfig, includePayment?: boolean, billingAddress?: any, sameAsShipping?: boolean): Promise<FormValidationResult>;
     private findFirstErrorFieldInDOM;
     private applyRule;

@@ -130,6 +130,119 @@ export class CheckoutValidator {
   }
 
   /**
+   * Validate only fields required for a specific checkout step
+   */
+  public async validateStep(
+    step: number,
+    formData: Record<string, any>,
+    countryConfigs: Map<string, CountryConfig>,
+    currentCountryConfig?: CountryConfig
+  ): Promise<FormValidationResult> {
+    let isValid = true;
+    let firstErrorField: string | undefined;
+    const errors: Record<string, string> = {};
+
+    // Define fields required for each step
+    let requiredFields: string[] = [];
+
+    if (step === 1) {
+      // Step 1: Contact information and shipping address
+      requiredFields = ['email', 'fname', 'lname', 'country', 'address1', 'city', 'postal'];
+
+      const countryConfig = countryConfigs.get(formData.country);
+      if (countryConfig?.stateRequired) {
+        requiredFields.push('province');
+      }
+
+      // Check if phone field is marked as required in HTML
+      const phoneField = document.querySelector('[name="phone"]') as HTMLInputElement;
+      if (phoneField && (phoneField.hasAttribute('required') || phoneField.dataset.nextRequired === 'true')) {
+        requiredFields.push('phone');
+      }
+    } else if (step === 2) {
+      // Step 2: Shipping method (already validated in step 1, just check if present)
+      requiredFields = ['email', 'fname', 'lname', 'country', 'address1', 'city', 'postal'];
+      const countryConfig = countryConfigs.get(formData.country);
+      if (countryConfig?.stateRequired) {
+        requiredFields.push('province');
+      }
+    } else if (step === 3) {
+      // Step 3: Payment (validate everything)
+      return this.validateForm(formData, countryConfigs, currentCountryConfig, true, undefined, true);
+    }
+
+    // Validate each required field
+    requiredFields.forEach(field => {
+      if (!formData[field] || formData[field].trim() === '') {
+        errors[field] = `${this.formatFieldName(field, currentCountryConfig)} is required`;
+        isValid = false;
+        if (!firstErrorField) firstErrorField = field;
+      }
+    });
+
+    // Name validation
+    if (formData.fname && formData.fname.trim() && !this.isValidName(formData.fname)) {
+      errors.fname = 'First name can only contain letters, spaces, hyphens, and apostrophes';
+      isValid = false;
+      if (!firstErrorField) firstErrorField = 'fname';
+    }
+
+    if (formData.lname && formData.lname.trim() && !this.isValidName(formData.lname)) {
+      errors.lname = 'Last name can only contain letters, spaces, hyphens, and apostrophes';
+      isValid = false;
+      if (!firstErrorField) firstErrorField = 'lname';
+    }
+
+    // City validation
+    if (formData.city && formData.city.trim() && !this.isValidCity(formData.city)) {
+      errors.city = 'Please enter a valid city name';
+      isValid = false;
+      if (!firstErrorField) firstErrorField = 'city';
+    }
+
+    // Email validation
+    if (formData.email && !this.isValidEmail(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+      isValid = false;
+      if (!firstErrorField) firstErrorField = 'email';
+    }
+
+    // Phone validation (if required)
+    if (requiredFields.includes('phone') && formData.phone) {
+      let phoneIsValid = false;
+
+      if (this.phoneValidator) {
+        phoneIsValid = this.phoneValidator(formData.phone, 'shipping');
+      } else if (this.phoneInputManager) {
+        phoneIsValid = this.phoneInputManager.validatePhoneNumber(true);
+      } else {
+        phoneIsValid = this.isValidPhone(formData.phone);
+      }
+
+      if (!phoneIsValid) {
+        errors.phone = 'Please enter a valid phone number';
+        isValid = false;
+        if (!firstErrorField) firstErrorField = 'phone';
+      }
+    }
+
+    // Postal code validation
+    if (formData.postal && formData.country) {
+      const countryConfig = countryConfigs.get(formData.country);
+      if (countryConfig && !this.countryService.validatePostalCode(formData.postal, formData.country, countryConfig)) {
+        const errorMsg = countryConfig.postcodeExample
+          ? `Please enter a valid ${countryConfig.postcodeLabel.toLowerCase()} (e.g. ${countryConfig.postcodeExample})`
+          : `Please enter a valid ${countryConfig.postcodeLabel.toLowerCase()}`;
+        errors.postal = errorMsg;
+        isValid = false;
+        if (!firstErrorField) firstErrorField = 'postal';
+      }
+    }
+
+    return { isValid, firstErrorField, errors };
+  }
+
+  /**
    * Validate entire form including billing address if needed
    */
   public async validateForm(
@@ -143,23 +256,23 @@ export class CheckoutValidator {
     let isValid = true;
     let firstErrorField: string | undefined;
     const errors: Record<string, string> = {};
-    
+
     // Define required fields in validation order (fname first for proper focus order)
     const baseRequiredFields = ['fname', 'lname', 'email', 'address1', 'city'];
-    
+
     const countryConfig = countryConfigs.get(formData.country);
     const requiredFields = [...baseRequiredFields];
-    
+
     // Check if phone field is marked as required in HTML
     const phoneField = document.querySelector('[name="phone"]') as HTMLInputElement;
     if (phoneField && (phoneField.hasAttribute('required') || phoneField.dataset.nextRequired === 'true')) {
       requiredFields.push('phone');
     }
-    
+
     if (countryConfig?.stateRequired) {
       requiredFields.push('province');
     }
-    
+
     requiredFields.push('postal', 'country');
     
     // Validate each required field
