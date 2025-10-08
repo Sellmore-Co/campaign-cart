@@ -292,32 +292,52 @@ export class SDKInitializer {
           locationData: locationData // Cache the entire response
         });
         
-        // Determine selected currency with proper priority:
-        // 1. URL parameter (highest priority - immediate override)
-        // 2. Previously saved user selection (from session)
-        // 3. Detected currency from location (default)
-        
+        // Determine selected currency with proper priority based on currencyBehavior:
+        // When currencyBehavior is 'manual' (or not set):
+        //   1. URL parameter (highest priority)
+        //   2. USD (default - do NOT use detected currency or saved preferences)
+        // When currencyBehavior is 'auto':
+        //   1. URL parameter (highest priority)
+        //   2. Previously saved user selection
+        //   3. Detected currency from location
+
         const urlParams = new URLSearchParams(window.location.search);
         const urlCurrency = urlParams.get('currency');
         const savedCurrency = sessionStorage.getItem('next_selected_currency');
         const detectedCurrency = locationData.detectedCountryConfig.currencyCode;
-        
+
+        // Get currencyBehavior from config
+        // DEFAULT: If not set, treat as 'manual' (USD only, no auto-detection)
+        // Only use auto-detection if explicitly set to 'auto'
+        const currencyBehavior = configStore.currencyBehavior || 'manual';
+        const isManualMode = currencyBehavior === 'manual';
+
         let selectedCurrency: string;
-        
+
         if (urlCurrency) {
-          // URL parameter has highest priority
+          // URL parameter has highest priority in both modes
           selectedCurrency = urlCurrency.toUpperCase();
           this.logger.info('Currency override from URL:', selectedCurrency);
           // Save to session for persistence
           sessionStorage.setItem('next_selected_currency', selectedCurrency);
-        } else if (savedCurrency) {
-          // Use previously saved selection
-          selectedCurrency = savedCurrency;
-          this.logger.info('Using saved currency preference:', selectedCurrency);
+        } else if (isManualMode) {
+          // Manual mode: ALWAYS default to USD, ignore saved preferences and detected currency
+          selectedCurrency = 'USD';
+          this.logger.info('Using USD (currencyBehavior is manual)');
+          // Clear any saved currency that's not USD in manual mode
+          if (savedCurrency && savedCurrency !== 'USD') {
+            this.logger.debug(`Clearing saved currency ${savedCurrency} (manual mode enforces USD)`);
+            sessionStorage.removeItem('next_selected_currency');
+          }
         } else {
-          // Use detected currency as default
-          selectedCurrency = detectedCurrency;
-          this.logger.info('Using detected currency:', selectedCurrency);
+          // Auto mode: Use saved preference or detected currency
+          if (savedCurrency) {
+            selectedCurrency = savedCurrency;
+            this.logger.info('Using saved currency preference:', selectedCurrency);
+          } else {
+            selectedCurrency = detectedCurrency;
+            this.logger.info('Using detected currency:', selectedCurrency);
+          }
         }
         
         configStore.updateConfig({

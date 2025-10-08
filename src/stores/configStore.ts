@@ -71,7 +71,7 @@ const initialState: ConfigState = {
   detectedCurrency: '',
   selectedCurrency: '',
   locationData: null as any, // Cache the entire location response
-  currencyBehavior: 'auto' as 'auto' | 'manual', // Default to auto-switch currency on country change
+  currencyBehavior: 'manual' as 'auto' | 'manual', // Default to manual (USD only, no auto-detection unless explicitly set to 'auto')
   currencyFallbackOccurred: false, // Track if currency fallback happened
   
   // Profile configuration

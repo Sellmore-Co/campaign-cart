@@ -379,35 +379,41 @@ export class CountrySelector {
         }
       });
       
-      // If country has a different currency, update it
-      if (countryConfig.currencyCode && countryConfig.currencyCode !== configStore.selectedCurrency) {
-        this.logger.info(`Country currency is ${countryConfig.currencyCode}, updating...`);
-        
+      // Only auto-switch currency if currencyBehavior is 'auto'
+      const shouldAutoSwitchCurrency = configStore.currencyBehavior === 'auto';
+
+      if (countryConfig.currencyCode &&
+          countryConfig.currencyCode !== configStore.selectedCurrency &&
+          shouldAutoSwitchCurrency) {
+        this.logger.info(`Country currency is ${countryConfig.currencyCode}, updating (auto mode)...`);
+
         // Don't clear cache - the campaignStore already caches per currency
         // and will reuse cached data if available for each currency
-        
+
         // Update selected currency
         configStore.updateConfig({
           selectedCurrency: countryConfig.currencyCode
         });
-        
+
         // Save currency preference
         sessionStorage.setItem('next_selected_currency', countryConfig.currencyCode);
-        
+
         // Reload campaign with new currency
         await campaignStore.loadCampaign(configStore.apiKey);
-        
+
         // Refresh cart prices
         await cartStore.refreshItemPrices();
-        
+
         // Trigger currency selector update
         document.dispatchEvent(new CustomEvent('next:currency-changed', {
-          detail: { 
+          detail: {
             from: configStore.selectedCurrency,
             to: countryConfig.currencyCode,
             source: 'country-selector'
           }
         }));
+      } else if (countryConfig.currencyCode !== configStore.selectedCurrency && !shouldAutoSwitchCurrency) {
+        this.logger.info(`Country has currency ${countryConfig.currencyCode}, but manual currency mode is active - keeping ${configStore.selectedCurrency}`);
       }
       
       this.logger.info(`Country changed successfully to ${newCountry}`);
