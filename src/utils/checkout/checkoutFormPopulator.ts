@@ -121,17 +121,23 @@ export class CheckoutFormPopulator {
   private populateMonthOptions(monthSelect: HTMLSelectElement): void {
     // Clear existing options and add placeholder
     monthSelect.innerHTML = '<option value="">Month</option>';
-    
-    // Add month options 01-12
+
+    // Month names for display
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    // Add month options 01-12 with names
     for (let i = 1; i <= 12; i++) {
       const month = i.toString().padStart(2, '0');
       const option = document.createElement('option');
       option.value = month;
-      option.textContent = month;
+      option.textContent = `(${month}) ${monthNames[i - 1]}`;
       monthSelect.appendChild(option);
     }
-    
-    this.logger.debug('Month options populated (01-12)');
+
+    this.logger.debug('Month options populated (01-12 with names)');
   }
 
   private populateYearOptions(yearSelect: HTMLSelectElement): void {

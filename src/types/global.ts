@@ -376,10 +376,65 @@ export interface ConfigState {
 
 export type PageType = 'product' | 'cart' | 'checkout' | 'upsell' | 'receipt';
 
-export interface PaymentConfig {
-  spreedly?: {
-    fieldType?: { number?: string; cvv?: string };
+// Spreedly iFrame configuration interface
+export interface SpreedlyConfig {
+  // Field type configuration - controls keyboard display on mobile
+  fieldType?: {
+    number?: 'number' | 'text' | 'tel';
+    cvv?: 'number' | 'text' | 'tel';
   };
+
+  // Number format configuration
+  numberFormat?: 'prettyFormat' | 'plainFormat' | 'maskedFormat';
+
+  // Label configuration for accessibility
+  labels?: {
+    number?: string;
+    cvv?: string;
+  };
+
+  // Title attribute for accessibility
+  titles?: {
+    number?: string;
+    cvv?: string;
+  };
+
+  // Placeholder text
+  placeholders?: {
+    number?: string;
+    cvv?: string;
+  };
+
+  // CSS styling for iFrame fields
+  styles?: {
+    number?: string;
+    cvv?: string;
+    placeholder?: string;
+  };
+
+  // Security parameters - REQUIRED for authentication
+  nonce?: string; // Unique per session (e.g., UUID)
+  timestamp?: string; // Epoch time
+  certificateToken?: string; // Spreedly certificate token
+  signature?: string; // Server-generated signature
+
+  // Fraud detection
+  fraud?: boolean | { siteId: string }; // Enable fraud detection or specify BYOC fraud site ID
+
+  // Other options
+  enableAutoComplete?: boolean; // Toggle autocomplete functionality
+  requiredAttributes?: {
+    number?: boolean;
+    cvv?: boolean;
+  };
+
+  // Validation parameters
+  allowBlankName?: boolean; // Skip name validation
+  allowExpiredDate?: boolean; // Allow expired dates
+}
+
+export interface PaymentConfig {
+  spreedly?: SpreedlyConfig;
   expressCheckout?: {
     enabled: boolean;
     methods: {

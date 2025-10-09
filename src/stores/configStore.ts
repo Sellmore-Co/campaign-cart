@@ -165,10 +165,26 @@ export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
     if (windowConfig.payment && typeof windowConfig.payment === 'object') {
       updates.paymentConfig = windowConfig.payment as PaymentConfig;
     }
-    
+
     // Support both payment and paymentConfig for backwards compatibility
     if (windowConfig.paymentConfig && typeof windowConfig.paymentConfig === 'object') {
       updates.paymentConfig = windowConfig.paymentConfig as PaymentConfig;
+    }
+
+    // Load Spreedly configuration from window.nextConfig
+    // Can be specified as spreedly or spreedlyConfig
+    if (windowConfig.spreedly && typeof windowConfig.spreedly === 'object') {
+      if (!updates.paymentConfig) {
+        updates.paymentConfig = {};
+      }
+      updates.paymentConfig.spreedly = windowConfig.spreedly;
+    }
+
+    if (windowConfig.spreedlyConfig && typeof windowConfig.spreedlyConfig === 'object') {
+      if (!updates.paymentConfig) {
+        updates.paymentConfig = {};
+      }
+      updates.paymentConfig.spreedly = windowConfig.spreedlyConfig;
     }
     
     if (windowConfig.googleMaps && typeof windowConfig.googleMaps === 'object') {

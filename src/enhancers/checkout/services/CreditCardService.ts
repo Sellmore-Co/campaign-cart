@@ -9,6 +9,7 @@ import { FieldFinder } from '../utils/field-finder-utils';
 import type { Logger } from '@/utils/logger';
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { nextAnalytics, EcommerceEvents } from '@/utils/analytics/index';
+import type { SpreedlyConfig } from '@/types/global';
 
 declare global {
   interface Window {
@@ -32,46 +33,50 @@ export interface CreditCardValidationState {
 export class CreditCardService {
   private logger: Logger;
   private environmentKey: string;
+  private config?: SpreedlyConfig;
   private isReady: boolean = false;
   // errorManager removed - unused
   private validationState: CreditCardValidationState;
-  
+
   // Callbacks
   private onReadyCallback?: () => void;
   private onErrorCallback?: (errors: string[]) => void;
   private onTokenCallback?: (token: string, pmData: any) => void;
-  
+
   // Field references
   private numberField?: HTMLElement;
   private cvvField?: HTMLElement;
   private monthField?: HTMLElement;
   private yearField?: HTMLElement;
-  
+
   // Track if we've fired the add_payment_info event
   private hasTrackedPaymentInfo = false;
-  
+
   // Floating label callbacks
   private onFieldFocusCallback?: (fieldName: 'number' | 'cvv') => void;
   private onFieldBlurCallback?: (fieldName: 'number' | 'cvv', hasValue: boolean) => void;
   private onFieldInputCallback?: (fieldName: 'number' | 'cvv', hasValue: boolean) => void;
-  
+
   // Track field value states for floating labels
   private fieldHasValue: { number: boolean; cvv: boolean } = { number: false, cvv: false };
-  
+
   // Store original placeholders for restoration
   private originalPlaceholders: { number: string; cvv: string } = { number: 'Card Number', cvv: 'CVV *' };
   private labelBehavior: { number: string | null; cvv: string | null } = { number: null, cvv: null };
 
-  constructor(environmentKey: string) {
+  constructor(environmentKey: string, config?: SpreedlyConfig) {
     this.environmentKey = environmentKey;
+    this.config = config;
     this.logger = createLogger('CreditCardService');
     // errorManager initialization removed - no longer used
     this.validationState = this.initializeValidationState();
-    
+
     if (!environmentKey) {
       this.logger.error('No Spreedly environment key provided');
       return;
     }
+
+    this.logger.debug('CreditCardService created with config:', config);
   }
 
   /**
@@ -482,30 +487,50 @@ export class CreditCardService {
         // Add class for transition effect instead of inline style
         this.numberField.classList.add('spreedly-field-transition');
       }
-      
+
       if (this.cvvField) {
         this.cvvField.id = 'spreedly-cvv';
         this.cvvField.setAttribute('data-spreedly', 'cvv');
         // Add class for transition effect instead of inline style
         this.cvvField.classList.add('spreedly-field-transition');
       }
-      
-      // Initialize Spreedly
-      window.Spreedly.init(this.environmentKey, {
+
+      // Build init options from config
+      const initOptions: any = {
         "numberEl": "spreedly-number",
         "cvvEl": "spreedly-cvv"
-      });
-      
+      };
+
+      // Add security parameters if provided in config
+      if (this.config?.nonce) {
+        initOptions.nonce = this.config.nonce;
+      }
+      if (this.config?.timestamp) {
+        initOptions.timestamp = this.config.timestamp;
+      }
+      if (this.config?.certificateToken) {
+        initOptions.certificateToken = this.config.certificateToken;
+      }
+      if (this.config?.signature) {
+        initOptions.signature = this.config.signature;
+      }
+      if (this.config?.fraud !== undefined) {
+        initOptions.fraud = this.config.fraud;
+      }
+
+      // Initialize Spreedly with options
+      window.Spreedly.init(this.environmentKey, initOptions);
+
       // Set up event listeners
       this.setupSpreedlyEventListeners();
-      
+
       // Set up click handlers for better UX
       this.setupFieldClickHandlers();
-      
+
       // Add focus styles
       this.addFocusStyles();
-      
-      this.logger.debug('Spreedly setup complete');
+
+      this.logger.debug('Spreedly setup complete with config:', initOptions);
     } catch (error) {
       this.logger.error('Error setting up Spreedly:', error);
       throw error;
@@ -687,27 +712,86 @@ export class CreditCardService {
 
   private applySpreedlyConfig(): void {
     try {
-      // Apply basic configuration
-      window.Spreedly.setFieldType('number', 'text');
-      window.Spreedly.setFieldType('cvv', 'text');
-      window.Spreedly.setNumberFormat('prettyFormat');
-      
-      // Set placeholders (store them for restoration)
-      this.originalPlaceholders.number = 'Card Number';
-      this.originalPlaceholders.cvv = 'CVV *';
+      // Apply field type configuration
+      const numberFieldType = this.config?.fieldType?.number || 'text';
+      const cvvFieldType = this.config?.fieldType?.cvv || 'text';
+      window.Spreedly.setFieldType('number', numberFieldType);
+      window.Spreedly.setFieldType('cvv', cvvFieldType);
+
+      // Apply number format
+      const numberFormat = this.config?.numberFormat || 'prettyFormat';
+      window.Spreedly.setNumberFormat(numberFormat);
+
+      // Set labels for accessibility
+      if (this.config?.labels?.number) {
+        window.Spreedly.setLabel('number', this.config.labels.number);
+      }
+      if (this.config?.labels?.cvv) {
+        window.Spreedly.setLabel('cvv', this.config.labels.cvv);
+      }
+
+      // Set titles for accessibility
+      if (this.config?.titles?.number) {
+        window.Spreedly.setTitle('number', this.config.titles.number);
+      }
+      if (this.config?.titles?.cvv) {
+        window.Spreedly.setTitle('cvv', this.config.titles.cvv);
+      }
+
+      // Set placeholders (with defaults)
+      this.originalPlaceholders.number = this.config?.placeholders?.number || 'Card Number';
+      this.originalPlaceholders.cvv = this.config?.placeholders?.cvv || 'CVV *';
       window.Spreedly.setPlaceholder('number', this.originalPlaceholders.number);
       window.Spreedly.setPlaceholder('cvv', this.originalPlaceholders.cvv);
-      
+
       // Set styling
-      const fieldStyle = 'color: #212529; font-size: .925rem; font-weight: 400; width: 100%; height:100%; font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";';
-      window.Spreedly.setStyle('number', fieldStyle);
-      window.Spreedly.setStyle('cvv', fieldStyle);
-      
+      const defaultFieldStyle = 'color: #212529; font-size: .925rem; font-weight: 400; width: 100%; height:100%; font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";';
+      const numberStyle = this.config?.styles?.number || defaultFieldStyle;
+      const cvvStyle = this.config?.styles?.cvv || defaultFieldStyle;
+
+      window.Spreedly.setStyle('number', numberStyle);
+      window.Spreedly.setStyle('cvv', cvvStyle);
+
+      // Set placeholder styling if provided
+      if (this.config?.styles?.placeholder) {
+        window.Spreedly.setStyle('placeholder', this.config.styles.placeholder);
+      }
+
       // Set required attributes
-      window.Spreedly.setRequiredAttribute('number');
-      window.Spreedly.setRequiredAttribute('cvv');
-      
-      this.logger.debug('Spreedly configuration applied');
+      const numberRequired = this.config?.requiredAttributes?.number !== false; // default true
+      const cvvRequired = this.config?.requiredAttributes?.cvv !== false; // default true
+
+      if (numberRequired) {
+        window.Spreedly.setRequiredAttribute('number');
+      }
+      if (cvvRequired) {
+        window.Spreedly.setRequiredAttribute('cvv');
+      }
+
+      // Toggle autocomplete if specified
+      if (this.config?.enableAutoComplete === false) {
+        window.Spreedly.toggleAutoComplete();
+      }
+
+      // Set validation parameters
+      if (this.config?.allowBlankName) {
+        window.Spreedly.setParam('allow_blank_name', true);
+      }
+      if (this.config?.allowExpiredDate) {
+        window.Spreedly.setParam('allow_expired_date', true);
+      }
+
+      this.logger.debug('Spreedly configuration applied:', {
+        fieldType: { number: numberFieldType, cvv: cvvFieldType },
+        numberFormat,
+        placeholders: this.originalPlaceholders,
+        requiredAttributes: { number: numberRequired, cvv: cvvRequired },
+        autoComplete: this.config?.enableAutoComplete,
+        validationParams: {
+          allowBlankName: this.config?.allowBlankName,
+          allowExpiredDate: this.config?.allowExpiredDate
+        }
+      });
     } catch (error) {
       this.logger.error('Error applying Spreedly configuration:', error);
     }
