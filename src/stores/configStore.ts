@@ -184,8 +184,12 @@ export const configStore = create<ConfigState & ConfigActions>((set, _get) => ({
     if (windowConfig.currencyBehavior && (windowConfig.currencyBehavior === 'auto' || windowConfig.currencyBehavior === 'manual')) {
       updates.currencyBehavior = windowConfig.currencyBehavior;
     }
-    
-    
+
+    // Load CDN cache flag from window config
+    if (typeof windowConfig.useCdnCache === 'boolean') {
+      updates.useCdnCache = windowConfig.useCdnCache;
+    }
+
     // Load discount definitions from window config
     if (windowConfig.discounts && typeof windowConfig.discounts === 'object') {
       updates.discounts = windowConfig.discounts as Record<string, DiscountDefinition>;

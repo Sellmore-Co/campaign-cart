@@ -292,6 +292,7 @@ export interface ConfigState {
   locationData?: any;
   currencyBehavior?: 'auto' | 'manual'; // auto: change currency when country changes, manual: never auto-change
   currencyFallbackOccurred?: boolean; // Track if currency fallback happened
+  useCdnCache?: boolean; // Use Cloudflare CDN worker for campaign fetching
   
   // Additional configuration properties for complete type coverage
   autoInit: boolean | undefined;

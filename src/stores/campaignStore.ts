@@ -222,8 +222,8 @@ const campaignStoreInstance = create<CampaignState & CampaignActions>((set, get)
       // Cache miss or expired - fetch from API
       logger.info(`🌐 Fetching campaign data from API with currency: ${requestedCurrency}...`);
       const { ApiClient } = await import('@/api/client');
-      const client = new ApiClient(apiKey);
-      
+      const client = new ApiClient(apiKey, configStore.useCdnCache || false);
+
       // API now handles currency fallback automatically
       const campaign = await client.getCampaigns(requestedCurrency);
       

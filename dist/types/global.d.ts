@@ -460,6 +460,7 @@ export interface ConfigState {
     locationData?: any;
     currencyBehavior?: 'auto' | 'manual';
     currencyFallbackOccurred?: boolean;
+    useCdnCache?: boolean;
     autoInit: boolean | undefined;
     rateLimit: number | undefined;
     cacheTtl: number | undefined;

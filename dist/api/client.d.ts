@@ -4,7 +4,8 @@ export declare class ApiClient {
     private cloudflareWorkerURL;
     private apiKey;
     private logger;
-    constructor(apiKey: string);
+    private useCdnCache;
+    constructor(apiKey: string, useCdnCache?: boolean);
     getCampaigns(currency?: string): Promise<Campaign>;
     createCart(data: CartBase & {
         currency?: string;
