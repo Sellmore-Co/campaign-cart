@@ -28,14 +28,52 @@ export class AttributeScanner {
   private enhancerStats = new Map<string, { totalTime: number; count: number }>();
   private isDebugMode = false;
 
+  // Shared selector for all enhanceable elements
+  private readonly ENHANCER_SELECTOR = [
+    '[data-next-enhancer]',
+    '[data-next-display]',
+    '[data-next-toggle]',
+    '[data-next-action]',
+    '[data-next-timer]',
+    '[data-next-show]',
+    '[data-next-hide]',
+    '[data-next-show-if-profile]',
+    '[data-next-hide-if-profile]',
+    'form[data-next-checkout]',
+    '[data-next-express-checkout]',
+    '[data-next-timer-display]',
+    '[data-next-timer-expired]',
+    '[data-next-cart-items]',
+    '[data-next-order-items]',
+    '[data-next-quantity="increase"]',
+    '[data-next-quantity="decrease"]',
+    '[data-next-quantity="set"]',
+    '[data-next-remove-item]',
+    '[data-next-selector]',
+    '[data-next-selector-id]',
+    '[data-next-cart-selector]',
+    '[data-next-upsell]',
+    '[data-next-upsell-selector]',
+    '[data-next-upsell-select]',
+    '[data-next-coupon="input"]',
+    '[data-next-coupon=""]',
+    '[data-next-accordion]',
+    '[data-next-tooltip]',
+    '[data-next-express-checkout="container"]',
+    '[data-next-component="scroll-hint"]',
+    '[data-next-quantity-text]',
+    '[data-next-profile]',
+    'select[data-next-profile-selector]'
+  ].join(', ');
+
   constructor() {
     this.logger = createLogger('AttributeScanner');
     this.domObserver = new DOMObserver();
     this.domObserver.addHandler(this.handleDOMChange.bind(this));
-    
+
     // Check if debug mode is enabled
     this.isDebugMode = new URLSearchParams(location.search).get('debug') === 'true';
-    
+
     if (this.isDebugMode) {
       console.log('🐛 AttributeScanner: Debug mode enabled for performance tracking');
     }
@@ -52,44 +90,7 @@ export class AttributeScanner {
     
     try {
       // Find all elements with data-next attributes
-      const selector = [
-        '[data-next-enhancer]',  // Generic enhancer (checkout-review, etc.)
-        '[data-next-display]',
-        '[data-next-toggle]',
-        '[data-next-action]',
-        '[data-next-timer]',
-        '[data-next-show]',
-        '[data-next-hide]',
-        '[data-next-show-if-profile]',
-        '[data-next-hide-if-profile]',
-        'form[data-next-checkout]',
-        '[data-next-express-checkout]',
-        '[data-next-timer-display]',
-        '[data-next-timer-expired]',
-        '[data-next-cart-items]',
-        '[data-next-order-items]',
-        '[data-next-quantity="increase"]',
-        '[data-next-quantity="decrease"]',
-        '[data-next-quantity="set"]',
-        '[data-next-remove-item]',
-        '[data-next-selector]',
-        '[data-next-selector-id]',
-        '[data-next-cart-selector]',
-        '[data-next-upsell]',
-        '[data-next-upsell-selector]',
-        '[data-next-upsell-select]',
-        '[data-next-coupon="input"]',
-        '[data-next-coupon=""]',
-        '[data-next-accordion]',
-        '[data-next-tooltip]',
-        '[data-next-express-checkout="container"]',
-        '[data-next-component="scroll-hint"]',
-        '[data-next-quantity-text]',
-        '[data-next-profile]',
-        'select[data-next-profile-selector]'
-      ].join(', ');
-      
-      const elements = root.querySelectorAll(selector);
+      const elements = root.querySelectorAll(this.ENHANCER_SELECTOR);
 
       this.logger.debug(`Found ${elements.length} elements with data attributes`);
 
@@ -437,11 +438,11 @@ export class AttributeScanner {
       case 'added':
         this.queueElementForEnhancement(event.element);
         break;
-        
+
       case 'removed':
         this.cleanupElement(event.element);
         break;
-        
+
       case 'attributeChanged':
         if (event.attributeName?.startsWith('data-next-')) {
           this.logger.debug('Data attribute changed, re-enhancing element', {
@@ -450,10 +451,26 @@ export class AttributeScanner {
             oldValue: event.oldValue,
             newValue: event.newValue
           });
-          
-          // Re-enhance element when data attributes change
-          this.cleanupElement(event.element);
-          this.queueElementForEnhancement(event.element);
+
+          // Check if this is a context attribute that affects descendants
+          const isContextAttribute = event.attributeName === 'data-next-package-id';
+
+          if (isContextAttribute) {
+            // Re-enhance the element AND its descendants
+            this.logger.debug('Context attribute changed, re-enhancing descendants', {
+              attribute: event.attributeName,
+              element: event.element.tagName
+            });
+
+            this.cleanupElement(event.element);
+            this.cleanupDescendants(event.element);
+            this.queueElementForEnhancement(event.element);
+            this.queueDescendantsForEnhancement(event.element);
+          } else {
+            // Re-enhance only the changed element
+            this.cleanupElement(event.element);
+            this.queueElementForEnhancement(event.element);
+          }
         }
         break;
     }
@@ -502,6 +519,53 @@ export class AttributeScanner {
       this.enhancerCount -= enhancers.length;
       this.enhancers.delete(element);
     }
+  }
+
+  /**
+   * Clean up all descendant elements that have enhancers
+   */
+  private cleanupDescendants(root: HTMLElement): void {
+    const descendants = root.querySelectorAll(this.ENHANCER_SELECTOR);
+    this.logger.debug(`Cleaning up ${descendants.length} descendant enhancers`);
+
+    // Clear display context cache for the root to force fresh context resolution
+    this.clearDisplayContext(root);
+
+    descendants.forEach(desc => {
+      if (desc instanceof HTMLElement) {
+        this.cleanupElement(desc);
+        // Also clear context cache for each descendant
+        this.clearDisplayContext(desc);
+      }
+    });
+  }
+
+  /**
+   * Clear display context cache for an element
+   */
+  private clearDisplayContext(element: HTMLElement): void {
+    try {
+      // Dynamically import and clear context
+      import('@/enhancers/display/DisplayContextProvider').then(({ DisplayContextProvider }) => {
+        DisplayContextProvider.clear(element);
+      });
+    } catch (error) {
+      // Silently fail if DisplayContextProvider is not available
+    }
+  }
+
+  /**
+   * Queue all descendant elements for enhancement
+   */
+  private queueDescendantsForEnhancement(root: HTMLElement): void {
+    const descendants = root.querySelectorAll(this.ENHANCER_SELECTOR);
+    this.logger.debug(`Queueing ${descendants.length} descendants for enhancement`);
+
+    descendants.forEach(desc => {
+      if (desc instanceof HTMLElement) {
+        this.queueElementForEnhancement(desc);
+      }
+    });
   }
 
   public destroy(): void {

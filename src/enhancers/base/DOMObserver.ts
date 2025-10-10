@@ -48,7 +48,8 @@ export class DOMObserver {
         'data-next-hide',
         'data-next-checkout',
         'data-next-validate',
-        'data-next-express-checkout'
+        'data-next-express-checkout',
+        'data-next-package-id'
       ],
       ...config
     };
