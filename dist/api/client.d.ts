@@ -1,6 +1,7 @@
 import { Campaign, Cart, Order, CartBase, CreateOrder, AddUpsellLine } from '../types/api';
 export declare class ApiClient {
     private baseURL;
+    private cloudflareWorkerURL;
     private apiKey;
     private logger;
     constructor(apiKey: string);
@@ -20,6 +21,7 @@ export declare class ApiClient {
     convertProspectCart(cartId: string): Promise<any>;
     private getRequestType;
     private getErrorType;
+    private requestCloudflare;
     private request;
     setApiKey(apiKey: string): void;
     getApiKey(): string;
